@@ -67,3 +67,9 @@ Everything is under `/api/v1`, described by `/api/v1/openapi.json`. Errors are `
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Copyright (C) 2026 thomas-lg. Released under the GNU Affero General Public License, version 3 or (at your
+option) any later version ([LICENSE](LICENSE)): anyone who runs a modified version as a network service must
+offer its source to the users of that service.

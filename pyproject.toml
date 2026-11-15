@@ -3,7 +3,7 @@ name = "respawn"
 version = "0.0.0"
 description = "Self-hosted game library: stats, backlog and next-game suggestions"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.14"
 # Single source of truth for the dependency ranges. requirements.txt and requirements-dev.txt are compiled from
 # here by scripts/compile-deps.sh; the image and the CI install the compiled files.

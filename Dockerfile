@@ -4,7 +4,7 @@ LABEL org.opencontainers.image.title="respawn"
 LABEL org.opencontainers.image.description="Self-hosted game library: stats, backlog and next-game suggestions"
 LABEL org.opencontainers.image.url="https://github.com/thomas-lg-lab/respawn"
 LABEL org.opencontainers.image.source="https://github.com/thomas-lg-lab/respawn"
-LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 # The root filesystem is read-only at run time: no bytecode files, logs straight to stdout.
 ENV PYTHONDONTWRITEBYTECODE=1 \
