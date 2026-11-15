@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Respawn.Host.Configuration;
 using Respawn.Host.Errors;
 using Respawn.Host.Modules;
-using Respawn.Tests.Support;
+using Respawn.Testing;
 
 namespace Respawn.Tests;
 

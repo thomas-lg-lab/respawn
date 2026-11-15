@@ -26,11 +26,13 @@
 ## This project
 
 - **Layout.** `backend/`, .NET 10, split by responsibility: `Respawn.Host` (composition only: `Program.cs`, the
-  HTTP pipeline, the database connection, `wwwroot/` for the page), `Respawn.SharedKernel` (the error format,
+  HTTP pipeline, `wwwroot/` for the page), `Respawn.Persistence` (the database connection, opened and
+  migrated on first use), `Respawn.SharedKernel` (the error format,
   the database contracts; no package), and one hexagonal module per responsibility under `Modules/`. Today
   `Modules/Accounts`: `Respawn.Accounts` (the core: use cases and ports, no package), `.Infrastructure` (EF Core
   and its migrations, ASP.NET Core Identity, ID token validation), `.Api` (the controllers, the session cookie).
-  Tests in `Respawn.Tests`, which start the real app against a real PostgreSQL.
+  One test project per module (`Modules/Accounts/Respawn.Accounts.Tests`), `Respawn.Tests` for the host and the
+  architecture rules, `Respawn.Testing` for what they share; they start the real app against a real PostgreSQL.
 - **Architecture is checked.** A module never references another module's infrastructure or tables; an inbound
   adapter never references its module's infrastructure; a core references no framework; each module owns one
   PostgreSQL schema and its migrations; no empty project. `ArchitectureTests` fails otherwise; CONTRIBUTING.md

@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Accounts.Infrastructure.Identity;
 using Respawn.Accounts.Infrastructure.Persistence;
-using Respawn.Tests.Support;
+using Respawn.Testing;
 
-namespace Respawn.Tests;
+namespace Respawn.Accounts.Tests;
 
 /// <summary>Local accounts: registration, sign-in, lockout, sign-out.</summary>
 public sealed class AccountsTests

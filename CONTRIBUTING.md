@@ -16,10 +16,12 @@ docker run --rm --network respawn_default -v "$PWD:/work" -w /work \
 docker build -t respawn .
 ```
 
-The tests run in a database of their own, `respawn_test`, beside the `respawn` database the compose app uses;
-they create it when it is missing (and two more for the connection tests, also ending in `_test`), so the
-account needs the right to create databases and roles. They empty its tables: `RESPAWN_TEST_DATABASE_URL` must
-name a database ending in `_test`, anything else is refused.
+Each test project runs in a database of its own, beside the `respawn` database the compose app uses: the
+projects run side by side, and each empties its tables. `RESPAWN_TEST_DATABASE_URL` gives the server and a base
+name ending in `_test` (anything else is refused); a project puts its own name in it, so `respawn_test` gives
+`respawn_accounts_test` and `respawn_host_test`. The tests create these databases when they are missing (and
+two more for the connection tests, also ending in `_test`), so the account needs the right to create databases
+and roles.
 
 ## Layout
 
@@ -28,22 +30,27 @@ and adapters around it.
 
 | Project | Holds | May reference |
 | --- | --- | --- |
-| `Respawn.Host` | composition only: `Program.cs`, the HTTP pipeline, the database connection, one `Add<Module>()` per module, the page | everything; nothing references it |
+| `Respawn.Host` | composition only: `Program.cs`, the HTTP pipeline, one `Add<Module>()` per module, the page | everything, but no database driver; nothing references it |
+| `Respawn.Persistence` | the database connection: opened on first use, every module's schema migrated then, a rotated password followed | the shared kernel; no module |
 | `Respawn.SharedKernel` | what modules and the host agree on: the error format, the database contracts | nothing, not even a package |
 | `Modules/Accounts/Respawn.Accounts` | the core: use cases and the ports they need | the shared kernel; no package |
 | `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, ID token validation, sessions | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie | its core, the shared kernel |
-| `Respawn.Tests` | the tests, which start the real app in-process | everything |
+| `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
+| `Respawn.Tests` | the tests of the host and of the solution as a whole: the runtime contract, the database connection, the architecture rules | everything |
+| `Respawn.Testing` | what every test project shares: the app started in-process, the test database; not a test project | the host |
 
 The rules, checked by `ArchitectureTests`:
 
 - A module never references another module's infrastructure or tables, only its public contract.
 - An inbound adapter never references its module's infrastructure: the host puts them together.
 - Each module owns one PostgreSQL schema, one `DbContext` and its migrations (`accounts` for Accounts).
+- The host holds no database driver: the connection is `Respawn.Persistence`'s, which knows no module.
 - No empty project: a module or a layer is created when it has something to hold.
 
-A new module adds its three projects under `backend/Modules/<Name>/`, an `Add<Name>()` in
-`Respawn.Host/Modules/`, and its assemblies to `ArchitectureTests`. A port belongs to the module that uses it;
+A new module adds its three projects and its test project under `backend/Modules/<Name>/`, an `Add<Name>()`
+in `Respawn.Host/Modules/`, and its assemblies to `ArchitectureTests`. A module's tests live in the module;
+what only they need (a fake of an outside service) stays there, not in `Respawn.Testing`. A port belongs to the module that uses it;
 an adapter that lives in its own project (a connector to an outside source) only references that module's core.
 
 ## Dependencies

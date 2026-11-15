@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Respawn.Host.Persistence;
+using Respawn.Persistence;
 using Respawn.SharedKernel;
 
 namespace Respawn.Host.Errors;

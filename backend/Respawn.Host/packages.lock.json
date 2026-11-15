@@ -11,12 +11,6 @@
           "Microsoft.OpenApi": "[2.13.0, 3.0.0)"
         }
       },
-      "Npgsql": {
-        "type": "Direct",
-        "requested": "[10.0.3, )",
-        "resolved": "10.0.3",
-        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w=="
-      },
       "EFCore.NamingConventions": {
         "type": "Transitive",
         "resolved": "10.0.1",
@@ -123,6 +117,11 @@
         "resolved": "2.13.0",
         "contentHash": "wavlgBYnn7uU/ZGhFHNl0UlDOlwz+6KRduKkqdCCbfxxANaQ1rmBpETVGdwXanAM6twQOxsvI3CBEGF4OScbeQ=="
       },
+      "Npgsql": {
+        "type": "Transitive",
+        "resolved": "10.0.3",
+        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w=="
+      },
       "Npgsql.EntityFrameworkCore.PostgreSQL": {
         "type": "Transitive",
         "resolved": "10.0.3",
@@ -170,6 +169,13 @@
           "Respawn.Accounts": "[1.0.0, )",
           "Respawn.SharedKernel": "[1.0.0, )",
           "Sodium.Core": "[1.4.1, )"
+        }
+      },
+      "respawn.persistence": {
+        "type": "Project",
+        "dependencies": {
+          "Npgsql": "[10.0.3, )",
+          "Respawn.SharedKernel": "[1.0.0, )"
         }
       },
       "respawn.sharedkernel": {

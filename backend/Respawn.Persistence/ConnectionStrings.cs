@@ -2,7 +2,7 @@ using System.Data.Common;
 using System.Web;
 using Npgsql;
 
-namespace Respawn.Host.Persistence;
+namespace Respawn.Persistence;
 
 /// <summary>Where the connection string comes from: the environment, or a file that may appear, and
 /// change, after the app has started.</summary>

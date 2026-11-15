@@ -162,10 +162,12 @@ than by layer: each module is hexagonal, a core with its use cases and ports, an
 
 | Project | Holds |
 | --- | --- |
-| `Respawn.Host` | Composition only: the HTTP pipeline, the database connection, one registration per module, the page |
+| `Respawn.Host` | Composition only: the HTTP pipeline, one registration per module, the page |
+| `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
 | `Modules/Accounts` | Accounts and sign-in: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
-| `Respawn.Tests` | The tests, which start the real app against a real PostgreSQL |
+| `Modules/Accounts/Respawn.Accounts.Tests` | The tests of the module, which start the real app against a real PostgreSQL |
+| `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 
 A module owns one PostgreSQL schema and its migrations, and never reads another module's tables. These rules
 are tests: the build fails when a project references what it should not.

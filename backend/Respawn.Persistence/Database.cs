@@ -1,8 +1,9 @@
 using System.Data.Common;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Respawn.SharedKernel;
 
-namespace Respawn.Host.Persistence;
+namespace Respawn.Persistence;
 
 /// <summary>No connection string yet, the database does not answer, or a schema could not be migrated.</summary>
 public sealed class DatabaseUnavailableException(string message, Exception? inner = null) : Exception(message, inner)

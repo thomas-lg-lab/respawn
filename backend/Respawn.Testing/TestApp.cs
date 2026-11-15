@@ -9,11 +9,11 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Respawn.Accounts.Infrastructure.Oidc;
 
-namespace Respawn.Tests.Support;
+namespace Respawn.Testing;
 
-/// <summary>The real app, started in-process: routing, validation, sign-in, EF Core and migrations.</summary>
+/// <summary>The real app, started in-process: routing, validation, sign-in, EF Core and migrations.
+/// Shared by every test project; what only one module needs lives in that module's tests.</summary>
 internal sealed class TestApp : WebApplicationFactory<Program>
 {
     public const string Password = "correct horse battery";
@@ -26,8 +26,6 @@ internal sealed class TestApp : WebApplicationFactory<Program>
         _settings = settings;
         _services = services;
     }
-
-    public FakeIssuer Issuer { get; } = new();
 
     public LogCollector Logs { get; } = new();
 
@@ -67,7 +65,6 @@ internal sealed class TestApp : WebApplicationFactory<Program>
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
         builder.ConfigureTestServices(services =>
         {
-            services.AddHttpClient(OidcTokenValidator.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Issuer.Handler);
             services.AddSingleton<IStartupFilter>(new PeerFilter(this));
             _services?.Invoke(services);
         });
@@ -81,7 +78,6 @@ internal sealed class TestApp : WebApplicationFactory<Program>
             ["RESPAWN_COOKIE_SECURE"] = "false",
             ["RESPAWN_LOCKOUT_THRESHOLD"] = "3",
             ["RESPAWN_AUTH_RATE_LIMIT"] = "1000/minute",
-            ["RESPAWN_OIDC_PROVIDERS"] = Providers(FakeIssuer.Issuer),
         };
         foreach (var (key, value) in overrides ?? [])
         {
@@ -90,9 +86,6 @@ internal sealed class TestApp : WebApplicationFactory<Program>
 
         return settings;
     }
-
-    public static string Providers(string issuer) =>
-        JsonSerializer.Serialize(new[] { new { name = "test", issuer, client_id = FakeIssuer.ClientId } });
 
     /// <summary>The in-process server has no socket, hence no peer address: this gives it one.</summary>
     private sealed class PeerFilter(TestApp app) : IStartupFilter
@@ -164,10 +157,6 @@ internal static class ApiCalls
 
         return client.SendAsync(request);
     }
-
-    public static Task<HttpResponseMessage> ExchangeAsync(
-        this HttpClient client, string token, string nonce = FakeIssuer.Nonce, string provider = "test") =>
-        client.PostAsJsonAsync("/api/v1/auth/oidc", new { provider, id_token = token, nonce });
 
     public static async Task<JsonElement> JsonAsync(this Task<HttpResponseMessage> response) =>
         await (await response).Content.ReadFromJsonAsync<JsonElement>();

@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Respawn.Accounts.Tests" />
     <InternalsVisibleTo Include="Respawn.Tests" />
   </ItemGroup>
 

@@ -3,6 +3,7 @@ using NetArchTest.Rules;
 using Respawn.Accounts.Api;
 using Respawn.Accounts.Infrastructure;
 using Respawn.Accounts.Services;
+using Respawn.Persistence;
 using Respawn.SharedKernel;
 
 namespace Respawn.Tests;
@@ -33,6 +34,8 @@ public sealed class ArchitectureTests
     private static readonly Assembly Outbound = typeof(DependencyInjection).Assembly;
     private static readonly Assembly Inbound = typeof(AccountsApi).Assembly;
     private static readonly Assembly Kernel = typeof(ErrorResponse).Assembly;
+    private static readonly Assembly Persistence = typeof(DatabaseOptions).Assembly;
+    private static readonly Assembly Composition = typeof(Program).Assembly;
 
     [Fact]
     public void A_core_knows_no_framework_and_none_of_its_adapters() =>
@@ -51,11 +54,20 @@ public sealed class ArchitectureTests
         Allowed(Kernel, [.. Technical, "Respawn.Accounts", Host]);
 
     [Fact]
+    public void The_host_composes_and_holds_no_database_driver() =>
+        Allowed(Composition, ["Npgsql", "Microsoft.EntityFrameworkCore", "Sodium", "Microsoft.IdentityModel"]);
+
+    [Fact]
+    public void The_database_connection_knows_no_module_and_not_how_it_is_served() =>
+        Allowed(Persistence, ["Respawn.Accounts", "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore", Host]);
+
+    [Fact]
     public void The_projects_reference_each_other_as_the_rules_say()
     {
         // The same rules on the references themselves, so that an unused one is caught too.
         Assert.Empty(References(Kernel));
         Assert.Empty(References(Core));
+        Assert.Equal(["Respawn.SharedKernel"], References(Persistence));
         Assert.Equal(["Respawn.Accounts", "Respawn.SharedKernel"], References(Inbound));
         Assert.Equal(["Respawn.Accounts", "Respawn.SharedKernel"], References(Outbound));
     }

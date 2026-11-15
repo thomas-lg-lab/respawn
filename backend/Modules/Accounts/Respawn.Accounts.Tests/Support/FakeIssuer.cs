@@ -2,10 +2,14 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Respawn.Accounts.Infrastructure.Oidc;
+using Respawn.Testing;
 
-namespace Respawn.Tests.Support;
+namespace Respawn.Accounts.Tests.Support;
 
 /// <summary>
 /// An OpenID Connect provider answering from memory: discovery, keys, and tokens signed on demand.
@@ -37,6 +41,23 @@ internal sealed class FakeIssuer
     public TaskCompletionSource? Held { get; set; }
 
     public HttpMessageHandler Handler => new Transport(this);
+
+    /// <summary>RESPAWN_OIDC_PROVIDERS naming this provider, under the issuer given.</summary>
+    public static string Providers(string issuer) =>
+        JsonSerializer.Serialize(new[] { new { name = "test", issuer, client_id = ClientId } });
+
+    /// <summary>The app with its database, configured with this provider and reaching it in memory.</summary>
+    public Task<TestApp> StartAppAsync(Dictionary<string, string?>? settings = null)
+    {
+        var all = new Dictionary<string, string?> { ["RESPAWN_OIDC_PROVIDERS"] = Providers(Issuer) };
+        foreach (var (key, value) in settings ?? [])
+        {
+            all[key] = value;
+        }
+
+        return TestApp.StartAsync(all, services =>
+            services.AddHttpClient(OidcTokenValidator.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Handler));
+    }
 
     /// <summary>Sign with a new key from now on, as a provider does from time to time.</summary>
     public void Rotate() => _key = NewKey($"test-key-{Guid.NewGuid():N}");
@@ -139,4 +160,11 @@ internal sealed class FakeIssuer
             };
         }
     }
+}
+
+internal static class ProviderCalls
+{
+    public static Task<HttpResponseMessage> ExchangeAsync(
+        this HttpClient client, string token, string nonce = FakeIssuer.Nonce, string provider = "test") =>
+        client.PostAsJsonAsync("/api/v1/auth/oidc", new { provider, id_token = token, nonce });
 }

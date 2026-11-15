@@ -8,10 +8,9 @@ using Respawn.Host.Configuration;
 using Respawn.Host.Errors;
 using Respawn.Host.Http;
 using Respawn.Host.Modules;
-using Respawn.Host.Persistence;
-using Respawn.SharedKernel;
+using Respawn.Persistence;
 
-// The host: /healthz, one static page, the HTTP pipeline, the database connection, and the modules that
+// The host: /healthz, one static page, the HTTP pipeline, the database, and the modules that
 // provide the public API under /api/v1. Composition only: no business rule lives here.
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,13 +27,11 @@ builder.WebHost.ConfigureKestrel(kestrel => kestrel.AddServerHeader = false);
 var services = builder.Services;
 
 // Settings are built from the configuration when first needed, never at start-up.
-services.AddSingleton(provider => RespawnSettings.Database(provider.GetRequiredService<IConfiguration>()));
 services.AddSingleton(provider => RespawnSettings.Http(provider.GetRequiredService<IConfiguration>()));
 services.TryAddSingleton(TimeProvider.System);
 
 // The one database. Nothing connects here: a module's first query does, and every module is migrated then.
-services.AddSingleton<Database>();
-services.AddSingleton<IConnectionSource>(provider => provider.GetRequiredService<Database>());
+services.AddDatabase(provider => RespawnSettings.Database(provider.GetRequiredService<IConfiguration>()));
 
 // The modules. AddAuthentication, which Accounts calls, brings ASP.NET Core Data Protection along;
 // nothing uses it (a session is a row of the database, not an encrypted cookie), so its start-up

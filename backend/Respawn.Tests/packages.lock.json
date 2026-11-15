@@ -657,15 +657,30 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.AspNetCore.OpenApi": "[10.0.15, )",
-          "Npgsql": "[10.0.3, )",
           "Respawn.Accounts": "[1.0.0, )",
           "Respawn.Accounts.Api": "[1.0.0, )",
           "Respawn.Accounts.Infrastructure": "[1.0.0, )",
+          "Respawn.Persistence": "[1.0.0, )",
+          "Respawn.SharedKernel": "[1.0.0, )"
+        }
+      },
+      "respawn.persistence": {
+        "type": "Project",
+        "dependencies": {
+          "Npgsql": "[10.0.3, )",
           "Respawn.SharedKernel": "[1.0.0, )"
         }
       },
       "respawn.sharedkernel": {
         "type": "Project"
+      },
+      "respawn.testing": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.AspNetCore.Mvc.Testing": "[10.0.15, )",
+          "Respawn.Host": "[1.0.0, )",
+          "xunit.assert": "[2.9.3, )"
+        }
       }
     }
   }

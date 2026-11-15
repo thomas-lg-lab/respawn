@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The app's one PostgreSQL database: the connection opened on first use, every module's schema
+       migrated then, a rotated password followed. The only project that holds the database driver for
+       the host; modules reach the connection through the contract of the shared kernel. -->
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Respawn.SharedKernel\Respawn.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Respawn.Tests" />
+    <InternalsVisibleTo Include="Respawn.Testing" />
+    <InternalsVisibleTo Include="Respawn.Accounts.Tests" />
+  </ItemGroup>
+
+</Project>

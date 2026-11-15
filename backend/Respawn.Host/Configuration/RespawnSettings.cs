@@ -3,7 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Respawn.Accounts;
-using Respawn.Host.Persistence;
+using Respawn.Persistence;
 
 namespace Respawn.Host.Configuration;
 

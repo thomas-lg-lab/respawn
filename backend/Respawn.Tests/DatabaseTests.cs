@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using System.Data.Common;
 using Respawn.Accounts.Infrastructure.Persistence;
-using Respawn.Host.Persistence;
+using Respawn.Persistence;
 using Respawn.SharedKernel;
-using Respawn.Tests.Support;
+using Respawn.Testing;
 
 namespace Respawn.Tests;
 
