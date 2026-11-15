@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -20,14 +19,13 @@ from starlette.exceptions import HTTPException
 from respawn import __version__
 from respawn.api import ApiError, limiter, router
 from respawn.config import Settings, load_settings
-from respawn.db import Database, DatabaseUnavailableError, MigrationFailedError
+from respawn.db import Database, DatabaseUnavailableError
 from respawn.oidc import OidcValidator
 
 STATIC = Path(__file__).parent / "static"
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-log = logging.getLogger("respawn")
 
 
 def error(status: int, code: str, message: str) -> JSONResponse:
@@ -65,32 +63,10 @@ def create_app(
     app.state.oidc = OidcValidator(oidc_transport)
     app.state.limiter = limiter
 
-    warned: set[str] = set()
-
-    def warn_once(key: str, message: str, *args: object) -> None:
-        # Once per process: what triggers these comes from a request, and must not fill the log.
-        if key not in warned:
-            warned.add(key)
-            log.warning(message, *args)
-
     @app.middleware("http")
     async def guard(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        if "x-forwarded-for" in request.headers and not os.environ.get("FORWARDED_ALLOW_IPS"):
-            warn_once(
-                "proxy",
-                "a request carries X-Forwarded-For but FORWARDED_ALLOW_IPS is not set: behind a reverse "
-                "proxy, every visitor then counts as one client for the sign-in rate limit (see the README)",
-            )
         # The session is a cookie: a state-changing request must come from this site's own pages.
         if request.method in UNSAFE_METHODS and not same_site(request.headers):
-            warn_once(
-                "origin",
-                "request refused as coming from another site: Sec-Fetch-Site %r, Origin %r, Host %r "
-                "(see the README if a reverse proxy rewrites the Host header)",
-                request.headers.get("sec-fetch-site", "")[:200],
-                request.headers.get("origin", "")[:200],
-                request.headers.get("host", "")[:200],
-            )
             return error(403, "cross_site_request", "This request comes from another site.")
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -103,20 +79,9 @@ def create_app(
         return error(exc.status, exc.code, exc.message)
 
     @app.exception_handler(DatabaseUnavailableError)
+    @app.exception_handler(OperationalError)
     async def database_unavailable(_: Request, exc: Exception) -> JSONResponse:
         return error(503, "database_unavailable", "The database is not available yet.")
-
-    @app.exception_handler(OperationalError)
-    async def connection_lost(request: Request, exc: Exception) -> JSONResponse:
-        # The password may have been rotated: the next request reads the connection string again.
-        request.app.state.database.connection_failed()
-        return error(503, "database_unavailable", "The database is not available yet.")
-
-    @app.exception_handler(MigrationFailedError)
-    async def migration_failed(_: Request, exc: Exception) -> JSONResponse:
-        return error(
-            503, "schema_migration_failed", "The database schema could not be updated; see the server log."
-        )
 
     @app.exception_handler(RateLimitExceeded)
     async def rate_limited(_: Request, exc: RateLimitExceeded) -> JSONResponse:

@@ -14,7 +14,7 @@ docker build -t respawn .
 ```
 
 The tests run in a database of their own, `respawn_test`, beside the `respawn` database the compose app uses;
-they create it when it is missing (and two more for the connection tests, also ending in `_test`), so the
+they create it when it is missing (and one more for the password rotation test, also ending in `_test`), so the
 account needs the right to create databases and roles. They empty its tables: `RESPAWN_TEST_DATABASE_URL` must
 name a database ending in `_test`, anything else is refused.
 

@@ -15,7 +15,7 @@ from sqlalchemy.engine import Engine, make_url
 from respawn import db
 from respawn.config import Settings
 from respawn.main import create_app
-from tests.conftest import DATABASE_URL, admin_url, create_database, register, settings
+from tests.conftest import DATABASE_URL, admin_url, create_database, settings
 
 ROLE = "respawn_rotation_test"
 
@@ -74,7 +74,7 @@ def test_a_connect_timeout_in_the_connection_string_is_kept() -> None:
     database.dispose()
 
 
-def test_a_failed_migration_is_told_apart_and_not_retried_at_once(
+def test_a_failed_migration_is_logged_and_not_retried_at_once(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     attempts = 0
@@ -91,34 +91,12 @@ def test_a_failed_migration_is_told_apart_and_not_retried_at_once(
             response = client.get("/api/v1/config")
             assert (response.status_code, response.json()["error"]["code"]) == (
                 503,
-                "schema_migration_failed",
+                "database_unavailable",
             )
         assert client.get("/healthz").status_code == 200
     assert attempts == 1
     assert "schema migration failed" in caplog.text
     assert "the migration says what went wrong" in caplog.text
-
-
-def test_a_changed_connection_string_is_followed(
-    client: TestClient, admin: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    register(client)  # the test database now has an account, so its registration is closed
-    other = other_database(admin, "respawn_other_test")
-    file = tmp_path / "database-url"
-    file.write_text(DATABASE_URL, encoding="utf-8")
-    app = create_app(Settings(database_url=None, database_url_file=file))
-    with TestClient(app) as moving:
-        assert moving.get("/api/v1/config").json()["registration_open"] is False
-        file.write_text(other, encoding="utf-8")
-        assert moving.get("/api/v1/config").json()["registration_open"] is False  # not looked at yet
-        monkeypatch.setattr(db, "RECHECK_SECONDS", 0)
-        app.state.database.connection_failed()
-        # The other database is empty and was migrated on the way: registration is open there.
-        assert moving.get("/api/v1/config").json()["registration_open"] is True
-        # A connection string that does not work is not followed: the current database keeps serving.
-        file.write_text(other.replace("respawn_other_test", "respawn_missing_test"), encoding="utf-8")
-        assert moving.get("/api/v1/config").json()["registration_open"] is True
-    app.state.database.dispose()
 
 
 def test_a_rotated_password_is_picked_up_without_a_restart(admin: Engine, tmp_path: Path) -> None:
@@ -140,7 +118,6 @@ def test_a_rotated_password_is_picked_up_without_a_restart(admin: Engine, tmp_pa
                 {"role": ROLE},
             )
         file.write_text(owned.set(password="after-rotation").render_as_string(hide_password=False), "utf-8")
-        # One request fails on the old password; that failure makes the next one read the file again.
-        assert client.get("/api/v1/config").status_code == 503
+        # The pool reconnects, and a new connection reads the file again.
         assert client.get("/api/v1/config").status_code == 200
     app.state.database.dispose()

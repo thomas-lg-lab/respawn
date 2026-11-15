@@ -22,7 +22,7 @@ user with a read-only root filesystem, and needs a PostgreSQL database.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string (`postgresql://user:password@host:5432/database`) |
-| `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set, and read again when its content changes |
+| `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set, and read again for every new connection |
 | `RESPAWN_COOKIE_SECURE` | `true` | Session cookie sent over HTTPS only; `false` for plain HTTP on localhost |
 | `RESPAWN_SESSION_DAYS` | `30` | Lifetime of a sign-in |
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
@@ -33,10 +33,10 @@ user with a read-only root filesystem, and needs a PostgreSQL database.
 
 The app starts, and `GET /healthz` answers, before the database is reachable; the other routes answer 503
 (`database_unavailable`) until it is. The schema is migrated on the first connection; if a migration fails, the
-routes answer 503 with `schema_migration_failed` and the log holds the error.
+routes keep answering 503, the log holds the error and the migration is tried again a minute later.
 
-The connection string is read again while the app runs: every ten seconds, and at once after a connection
-failed. A rotated password or a new file content is picked up without a restart.
+The connection string is read again for every new connection to the database, so a rotated password is picked
+up without a restart.
 
 ## Behind a reverse proxy
 
@@ -45,8 +45,7 @@ Two things depend on what the proxy tells the app, and neither is guessed:
 - **The client's address**, which the sign-in rate limit counts by. The app sees the proxy's address unless the
   proxy is listed in `FORWARDED_ALLOW_IPS`; without it every visitor shares one count, and ten sign-in requests
   a minute lock everybody out. List every proxy on the way, by address or by network. `X-Forwarded-For` is only
-  read from a listed proxy, so a visitor cannot choose their own address. The app logs a warning when a request
-  carries the header and the variable is not set.
+  read from a listed proxy, so a visitor cannot choose their own address.
 - **Where a state-changing request comes from**: it must come from the site's own pages. Browsers say so
   themselves in the `Sec-Fetch-Site` header, which needs nothing from the proxy. Only a browser too old to send
   it is judged on its `Origin`, compared with the `Host` header: for those, the proxy must pass the original
