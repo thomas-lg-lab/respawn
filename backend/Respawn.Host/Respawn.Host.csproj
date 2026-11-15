@@ -18,7 +18,6 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Respawn.Tests" />
     <InternalsVisibleTo Include="Respawn.Testing" />
-    <InternalsVisibleTo Include="Respawn.Accounts.Tests" />
   </ItemGroup>
 
 </Project>

@@ -50,9 +50,19 @@ internal static class TestDatabase
             throw new InvalidOperationException($"the tests empty their database: '{name}' is refused, its name must end in {Suffix}");
         }
 
-        var project = AppDomain.CurrentDomain.GetAssemblies()
-            .Select(assembly => assembly.GetName().Name ?? "")
-            .Single(assembly => assembly.StartsWith("Respawn.", StringComparison.Ordinal) && assembly.EndsWith(".Tests", StringComparison.Ordinal));
+        string[] projects =
+        [
+            .. AppDomain.CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetName().Name ?? "")
+                .Where(assembly => assembly.StartsWith("Respawn.", StringComparison.Ordinal) && assembly.EndsWith(".Tests", StringComparison.Ordinal)),
+        ];
+        if (projects is not [var project])
+        {
+            throw new InvalidOperationException(
+                "the test database is named after the one test project that runs, and these are loaded: "
+                + $"{string.Join(", ", projects)}; a test project must not reference another");
+        }
+
         var module = project == "Respawn.Tests"
             ? "host"
             : project["Respawn.".Length..^".Tests".Length].Replace('.', '_').ToLowerInvariant();
