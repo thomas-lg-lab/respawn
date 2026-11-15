@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from respawn import accounts
 from respawn.config import Settings
 from respawn.models import ExternalIdentity, User
-from respawn.oidc import InvalidTokenError, OidcValidator
+from respawn.oidc import InvalidTokenError, OidcValidator, ProviderUnavailableError
 from respawn.security import hash_password
 
 COOKIE = "respawn_session"
@@ -190,6 +190,10 @@ def login_oidc(
         identity = validator.validate(provider, body.id_token, body.nonce)
     except InvalidTokenError as exc:
         raise ApiError(401, "invalid_token", "The provider's token was refused.") from exc
+    except ProviderUnavailableError as exc:
+        raise ApiError(
+            503, "provider_unavailable", "The provider does not answer. Try again in a moment."
+        ) from exc
 
     accounts.lock_registration(db)
     if not accounts.exchange_once(db, body.id_token, identity.expires_at):

@@ -26,6 +26,7 @@ STATIC = Path(__file__).parent / "static"
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+log = logging.getLogger("respawn")
 
 
 def error(status: int, code: str, message: str) -> JSONResponse:
@@ -48,6 +49,21 @@ def same_site(headers: Mapping[str, str]) -> bool:
     return not origin or urlsplit(origin).netloc == headers.get("host")
 
 
+def behind_an_unlisted_proxy(headers: Mapping[str, str], client: str | None) -> bool:
+    """Whether a request came through a reverse proxy that FORWARDED_ALLOW_IPS does not list.
+
+    Such a proxy adds X-Forwarded-For, and uvicorn ignores it: the client is still the proxy itself, an
+    address the header does not name. From a listed proxy, uvicorn has already replaced the client by an
+    address of the header. The header is only looked at to tell the two apart, never to choose the client's
+    address.
+    """
+    forwarded = headers.get("x-forwarded-for")
+    if not forwarded or not client:
+        return False
+    names = [name.strip() for name in forwarded.split(",")]
+    return not any(name == client or name.startswith((f"{client}:", f"[{client}]")) for name in names)
+
+
 def create_app(
     settings: Settings | None = None, oidc_transport: httpx.BaseTransport | None = None
 ) -> FastAPI:
@@ -63,8 +79,18 @@ def create_app(
     app.state.oidc = OidcValidator(oidc_transport)
     app.state.limiter = limiter
 
+    app.state.proxy_warning_logged = False
+
     @app.middleware("http")
     async def guard(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        if not app.state.proxy_warning_logged and behind_an_unlisted_proxy(
+            request.headers, request.client.host if request.client else None
+        ):
+            app.state.proxy_warning_logged = True  # once: a request triggers it, it must not fill the log
+            log.warning(
+                "a request came with X-Forwarded-For from an address FORWARDED_ALLOW_IPS does not list: if "
+                "that is a reverse proxy, all its visitors share one sign-in rate limit until it is listed"
+            )
         # The session is a cookie: a state-changing request must come from this site's own pages.
         if request.method in UNSAFE_METHODS and not same_site(request.headers):
             return error(403, "cross_site_request", "This request comes from another site.")

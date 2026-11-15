@@ -158,6 +158,9 @@ def test_an_unreachable_provider_is_not_asked_on_every_request(issuer: FakeIssue
     app = create_app(settings(), oidc_transport=httpx.MockTransport(down))
     with TestClient(app) as client:
         for _ in range(3):
-            assert exchange(client, issuer.token()).status_code == 401
+            response = exchange(client, issuer.token())
+            # Not a refused token: nothing could be checked.
+            assert (response.status_code, response.json()["error"]["code"]) == (503, "provider_unavailable")
+        assert exchange(client, "not.a.token").status_code == 401
     app.state.database.dispose()
     assert calls == 1

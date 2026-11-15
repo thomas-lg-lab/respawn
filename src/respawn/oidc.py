@@ -34,6 +34,10 @@ class InvalidTokenError(Exception):
     """The token is not one this provider issued for this app, now."""
 
 
+class ProviderUnavailableError(Exception):
+    """The provider's keys could not be fetched: nothing can be said about the token."""
+
+
 @dataclass(frozen=True)
 class Identity:
     issuer: str
@@ -75,16 +79,23 @@ class OidcValidator:
             if attempted is not None and now - attempted < MIN_REFRESH_SECONDS:
                 if cached is not None and fresh:
                     return cached[1]  # fetched a moment ago: the token names a key the provider does not have
-                raise InvalidTokenError("the provider's keys could not be fetched a moment ago")
+                raise ProviderUnavailableError("the provider's keys could not be fetched a moment ago")
             self._attempts[provider.name] = now
-            key_set = self._fetch(provider)
+            try:
+                key_set = self._fetch(provider)
+            except (httpx.HTTPError, JoseError, KeyError, ValueError) as exc:
+                raise ProviderUnavailableError(type(exc).__name__) from exc
             self._keys[provider.name] = (now, key_set)
             return key_set
 
     def validate(self, provider: OidcProvider, id_token: str, nonce: str) -> Identity:
         try:
             # Nothing is fetched for something that is not even shaped like a token.
-            key_set = self._key_set(provider, _key_id(id_token))
+            kid = _key_id(id_token)
+        except (JoseError, ValueError) as exc:
+            raise InvalidTokenError(type(exc).__name__) from exc
+        key_set = self._key_set(provider, kid)
+        try:
             token = jwt.decode(id_token, key_set, algorithms=ALGORITHMS)
             claims = token.claims
             JWTClaimsRegistry(
@@ -96,7 +107,7 @@ class OidcValidator:
                 sub={"essential": True},
                 nonce={"essential": True, "value": nonce},
             ).validate(claims)
-        except (JoseError, httpx.HTTPError, KeyError, ValueError) as exc:
+        except (JoseError, KeyError, ValueError) as exc:
             raise InvalidTokenError(type(exc).__name__) from exc
 
         audience = claims["aud"]

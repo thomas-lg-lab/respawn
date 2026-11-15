@@ -131,6 +131,20 @@ def test_a_forged_forwarded_address_does_not_dodge_the_rate_limit(client: TestCl
     assert login_codes(proxied, ["203.0.113.1", "203.0.113.2", "203.0.113.3"]) == [401, 401, 429]
 
 
+def test_a_proxy_that_is_not_listed_is_reported_once(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Behind a proxy the app was not told about, the shared rate limit must not stay silent."""
+    warning = "FORWARDED_ALLOW_IPS does not list"
+    # No proxy at all, then a listed one: nothing to report.
+    login_codes(TestClient(ProxyHeadersMiddleware(client.app, trusted_hosts="testclient")), ["203.0.113.1"])  # type: ignore[arg-type]
+    client.post("/api/v1/auth/login", json={"email": "x@example.org", "password": PASSWORD})
+    assert warning not in caplog.text
+    unlisted = TestClient(ProxyHeadersMiddleware(client.app, trusted_hosts="127.0.0.1"))  # type: ignore[arg-type]
+    login_codes(unlisted, ["203.0.113.1", "203.0.113.2", "198.51.100.7, 203.0.113.3"])
+    assert caplog.text.count(warning) == 1
+
+
 def test_clients_behind_a_trusted_proxy_are_limited_one_by_one(client: TestClient) -> None:
     """With the proxy listed in FORWARDED_ALLOW_IPS, each visitor has its own count."""
     os.environ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute"

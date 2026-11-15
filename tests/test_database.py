@@ -99,6 +99,29 @@ def test_a_failed_migration_is_logged_and_not_retried_at_once(
     assert "the migration says what went wrong" in caplog.text
 
 
+def test_another_database_in_the_connection_string_is_not_followed(
+    client: TestClient, admin: Engine, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Only credentials are taken on the fly: no request is served from a database that was not migrated."""
+    other = other_database(admin, "respawn_other_test")  # empty: no table at all
+    file = tmp_path / "database-url"
+    file.write_text(DATABASE_URL, encoding="utf-8")
+    database = db.Database(Settings(database_url=None, database_url_file=file))
+    database.session().close()
+    file.write_text(other, encoding="utf-8")
+    # Three sessions at once: the pool has to open new connections, with the file naming the other database.
+    sessions = [database.session() for _ in range(3)]
+    try:
+        for session in sessions:
+            assert session.scalar(text("SELECT current_database()")) == make_url(DATABASE_URL).database
+            assert session.scalar(text("SELECT count(*) FROM users")) == 0
+    finally:
+        for session in sessions:
+            session.close()
+        database.dispose()
+    assert caplog.text.count("restart it to use the new one") == 1
+
+
 def test_a_rotated_password_is_picked_up_without_a_restart(admin: Engine, tmp_path: Path) -> None:
     with admin.connect() as connection:
         connection.execute(text(f'DROP DATABASE IF EXISTS "{ROLE}" WITH (FORCE)'))

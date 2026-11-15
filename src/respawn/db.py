@@ -4,8 +4,9 @@ The app must start, and /healthz answer, before the database is reachable: nothi
 start-up. A failed attempt is retried by a later request, after a pause, so an unreachable database or a
 faulty migration cannot hold every request for the length of a connection attempt.
 
-The connection string may change while the app runs (a rotated password): it is read again for every new
-connection, through SQLAlchemy's do_connect event.
+The password may be rotated while the app runs: the connection string is read again for every new connection,
+through SQLAlchemy's do_connect event, and its user name and password are used. Another host or database is
+not followed, it needs a restart.
 """
 
 from __future__ import annotations
@@ -46,10 +47,12 @@ class Database:
         self._engine: Engine | None = None
         self._sessions: sessionmaker[Session] | None = None
         self._retry_at = 0.0
+        self._not_followed: str | None = None  # the changed connection string already warned about
 
     def _create_engine(self, url: str) -> Engine:
+        target = make_url(url)
         connect_args = {}
-        if "connect_timeout" not in make_url(url).query:
+        if "connect_timeout" not in target.query:
             connect_args["connect_timeout"] = CONNECT_TIMEOUT_SECONDS
         engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
 
@@ -57,14 +60,30 @@ class Database:
         def current_credentials(
             dialect: Dialect, record: Any, cargs: list[Any], cparams: dict[str, Any]
         ) -> None:
-            # Every new connection uses the connection string as it is now, so a rotated password is picked
-            # up without a restart.
+            # Every new connection takes the user name and the password as they are now, so a rotated password
+            # is picked up without a restart. Nothing else is followed: a connection string naming another
+            # host or database would send some requests there, to a schema that was never migrated.
             try:
                 current = self._settings.resolve_database_url()
-                if current and current != url:
-                    cparams.update(dialect.create_connect_args(make_url(current))[1])
+                if not current or current == url:
+                    return
+                now = make_url(current)
             except SQLAlchemyError:
-                pass  # not a connection string: keep connecting with the one the engine was created with
+                return  # not a connection string: keep connecting with the one the engine was created with
+            if now.set(username=target.username, password=target.password) != target:
+                if current != self._not_followed:
+                    self._not_followed = current
+                    log.warning(
+                        "the connection string now names another host, database or option: only a new user "
+                        "name or password is followed while the app runs, restart it to use the new one"
+                    )
+                return
+            credentials = dialect.create_connect_args(now)[1]
+            for key in ("user", "password"):
+                if key in credentials:
+                    cparams[key] = credentials[key]
+                else:
+                    cparams.pop(key, None)
 
         return engine
 
@@ -79,11 +98,14 @@ class Database:
             url = self._settings.resolve_database_url()
             if not url:
                 raise DatabaseUnavailableError("no database is configured")
+            engine: Engine | None = None
             try:
                 engine = self._create_engine(url)
                 with engine.connect():
                     pass
             except (SQLAlchemyError, ValueError) as exc:
+                if engine is not None:
+                    engine.dispose()
                 self._retry_at = time.monotonic() + RETRY_SECONDS
                 # The driver's message names the host and the reason, never the password.
                 log.warning("database unreachable: %s", _first_line(exc))
