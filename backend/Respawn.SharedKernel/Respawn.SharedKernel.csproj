@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- What every module and the host agree on. No package and no project reference on purpose: a module's
+       core may reference this without learning anything about HTTP or the database. -->
+
+</Project>

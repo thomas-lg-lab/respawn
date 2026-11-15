@@ -1,0 +1,13 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.5; }
+body { margin: 0; padding: 1rem; }
+main { max-width: 24rem; margin: 10vh auto 0; }
+h1 { margin: 0 0 1rem; letter-spacing: 0.02em; }
+h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+form, section { display: grid; gap: 0.75rem; }
+[hidden] { display: none; }
+label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
+input, button { font: inherit; padding: 0.5rem 0.6rem; border-radius: 0.4rem; border: 1px solid GrayText; }
+button { cursor: pointer; }
+button[type="submit"] { background: Highlight; color: HighlightText; border-color: Highlight; }
+#status:empty { display: none; }
+#role { font-size: 0.8rem; opacity: 0.7; }

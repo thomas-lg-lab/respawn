@@ -22,3 +22,27 @@
   adding one (Renovate keeps them current).
 - **Secrets** never go in the repository, in a commit message or in a log.
 - Technical files are written in English.
+
+## This project
+
+- **Layout.** `backend/`, .NET 10, split by responsibility: `Respawn.Host` (composition only: `Program.cs`, the
+  HTTP pipeline, `wwwroot/` for the page), `Respawn.Persistence` (the database connection, opened and
+  migrated on first use), `Respawn.SharedKernel` (the error format,
+  the database contracts; no package), and one hexagonal module per responsibility under `Modules/`. Today
+  `Modules/Accounts`: `Respawn.Accounts` (the core: use cases and ports, no package), `.Infrastructure` (EF Core
+  and its migrations, ASP.NET Core Identity, ID token validation), `.Api` (the controllers, the session cookie).
+  One test project per module (`Modules/Accounts/Respawn.Accounts.Tests`), `Respawn.Tests` for the host and the
+  architecture rules, `Respawn.Testing` for what they share; they start the real app against a real PostgreSQL.
+- **Architecture is checked.** A module never references another module's infrastructure or tables; an inbound
+  adapter never references its module's infrastructure; a core references no framework; each module owns one
+  PostgreSQL schema and its migrations; no empty project. `ArchitectureTests` fails otherwise; CONTRIBUTING.md
+  says how to add a module.
+- **The public API is a contract.** Routes live under `/api/v1`; a breaking change means a new version. The page
+  uses only these routes. Errors are always `{"error": {"code", "message"}}`.
+- **Runtime rules.** The app starts and `/healthz` answers with no database and no secret; nothing is written
+  outside `/tmp`; logs go to stdout. Keep it that way: the image is tested like this in CI.
+- **Sign-in code.** Accounts, password checks and lockout go through ASP.NET Core Identity; cryptography comes
+  from libraries (libsodium through Sodium.Core for Argon2id, Microsoft.IdentityModel for ID tokens); never write
+  a hash or a signature check by hand. A request header such as `Remote-User` never identifies anyone.
+- **Warnings are errors** in a Release build, and `dotnet format --verify-no-changes` is a required check.
+- **Checks and dependencies**: CONTRIBUTING.md.

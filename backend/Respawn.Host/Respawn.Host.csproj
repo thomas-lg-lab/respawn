@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Composition only: the HTTP pipeline, and the database and the modules put together. No
+       business rule lives here, and this is the only project that knows every module. -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Respawn.SharedKernel\Respawn.SharedKernel.csproj" />
+    <ProjectReference Include="..\Respawn.Persistence\Respawn.Persistence.csproj" />
+    <ProjectReference Include="..\Modules\Accounts\Respawn.Accounts\Respawn.Accounts.csproj" />
+    <ProjectReference Include="..\Modules\Accounts\Respawn.Accounts.Api\Respawn.Accounts.Api.csproj" />
+    <ProjectReference Include="..\Modules\Accounts\Respawn.Accounts.Infrastructure\Respawn.Accounts.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Respawn.Tests" />
+    <InternalsVisibleTo Include="Respawn.Testing" />
+  </ItemGroup>
+
+</Project>

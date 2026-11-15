@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The core of the Accounts module: its use cases and the ports they need. No package reference on
+       purpose: nothing here knows about HTTP, the database or a provider. -->
+
+</Project>

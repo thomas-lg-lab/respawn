@@ -4,4 +4,10 @@
 *.log
 .DS_Store
 node_modules/
-__pycache__/
+
+# .NET build output
+bin/
+obj/
+*.user
+.vs/
+.idea/

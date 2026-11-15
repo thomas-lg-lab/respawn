@@ -1,0 +1,9 @@
+.git
+.github
+**/bin
+**/obj
+backend/Respawn.Tests
+backend/Respawn.Testing
+backend/Modules/*/*.Tests
+docker-compose.yml
+*.md

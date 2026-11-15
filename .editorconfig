@@ -10,3 +10,10 @@ indent_size = 4
 
 [*.{json,yml,yaml,md}]
 indent_size = 2
+
+[*.{csproj,props,slnx}]
+indent_size = 2
+
+# Written by the EF Core tools: not formatted, not analysed.
+[backend/**/Migrations/*.cs]
+generated_code = true
