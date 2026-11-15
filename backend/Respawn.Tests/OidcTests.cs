@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Accounts.Infrastructure.Oidc;
 using Respawn.Tests.Support;
@@ -219,5 +221,76 @@ public sealed class OidcTests
 
         Assert.Equal(HttpStatusCode.Unauthorized, await browser.ExchangeAsync("not.a.token").StatusAsync());
         Assert.Equal(1, app.Issuer.Requests);
+    }
+
+    [Fact]
+    public async Task A_provider_that_times_out_is_unavailable()
+    {
+        await using var app = await TestApp.StartAsync();
+        app.Issuer.TimesOut = true;
+        using var browser = app.Browser();
+        Assert.Equal(
+            (HttpStatusCode.ServiceUnavailable, "provider_unavailable"),
+            await browser.ExchangeAsync(app.Issuer.Token()).RefusalAsync());
+        Assert.Equal(0, app.Logs.Count("unhandled error"));
+    }
+
+    [Fact]
+    public async Task A_caller_who_leaves_does_not_stop_the_fetch_of_the_keys()
+    {
+        await using var app = await TestApp.StartAsync();
+        var issuer = app.Issuer;
+        issuer.Held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // The first caller gives up while the provider is being asked.
+        using var impatient = app.Browser();
+        using var leaving = new CancellationTokenSource();
+        var abandoned = impatient.PostAsJsonAsync(
+            "/api/v1/auth/oidc", new { provider = "test", id_token = issuer.Token(), nonce = FakeIssuer.Nonce }, leaving.Token);
+        while (issuer.Requests == 0)
+        {
+            await Task.Delay(10);
+        }
+
+        // The request is told its caller left; the provider answers a moment later.
+        await leaving.CancelAsync();
+        await Task.Delay(200);
+        issuer.Held.SetResult();
+        issuer.Held = null;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => abandoned);
+
+        // The keys were fetched all the same: the next caller is signed in, not told to wait for the
+        // next allowed fetch.
+        using var browser = app.Browser();
+        Assert.Equal(HttpStatusCode.OK, await browser.ExchangeAsync(issuer.Token(("iat", Now - 1))).StatusAsync());
+        Assert.Equal(2, issuer.Requests); // discovery and keys, once
+    }
+
+    [Theory]
+    [InlineData(false, null)]
+    [InlineData(null, null)]
+    [InlineData("true", "player@example.org")]
+    public async Task Only_a_verified_e_mail_becomes_the_account_s(object? verified, string? expected)
+    {
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        var account = await browser.ExchangeAsync(app.Issuer.Token(("email_verified", verified))).JsonAsync();
+        Assert.Equal(expected, account.GetProperty("email").GetString());
+        Assert.Equal("Player One", account.GetProperty("display_name").GetString());
+    }
+
+    [Fact]
+    public async Task An_unverified_e_mail_does_not_take_the_address_of_an_account()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var owner = app.Browser();
+        await owner.RegisterAsync("player@example.org");
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+
+        // Same address, not verified by the provider: a separate account, without the address.
+        using var stranger = app.Browser();
+        var account = await stranger.ExchangeAsync(app.Issuer.Token(("email_verified", false))).JsonAsync();
+        Assert.Equal(JsonValueKind.Null, account.GetProperty("email").ValueKind);
+        Assert.False(account.GetProperty("is_admin").GetBoolean());
     }
 }

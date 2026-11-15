@@ -124,19 +124,21 @@ public sealed partial class AccountService(
             throw new AccountException(AccountError.RegistrationClosed);
         }
 
-        if (identity.Email is not null && await users.FindByEmailAsync(identity.Email, ct) is not null)
+        // An address the provider did not verify is not the account's: anyone could claim another's.
+        var email = identity.EmailVerified ? identity.Email : null;
+        if (email is not null && await users.FindByEmailAsync(email, ct) is not null)
         {
             // Never attached by e-mail alone: the owner signs in first, then links the provider.
             throw new AccountException(AccountError.LinkProviderFirst);
         }
 
-        var name = identity.DisplayName ?? identity.Email ?? "Player";
+        var name = identity.DisplayName ?? email ?? "Player";
         if (name.Length > DisplayNameMaxLength)
         {
             name = name[..DisplayNameMaxLength];
         }
 
-        return await users.CreateAsync(identity.Email, name, password: null, await IsFirstAccountAsync(ct), ct);
+        return await users.CreateAsync(email, name, password: null, await IsFirstAccountAsync(ct), ct);
     }
 
     private async Task<SignedIn> OpenSessionAsync(Account account, CancellationToken ct)

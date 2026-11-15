@@ -28,11 +28,17 @@ internal static class ApiErrors
 }
 
 /// <summary>What no module answered: the database not being there is a 503 the caller can retry;
-/// anything else is a 500 that says nothing of what went wrong, the log does.</summary>
+/// anything else is a 500 that says nothing of what went wrong, the log does. A request its client
+/// gave up is neither: nobody is there to answer, and nothing went wrong.</summary>
 internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
+        if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+        {
+            return true;
+        }
+
         if (DatabaseUnavailableException.Explains(exception))
         {
             await ApiErrors.WriteAsync(context, 503, "database_unavailable", "The database is not available yet.");

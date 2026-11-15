@@ -63,8 +63,18 @@ internal static partial class RespawnSettings
         };
     }
 
-    private static int Number(IConfiguration configuration, string name, int fallback) =>
-        configuration[name] is { Length: > 0 } value ? int.Parse(value, CultureInfo.InvariantCulture) : fallback;
+    /// <summary>A whole number of at least one: none of these settings means anything at zero.</summary>
+    private static int Number(IConfiguration configuration, string name, int fallback)
+    {
+        if (configuration[name] is not { Length: > 0 } value)
+        {
+            return fallback;
+        }
+
+        return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number >= 1
+            ? number
+            : throw new FormatException($"{name} must be a whole number, 1 or more");
+    }
 
     private static bool Flag(string? value, bool fallback) =>
         value is null ? fallback : value.Trim().ToLowerInvariant() is "1" or "true" or "yes" or "on";
@@ -77,8 +87,26 @@ internal static partial class RespawnSettings
             return [];
         }
 
-        var entries = JsonSerializer.Deserialize<List<ProviderEntry>>(raw, SnakeCase) ?? [];
-        return [.. entries.Select(e => new OidcProvider(e.Name, e.Issuer.TrimEnd('/'), e.ClientId))];
+        List<ProviderEntry?> entries;
+        try
+        {
+            entries = JsonSerializer.Deserialize<List<ProviderEntry?>>(raw, SnakeCase) ?? [];
+        }
+        catch (JsonException)
+        {
+            throw new FormatException(ProvidersShape);
+        }
+
+        return [.. entries.Select(entry =>
+        {
+            if (entry is not { Name.Length: > 0, Issuer.Length: > 0, ClientId.Length: > 0 }
+                || !entry.Issuer.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new FormatException(ProvidersShape);
+            }
+
+            return new OidcProvider(entry.Name, entry.Issuer.TrimEnd('/'), entry.ClientId);
+        })];
     }
 
     /// <summary>"10/minute": a count, then second, minute or hour.</summary>
@@ -96,7 +124,9 @@ internal static partial class RespawnSettings
             "minute" => TimeSpan.FromMinutes(1),
             _ => TimeSpan.FromHours(1),
         };
-        return (int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture), window);
+        return int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var permits) && permits >= 1
+            ? (permits, window)
+            : throw new FormatException("RESPAWN_AUTH_RATE_LIMIT must allow at least one request");
     }
 
     /// <summary>Comma-separated addresses or networks: 192.0.2.10, 198.51.100.0/24.</summary>
@@ -119,5 +149,8 @@ internal static partial class RespawnSettings
     [GeneratedRegex(@"^(\d+)\s*/\s*(second|minute|hour)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex RateLimitShape();
 
-    private sealed record ProviderEntry(string Name, string Issuer, string ClientId);
+    private const string ProvidersShape =
+        "RESPAWN_OIDC_PROVIDERS must be a JSON list of {\"name\", \"issuer\", \"client_id\"}, each issuer an https URL";
+
+    private sealed record ProviderEntry(string? Name, string? Issuer, string? ClientId);
 }

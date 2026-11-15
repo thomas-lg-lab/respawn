@@ -57,8 +57,9 @@ internal static class ConnectionStrings
             else
             {
                 builder = new NpgsqlConnectionStringBuilder(value);
-                timeoutGiven = new DbConnectionStringBuilder { ConnectionString = value }.ContainsKey("Timeout");
-                kerberosGiven = value.Contains("gss", StringComparison.OrdinalIgnoreCase);
+                var given = new DbConnectionStringBuilder { ConnectionString = value };
+                timeoutGiven = given.ContainsKey("Timeout");
+                kerberosGiven = given.Keys.Cast<string>().Any(key => key.Contains("gss", StringComparison.OrdinalIgnoreCase));
             }
         }
         catch (Exception ex) when (ex is ArgumentException or UriFormatException or OverflowException)

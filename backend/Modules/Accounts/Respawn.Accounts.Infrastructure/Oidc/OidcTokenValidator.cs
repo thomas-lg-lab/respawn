@@ -101,12 +101,23 @@ internal sealed class OidcTokenValidator(
             Issuer: provider.Issuer,
             Subject: token.Subject,
             Email: string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant(),
-            EmailVerified: token.TryGetPayloadValue<bool>("email_verified", out var verified) && verified,
+            EmailVerified: EmailVerified(token),
             DisplayName: string.IsNullOrWhiteSpace(name) ? (string.IsNullOrWhiteSpace(username) ? null : username) : name,
             ExpiresAt: new DateTimeOffset(DateTime.SpecifyKind(token.ValidTo, DateTimeKind.Utc)));
     }
 
     public void Dispose() => _gate.Dispose();
+
+    /// <summary>The claim is a JSON boolean; some providers send it as a string.</summary>
+    private static bool EmailVerified(JsonWebToken token)
+    {
+        if (!token.TryGetPayloadValue<object>("email_verified", out var claim))
+        {
+            return false;
+        }
+
+        return claim is true || (claim is string text && bool.TryParse(text, out var verified) && verified);
+    }
 
     /// <summary>The provider's keys, from the cache when it is fresh and holds the key the token names.</summary>
     private async Task<OpenIdConnectConfiguration> KeysAsync(OidcProvider provider, string? keyId, CancellationToken ct)
@@ -133,9 +144,12 @@ internal sealed class OidcTokenValidator(
             OpenIdConnectConfiguration keys;
             try
             {
-                keys = await FetchAsync(provider, ct);
+                // Not cancelled with the request: the keys are fetched for every caller, and a caller
+                // who leaves must not leave the others waiting for the next allowed fetch. The client's
+                // timeout bounds it, and that timeout is a cancellation too: caught here like any failure.
+                keys = await FetchAsync(provider, CancellationToken.None);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException and not AccountException)
+            catch (Exception ex) when (ex is not AccountException)
             {
                 logger.LogWarning("the keys of {Provider} could not be fetched: {Reason}", provider.Name, ex.GetType().Name);
                 throw Unavailable();

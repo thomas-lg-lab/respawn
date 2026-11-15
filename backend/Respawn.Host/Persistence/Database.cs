@@ -8,12 +8,14 @@ namespace Respawn.Host.Persistence;
 public sealed class DatabaseUnavailableException(string message, Exception? inner = null) : Exception(message, inner)
 {
     /// <summary>Whether an exception, or one it wraps, says the database cannot be reached right now
-    /// (as opposed to a query it refused).</summary>
+    /// (as opposed to a query it refused). A refused sign-in counts: it is what a new connection gets
+    /// while a rotated password has reached the server and not yet this app.</summary>
     public static bool Explains(Exception? exception)
     {
         for (var current = exception; current is not null; current = current.InnerException)
         {
             if (current is DatabaseUnavailableException or NpgsqlException { IsTransient: true }
+                or PostgresException { SqlState: PostgresErrorCodes.InvalidPassword or PostgresErrorCodes.InvalidAuthorizationSpecification }
                 || (current is NpgsqlException && current is not PostgresException))
             {
                 return true;
@@ -29,8 +31,9 @@ public sealed class DatabaseUnavailableException(string message, Exception? inne
 /// migrated then.
 ///
 /// The app must start, and /healthz answer, before the database is reachable: nothing here runs at
-/// start-up. A failed attempt is retried by a later request, after a pause, so an unreachable database
-/// or a faulty migration cannot hold every request for the length of a connection attempt.
+/// start-up. A failed attempt is retried by a later request, after a pause, and a request arriving
+/// during an attempt only waits a moment for it, so an unreachable database or a faulty migration
+/// cannot hold every request for the length of a connection attempt.
 ///
 /// The password may be rotated while the app runs: the connection string is read again for every new
 /// connection and its password is used. Another host, database or user is not followed, it needs a
@@ -48,6 +51,10 @@ internal sealed class Database(
 
     private static readonly TimeSpan MigrationRetry = TimeSpan.FromSeconds(60);
 
+    /// <summary>How long a request waits for the attempt another request is making. Enough for a
+    /// connection that works; an attempt that drags on must not hold a thread per waiting request.</summary>
+    private static readonly TimeSpan Patience = TimeSpan.FromMilliseconds(500);
+
     private readonly Lock _gate = new();
     private volatile NpgsqlDataSource? _dataSource;
     private DateTimeOffset _retryAt = DateTimeOffset.MinValue;
@@ -63,7 +70,12 @@ internal sealed class Database(
             return ready;
         }
 
-        lock (_gate)
+        if (!_gate.TryEnter(Patience))
+        {
+            throw new DatabaseUnavailableException("another request is still connecting");
+        }
+
+        try
         {
             if (_dataSource is not null)
             {
@@ -109,6 +121,10 @@ internal sealed class Database(
             _dataSource = candidate;
             logger.LogInformation("database ready, schemas up to date");
             return candidate;
+        }
+        finally
+        {
+            _gate.Exit();
         }
     }
 

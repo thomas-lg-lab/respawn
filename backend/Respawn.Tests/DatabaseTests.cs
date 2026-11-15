@@ -54,6 +54,10 @@ public sealed class DatabaseTests
         var keyValue = ConnectionStrings.Parse("Host=db.example.org;Username=player;Password=secret;Database=games");
         Assert.Equal(("db.example.org", 5432, "games"), (keyValue.Host, keyValue.Port, keyValue.Database));
 
+        // A password is not an option: only a Kerberos key keeps Npgsql's default for it.
+        Assert.Equal(GssEncryptionMode.Disable, ConnectionStrings.Parse("Host=db.example.org;Password=bigsstuff").GssEncryptionMode);
+        Assert.Equal(GssEncryptionMode.Prefer, ConnectionStrings.Parse("Host=db.example.org;GSS Encryption Mode=Prefer").GssEncryptionMode);
+
         var unknown = Assert.Throws<FormatException>(() => ConnectionStrings.Parse("postgresql://u:secret@h/d?target_session_attrs=any"));
         Assert.DoesNotContain("secret", unknown.Message, StringComparison.Ordinal);
     }
@@ -164,6 +168,17 @@ public sealed class DatabaseTests
         using var command = connection.CreateCommand();
         command.CommandText = query;
         return command.ExecuteScalar();
+    }
+
+    [Fact]
+    public void A_refused_sign_in_to_the_database_is_unavailability()
+    {
+        // What a new connection gets between a password rotation on the server and its arrival here.
+        var refused = new PostgresException("password authentication failed", "FATAL", "FATAL", PostgresErrorCodes.InvalidPassword);
+        Assert.True(DatabaseUnavailableException.Explains(new InvalidOperationException("wrapped", refused)));
+
+        var query = new PostgresException("syntax error", "ERROR", "ERROR", PostgresErrorCodes.SyntaxError);
+        Assert.False(DatabaseUnavailableException.Explains(query));
     }
 
     private sealed class BrokenMigrator : ISchemaMigrator

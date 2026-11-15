@@ -19,7 +19,7 @@ LABEL org.opencontainers.image.title="respawn"
 LABEL org.opencontainers.image.description="Self-hosted game library: stats, backlog and next-game suggestions"
 LABEL org.opencontainers.image.url="https://github.com/thomas-lg-lab/respawn"
 LABEL org.opencontainers.image.source="https://github.com/thomas-lg-lab/respawn"
-LABEL org.opencontainers.image.licenses="AGPL-3.0-only"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 # Version injected at build time (--build-arg VERSION=1.2.3)
 ARG VERSION=dev

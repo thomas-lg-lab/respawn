@@ -30,6 +30,12 @@ internal sealed class FakeIssuer
     /// <summary>When set, the provider answers this status to everything.</summary>
     public HttpStatusCode? Down { get; set; }
 
+    /// <summary>When set, the provider never answers in time: the client's timeout fires.</summary>
+    public bool TimesOut { get; set; }
+
+    /// <summary>When set, the provider answers only once this completes.</summary>
+    public TaskCompletionSource? Held { get; set; }
+
     public HttpMessageHandler Handler => new Transport(this);
 
     /// <summary>Sign with a new key from now on, as a provider does from time to time.</summary>
@@ -102,24 +108,35 @@ internal sealed class FakeIssuer
 
     private sealed class Transport(FakeIssuer issuer) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             issuer.Requests++;
             var path = request.RequestUri!.AbsolutePath;
+            if (issuer.TimesOut)
+            {
+                // What HttpClient throws when its timeout fires.
+                throw new TaskCanceledException("the request timed out", new TimeoutException());
+            }
+
+            if (issuer.Held is { } held)
+            {
+                await held.Task.WaitAsync(ct);
+            }
+
             if (issuer.Down is { } status)
             {
-                return Task.FromResult(new HttpResponseMessage(status));
+                return new HttpResponseMessage(status);
             }
 
             if (path is not ("/.well-known/openid-configuration" or "/jwks"))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(issuer.Answer(path), Encoding.UTF8, "application/json"),
-            });
+            };
         }
     }
 }

@@ -70,6 +70,13 @@ internal static class TestDatabase
         Execute(connection, "TRUNCATE accounts.users, accounts.sessions, accounts.external_identities, accounts.exchanged_tokens, accounts.settings, accounts.user_claims, accounts.user_tokens CASCADE");
     }
 
+    /// <summary>Runs a statement on the tests' database: what an administrator's route will do later.</summary>
+    public static void Run(string statement)
+    {
+        using var connection = Open(Url);
+        Execute(connection, statement);
+    }
+
     public static NpgsqlConnection Open(string url)
     {
         var target = ConnectionStrings.Parse(url);
