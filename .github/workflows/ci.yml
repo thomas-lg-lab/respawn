@@ -1,7 +1,4 @@
-# CI: the project's checks, then the image, so nothing is published that did not pass them. Replace the `checks`
-# job with the project's own (build, tests, lint), keep their names in `needs` of `image` and in the required
-# checks of .github/rulesets/main.json. A project without an image deletes the `image` job (and `image / build`
-# from the ruleset, and registry-cleanup.yml).
+# CI: the project's checks, then the image, so nothing is published that did not pass them.
 name: CI
 
 on:
@@ -21,17 +18,45 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Formatting, lint, types and the tests, in the same Python image as the Dockerfile, against a real PostgreSQL.
   checks:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    container:
+      image: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
+    services:
+      db:
+        image: pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
+        env:
+          POSTGRES_USER: respawn
+          POSTGRES_PASSWORD: respawn
+          POSTGRES_DB: respawn
+        options: >-
+          --health-cmd "pg_isready -U respawn"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      RESPAWN_TEST_DATABASE_URL: postgresql+psycopg://respawn:respawn@db:5432/respawn
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: echo "Replace this job with the project's build, tests and lint."
+      - name: Install the pinned dependencies
+        run: pip install --disable-pip-version-check --root-user-action=ignore -r requirements-dev.txt
+      - name: Formatting
+        run: ruff format --check src tests
+      - name: Lint
+        run: ruff check src tests
+      - name: Types
+        run: mypy
+      - name: Tests
+        run: pytest
 
-  # Build and Trivy gate on every PR; edge and sha-* from main; X.Y.Z and latest from a release tag.
+  # Build, runtime contract test and Trivy gate on every PR; edge and sha-* from main; X.Y.Z and latest from a release
+  # tag. The contract test starts the image as the cluster runs it: non-root, read-only root filesystem, no secret
+  # and no database, and it must still answer /healthz.
   image:
     needs: [checks]
     permissions:
@@ -40,4 +65,6 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: thomas-lg-lab/.github/.github/workflows/container-image.yml@21ff202fae4e0f07d7f18b710022abc2d5004f96 # v2.0.0
+    uses: thomas-lg-lab/.github/.github/workflows/container-image.yml@54ca50420258f144ef973c2a29005eb416f6660a # v2.3.0
+    with:
+      contract-test: true

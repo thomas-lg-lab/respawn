@@ -22,3 +22,16 @@
   adding one (Renovate keeps them current).
 - **Secrets** never go in the repository, in a commit message or in a log.
 - Technical files are written in English.
+
+## This project
+
+- **Layout.** `src/respawn/`: `main.py` (the app), `api.py` (the public API, `/api/v1`), `accounts.py` (who may
+  register, sessions, lockout), `oidc.py` (ID token validation), `db.py` and `migrations/` (schema), `static/`
+  (the page). Tests in `tests/`, against a real PostgreSQL.
+- **The public API is a contract.** Routes live under `/api/v1`; a breaking change means a new version. The page
+  uses only these routes. Errors are always `{"error": {"code", "message"}}`.
+- **Runtime rules.** The app starts and `/healthz` answers with no database and no secret; nothing is written
+  outside `/tmp`; logs go to stdout. Keep it that way: the image is tested like this in CI.
+- **Sign-in code.** Cryptography comes from libraries (pwdlib, joserfc); never write a hash or a signature check
+  by hand. A request header such as `Remote-User` never identifies anyone.
+- **Checks and dependencies**: CONTRIBUTING.md.

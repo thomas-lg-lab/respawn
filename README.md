@@ -1,37 +1,49 @@
-# repo-template
+# respawn
 
-Template for new `thomas-lg-lab` repositories: exactly the files every repository of the organisation carries,
-ready from the first commit. Create a repository from it with **Use this template** on GitHub, or
-`gh repo create thomas-lg-lab/<name> --template thomas-lg-lab/repo-template --public --clone`.
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thomas-lg-lab/respawn/badge)](https://scorecard.dev/viewer/?uri=github.com/thomas-lg-lab/respawn)
 
-The organisation drives the rest from [`thomas-lg-lab/.github`](https://github.com/thomas-lg-lab/.github): issue
-forms, PR template, SECURITY.md and code of conduct defaults, the shared workflows, the Release Drafter
-configuration and the settings script.
+Self-hosted game library: stats, backlog and next-game suggestions. Early days: this is the skeleton, accounts
+and sign-in only.
 
-## What you get
+## Run it
 
-| File | Role |
-| --- | --- |
-| `.github/workflows/pull-request.yml` | Conventional Commit PR title (required check) and label, shared workflow |
-| `.github/workflows/ci.yml` | The project's checks, then the shared image build: Trivy gate on PRs, `edge` and `sha-*` from main, `X.Y.Z` and `latest` from a release |
-| `.github/workflows/release-drafter.yml` | Draft release from the merged PRs; a manual run publishes it and builds the release image |
-| `.github/workflows/registry-cleanup.yml` | Weekly pruning of old `sha-*` images |
-| `.github/workflows/scorecard.yml` | OpenSSF Scorecard (Security tab and badge) |
-| `.github/rulesets/` | `Protect main` (squash only, linear history, signed commits, required checks, CodeQL results, no bypass) and `Code owner review` (changes under `.github/`) |
-| `.github/CODEOWNERS`, `renovate.json`, `LICENSE`, `SECURITY.md`, `AGENTS.md`, `.editorconfig`, `.gitattributes` | Per repository by nature; `renovate.json` extends the shared preset of `thomas-lg-lab/renovate-config` |
-
-## After creating a repository from it
-
-1. Replace the `checks` job of `ci.yml` with the project's build, tests and lint; list their job names in `needs`
-   of `image` and in `required_status_checks` of `.github/rulesets/main.json`. Without an image, delete the
-   `image` job, `image / build` from the ruleset and `registry-cleanup.yml`.
-2. From the root of the new clone, with the organisation's `.github` repository cloned next to it:
-   `../.github/scripts/apply-standards.sh thomas-lg-lab/<name>` (settings, security features, CodeQL default
-   setup, labels, rulesets). Run it again after editing a ruleset file.
-3. Write the local check commands in a CONTRIBUTING.md (the organisation's PR template points there), and the
-   project's specifics in `AGENTS.md`. Renovate needs nothing: the organisation's App covers every repository.
-4. Replace this README, keep the badge:
-
-```markdown
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thomas-lg-lab/<name>/badge)](https://scorecard.dev/viewer/?uri=github.com/thomas-lg-lab/<name>)
+```bash
+docker compose up --build
 ```
+
+Then open http://localhost:8080. The first account created becomes the administrator; registration is closed
+after it.
+
+The image is `ghcr.io/thomas-lg-lab/respawn` (`edge` follows `main`). It listens on 8080, runs as any non-root
+user with a read-only root filesystem, and needs a PostgreSQL database.
+
+## Configuration
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string (`postgresql://user:password@host:5432/database`) |
+| `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set |
+| `RESPAWN_COOKIE_SECURE` | `true` | Session cookie sent over HTTPS only; `false` for plain HTTP on localhost |
+| `RESPAWN_SESSION_DAYS` | `30` | Lifetime of a sign-in |
+| `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
+| `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
+| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client address on the sign-in routes |
+| `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Reverse proxies whose `X-Forwarded-*` headers are trusted |
+
+The app starts, and `GET /healthz` answers, before the database is reachable; the other routes answer 503 until
+it is. The schema is migrated on the first connection.
+
+## Sign-in
+
+Local accounts are always available; OpenID Connect is optional. With a provider configured, the front obtains an
+ID token (public client, PKCE) and posts it to `POST /api/v1/auth/oidc`; any provider with a discovery document
+works. An external identity is its issuer and subject, never its e-mail.
+
+## API
+
+Everything is under `/api/v1`, described by `/api/v1/openapi.json`. Errors are `{"error": {"code", "message"}}`.
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
