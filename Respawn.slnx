@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/Respawn.Host/Respawn.Host.csproj" />
+    <Project Path="backend/Respawn.SharedKernel/Respawn.SharedKernel.csproj" />
+    <Project Path="backend/Respawn.Tests/Respawn.Tests.csproj" />
+  </Folder>
+  <Folder Name="/backend/Modules/" />
+  <Folder Name="/backend/Modules/Accounts/">
+    <Project Path="backend/Modules/Accounts/Respawn.Accounts/Respawn.Accounts.csproj" />
+    <Project Path="backend/Modules/Accounts/Respawn.Accounts.Api/Respawn.Accounts.Api.csproj" />
+    <Project Path="backend/Modules/Accounts/Respawn.Accounts.Infrastructure/Respawn.Accounts.Infrastructure.csproj" />
+  </Folder>
+</Solution>

@@ -4,9 +4,10 @@
 *.log
 .DS_Store
 node_modules/
-__pycache__/
 
-.venv/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+# .NET build output
+bin/
+obj/
+*.user
+.vs/
+.idea/

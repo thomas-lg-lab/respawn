@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The outbound adapters of the Accounts module: its PostgreSQL schema, ASP.NET Core Identity, ID token
+       validation. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Respawn.Accounts\Respawn.Accounts.csproj" />
+    <ProjectReference Include="..\..\..\Respawn.SharedKernel\Respawn.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- snake_case tables and columns, the PostgreSQL convention, without naming each one by hand. -->
+    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
+    <!-- Design-time only (dotnet ef migrations add): not shipped with the app. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.15" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- libsodium: Argon2id hashing and verification of passwords. -->
+    <PackageReference Include="Sodium.Core" Version="1.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Respawn.Tests" />
+  </ItemGroup>
+
+</Project>

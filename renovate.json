@@ -13,6 +13,33 @@
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["digest"],
       "automerge": false
+    },
+    {
+      "description": "One PR for every NuGet minor and patch: a bump in one project also rewrites the packages.lock.json of those that reference it, which Renovate restores together.",
+      "matchManagers": ["nuget"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dotnet-minor-patch"
+    },
+    {
+      "description": ".NET is one upgrade across global.json, the SDK and runtime images and the runtime-bound packages: one PR for all of them, reviewed.",
+      "matchPackageNames": [
+        "dotnet-sdk",
+        "mcr.microsoft.com/dotnet/**",
+        "Microsoft.AspNetCore.**",
+        "Microsoft.EntityFrameworkCore.**",
+        "Microsoft.Extensions.**",
+        "Npgsql.EntityFrameworkCore.PostgreSQL",
+        "EFCore.NamingConventions"
+      ],
+      "matchUpdateTypes": ["major"],
+      "groupName": ".NET"
+    },
+    {
+      "description": "global.json is a floor, not a pin (rollForward latestFeature): the SDK that builds is the one of the SDK image, so raising the floor on every patch would only churn.",
+      "matchManagers": ["nuget"],
+      "matchDepNames": ["dotnet-sdk"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "enabled": false
     }
   ]
 }

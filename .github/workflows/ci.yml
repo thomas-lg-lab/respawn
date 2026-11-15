@@ -18,13 +18,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Formatting, lint, types and the tests, in the same Python image as the Dockerfile, against a real PostgreSQL.
+  # Formatting, the build (warnings are errors in Release) and the tests, in the same SDK image as the
+  # Dockerfile, against a real PostgreSQL.
   checks:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     container:
-      image: python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
+      image: mcr.microsoft.com/dotnet/sdk:10.0@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb
     services:
       db:
         image: pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
@@ -39,21 +40,21 @@ jobs:
           --health-retries 30
     env:
       # A database of their own, which the tests create: they refuse a name that does not end in _test.
-      RESPAWN_TEST_DATABASE_URL: postgresql+psycopg://respawn:respawn@db:5432/respawn_test
+      RESPAWN_TEST_DATABASE_URL: postgresql://respawn:respawn@db:5432/respawn_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install the pinned dependencies
-        run: pip install --disable-pip-version-check --root-user-action=ignore -r requirements-dev.txt
+      # --locked-mode fails when packages.lock.json is out of date: a dependency cannot change without
+      # its reviewed lock file.
+      - name: Restore the locked dependencies
+        run: dotnet restore Respawn.slnx --locked-mode
       - name: Formatting
-        run: ruff format --check src tests
-      - name: Lint
-        run: ruff check src tests
-      - name: Types
-        run: mypy
+        run: dotnet format Respawn.slnx --verify-no-changes --no-restore
+      - name: Build
+        run: dotnet build Respawn.slnx --no-restore --configuration Release
       - name: Tests
-        run: pytest
+        run: dotnet test Respawn.slnx --no-build --configuration Release
 
   # Build, runtime contract test and Trivy gate on every PR; edge and sha-* from main; X.Y.Z and latest from a release
   # tag. The contract test starts the image as the cluster runs it: non-root, read-only root filesystem, no secret

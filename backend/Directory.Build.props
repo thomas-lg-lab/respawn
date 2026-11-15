@@ -1,0 +1,23 @@
+<Project>
+
+  <!-- Shared build settings of every backend project. A csproj only declares what is its own
+       (package and project references, SDK type). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- The built-in .NET analyzers at their default rule set. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!-- Warnings are errors in Release, which is what the CI and the image build: a compiler or
+         analyzer finding cannot slip through, while a local Debug build stays friction-free. -->
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+
+    <!-- Reproducible restore: packages.lock.json is committed and the CI restores in locked mode,
+         so a published patch cannot silently change a resolved build. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+</Project>

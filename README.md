@@ -21,30 +21,31 @@ user with a read-only root filesystem, and needs a PostgreSQL database.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string (`postgresql://user:password@host:5432/database`) |
-| `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set; its user name and password are read again for every new connection |
+| `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string: a URI (`postgresql://user:password@host:5432/database`) or Npgsql's `Host=...;Username=...` form |
+| `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set; its password is read again for every new connection |
 | `RESPAWN_COOKIE_SECURE` | `true` | Session cookie sent over HTTPS only; `false` for plain HTTP on localhost |
 | `RESPAWN_SESSION_DAYS` | `30` | Lifetime of a sign-in |
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
 | `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
-| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client address on the sign-in routes |
+| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client address on the sign-in routes (`second`, `minute` or `hour`) |
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with |
-| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` are trusted. Set it behind a reverse proxy |
+| `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
 
-The app starts, and `GET /healthz` answers, before the database is reachable; the other routes answer 503
-(`database_unavailable`) until it is. The schema is migrated on the first connection; if a migration fails, the
-routes keep answering 503, the log holds the error and the migration is tried again a minute later.
+The app starts, and `GET /healthz` and the page answer, before the database is reachable; the routes that need
+it answer 503 (`database_unavailable`) until it is. The schema is migrated on the first connection; if a
+migration fails, the routes keep answering 503, the log holds the error and the migration is tried again a
+minute later.
 
-The connection string is read again for every new connection to the database, and its user name and password
-are used: a rotated password is picked up without a restart. Another host or database in it is not followed
-while the app runs (the log says so): restart the app, which migrates the new database before using it.
+The connection string is read again for every new connection to the database, and its password is used: a
+rotated password is picked up without a restart. Another host, database or user in it is not followed while
+the app runs (the log says so): restart the app, which migrates the new database before using it.
 
 ## Behind a reverse proxy
 
 Two things depend on what the proxy tells the app, and neither is guessed:
 
 - **The client's address**, which the sign-in rate limit counts by. The app sees the proxy's address unless the
-  proxy is listed in `FORWARDED_ALLOW_IPS`; without it every visitor shares one count, and ten sign-in requests
+  proxy is listed in `RESPAWN_TRUSTED_PROXIES`; without it every visitor shares one count, and ten sign-in requests
   a minute lock everybody out. List every proxy on the way, by address or by network. `X-Forwarded-For` is only
   read from a listed proxy, so a visitor cannot choose their own address. The app logs one warning when a request arrives
   with that header from an address that is not listed.
