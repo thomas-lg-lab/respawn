@@ -35,8 +35,6 @@ class Settings:
     lockout_threshold: int = 5
     lockout_minutes: int = 15
     oidc_providers: tuple[OidcProvider, ...] = ()
-    # Origins the page is served from, for a reverse proxy that does not pass the original Host header on.
-    trusted_origins: tuple[str, ...] = ()
 
     def resolve_database_url(self) -> str | None:
         """The connection string, from the environment or from its file; read again on each call.
@@ -78,11 +76,6 @@ def _providers(raw: str | None) -> tuple[OidcProvider, ...]:
     )
 
 
-def _origins(raw: str | None) -> tuple[str, ...]:
-    """RESPAWN_TRUSTED_ORIGINS is a comma-separated list of origins (https://games.example.org)."""
-    return tuple(o.strip().rstrip("/").lower() for o in (raw or "").split(",") if o.strip())
-
-
 def load_settings() -> Settings:
     env = os.environ
     return Settings(
@@ -94,5 +87,4 @@ def load_settings() -> Settings:
         lockout_threshold=int(env.get("RESPAWN_LOCKOUT_THRESHOLD", "5")),
         lockout_minutes=int(env.get("RESPAWN_LOCKOUT_MINUTES", "15")),
         oidc_providers=_providers(env.get("RESPAWN_OIDC_PROVIDERS")),
-        trusted_origins=_origins(env.get("RESPAWN_TRUSTED_ORIGINS")),
     )

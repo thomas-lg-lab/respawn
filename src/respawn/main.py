@@ -34,21 +34,20 @@ def error(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
 
 
-def same_site(headers: Mapping[str, str], trusted_origins: tuple[str, ...]) -> bool:
+def same_site(headers: Mapping[str, str]) -> bool:
     """Whether a state-changing request comes from this site's own pages.
 
     The browser says so itself in Sec-Fetch-Site, a header a page cannot set: that answer does not depend on
     the Host header, so it holds behind any reverse proxy. A browser too old to send it is judged on its
-    Origin, compared with the host the request names. An origin the operator listed is always accepted, and a
-    request with neither header does not come from a browser page. X-Forwarded-Host is not read.
+    Origin, compared with the host the request names. A request with neither header does not come from a
+    browser page. X-Forwarded-Host is not read.
     """
-    origin = headers.get("origin")
-    listed = origin is not None and origin.rstrip("/").lower() in trusted_origins
     fetch_site = headers.get("sec-fetch-site")
     if fetch_site:
         # "none" is a request the user made directly; "same-site" would let a sibling subdomain in.
-        return fetch_site in ("same-origin", "none") or listed
-    return not origin or urlsplit(origin).netloc == headers.get("host") or listed
+        return fetch_site in ("same-origin", "none")
+    origin = headers.get("origin")
+    return not origin or urlsplit(origin).netloc == headers.get("host")
 
 
 def create_app(
@@ -66,7 +65,6 @@ def create_app(
     app.state.oidc = OidcValidator(oidc_transport)
     app.state.limiter = limiter
 
-    trusted_origins: tuple[str, ...] = app.state.settings.trusted_origins
     warned: set[str] = set()
 
     def warn_once(key: str, message: str, *args: object) -> None:
@@ -84,7 +82,7 @@ def create_app(
                 "proxy, every visitor then counts as one client for the sign-in rate limit (see the README)",
             )
         # The session is a cookie: a state-changing request must come from this site's own pages.
-        if request.method in UNSAFE_METHODS and not same_site(request.headers, trusted_origins):
+        if request.method in UNSAFE_METHODS and not same_site(request.headers):
             warn_once(
                 "origin",
                 "request refused as coming from another site: Sec-Fetch-Site %r, Origin %r, Host %r "

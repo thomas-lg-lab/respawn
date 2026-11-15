@@ -28,7 +28,6 @@ user with a read-only root filesystem, and needs a PostgreSQL database.
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
 | `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
 | `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client address on the sign-in routes |
-| `RESPAWN_TRUSTED_ORIGINS` | none | Comma-separated origins allowed to send state-changing requests besides the site's own (`https://games.example.org`); rarely needed, see below |
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` are trusted. Set it behind a reverse proxy |
 
@@ -50,9 +49,9 @@ Two things depend on what the proxy tells the app, and neither is guessed:
   carries the header and the variable is not set.
 - **Where a state-changing request comes from**: it must come from the site's own pages. Browsers say so
   themselves in the `Sec-Fetch-Site` header, which needs nothing from the proxy. Only a browser too old to send
-  it is judged on its `Origin`, compared with the `Host` header: for those, the proxy should pass the original
-  `Host` on (nginx: `proxy_set_header Host $host`; Traefik and Caddy do it by default) or the public origin be
-  listed in `RESPAWN_TRUSTED_ORIGINS`. `X-Forwarded-Host` is not read.
+  it is judged on its `Origin`, compared with the `Host` header: for those, the proxy must pass the original
+  `Host` on (nginx: `proxy_set_header Host $host`; Traefik and Caddy do it by default), or their sign-in is
+  refused as `cross_site_request`. `X-Forwarded-Host` is not read.
 
 ## Sign-in
 
