@@ -1,11 +1,30 @@
 # respawn
 
+[![CI](https://github.com/thomas-lg-lab/respawn/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/thomas-lg-lab/respawn/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thomas-lg-lab/respawn/badge)](https://scorecard.dev/viewer/?uri=github.com/thomas-lg-lab/respawn)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)](global.json)
+[![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-4169E1)](docker-compose.yml)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196)](https://www.conventionalcommits.org)
 
-Self-hosted game library: stats, backlog and next-game suggestions. Early days: this is the skeleton, accounts
-and sign-in only.
+Self-hosted game library: stats, backlog and next-game suggestions.
+
+**Status: early days.** This is the skeleton: accounts and sign-in, the public API they need, one page to try
+them, and the image the rest will ship in. The library itself is not there yet.
+
+| | |
+| --- | --- |
+| Today | Local accounts (the first one is the administrator), sign-in through OpenID Connect providers, sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description |
+| Planned | The game library and its stats, the backlog, connectors that import a library from outside sources, next-game suggestions |
+
+Contents: [Run it](#run-it) · [Configuration](#configuration) · [Behind a reverse proxy](#behind-a-reverse-proxy) ·
+[Sign-in](#sign-in) · [API](#api) · [How it is built](#how-it-is-built) ·
+[Images and releases](#images-and-releases) · [Development](#development) · [Security](#security) ·
+[License](#license)
 
 ## Run it
+
+With Docker, the app and its database:
 
 ```bash
 docker compose up --build
@@ -14,10 +33,28 @@ docker compose up --build
 Then open http://localhost:8080. The first account created becomes the administrator; registration is closed
 after it.
 
-The image is `ghcr.io/thomas-lg-lab/respawn` (`edge` follows `main`). It listens on 8080, runs as any non-root
-user with a read-only root filesystem, and needs a PostgreSQL database.
+The image alone, against a PostgreSQL database of yours:
+
+```bash
+docker run --rm -p 8080:8080 --read-only --tmpfs /tmp \
+  -e RESPAWN_DATABASE_URL=postgresql://respawn:change-me@db.example.org:5432/respawn \
+  ghcr.io/thomas-lg-lab/respawn:edge
+```
+
+What the app expects from where it runs:
+
+| | |
+| --- | --- |
+| HTTP | port 8080; `GET /healthz` answers `{"status": "ok"}` with no database and no secret |
+| Database | PostgreSQL (tested on 18); the app creates and migrates its own schemas on the first connection |
+| Filesystem | read-only root filesystem; nothing is written outside `/tmp` |
+| User | any non-root user (the image runs as 10001) |
+| Logs | stdout |
+| Secrets | the database connection string only, from the environment or a mounted file |
 
 ## Configuration
+
+Everything is read from the environment. Nothing is required to start.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -27,9 +64,18 @@ user with a read-only root filesystem, and needs a PostgreSQL database.
 | `RESPAWN_SESSION_DAYS` | `30` | Lifetime of a sign-in |
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
 | `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
-| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client address on the sign-in routes (`second`, `minute` or `hour`) |
-| `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with |
+| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
+| `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with. An issuer is an `https` URL |
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
+
+Numbers are whole numbers of 1 or more. A value that cannot be read is refused by name, not replaced by its
+default.
+
+A URI connection string accepts the options `sslmode`, `sslrootcert`, `connect_timeout` and `application_name`;
+any other is refused, so a typo is not silently ignored. Without `connect_timeout`, a connection attempt is given
+up after five seconds.
+
+### The database, when it is not there
 
 The app starts, and `GET /healthz` and the page answer, before the database is reachable; the routes that need
 it answer 503 (`database_unavailable`) until it is. The schema is migrated on the first connection; if a
@@ -55,19 +101,97 @@ Two things depend on what the proxy tells the app, and neither is guessed:
   `Host` on (nginx: `proxy_set_header Host $host`; Traefik and Caddy do it by default), or their sign-in is
   refused as `cross_site_request`. `X-Forwarded-Host` is not read.
 
+A header such as `Remote-User` never identifies anyone: who is asking comes from the session cookie only, even
+behind a proxy that signs users in.
+
 ## Sign-in
 
-Local accounts are always available; OpenID Connect is optional. With a provider configured, the front obtains an
-ID token (public client, PKCE) and posts it to `POST /api/v1/auth/oidc`; any provider with a discovery document
-works. An external identity is its issuer and subject, never its e-mail.
+**Local accounts.** An e-mail address, a display name and a password of at least
+`RESPAWN_PASSWORD_MIN_LENGTH` characters; length is the only password rule. The first account is the
+administrator, and registration is closed after it. Passwords are stored as Argon2id hashes. After
+`RESPAWN_LOCKOUT_THRESHOLD` failed sign-ins an account is locked for `RESPAWN_LOCKOUT_MINUTES`; a locked
+account, a wrong password and an unknown e-mail get the same answer.
+
+**OpenID Connect.** Optional. With a provider configured, the front obtains an ID token (public client, PKCE)
+and posts it to `POST /api/v1/auth/oidc`; any provider with a discovery document works. The token's signature,
+issuer, audience, lifetime and nonce are checked, and a token is exchanged once. An external identity is its
+issuer and subject, never its e-mail: an account is not attached to a provider because the addresses match, its
+owner signs in first and then links the provider. An account created from a provider takes the e-mail of the
+token only when the provider says it is verified (`email_verified`).
+
+**Sessions.** A sign-in is an opaque token in an `HttpOnly`, `SameSite=Lax` cookie, valid for
+`RESPAWN_SESSION_DAYS`; only its SHA-256 is stored, and signing out deletes it.
 
 ## API
 
-Everything is under `/api/v1`, described by `/api/v1/openapi.json`. Errors are `{"error": {"code", "message"}}`.
+Everything is under `/api/v1`, described by `GET /api/v1/openapi.json`. The page uses only these routes.
+Bodies are JSON, with names in `snake_case`.
+
+| Route | Does |
+| --- | --- |
+| `GET /api/v1/config` | What the sign-in page may offer: local sign-in, open registration, the providers |
+| `POST /api/v1/auth/register` | Creates a local account and signs in |
+| `POST /api/v1/auth/login` | Signs in with a local account |
+| `POST /api/v1/auth/oidc` | Signs in with an ID token of a configured provider; links it to the account already signed in |
+| `POST /api/v1/auth/logout` | Signs out of this browser |
+| `GET /api/v1/me` | The signed-in account |
+
+Errors always have the same shape, whatever answered:
+
+```json
+{"error": {"code": "invalid_credentials", "message": "Wrong e-mail or password, or the account is locked for a while."}}
+```
+
+| Status | Codes |
+| --- | --- |
+| 401 | `not_signed_in`, `invalid_credentials`, `invalid_token` |
+| 403 | `registration_closed`, `local_sign_in_disabled`, `cross_site_request`, `forbidden` |
+| 404 | `unknown_provider`, `http_error` |
+| 409 | `account_exists` |
+| 422 | `invalid_request`, `invalid_email`, `weak_password` |
+| 429 | `too_many_requests` |
+| 500 | `internal_error` |
+| 503 | `database_unavailable`, `provider_unavailable` |
+
+A breaking change to these routes means a new version beside `/api/v1`, not a change to it.
+
+## How it is built
+
+.NET 10 and ASP.NET Core, PostgreSQL through EF Core. The app is one process, split by responsibility rather
+than by layer: each module is hexagonal, a core with its use cases and ports, and adapters around it.
+
+| Project | Holds |
+| --- | --- |
+| `Respawn.Host` | Composition only: the HTTP pipeline, the database connection, one registration per module, the page |
+| `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
+| `Modules/Accounts` | Accounts and sign-in: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
+| `Respawn.Tests` | The tests, which start the real app against a real PostgreSQL |
+
+A module owns one PostgreSQL schema and its migrations, and never reads another module's tables. These rules
+are tests: the build fails when a project references what it should not.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the details and says how to add a module.
+
+## Images and releases
+
+The image is `ghcr.io/thomas-lg-lab/respawn`.
+
+| Tag | Follows |
+| --- | --- |
+| `edge` | `main`: every merged change |
+| `X.Y.Z`, `latest` | Published releases |
+
+Merging is not releasing: a release is published by hand from its draft, whose notes are written from the
+titles of the merged pull requests. Every image is built by the CI after the checks pass, then started as it
+is meant to run (non-root, read-only filesystem, no database, no secret) and scanned before it is pushed.
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+The checks need Docker only; [CONTRIBUTING.md](CONTRIBUTING.md) has the commands, the layout and the rules.
+Changes go through a pull request whose title follows [Conventional Commits](https://www.conventionalcommits.org).
+
+## Security
+
+Report a vulnerability privately: [SECURITY.md](SECURITY.md).
 
 ## License
 
