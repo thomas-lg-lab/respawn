@@ -5,9 +5,13 @@ from __future__ import annotations
 import time
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import FakeIssuer, register
+from respawn import oidc
+from respawn.config import _providers
+from respawn.main import create_app
+from tests.conftest import CLIENT_ID, ISSUER, FakeIssuer, register, settings
 
 NONCE = "nonce-123456"
 
@@ -84,3 +88,76 @@ def test_a_signed_in_account_links_the_provider(client: TestClient, issuer: Fake
     client.cookies.clear()
     again = exchange(client, issuer.token(iat=int(time.time()) - 1))
     assert again.json()["id"] == account["id"]
+
+
+def test_a_used_token_stays_refused_during_the_leeway(client: TestClient, issuer: FakeIssuer) -> None:
+    """A token is accepted for a minute after it expires; its record must outlive that minute."""
+    now = int(time.time())
+    token = issuer.token(exp=now - 30, iat=now - 300)
+    assert exchange(client, token).status_code == 200
+    client.cookies.clear()
+    # Another sign-in runs the clean-up of the records.
+    assert exchange(client, issuer.token()).status_code == 200
+    client.cookies.clear()
+    assert exchange(client, token).status_code == 401
+
+
+def test_an_issuer_with_a_trailing_slash(client: TestClient, issuer: FakeIssuer) -> None:
+    """Configured with or without its final slash, a provider naming itself with one is accepted."""
+    for age, configured in enumerate((ISSUER, ISSUER + "/")):
+        providers = _providers(f'[{{"name": "test", "issuer": "{configured}", "client_id": "{CLIENT_ID}"}}]')
+        app = create_app(settings(oidc_providers=providers), oidc_transport=issuer.transport())
+        with TestClient(app) as slashed:
+            token = issuer.token(iss=ISSUER + "/", iat=int(time.time()) - age)
+            assert exchange(slashed, token).status_code == 200, configured
+            assert exchange(slashed, issuer.token(iss=ISSUER + "//")).status_code == 401
+        app.state.database.dispose()
+
+
+def test_refused_tokens_fetch_nothing(client: TestClient, issuer: FakeIssuer) -> None:
+    assert exchange(client, "not.a.token").status_code == 401
+    assert exchange(client, "garbage").status_code == 401
+    assert issuer.requests == 0  # not shaped like a token: the provider is not even asked for its keys
+    assert exchange(client, issuer.token()).status_code == 200
+    fetched = issuer.requests
+    assert fetched == 2  # discovery and keys
+    for token in (
+        "not.a.token",
+        issuer.token(key=issuer.other_key),
+        issuer.token(aud="another-client"),
+        issuer.token(exp=int(time.time()) - 600),
+    ):
+        assert exchange(client, token).status_code == 401
+    assert issuer.requests == fetched
+
+
+def test_an_unknown_key_fetches_the_keys_again_but_not_at_will(
+    client: TestClient, issuer: FakeIssuer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert exchange(client, issuer.token()).status_code == 200
+    fetched = issuer.requests
+    issuer.rotate()
+    client.cookies.clear()
+    # The keys were fetched a moment ago: a token naming another key is refused without asking again.
+    assert exchange(client, issuer.token(iat=int(time.time()) - 1)).status_code == 401
+    assert issuer.requests == fetched
+    # Once the minimum interval has passed, the new key is fetched and the token accepted.
+    monkeypatch.setattr(oidc, "MIN_REFRESH_SECONDS", 0)
+    assert exchange(client, issuer.token(iat=int(time.time()) - 2)).status_code == 200
+    assert issuer.requests == fetched + 2
+
+
+def test_an_unreachable_provider_is_not_asked_on_every_request(issuer: FakeIssuer) -> None:
+    calls = 0
+
+    def down(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503)
+
+    app = create_app(settings(), oidc_transport=httpx.MockTransport(down))
+    with TestClient(app) as client:
+        for _ in range(3):
+            assert exchange(client, issuer.token()).status_code == 401
+    app.state.database.dispose()
+    assert calls == 1

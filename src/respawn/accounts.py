@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from respawn.config import Settings
 from respawn.models import ExchangedToken, SessionToken, Setting, User, utcnow
+from respawn.oidc import LEEWAY_SECONDS
 from respawn.security import digest, new_token, verify_password
 
 LOCAL_SIGN_IN = "local_sign_in_enabled"
@@ -64,13 +65,16 @@ def authenticate(db: Session, settings: Settings, email: str, password: str) -> 
     if user is None:
         verify_password(password, None)
         return None
-    locked = user.locked_until is not None and user.locked_until > now
-    if locked or not verify_password(password, user.password_hash):
-        if not locked:
-            user.failed_logins += 1
-            if user.failed_logins >= settings.lockout_threshold:
-                user.failed_logins = 0
-                user.locked_until = now + timedelta(minutes=settings.lockout_minutes)
+    # Verified even when the account is locked, so that a locked account is refused no faster than a wrong
+    # password.
+    valid = verify_password(password, user.password_hash)
+    if user.locked_until is not None and user.locked_until > now:
+        return None
+    if not valid:
+        user.failed_logins += 1
+        if user.failed_logins >= settings.lockout_threshold:
+            user.failed_logins = 0
+            user.locked_until = now + timedelta(minutes=settings.lockout_minutes)
         return None
     user.failed_logins = 0
     user.locked_until = None
@@ -101,8 +105,12 @@ def close_session(db: Session, token: str | None) -> None:
 
 
 def exchange_once(db: Session, id_token: str, expires_at: datetime) -> bool:
-    """Record an ID token as used. False when it was already exchanged."""
-    db.execute(delete(ExchangedToken).where(ExchangedToken.expires_at < utcnow()))
+    """Record an ID token as used. False when it was already exchanged.
+
+    A token is still accepted for LEEWAY_SECONDS after it expires, so its record is kept that long too.
+    """
+    forgotten = utcnow() - timedelta(seconds=LEEWAY_SECONDS)
+    db.execute(delete(ExchangedToken).where(ExchangedToken.expires_at < forgotten))
     token_hash = digest(id_token)
     if db.get(ExchangedToken, token_hash) is not None:
         return False

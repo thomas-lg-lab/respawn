@@ -14,7 +14,11 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class OidcProvider:
-    """An OpenID Connect provider the front may sign in with. Public values only: no client secret."""
+    """An OpenID Connect provider the front may sign in with. Public values only: no client secret.
+
+    The issuer is kept without its trailing slash; a token or a discovery document naming it with one is the
+    same issuer (respawn.oidc compares both forms).
+    """
 
     name: str
     issuer: str
@@ -31,6 +35,8 @@ class Settings:
     lockout_threshold: int = 5
     lockout_minutes: int = 15
     oidc_providers: tuple[OidcProvider, ...] = ()
+    # Origins the page is served from, for a reverse proxy that does not pass the original Host header on.
+    trusted_origins: tuple[str, ...] = ()
 
     def resolve_database_url(self) -> str | None:
         """The connection string, from the environment or from its file; read again on each call.
@@ -72,6 +78,11 @@ def _providers(raw: str | None) -> tuple[OidcProvider, ...]:
     )
 
 
+def _origins(raw: str | None) -> tuple[str, ...]:
+    """RESPAWN_TRUSTED_ORIGINS is a comma-separated list of origins (https://games.example.org)."""
+    return tuple(o.strip().rstrip("/").lower() for o in (raw or "").split(",") if o.strip())
+
+
 def load_settings() -> Settings:
     env = os.environ
     return Settings(
@@ -83,4 +94,5 @@ def load_settings() -> Settings:
         lockout_threshold=int(env.get("RESPAWN_LOCKOUT_THRESHOLD", "5")),
         lockout_minutes=int(env.get("RESPAWN_LOCKOUT_MINUTES", "15")),
         oidc_providers=_providers(env.get("RESPAWN_OIDC_PROVIDERS")),
+        trusted_origins=_origins(env.get("RESPAWN_TRUSTED_ORIGINS")),
     )

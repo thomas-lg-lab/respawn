@@ -27,5 +27,6 @@ USER 10001:10001
 EXPOSE 8080
 
 # Exec form, so uvicorn is PID 1 and stops cleanly on SIGTERM. FORWARDED_ALLOW_IPS names the reverse proxies whose
-# X-Forwarded-* headers are trusted (uvicorn reads it; default 127.0.0.1).
+# X-Forwarded-For and X-Forwarded-Proto are trusted (uvicorn reads it; default 127.0.0.1). Behind a proxy it must
+# be set, or the sign-in rate limit counts every visitor as the proxy (README, "Behind a reverse proxy").
 CMD ["python", "-m", "uvicorn", "respawn.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers"]

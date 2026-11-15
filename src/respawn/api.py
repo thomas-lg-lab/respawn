@@ -26,6 +26,9 @@ COOKIE = "respawn_session"
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 router = APIRouter(prefix="/api/v1")
+# One bucket per client address. The address is the peer's, or the one a reverse proxy listed in
+# FORWARDED_ALLOW_IPS reports in X-Forwarded-For (uvicorn resolves it, walking the header from the right past
+# the trusted proxies); the header of an unlisted peer is ignored, so a client cannot pick its own bucket.
 limiter = Limiter(key_func=get_remote_address)
 
 

@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import os
 
+import pytest
 from fastapi.testclient import TestClient
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+from respawn import accounts
 from respawn.api import limiter
-from tests.conftest import PASSWORD, register
+from respawn.main import create_app
+from respawn.security import verify_password
+from tests.conftest import PASSWORD, register, settings
 
 
 def test_first_account_is_administrator_and_signed_in(client: TestClient) -> None:
@@ -86,6 +91,57 @@ def test_a_request_from_another_site_is_refused(client: TestClient) -> None:
     assert (response.status_code, response.json()["error"]["code"]) == (403, "cross_site_request")
 
 
+def test_a_listed_origin_is_accepted_when_the_proxy_rewrites_the_host() -> None:
+    """Behind a proxy that does not pass the original Host on, the page's origin is listed explicitly."""
+    app = create_app(settings(trusted_origins=("https://games.example.org",)))
+    body = {"email": "nobody@example.org", "password": PASSWORD}
+    with TestClient(app, base_url="http://app.internal:8080") as client:
+        listed = client.post("/api/v1/auth/login", json=body, headers={"Origin": "https://games.example.org"})
+        assert listed.status_code == 401  # went through the guard: refused for its credentials only
+        own = client.post("/api/v1/auth/login", json=body, headers={"Origin": "http://app.internal:8080"})
+        assert own.status_code == 401
+        for origin in ("https://elsewhere.example.org", "http://games.example.org"):
+            other = client.post("/api/v1/auth/login", json=body, headers={"Origin": origin})
+            assert (other.status_code, other.json()["error"]["code"]) == (403, "cross_site_request"), origin
+        # A forwarded host is no proof of anything: it is not read.
+        forged = client.post(
+            "/api/v1/auth/login",
+            json=body,
+            headers={"Origin": "https://elsewhere.example.org", "X-Forwarded-Host": "elsewhere.example.org"},
+        )
+        assert forged.status_code == 403
+    app.state.database.dispose()
+
+
+def login_codes(client: TestClient, addresses: list[str]) -> list[int]:
+    body = {"email": "x@example.org", "password": PASSWORD}
+    return [
+        client.post("/api/v1/auth/login", json=body, headers={"X-Forwarded-For": address}).status_code
+        for address in addresses
+    ]
+
+
+def test_a_forged_forwarded_address_does_not_dodge_the_rate_limit(client: TestClient) -> None:
+    """The peer is not a listed proxy (the default): what it says about the client's address is ignored."""
+    os.environ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute"
+    limiter.reset()
+    # As uvicorn runs the app, with its default: only 127.0.0.1 is a trusted proxy.
+    proxied = TestClient(ProxyHeadersMiddleware(client.app, trusted_hosts="127.0.0.1"))  # type: ignore[arg-type]
+    assert login_codes(proxied, ["203.0.113.1", "203.0.113.2", "203.0.113.3"]) == [401, 401, 429]
+
+
+def test_clients_behind_a_trusted_proxy_are_limited_one_by_one(client: TestClient) -> None:
+    """With the proxy listed in FORWARDED_ALLOW_IPS, each visitor has its own count."""
+    os.environ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute"
+    limiter.reset()
+    # "testclient" is the peer address of the test client: here it stands for the reverse proxy.
+    proxied = TestClient(ProxyHeadersMiddleware(client.app, trusted_hosts="testclient"))  # type: ignore[arg-type]
+    assert login_codes(proxied, ["203.0.113.1", "203.0.113.1", "203.0.113.2"]) == [401, 401, 401]
+    assert login_codes(proxied, ["203.0.113.1", "203.0.113.2", "203.0.113.2"]) == [429, 401, 429]
+    # A visitor adding addresses of its own in front of the one the proxy appends stays in its bucket.
+    assert login_codes(proxied, ["198.51.100.7, 203.0.113.1"]) == [429]
+
+
 def test_sign_in_routes_are_rate_limited(client: TestClient) -> None:
     os.environ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute"
     limiter.reset()
@@ -94,3 +150,23 @@ def test_sign_in_routes_are_rate_limited(client: TestClient) -> None:
         for _ in range(3)
     ]
     assert codes == [401, 401, 429]
+
+
+def test_a_locked_account_is_verified_like_any_other(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The password is checked even when the account is locked: the answer must not come faster."""
+    register(client)
+    client.cookies.clear()
+    for _ in range(3):
+        client.post("/api/v1/auth/login", json={"email": "first@example.org", "password": "wrong password"})
+    verified: list[str] = []
+
+    def verify(password: str, password_hash: str | None) -> bool:
+        verified.append(password)
+        return verify_password(password, password_hash)
+
+    monkeypatch.setattr(accounts, "verify_password", verify)
+    locked = client.post("/api/v1/auth/login", json={"email": "first@example.org", "password": PASSWORD})
+    assert (locked.status_code, locked.json()["error"]["code"]) == (401, "invalid_credentials")
+    assert verified == [PASSWORD]

@@ -1,4 +1,9 @@
-"""Fixtures. The tests run against a real PostgreSQL: RESPAWN_TEST_DATABASE_URL, or the compose database."""
+"""Fixtures. The tests run against a real PostgreSQL, in a database of their own.
+
+RESPAWN_TEST_DATABASE_URL names it; by default it is `respawn_test` on the compose server, beside the database
+the compose app uses and never that one. It is created when missing. The tests empty its tables, so a database
+whose name does not end in `_test` is refused.
+"""
 
 from __future__ import annotations
 
@@ -13,13 +18,14 @@ from fastapi.testclient import TestClient
 from joserfc import jwt
 from joserfc.jwk import RSAKey
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL, make_url
 
 from respawn.api import limiter
 from respawn.config import OidcProvider, Settings
 from respawn.main import create_app
 
 DATABASE_URL = os.environ.get(
-    "RESPAWN_TEST_DATABASE_URL", "postgresql+psycopg://respawn:respawn@localhost:5432/respawn"
+    "RESPAWN_TEST_DATABASE_URL", "postgresql+psycopg://respawn:respawn@localhost:5432/respawn_test"
 )
 ISSUER = "https://issuer.test"
 CLIENT_ID = "respawn-test"
@@ -33,9 +39,15 @@ class FakeIssuer:
     def __init__(self) -> None:
         self.key = RSAKey.generate_key(2048, parameters={"kid": "test-key"})
         self.other_key = RSAKey.generate_key(2048, parameters={"kid": "test-key"})
+        self.requests = 0
+
+    def rotate(self) -> None:
+        """Sign with a new key from now on, as a provider does from time to time."""
+        self.key = RSAKey.generate_key(2048, parameters={"kid": f"test-key-{time.monotonic_ns()}"})
 
     def transport(self) -> httpx.MockTransport:
         def handler(request: httpx.Request) -> httpx.Response:
+            self.requests += 1
             if request.url.path == "/.well-known/openid-configuration":
                 return httpx.Response(200, json={"issuer": ISSUER, "jwks_uri": f"{ISSUER}/jwks"})
             if request.url.path == "/jwks":
@@ -58,12 +70,37 @@ class FakeIssuer:
             "name": "Player One",
         }
         claims.update(overrides)
-        return jwt.encode({"alg": "RS256", "kid": "test-key"}, claims, key or self.key)
+        key = key or self.key
+        return jwt.encode({"alg": "RS256", "kid": key.kid}, claims, key)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def issuer() -> FakeIssuer:
     return FakeIssuer()
+
+
+def admin_url(database_url: str) -> URL:
+    """The same server and account, on the maintenance database: where databases and roles are created."""
+    return make_url(database_url).set(database="postgres")
+
+
+def create_database(database_url: str, owner: str | None = None) -> None:
+    name = make_url(database_url).database
+    if not name or not name.endswith("_test") or not name.replace("_", "").isalnum():
+        raise pytest.UsageError(
+            f"the tests empty their database: {name!r} is refused, its name must end in _test"
+        )
+    engine = create_engine(admin_url(database_url), isolation_level="AUTOCOMMIT")
+    with engine.connect() as connection:
+        exists = connection.scalar(text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": name})
+        if not exists:
+            connection.execute(text(f'CREATE DATABASE "{name}"' + (f' OWNER "{owner}"' if owner else "")))
+    engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def test_database() -> None:
+    create_database(DATABASE_URL)
 
 
 def settings(**overrides: object) -> Settings:

@@ -58,7 +58,8 @@ class ExternalIdentity(Base):
 
 
 class ExchangedToken(Base):
-    """ID tokens already exchanged for a session, so none is accepted twice. Kept until the token expires."""
+    """ID tokens already exchanged for a session, so none is accepted twice. Kept until the token is no longer
+    accepted: its expiry plus the validation leeway."""
 
     __tablename__ = "exchanged_tokens"
 
