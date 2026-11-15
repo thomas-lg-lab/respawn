@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -34,12 +34,21 @@ def error(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
 
 
-def same_site(origin: str, host: str | None, trusted_origins: tuple[str, ...]) -> bool:
-    """Whether a request's Origin is this site: the host the request names, or an origin the operator listed.
+def same_site(headers: Mapping[str, str], trusted_origins: tuple[str, ...]) -> bool:
+    """Whether a state-changing request comes from this site's own pages.
 
-    X-Forwarded-Host is not read: the list is explicit, and no header has to be trusted for it.
+    The browser says so itself in Sec-Fetch-Site, a header a page cannot set: that answer does not depend on
+    the Host header, so it holds behind any reverse proxy. A browser too old to send it is judged on its
+    Origin, compared with the host the request names. An origin the operator listed is always accepted, and a
+    request with neither header does not come from a browser page. X-Forwarded-Host is not read.
     """
-    return urlsplit(origin).netloc == host or origin.rstrip("/").lower() in trusted_origins
+    origin = headers.get("origin")
+    listed = origin is not None and origin.rstrip("/").lower() in trusted_origins
+    fetch_site = headers.get("sec-fetch-site")
+    if fetch_site:
+        # "none" is a request the user made directly; "same-site" would let a sibling subdomain in.
+        return fetch_site in ("same-origin", "none") or listed
+    return not origin or urlsplit(origin).netloc == headers.get("host") or listed
 
 
 def create_app(
@@ -75,15 +84,14 @@ def create_app(
                 "proxy, every visitor then counts as one client for the sign-in rate limit (see the README)",
             )
         # The session is a cookie: a state-changing request must come from this site's own pages.
-        origin = request.headers.get("origin")
-        host = request.headers.get("host")
-        if request.method in UNSAFE_METHODS and origin and not same_site(origin, host, trusted_origins):
+        if request.method in UNSAFE_METHODS and not same_site(request.headers, trusted_origins):
             warn_once(
                 "origin",
-                "request refused: its Origin %r is neither its Host %r nor in RESPAWN_TRUSTED_ORIGINS "
+                "request refused as coming from another site: Sec-Fetch-Site %r, Origin %r, Host %r "
                 "(see the README if a reverse proxy rewrites the Host header)",
-                origin[:200],
-                (host or "")[:200],
+                request.headers.get("sec-fetch-site", "")[:200],
+                request.headers.get("origin", "")[:200],
+                request.headers.get("host", "")[:200],
             )
             return error(403, "cross_site_request", "This request comes from another site.")
         response = await call_next(request)

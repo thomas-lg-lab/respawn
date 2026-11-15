@@ -28,7 +28,7 @@ user with a read-only root filesystem, and needs a PostgreSQL database.
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
 | `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
 | `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client address on the sign-in routes |
-| `RESPAWN_TRUSTED_ORIGINS` | none | Comma-separated origins the page is served from (`https://games.example.org`), for a reverse proxy that rewrites the `Host` header |
+| `RESPAWN_TRUSTED_ORIGINS` | none | Comma-separated origins allowed to send state-changing requests besides the site's own (`https://games.example.org`); rarely needed, see below |
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` are trusted. Set it behind a reverse proxy |
 
@@ -48,10 +48,11 @@ Two things depend on what the proxy tells the app, and neither is guessed:
   a minute lock everybody out. List every proxy on the way, by address or by network. `X-Forwarded-For` is only
   read from a listed proxy, so a visitor cannot choose their own address. The app logs a warning when a request
   carries the header and the variable is not set.
-- **The site's own origin**, which state-changing requests are checked against (their `Origin` must be the
-  site's). The app compares it with the `Host` header, so the proxy should pass the original one on (nginx:
-  `proxy_set_header Host $host`; Traefik and Caddy do it by default). If it cannot, list the public origin in
-  `RESPAWN_TRUSTED_ORIGINS`. `X-Forwarded-Host` is not read.
+- **Where a state-changing request comes from**: it must come from the site's own pages. Browsers say so
+  themselves in the `Sec-Fetch-Site` header, which needs nothing from the proxy. Only a browser too old to send
+  it is judged on its `Origin`, compared with the `Host` header: for those, the proxy should pass the original
+  `Host` on (nginx: `proxy_set_header Host $host`; Traefik and Caddy do it by default) or the public origin be
+  listed in `RESPAWN_TRUSTED_ORIGINS`. `X-Forwarded-Host` is not read.
 
 ## Sign-in
 

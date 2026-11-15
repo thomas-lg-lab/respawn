@@ -103,6 +103,13 @@ def test_a_listed_origin_is_accepted_when_the_proxy_rewrites_the_host() -> None:
         for origin in ("https://elsewhere.example.org", "http://games.example.org"):
             other = client.post("/api/v1/auth/login", json=body, headers={"Origin": origin})
             assert (other.status_code, other.json()["error"]["code"]) == (403, "cross_site_request"), origin
+        # A listed origin is accepted even when the browser calls it cross-site (the page on another origin).
+        cross = client.post(
+            "/api/v1/auth/login",
+            json=body,
+            headers={"Origin": "https://games.example.org", "Sec-Fetch-Site": "cross-site"},
+        )
+        assert cross.status_code == 401
         # A forwarded host is no proof of anything: it is not read.
         forged = client.post(
             "/api/v1/auth/login",
@@ -111,6 +118,28 @@ def test_a_listed_origin_is_accepted_when_the_proxy_rewrites_the_host() -> None:
         )
         assert forged.status_code == 403
     app.state.database.dispose()
+
+
+def test_the_browser_says_where_a_request_comes_from(client: TestClient) -> None:
+    """Sec-Fetch-Site decides when the browser sends it, whatever the Host header became on the way."""
+    body = {"email": "nobody@example.org", "password": PASSWORD}
+
+    def code(**headers: str) -> int:
+        return client.post("/api/v1/auth/login", json=body, headers=headers).status_code
+
+    # 401: went through the guard, refused for its credentials only.
+    rewritten = {"Origin": "https://games.example.org", "Host": "app.internal:8080"}
+    assert code(**rewritten, **{"Sec-Fetch-Site": "same-origin"}) == 401
+    assert code(**{"Sec-Fetch-Site": "none"}) == 401
+    for elsewhere in ("cross-site", "same-site", "anything-else"):
+        assert code(**rewritten, **{"Sec-Fetch-Site": elsewhere}) == 403, elsewhere
+    # An Origin matching the Host does not make up for a browser saying the request is cross-site.
+    assert code(**{"Origin": "http://testserver", "Sec-Fetch-Site": "cross-site"}) == 403
+    # No Sec-Fetch-Site (an older browser): the Origin is compared with the Host.
+    assert code(**rewritten) == 403
+    assert code(Origin="http://testserver") == 401
+    # Neither header: not a browser page (a script, a command-line client).
+    assert code() == 401
 
 
 def login_codes(client: TestClient, addresses: list[str]) -> list[int]:
