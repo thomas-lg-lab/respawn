@@ -78,9 +78,32 @@ public sealed class ContractTests
     {
         await using var app = await TestApp.StartAsync();
         using var client = app.Browser();
-        var paths = (await client.GetAsync("/api/v1/openapi.json").JsonAsync()).GetProperty("paths");
+        var document = await client.GetAsync("/api/v1/openapi.json").JsonAsync();
+        var paths = document.GetProperty("paths");
         Assert.True(paths.TryGetProperty("/api/v1/me", out _));
         Assert.True(paths.TryGetProperty("/api/v1/auth/login", out _));
         Assert.False(paths.TryGetProperty("/healthz", out _));
+    }
+
+    // The front's types are generated from the description: it must say what the API really answers.
+    [Fact]
+    public async Task The_openapi_description_matches_what_the_api_answers()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var client = app.Browser();
+        var document = await client.GetAsync("/api/v1/openapi.json").JsonAsync();
+
+        // Fields are spelled as on the wire, in snake_case.
+        var user = document.GetProperty("components").GetProperty("schemas").GetProperty("UserResponse").GetProperty("properties");
+        Assert.True(user.TryGetProperty("display_name", out _));
+        Assert.False(user.TryGetProperty("displayName", out _));
+
+        // A route that declares its refusals still describes its answer.
+        var paths = document.GetProperty("paths");
+        Assert.True(paths.GetProperty("/api/v1/me").GetProperty("get").GetProperty("responses").TryGetProperty("200", out _));
+        Assert.True(paths.GetProperty("/api/v1/auth/login").GetProperty("post").GetProperty("responses").TryGetProperty("200", out _));
+
+        // The same document wherever it is asked: no address of the host in it.
+        Assert.False(document.TryGetProperty("servers", out var servers) && servers.GetArrayLength() > 0);
     }
 }

@@ -48,6 +48,7 @@ public sealed class AuthController(IAccountService accounts, AccountOptions opti
     [HttpPost("login")]
     [EnableRateLimiting(AccountsApi.SignInRateLimit)]
     [EndpointSummary("Sign in with a local account")]
+    [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<UserResponse> Login(LoginRequest body, CancellationToken ct) =>
         SignIn(await accounts.LoginAsync(body.Email, body.Password, ct));
@@ -55,6 +56,7 @@ public sealed class AuthController(IAccountService accounts, AccountOptions opti
     [HttpPost("oidc")]
     [EnableRateLimiting(AccountsApi.SignInRateLimit)]
     [EndpointSummary("Sign in with an ID token from a configured provider")]
+    [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<UserResponse> Oidc(OidcRequest body, CancellationToken ct) =>
         SignIn(await accounts.SignInWithProviderAsync(
@@ -85,6 +87,7 @@ public sealed class MeController : ControllerBase
     [HttpGet("me")]
     [Authorize]
     [EndpointSummary("The signed-in account")]
+    [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public UserResponse Get() => UserResponse.From(HttpContext.Features.GetRequiredFeature<Account>());
 }

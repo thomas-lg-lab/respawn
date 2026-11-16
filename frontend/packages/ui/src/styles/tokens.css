@@ -1,0 +1,131 @@
+/*
+ * The design tokens. Every one is a custom property read at run time, never a value compiled
+ * into a utility: the theme and the character are attributes on the root element, and
+ * switching one changes variables, nothing else.
+ *
+ *   data-theme      "sombre" | "clair"; absent, the system's preference decides
+ *   data-character  "pixel" (default) | "sobre"
+ *
+ * Components never read these directly: they use the Tailwind names theme.css maps to them.
+ */
+
+:root {
+  /* Absent data-theme: the system's preference. light-dark() picks a side from the used
+     color-scheme, so each colour is written once, with its two values side by side
+     (light first), and a subtree can be pinned to a theme with the same attribute. */
+  color-scheme: light dark;
+
+  /* Colour: surfaces and text. */
+  --rs-bg: light-dark(#f4f5f7, #0d0f14);
+  --rs-surface: light-dark(#ffffff, #161922);
+  --rs-surface-2: light-dark(#e9ecf1, #1f2430);
+  --rs-line: light-dark(#d5dae3, #2a3040);
+  --rs-control-line: light-dark(#7c8698, #6b7488);
+  --rs-text: light-dark(#12141a, #f2f4f8);
+  --rs-muted: light-dark(#535d70, #a3abbd);
+
+  /* Colour: the accent. `accent` is a fill and only a fill; as text, icon or bar it is
+     `accent-text`, which is the one that keeps its contrast on a light ground. */
+  --rs-accent: #c6f24e;
+  --rs-on-accent: #141a05;
+  --rs-accent-text: light-dark(#3d6200, #c6f24e);
+  --rs-focus: light-dark(#3d6200, #c6f24e);
+
+  /* Colour: warnings. */
+  --rs-warn: light-dark(#7a4300, #ffb454);
+  --rs-warn-bg: light-dark(#fff1dc, #2b2113);
+  --rs-warn-line: light-dark(#ebcb96, #5a4320);
+
+  /* Colour: the active tab, the pressed pill. */
+  --rs-inverse: var(--rs-text);
+  --rs-on-inverse: var(--rs-bg);
+
+  /* Colour: data. The same in both themes; a tile carries its own text colour. */
+  --rs-recency-1: #ff8a3d;
+  --rs-on-recency-1: #1a0e04;
+  --rs-recency-2: #f2d9a6;
+  --rs-on-recency-2: #231a06;
+  --rs-recency-3: #6f8faf;
+  --rs-on-recency-3: #07111c;
+  --rs-recency-4: #33415a;
+  --rs-on-recency-4: #eef1f5;
+  --rs-group-0: #33415a;
+  --rs-on-group-0: #eef1f5;
+  --rs-group-1: #3f5fb5;
+  --rs-on-group-1: #ffffff;
+  --rs-group-2: #8fb0ff;
+  --rs-on-group-2: #081230;
+  --rs-group-3: #dde8ff;
+  --rs-on-group-3: #081230;
+
+  /* Typography: the families. The logo does not follow the character. */
+  --rs-font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --rs-font-display: 'Bricolage Grotesque Variable', var(--rs-font-body);
+  --rs-font-logo: 'Pixelify Sans Variable', var(--rs-font-body);
+
+  /* Typography: the sizes, in rem so the reader's own setting still applies (16px = 1rem).
+     The first three have a second size under the layout breakpoint. */
+  --rs-text-hero: 3.375rem; /* 54px */
+  --rs-text-hero-narrow: 2.125rem; /* 34px */
+  --rs-text-page-title: 2.25rem; /* 36px */
+  --rs-text-page-title-narrow: 1.75rem; /* 28px */
+  --rs-text-figure: 2.125rem; /* 34px */
+  --rs-text-figure-narrow: 1.625rem; /* 26px */
+  --rs-text-card-title: 1.0625rem; /* 17px */
+  --rs-text-body: 0.9375rem; /* 15px */
+  --rs-text-control: 0.875rem; /* 14px */
+  --rs-text-caption: 0.8125rem; /* 13px */
+  /* A field is never under 16px, or a phone zooms in when it takes the focus. */
+  --rs-text-field: 1rem;
+
+  /* Shape. Bar segments and map tiles have no radius: that is the pixel accent. */
+  --rs-radius-pill: 999px;
+  --rs-radius-hero: 20px;
+  --rs-radius-card: 16px;
+  --rs-radius-row: 14px;
+  --rs-radius-field: 12px;
+  --rs-radius-thumb: 6px;
+
+  /* Size. */
+  --rs-size-touch: 2.75rem; /* 44px, the smallest touch target */
+  --rs-size-button: 3rem; /* 48px, the primary button */
+  --rs-size-search: 3.25rem; /* 52px, the search field of the home */
+  --rs-size-row: 3rem; /* 48px, a list row */
+  --rs-size-icon: 1.125rem; /* 18px, with a 2px stroke */
+  --rs-size-avatar: 2.25rem; /* 36px */
+  --rs-segment-gap: 3px;
+  --rs-segment-height: 10px;
+
+  /* Motion. All of it stops under prefers-reduced-motion (theme.css). */
+  --rs-duration-hover: 150ms;
+  --rs-lift: 4px;
+  --rs-duration-pulse: 1.4s;
+  --rs-duration-spin: 1s;
+  --rs-duration-blink: 1s;
+}
+
+/* A chosen theme, on the root or on any subtree. */
+[data-theme='sombre'] {
+  color-scheme: dark;
+}
+[data-theme='clair'] {
+  color-scheme: light;
+}
+
+/* The character: what a label looks like. */
+:root,
+[data-character='pixel'] {
+  --rs-font-label: var(--rs-font-logo);
+  --rs-label-size: 0.875rem; /* 14px */
+  --rs-label-weight: 500;
+  --rs-label-tracking: 0.04em;
+  /* The prompt that blinks before the main label of a screen. */
+  --rs-label-prompt: '>';
+}
+[data-character='sobre'] {
+  --rs-font-label: var(--rs-font-body);
+  --rs-label-size: 0.75rem; /* 12px */
+  --rs-label-weight: 600;
+  --rs-label-tracking: 0.08em;
+  --rs-label-prompt: none;
+}

@@ -45,4 +45,16 @@
   from libraries (libsodium through Sodium.Core for Argon2id, Microsoft.IdentityModel for ID tokens); never write
   a hash or a signature check by hand. A request header such as `Remote-User` never identifies anyone.
 - **Warnings are errors** in a Release build, and `dotnet format --verify-no-changes` is a required check.
+- **Front.** `frontend/`, Angular 22 with signals and no Zone.js, Tailwind 4, Transloco, Vitest, in packages
+  under `packages/`: `app` (the shell, its screens in `pages/`), `ui` (the tokens and the base components),
+  `util`, `data` (the API's types). A package imports another through its `@respawn/x` barrel only, and only
+  the ones `eslint.config.js` lists for it; `@x/...` is a package's own inside.
+- **Design tokens.** Every token is a `--rs-*` custom property in `packages/ui/src/styles/tokens.css`, switched
+  at run time by `data-theme` and `data-character` on the root element. Components use the semantic Tailwind
+  names mapped in `theme.css` (`bg-surface`, `rounded-card`, `type-body`), never a hex value; the default
+  palette is removed, so a palette step produces no style. One layout breakpoint: `wide:`.
+- **No text in a template.** Every sentence is a key of `i18n/fr.json` and `i18n/en.json`, which keep the same
+  keys; lint refuses a literal text node.
+- **API types are generated.** `frontend/openapi.json` is the description the API serves and `api-types.ts`
+  comes from it (`npm run gen:api`); the CI fails when either is stale. Never edit them by hand.
 - **Checks and dependencies**: CONTRIBUTING.md.

@@ -1,0 +1,119 @@
+<div class="flex flex-col gap-4.5" *transloco="let t; prefix: 'foundations'">
+  <div class="flex flex-col gap-2">
+    <p rsLabel main>{{ t('label') }}</p>
+    <h1 class="type-page-title">{{ t('title') }}</h1>
+    <p class="max-w-prose text-muted">{{ t('intro') }}</p>
+  </div>
+
+  <rs-card>
+    <section class="flex flex-col gap-5" aria-labelledby="settings-label">
+      <h2 rsLabel id="settings-label">{{ t('settings.label') }}</h2>
+
+      <div class="flex flex-col gap-2">
+        <span class="type-caption text-muted" id="theme-label">{{ t('settings.theme') }}</span>
+        <div class="flex flex-wrap gap-2" role="group" aria-labelledby="theme-label">
+          @for (theme of themes; track theme) {
+            <button
+              rsPill
+              [pressed]="display.theme() === theme"
+              [attr.data-theme-choice]="theme"
+              (click)="display.setTheme(theme)"
+            >
+              {{ t('settings.themes.' + theme) }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="type-caption text-muted" id="character-label">{{
+          t('settings.character')
+        }}</span>
+        <div class="flex flex-wrap gap-2" role="group" aria-labelledby="character-label">
+          @for (character of characters; track character) {
+            <button
+              rsPill
+              [pressed]="display.character() === character"
+              [attr.data-character-choice]="character"
+              (click)="display.setCharacter(character)"
+            >
+              {{ t('settings.characters.' + character) }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="type-caption text-muted" id="language-label">{{
+          t('settings.language')
+        }}</span>
+        <div class="flex flex-wrap gap-2" role="group" aria-labelledby="language-label">
+          @for (choice of languages; track choice) {
+            <button
+              rsPill
+              [pressed]="language.current() === choice"
+              [attr.data-language-choice]="choice"
+              [attr.lang]="choice"
+              (click)="language.use(choice)"
+            >
+              {{ t('settings.languages.' + choice) }}
+            </button>
+          }
+        </div>
+      </div>
+    </section>
+  </rs-card>
+
+  <div class="grid gap-4.5 wide:grid-cols-2">
+    <rs-card>
+      <section class="flex flex-col gap-3" aria-labelledby="type-label">
+        <h2 rsLabel id="type-label">{{ t('type.label') }}</h2>
+        <p class="type-hero">{{ t('type.hero') }}</p>
+        <p class="type-page-title">{{ t('type.pageTitle') }}</p>
+        <p class="flex flex-wrap items-baseline gap-x-3">
+          <span class="type-figure">{{ gamesCount() }}</span>
+          <span class="type-caption text-muted">{{ t('type.figureCaption') }}</span>
+        </p>
+        <p class="type-card-title">{{ t('type.cardTitle') }}</p>
+        <p class="type-body">{{ t('type.body') }}</p>
+        <p class="type-caption text-muted">{{ t('type.caption') }}</p>
+      </section>
+    </rs-card>
+
+    <rs-card>
+      <section class="flex flex-col gap-5" aria-labelledby="components-label">
+        <h2 rsLabel id="components-label">{{ t('components.label') }}</h2>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.buttons') }}</span>
+          <div class="flex flex-wrap items-center gap-3">
+            <button rsButton variant="primary" type="button">{{ t('components.primary') }}</button>
+            <button rsButton type="button">{{ t('components.outlined') }}</button>
+            <button rsButton type="button" disabled>{{ t('components.disabled') }}</button>
+            <button rsButton variant="icon" type="button" [aria-label]="t('components.sync')">
+              <svg lucideRefreshCw class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted" id="pills-label">{{ t('components.pills') }}</span>
+          <div class="flex flex-wrap gap-2" role="group" aria-labelledby="pills-label">
+            @for (choice of filters; track choice) {
+              <button rsPill [pressed]="filter() === choice" (click)="filter.set(choice)">
+                {{ t('components.filters.' + choice) }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.bar') }}</span>
+          <rs-segmented-bar [value]="hours" [max]="hoursScale">{{
+            t('components.hours', { count: hours })
+          }}</rs-segmented-bar>
+        </div>
+      </section>
+    </rs-card>
+  </div>
+</div>

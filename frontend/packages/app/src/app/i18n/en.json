@@ -1,0 +1,51 @@
+{
+  "foundations": {
+    "label": "Foundations",
+    "title": "The visual foundations",
+    "intro": "The colours, the typography and the base components. Everything follows the theme, the character and the language chosen below.",
+    "settings": {
+      "label": "Settings",
+      "theme": "Theme",
+      "themes": {
+        "system": "System",
+        "sombre": "Dark",
+        "clair": "Light"
+      },
+      "character": "Character",
+      "characters": {
+        "pixel": "Pixel",
+        "sobre": "Sober"
+      },
+      "language": "Language",
+      "languages": {
+        "fr": "Français",
+        "en": "English"
+      }
+    },
+    "type": {
+      "label": "Typography",
+      "hero": "Hero title",
+      "pageTitle": "Page title",
+      "figureCaption": "games in the library",
+      "cardTitle": "Card title",
+      "body": "Body text: 142 h in total, last session yesterday.",
+      "caption": "Caption, in the muted colour."
+    },
+    "components": {
+      "label": "Components",
+      "buttons": "Buttons",
+      "primary": "Primary button",
+      "outlined": "Secondary button",
+      "disabled": "Unavailable",
+      "sync": "Synchronise",
+      "pills": "Pills",
+      "filters": {
+        "all": "All",
+        "recent": "Recent",
+        "never": "Never launched"
+      },
+      "bar": "Segmented bar",
+      "hours": "{{ count }} h"
+    }
+  }
+}

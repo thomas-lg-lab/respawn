@@ -1,0 +1,9 @@
+# Generated. openapi.json is the API's own document and api-types.ts is what openapi-typescript
+# makes of it, so formatting either one only lasts until the next `npm run gen:api`.
+openapi.json
+packages/data/src/lib/models/api-types.ts
+
+# Build outputs.
+dist/
+.angular/
+coverage/

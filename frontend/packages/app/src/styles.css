@@ -1,0 +1,5 @@
+/* The three font families are self-hosted: angular.json lists their stylesheets, and the
+   build copies the files beside the app. Nothing is fetched from another origin. */
+@import 'tailwindcss';
+@import '../../ui/src/styles/tokens.css';
+@import '../../ui/src/styles/theme.css';

@@ -48,10 +48,16 @@ services
         api.InvalidModelStateResponseFactory = ApiErrors.InvalidRequest;
         api.SuppressMapClientErrors = true; // no ProblemDetails: the one error format is ours
     });
+// The description is built from these options, not from the controllers': without them it would spell
+// the fields in camelCase while the API answers in snake_case.
+services.ConfigureHttpJsonOptions(json => json.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
 services.AddOpenApi(openApi => openApi.AddDocumentTransformer((document, _, _) =>
 {
     document.Info.Title = "respawn";
     document.Info.Version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "dev";
+    // The address the description was asked at is not part of the contract: without it the document is
+    // the same wherever the app runs, so the copy the front's types are generated from can be compared.
+    document.Servers?.Clear();
     return Task.CompletedTask;
 }));
 services.AddExceptionHandler<ApiExceptionHandler>();

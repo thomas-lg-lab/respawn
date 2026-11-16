@@ -1,0 +1,49 @@
+/* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
+/* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      // Two namespaces, and the difference is the point: `@respawn/x` is another package's
+      // public surface, `@x/…` is a package's own inside. Lint rejects a file that reaches
+      // for an inside alias that is not its own, so these are no way around a public-api.ts.
+      "@respawn/ui": ["./packages/ui/src/public-api.ts"],
+      "@respawn/util": ["./packages/util/src/public-api.ts"],
+      "@respawn/data": ["./packages/data/src/public-api.ts"],
+
+      "@app/*": ["./packages/app/src/app/*"],
+      "@ui/*": ["./packages/ui/src/lib/*"],
+      "@util/*": ["./packages/util/src/lib/*"],
+      "@data/*": ["./packages/data/src/lib/*"]
+    },
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    // The translations are JSON files, imported so the build hashes them.
+    "resolveJsonModule": true,
+    "target": "ES2022",
+    "module": "preserve"
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}

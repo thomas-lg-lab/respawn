@@ -1,0 +1,51 @@
+{
+  "foundations": {
+    "label": "Fondations",
+    "title": "Les fondations visuelles",
+    "intro": "Les couleurs, la typographie et les composants de base. Tout suit le thème, le caractère et la langue choisis ci-dessous.",
+    "settings": {
+      "label": "Réglages",
+      "theme": "Thème",
+      "themes": {
+        "system": "Système",
+        "sombre": "Sombre",
+        "clair": "Clair"
+      },
+      "character": "Caractère",
+      "characters": {
+        "pixel": "Pixel",
+        "sobre": "Sobre"
+      },
+      "language": "Langue",
+      "languages": {
+        "fr": "Français",
+        "en": "English"
+      }
+    },
+    "type": {
+      "label": "Typographie",
+      "hero": "Titre vedette",
+      "pageTitle": "Titre de page",
+      "figureCaption": "jeux dans la bibliothèque",
+      "cardTitle": "Titre de carte",
+      "body": "Texte courant : 142 h au total, dernière session hier.",
+      "caption": "Légende, en couleur atténuée."
+    },
+    "components": {
+      "label": "Composants",
+      "buttons": "Boutons",
+      "primary": "Bouton principal",
+      "outlined": "Bouton secondaire",
+      "disabled": "Indisponible",
+      "sync": "Synchroniser",
+      "pills": "Pastilles",
+      "filters": {
+        "all": "Tous",
+        "recent": "Récents",
+        "never": "Jamais lancés"
+      },
+      "bar": "Barre segmentée",
+      "hours": "{{ count }} h"
+    }
+  }
+}
