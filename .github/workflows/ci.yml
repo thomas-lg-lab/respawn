@@ -59,7 +59,8 @@ jobs:
 
   # Build, runtime contract test and Trivy gate on every PR; edge and sha-* from main; X.Y.Z and latest from a release
   # tag. The contract test starts the image as the cluster runs it: non-root, read-only root filesystem, no secret
-  # and no database, and it must still answer /healthz.
+  # and no database, and it must still answer /healthz. Then with a database that comes up late: /api/v1/config
+  # answers 503 until it is there, and /api/v1/me stays closed to a forged Remote-User header.
   image:
     needs: [checks]
     permissions:
@@ -68,6 +69,8 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: thomas-lg-lab/.github/.github/workflows/container-image.yml@54ca50420258f144ef973c2a29005eb416f6660a # v2.3.0
+    uses: thomas-lg-lab/.github/.github/workflows/container-image.yml@832110d911f53ba85aecdff6006f73ad33db2888 # feat/contract-test-variants, until its release
     with:
       contract-test: true
+      contract-protected-path: /api/v1/me
+      contract-database-path: /api/v1/config
