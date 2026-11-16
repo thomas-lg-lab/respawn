@@ -20,7 +20,8 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    name_from_store = table.Column<bool>(type: "boolean", nullable: false),
                     igdb_id = table.Column<long>(type: "bigint", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -55,7 +56,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     game_id = table.Column<Guid>(type: "uuid", nullable: false),
                     source = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     external_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -79,6 +80,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     source = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     kind = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     taken_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    recorded_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     owner_id = table.Column<Guid>(type: "uuid", nullable: true),
                     linked_account_id = table.Column<Guid>(type: "uuid", nullable: true),
                     payload = table.Column<string>(type: "text", nullable: false)
@@ -97,15 +99,46 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "observations",
+                schema: "games",
+                columns: table => new
+                {
+                    snapshot_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    store_entry_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    playtime_seconds = table.Column<long>(type: "bigint", nullable: true),
+                    last_played_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_observations", x => new { x.snapshot_id, x.store_entry_id });
+                    table.CheckConstraint("ck_observations_playtime", "playtime_seconds >= 0");
+                    table.ForeignKey(
+                        name: "fk_observations_raw_snapshots_snapshot_id",
+                        column: x => x.snapshot_id,
+                        principalSchema: "games",
+                        principalTable: "raw_snapshots",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_observations_store_entries_store_entry_id",
+                        column: x => x.store_entry_id,
+                        principalSchema: "games",
+                        principalTable: "store_entries",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ownerships",
                 schema: "games",
                 columns: table => new
                 {
                     linked_account_id = table.Column<Guid>(type: "uuid", nullable: false),
                     store_entry_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    playtime_seconds = table.Column<long>(type: "bigint", nullable: false),
+                    playtime_seconds = table.Column<long>(type: "bigint", nullable: true),
                     last_played_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     first_seen_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    as_of = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     snapshot_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -156,6 +189,12 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_observations_store_entry_id",
+                schema: "games",
+                table: "observations",
+                column: "store_entry_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ownerships_snapshot_id",
                 schema: "games",
                 table: "ownerships",
@@ -196,6 +235,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "observations",
+                schema: "games");
+
             migrationBuilder.DropTable(
                 name: "ownerships",
                 schema: "games");

@@ -17,6 +17,7 @@ public sealed class LibraryController(ILibraryService library) : ControllerBase
     [HttpGet("library")]
     [Authorize]
     [EndpointSummary("The games the signed-in account owns")]
+    [ProducesResponseType<LibraryResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<LibraryResponse> Get(CancellationToken ct)
     {

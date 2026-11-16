@@ -28,11 +28,11 @@ public sealed class SchemaTests
             PostgresErrorCodes.UniqueViolation,
             await RefusalAsync(app, new GameRow { Id = Guid.CreateVersion7(), Name = "Portal 2 again", IgdbId = 72, CreatedAt = Now }));
 
-        // Any number of records without an IGDB id, and a record that has entries cannot go.
+        // Any number of records without an IGDB id or a name, and a record that has entries cannot go.
         await SaveAsync(
             app,
             new GameRow { Id = Guid.CreateVersion7(), Name = "Unmatched", CreatedAt = Now },
-            new GameRow { Id = Guid.CreateVersion7(), Name = "Unmatched too", CreatedAt = Now });
+            new GameRow { Id = Guid.CreateVersion7(), CreatedAt = Now });
         Assert.Equal(PostgresErrorCodes.RestrictViolation, await RefusalAsync(app, db => db.Games.Where(g => g.Id == game.Id).ExecuteDeleteAsync()));
     }
 
@@ -69,9 +69,18 @@ public sealed class SchemaTests
             StoreEntryId = entry.Id,
             PlaytimeSeconds = seconds,
             FirstSeenAt = Now,
+            AsOf = Now,
             SnapshotId = snapshot.Id,
         };
         await SaveAsync(app, Owned(60));
+
+        // What a snapshot said of a game is said once, and is not a negative playtime either.
+        ObservationRow Said(long? seconds) => new() { SnapshotId = snapshot.Id, StoreEntryId = entry.Id, PlaytimeSeconds = seconds };
+        await SaveAsync(app, Said(null));
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, await RefusalAsync(app, Said(60)));
+        Assert.Equal(
+            PostgresErrorCodes.CheckViolation,
+            await RefusalAsync(app, db => db.Observations.ExecuteUpdateAsync(o => o.SetProperty(x => x.PlaytimeSeconds, -1L))));
 
         Assert.Equal(PostgresErrorCodes.UniqueViolation, await RefusalAsync(app, Owned(120)));
         Assert.Equal(
@@ -91,7 +100,7 @@ public sealed class SchemaTests
         new() { Id = Guid.CreateVersion7(), GameId = game, Source = source, ExternalId = externalId, Name = "Portal 2", CreatedAt = Now };
 
     private static RawSnapshotRow Snapshot(Guid? owner, Guid? account) =>
-        new() { Id = Guid.CreateVersion7(), Source = "steam", Kind = "owned-games", TakenAt = Now, OwnerId = owner, LinkedAccountId = account, Payload = "{}" };
+        new() { Id = Guid.CreateVersion7(), Source = "steam", Kind = "owned-games", TakenAt = Now, RecordedAt = Now, OwnerId = owner, LinkedAccountId = account, Payload = "{}" };
 
     private static async Task SaveAsync(TestApp app, params object[] rows)
     {

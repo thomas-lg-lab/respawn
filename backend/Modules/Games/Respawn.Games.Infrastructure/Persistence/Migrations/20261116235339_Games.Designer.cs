@@ -12,7 +12,7 @@ using Respawn.Games.Infrastructure.Persistence;
 namespace Respawn.Games.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(GamesDbContext))]
-    [Migration("20261116225256_Games")]
+    [Migration("20261116235339_Games")]
     partial class Games
     {
         /// <inheritdoc />
@@ -42,10 +42,13 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnName("igdb_id");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("name");
+
+                    b.Property<bool>("NameFromStore")
+                        .HasColumnType("boolean")
+                        .HasColumnName("name_from_store");
 
                     b.HasKey("Id")
                         .HasName("pk_games");
@@ -102,6 +105,36 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     b.ToTable("linked_accounts", "games");
                 });
 
+            modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.ObservationRow", b =>
+                {
+                    b.Property<Guid>("SnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("snapshot_id");
+
+                    b.Property<Guid>("StoreEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("store_entry_id");
+
+                    b.Property<DateTimeOffset?>("LastPlayedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_played_at");
+
+                    b.Property<long?>("PlaytimeSeconds")
+                        .HasColumnType("bigint")
+                        .HasColumnName("playtime_seconds");
+
+                    b.HasKey("SnapshotId", "StoreEntryId")
+                        .HasName("pk_observations");
+
+                    b.HasIndex("StoreEntryId")
+                        .HasDatabaseName("ix_observations_store_entry_id");
+
+                    b.ToTable("observations", "games", t =>
+                        {
+                            t.HasCheckConstraint("ck_observations_playtime", "playtime_seconds >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.OwnershipRow", b =>
                 {
                     b.Property<Guid>("LinkedAccountId")
@@ -112,6 +145,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("store_entry_id");
 
+                    b.Property<DateTimeOffset>("AsOf")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("as_of");
+
                     b.Property<DateTimeOffset>("FirstSeenAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("first_seen_at");
@@ -120,7 +157,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_played_at");
 
-                    b.Property<long>("PlaytimeSeconds")
+                    b.Property<long?>("PlaytimeSeconds")
                         .HasColumnType("bigint")
                         .HasColumnName("playtime_seconds");
 
@@ -169,6 +206,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("payload");
 
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -216,7 +257,6 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnName("game_id");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("name");
@@ -238,6 +278,23 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_store_entries_source_external_id");
 
                     b.ToTable("store_entries", "games");
+                });
+
+            modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.ObservationRow", b =>
+                {
+                    b.HasOne("Respawn.Games.Infrastructure.Persistence.RawSnapshotRow", null)
+                        .WithMany()
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_observations_raw_snapshots_snapshot_id");
+
+                    b.HasOne("Respawn.Games.Infrastructure.Persistence.StoreEntryRow", null)
+                        .WithMany()
+                        .HasForeignKey("StoreEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_observations_store_entries_store_entry_id");
                 });
 
             modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.OwnershipRow", b =>

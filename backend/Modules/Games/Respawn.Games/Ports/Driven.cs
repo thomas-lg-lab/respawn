@@ -26,20 +26,34 @@ public interface ISnapshotStore
 public interface ICatalogue
 {
     /// <summary>The store entries the catalogue already has among these, by their id in the store.</summary>
-    Task<IReadOnlyDictionary<string, Guid>> FindStoreEntriesAsync(
+    Task<IReadOnlyDictionary<string, StoreEntry>> FindStoreEntriesAsync(
         string source, IReadOnlyCollection<string> externalIds, CancellationToken ct);
 
-    /// <summary>Adds store entries, each with the canonical record it points to.</summary>
+    /// <summary>Adds store entries, each with the canonical record it points to. The record takes the
+    /// store's name, and remembers that it did.</summary>
     Task AddAsync(IReadOnlyCollection<NewStoreEntry> entries, DateTimeOffset at, CancellationToken ct);
+
+    /// <summary>Gives store entries the name their store now says: a store entry's name is the store's
+    /// word, and always follows it. The canonical record follows only while its own name is still the
+    /// one this entry gave it: a record named otherwise since (by hand, by a merge, from another source)
+    /// keeps its name.</summary>
+    Task RenameAsync(IReadOnlyCollection<StoreEntryRename> renames, CancellationToken ct);
 }
 
 public interface ILibraryStore
 {
-    /// <summary>Brings a linked account's ownership and playtime to what a snapshot says. Entries it
-    /// does not list are left as they were.</summary>
-    Task RecordAsync(
-        Guid linkedAccountId, Guid snapshotId, IReadOnlyCollection<Ownership> owned, DateTimeOffset at, CancellationToken ct);
+    /// <summary>What is known of a linked account's library, by store entry.</summary>
+    Task<IReadOnlyDictionary<Guid, Ownership>> FindOwnershipsAsync(Guid linkedAccountId, CancellationToken ct);
 
-    /// <summary>Sorted by name.</summary>
+    /// <summary>Keeps what a snapshot said, one row per game, and brings these ownerships to the state
+    /// given. Ownerships that are not given are left as they were.</summary>
+    Task RecordAsync(
+        Guid linkedAccountId,
+        Guid snapshotId,
+        IReadOnlyCollection<Observation> said,
+        IReadOnlyCollection<Ownership> owned,
+        CancellationToken ct);
+
+    /// <summary>Sorted by name, the games without one last.</summary>
     Task<IReadOnlyList<OwnedGame>> ListAsync(Guid ownerId, CancellationToken ct);
 }

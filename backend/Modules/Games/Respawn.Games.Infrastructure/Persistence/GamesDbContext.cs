@@ -21,6 +21,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<RawSnapshotRow> RawSnapshots => Set<RawSnapshotRow>();
 
+    public DbSet<ObservationRow> Observations => Set<ObservationRow>();
+
     public DbSet<OwnershipRow> Ownerships => Set<OwnershipRow>();
 
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
@@ -81,6 +83,16 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             snapshot.HasIndex(s => new { s.LinkedAccountId, s.Kind, s.TakenAt });
             snapshot.HasIndex(s => new { s.Source, s.Kind, s.TakenAt });
             snapshot.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(s => s.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ObservationRow>(observation =>
+        {
+            observation.ToTable("observations", table => table.HasCheckConstraint(
+                "ck_observations_playtime", "playtime_seconds >= 0"));
+            // By snapshot first: a period is a range of snapshots. By store entry for one game over time.
+            observation.HasKey(o => new { o.SnapshotId, o.StoreEntryId });
+            observation.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(o => o.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+            observation.HasOne<StoreEntryRow>().WithMany().HasForeignKey(o => o.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<OwnershipRow>(ownership =>
