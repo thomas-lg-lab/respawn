@@ -37,6 +37,7 @@ services.AddDatabase(provider => RespawnSettings.Database(provider.GetRequiredSe
 // nothing uses it (a session is a row of the database, not an encrypted cookie), so its start-up
 // warnings about keys that are not persisted are silenced in appsettings.json.
 services.AddAccounts();
+services.AddGames();
 
 services
     .AddControllers(mvc =>

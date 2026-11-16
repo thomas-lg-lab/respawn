@@ -1,0 +1,119 @@
+using System.Data.Common;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+using Npgsql;
+using Respawn.SharedKernel;
+
+namespace Respawn.Games.Infrastructure.Persistence;
+
+/// <summary>The tables of the Games module, in its own schema: the catalogue, the linked store accounts,
+/// what the sources answered, and who owns and played what.</summary>
+public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : DbContext(options)
+{
+    /// <summary>The PostgreSQL schema this module owns. No other module reads or writes it.</summary>
+    public const string Schema = "games";
+
+    public DbSet<GameRow> Games => Set<GameRow>();
+
+    public DbSet<StoreEntryRow> StoreEntries => Set<StoreEntryRow>();
+
+    public DbSet<LinkedAccountRow> LinkedAccounts => Set<LinkedAccountRow>();
+
+    public DbSet<RawSnapshotRow> RawSnapshots => Set<RawSnapshotRow>();
+
+    public DbSet<OwnershipRow> Ownerships => Set<OwnershipRow>();
+
+    /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
+    /// migration at first connection and the design-time tools.</summary>
+    public static void Configure(DbContextOptionsBuilder options, DbDataSource dataSource) =>
+        options
+            .UseNpgsql(dataSource, npgsql => npgsql
+                // The module's migration history lives with its tables, so each module migrates alone.
+                .MigrationsHistoryTable("__EFMigrationsHistory", Schema)
+                // A pooled connection the server closed meanwhile is only found broken when used: the
+                // query is run again on a new one. Short and few, so a database that is really gone
+                // still answers 503 quickly.
+                .EnableRetryOnFailure(maxRetryCount: 2, maxRetryDelay: TimeSpan.FromMilliseconds(200), errorCodesToAdd: null))
+            .UseSnakeCaseNamingConvention();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasDefaultSchema(Schema);
+
+        // Nothing is deleted along with something else: no use case deletes yet, and the one that
+        // will says what goes with what.
+        modelBuilder.Entity<GameRow>(game =>
+        {
+            game.ToTable("games");
+            game.Property(g => g.Name).HasMaxLength(Limits.Name);
+            // One canonical record per IGDB game; the records without an id are not concerned.
+            game.HasIndex(g => g.IgdbId).IsUnique();
+        });
+
+        modelBuilder.Entity<StoreEntryRow>(entry =>
+        {
+            entry.ToTable("store_entries");
+            entry.Property(e => e.Source).HasMaxLength(Limits.Source);
+            entry.Property(e => e.ExternalId).HasMaxLength(Limits.ExternalId);
+            entry.Property(e => e.Name).HasMaxLength(Limits.Name);
+            entry.HasIndex(e => new { e.Source, e.ExternalId }).IsUnique();
+            entry.HasOne<GameRow>().WithMany().HasForeignKey(e => e.GameId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LinkedAccountRow>(account =>
+        {
+            account.ToTable("linked_accounts");
+            account.Property(a => a.Source).HasMaxLength(Limits.Source);
+            account.Property(a => a.ExternalId).HasMaxLength(Limits.ExternalId);
+            account.Property(a => a.DisplayName).HasMaxLength(Limits.DisplayName);
+            // A store account has one owner: nobody attaches someone else's library.
+            account.HasIndex(a => new { a.Source, a.ExternalId }).IsUnique();
+            account.HasIndex(a => a.OwnerId);
+        });
+
+        modelBuilder.Entity<RawSnapshotRow>(snapshot =>
+        {
+            snapshot.ToTable("raw_snapshots", table => table.HasCheckConstraint(
+                "ck_raw_snapshots_personal", "(owner_id IS NULL) = (linked_account_id IS NULL)"));
+            snapshot.Property(s => s.Source).HasMaxLength(Limits.Source);
+            snapshot.Property(s => s.Kind).HasMaxLength(Limits.SnapshotKind);
+            snapshot.Property(s => s.Payload).HasColumnType("text");
+            snapshot.HasIndex(s => new { s.LinkedAccountId, s.Kind, s.TakenAt });
+            snapshot.HasIndex(s => new { s.Source, s.Kind, s.TakenAt });
+            snapshot.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(s => s.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<OwnershipRow>(ownership =>
+        {
+            ownership.ToTable("ownerships", table => table.HasCheckConstraint(
+                "ck_ownerships_playtime", "playtime_seconds >= 0"));
+            ownership.HasKey(o => new { o.LinkedAccountId, o.StoreEntryId });
+            ownership.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(o => o.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
+            ownership.HasOne<StoreEntryRow>().WithMany().HasForeignKey(o => o.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
+            ownership.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(o => o.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+}
+
+internal sealed class GamesSchemaMigrator : ISchemaMigrator
+{
+    public void Migrate(DbDataSource dataSource)
+    {
+        var options = new DbContextOptionsBuilder<GamesDbContext>();
+        GamesDbContext.Configure(options, dataSource);
+        using var context = new GamesDbContext(options.Options);
+        context.Database.Migrate();
+    }
+}
+
+/// <summary>For `dotnet ef migrations add` only: the tools need a context without starting the app, and
+/// never connect with it.</summary>
+internal sealed class GamesDbContextFactory : IDesignTimeDbContextFactory<GamesDbContext>
+{
+    public GamesDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<GamesDbContext>();
+        GamesDbContext.Configure(options, NpgsqlDataSource.Create("Host=localhost;Database=respawn"));
+        return new GamesDbContext(options.Options);
+    }
+}

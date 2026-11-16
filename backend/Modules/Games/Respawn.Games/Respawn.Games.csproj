@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The core of the Games module: the catalogue, the libraries and what the sources said, as use cases
+       and the ports they need. No package reference on purpose: nothing here knows about HTTP, the
+       database or a store. -->
+
+</Project>

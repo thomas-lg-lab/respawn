@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The outbound adapters of the Games module: its PostgreSQL schema. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Respawn.Games\Respawn.Games.csproj" />
+    <ProjectReference Include="..\..\..\Respawn.SharedKernel\Respawn.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- snake_case tables and columns, the PostgreSQL convention, without naming each one by hand. -->
+    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <!-- Design-time only (dotnet ef migrations add): not shipped with the app. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Respawn.Games.Tests" />
+  </ItemGroup>
+
+</Project>
