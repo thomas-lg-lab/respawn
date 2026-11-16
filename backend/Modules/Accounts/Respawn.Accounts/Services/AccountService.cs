@@ -56,7 +56,6 @@ public sealed partial class AccountService(
 
                 var account = await users.CreateAsync(
                     address, displayName.Trim(), password, await IsFirstAccountAsync(ct), ct);
-                await JoinDefaultGroupAsync(account, ct);
                 return await OpenSessionAsync(account, ct);
             },
             ct);
@@ -142,23 +141,16 @@ public sealed partial class AccountService(
             name = name[..DisplayNameMaxLength];
         }
 
-        var account = await users.CreateAsync(email, name, password: null, await IsFirstAccountAsync(ct), ct);
-        await JoinDefaultGroupAsync(account, ct);
-        return account;
+        return await users.CreateAsync(email, name, password: null, await IsFirstAccountAsync(ct), ct);
     }
 
-    /// <summary>Every account is a member of the default group, which the first account creates and
-    /// owns. Called inside the transaction that creates the account, where registrations run one at a
-    /// time: two first accounts cannot both create it.</summary>
-    private async Task JoinDefaultGroupAsync(Account account, CancellationToken ct)
-    {
-        var group = await groups.FindDefaultAsync(ct)
-            ?? await groups.CreateDefaultAsync(DefaultGroupName, account.Id, ct);
-        await groups.AddMemberAsync(group.Id, account.Id, ct);
-    }
-
+    /// <summary>Every sign-in ends here, the one of a new account included, inside its transaction.</summary>
     private async Task<SignedIn> OpenSessionAsync(Account account, CancellationToken ct)
     {
+        // Every account is in the default group. The rule is restored here rather than applied to the
+        // account at hand: an account may have been created by something that knows no groups (an
+        // instance of the previous version during an update), and the group itself may be missing.
+        await groups.EnsureEveryoneInDefaultGroupAsync(DefaultGroupName, ct);
         var token = await sessions.OpenAsync(account.Id, clock.GetUtcNow().AddDays(options.SessionDays), ct);
         return new SignedIn(account, token);
     }

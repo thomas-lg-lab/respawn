@@ -4,10 +4,6 @@ namespace Respawn.Accounts;
 /// provider that sends none.</summary>
 public sealed record Account(Guid Id, string? Email, string DisplayName, bool IsAdmin);
 
-/// <summary>A sharing scope: what an account makes visible, it shares with a group, never with the
-/// instance as a whole. The default group holds every account of the instance.</summary>
-public sealed record Group(Guid Id, string Name, Guid OwnerId, bool IsDefault);
-
 /// <summary>A sign-in through a provider, known by its issuer and subject, never by its e-mail.</summary>
 public sealed record ExternalIdentity(
     string Issuer,

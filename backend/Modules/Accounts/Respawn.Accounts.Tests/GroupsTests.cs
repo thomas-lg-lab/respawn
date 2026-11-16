@@ -74,6 +74,87 @@ public sealed class GroupsTests
     }
 
     [Fact]
+    public async Task An_account_created_without_a_group_joins_at_the_next_sign_in()
+    {
+        // An instance still running the version before groups creates an account after the migration:
+        // nothing put it in the default group.
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
+        var stranger = Guid.CreateVersion7();
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AccountsDbContext>();
+            db.Users.Add(new AppUser
+            {
+                Id = stranger,
+                UserName = stranger.ToString("N"),
+                NormalizedUserName = stranger.ToString("N").ToUpperInvariant(),
+                DisplayName = "Created elsewhere",
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Anyone signing in is enough: the rule is about every account, not the one signing in.
+        Assert.Equal(HttpStatusCode.OK, await browser.LoginAsync("first@example.org", TestApp.Password).StatusAsync());
+
+        var group = Assert.Single(await GroupsAsync(app));
+        Assert.Equal(owner, group.OwnerId);
+        Assert.Equal(new[] { owner, stranger }.Order(), await MembersAsync(app, group.Id));
+    }
+
+    [Fact]
+    public async Task A_missing_default_group_comes_back_to_the_administrator_with_everyone_in_it()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var first = app.Browser();
+        var administrator = (await first.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        using var second = app.Browser();
+        var member = (await second.RegisterAsync("second@example.org", "Second").JsonAsync()).GetProperty("id").GetGuid();
+
+        // The default group is gone while accounts exist; its memberships went with it.
+        TestDatabase.Run("DELETE FROM accounts.groups");
+
+        using var third = app.Browser();
+        var newcomer = (await third.RegisterAsync("third@example.org", "Third").JsonAsync()).GetProperty("id").GetGuid();
+
+        var group = Assert.Single(await GroupsAsync(app));
+        Assert.True(group.IsDefault);
+        Assert.Equal(administrator, group.OwnerId); // not the account that happened to register next
+        Assert.Equal(new[] { administrator, member, newcomer }.Order(), await MembersAsync(app, group.Id));
+    }
+
+    [Fact]
+    public async Task Sign_ins_at_the_same_time_restore_one_default_group()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var first = app.Browser();
+        await first.RegisterAsync();
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        string[] emails = ["first@example.org", .. Enumerable.Range(2, 5).Select(number => $"player{number}@example.org")];
+        foreach (var email in emails.Skip(1))
+        {
+            using var browser = app.Browser();
+            Assert.Equal(HttpStatusCode.Created, await browser.RegisterAsync(email, "Player").StatusAsync());
+        }
+
+        TestDatabase.Run("DELETE FROM accounts.groups");
+
+        // Each sign-in finds the group missing; the database lets one create it and the others wait.
+        var codes = await Task.WhenAll(emails.Select(async email =>
+        {
+            using var browser = app.Browser();
+            return await browser.LoginAsync(email, TestApp.Password).StatusAsync();
+        }));
+
+        Assert.All(codes, code => Assert.Equal(HttpStatusCode.OK, code));
+        var group = Assert.Single(await GroupsAsync(app));
+        Assert.Equal(emails.Length, (await MembersAsync(app, group.Id)).Count);
+    }
+
+    [Fact]
     public async Task A_registration_that_fails_leaves_no_group_behind()
     {
         // The account, its group and its membership are one transaction.

@@ -33,14 +33,15 @@ public interface IUserDirectory
     Task LinkExternalIdentityAsync(Guid accountId, string issuer, string subject, CancellationToken ct);
 }
 
+/// <summary>Groups are sharing scopes: what an account makes visible, it shares with a group, never with
+/// the instance as a whole.</summary>
 public interface IGroupDirectory
 {
-    Task<Group?> FindDefaultAsync(CancellationToken ct);
-
-    /// <summary>Creates the default group, owned by this account. The instance has one at most.</summary>
-    Task<Group> CreateDefaultAsync(string name, Guid ownerId, CancellationToken ct);
-
-    Task AddMemberAsync(Guid groupId, Guid accountId, CancellationToken ct);
+    /// <summary>Makes the rule true again, whatever broke it: the instance has one default group, and
+    /// every account is a member of it. A default group that is missing while accounts exist is created
+    /// under this name and owned by the first administrator. Changes nothing when the rule already
+    /// holds, and may be asked by several requests at once.</summary>
+    Task EnsureEveryoneInDefaultGroupAsync(string defaultGroupName, CancellationToken ct);
 }
 
 public interface IInstanceSettings

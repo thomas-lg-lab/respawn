@@ -32,31 +32,36 @@ internal sealed class EfUnitOfWork(AccountsDbContext db) : IUnitOfWork
 
 internal sealed class EfGroupDirectory(AccountsDbContext db, TimeProvider clock) : IGroupDirectory
 {
-    public async Task<Group?> FindDefaultAsync(CancellationToken ct) =>
-        await db.Groups.AsNoTracking()
-            .Where(g => g.IsDefault)
-            .Select(g => new Group(g.Id, g.Name, g.OwnerId, g.IsDefault))
-            .FirstOrDefaultAsync(ct);
-
-    public async Task<Group> CreateDefaultAsync(string name, Guid ownerId, CancellationToken ct)
+    public async Task EnsureEveryoneInDefaultGroupAsync(string defaultGroupName, CancellationToken ct)
     {
-        var group = new UserGroup
-        {
-            Id = Guid.CreateVersion7(),
-            Name = name,
-            OwnerId = ownerId,
-            IsDefault = true,
-            CreatedAt = clock.GetUtcNow(),
-        };
-        db.Groups.Add(group);
-        await db.SaveChangesAsync(ct);
-        return new Group(group.Id, group.Name, group.OwnerId, group.IsDefault);
-    }
+        var id = Guid.CreateVersion7();
+        var now = clock.GetUtcNow();
 
-    public async Task AddMemberAsync(Guid groupId, Guid accountId, CancellationToken ct)
-    {
-        db.GroupMemberships.Add(new GroupMembership { GroupId = groupId, UserId = accountId, JoinedAt = clock.GetUtcNow() });
-        await db.SaveChangesAsync(ct);
+        // Two statements that change nothing when there is nothing to do, and that the database keeps
+        // right under concurrency: the unique index on the default group and the key of a membership
+        // make a second writer wait for the first, then skip. The same choice of owner as the
+        // migration that created groups: the first administrator, else the oldest account.
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO accounts.groups (id, name, owner_id, is_default, created_at)
+            SELECT {id}, {defaultGroupName}, u.id, TRUE, {now}
+            FROM accounts.users u
+            WHERE NOT EXISTS (SELECT 1 FROM accounts.groups WHERE is_default)
+            ORDER BY u.is_admin DESC, u.created_at, u.id
+            LIMIT 1
+            ON CONFLICT DO NOTHING
+            """,
+            ct);
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO accounts.group_memberships (group_id, user_id, joined_at)
+            SELECT g.id, u.id, {now}
+            FROM accounts.groups g CROSS JOIN accounts.users u
+            WHERE g.is_default
+              AND NOT EXISTS (SELECT 1 FROM accounts.group_memberships m WHERE m.group_id = g.id AND m.user_id = u.id)
+            ON CONFLICT DO NOTHING
+            """,
+            ct);
     }
 }
 
