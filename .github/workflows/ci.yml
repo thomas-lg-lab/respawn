@@ -85,8 +85,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          # No dependency cache: this workflow also publishes the image, and a cache written by one run
+          # and restored by a publishing one is a way in. The install takes a few seconds without it.
+          package-manager-cache: false
       # npm ci fails when package-lock.json does not match package.json: a dependency cannot change
       # without its reviewed lock file.
       - name: Install the locked dependencies
