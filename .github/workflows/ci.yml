@@ -69,7 +69,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: thomas-lg-lab/.github/.github/workflows/container-image.yml@a92d2da3fe9b957708e2cbe1b2d4a8901b2fa94d # feat/contract-test-variants, until its release
+    uses: thomas-lg-lab/.github/.github/workflows/container-image.yml@f10456289f5a2a0c870efc2500bc8008a4bd60da # feat/contract-test-variants, until its release
     with:
       contract-test: true
       contract-protected-path: /api/v1/me
