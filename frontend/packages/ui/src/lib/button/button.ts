@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 /**
  * `primary` is the one filled action of a screen, `outlined` every other, `icon` a round
@@ -27,7 +27,6 @@ const VARIANTS: Record<ButtonVariant, string> = {
  */
 @Component({
   selector: 'button[rsButton], a[rsButton]',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class]': 'classes()', '[attr.aria-label]': 'ariaLabel()' },
   template: `<ng-content />`,
 })

@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DisplaySettings } from './display-settings';
 
@@ -7,7 +5,6 @@ describe('DisplaySettings', () => {
   const root = document.documentElement;
 
   function create(): DisplaySettings {
-    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });
     const settings = TestBed.inject(DisplaySettings);
     TestBed.tick();
     return settings;

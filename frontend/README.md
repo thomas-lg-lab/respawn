@@ -1,6 +1,6 @@
 # Frontend
 
-Angular 22 (standalone components, signals, no Zone.js), Tailwind 4, Transloco for French and English, Vitest.
+Angular 22 (signals, zoneless and OnPush as the framework now defaults), Tailwind 4, Transloco for French and English, Vitest.
 Split into packages under `packages/`: `app` (the shell and its screens), `ui` (the design tokens and the base
 components), `util` (the display settings) and `data` (the API's types).
 

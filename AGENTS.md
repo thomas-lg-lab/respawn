@@ -49,6 +49,11 @@
   under `packages/`: `app` (the shell, its screens in `pages/`), `ui` (the tokens and the base components),
   `util`, `data` (the API's types). A package imports another through its `@respawn/x` barrel only, and only
   the ones `eslint.config.js` lists for it; `@x/...` is a package's own inside.
+- **Angular as it is today.** Zoneless and OnPush are the defaults since Angular 21 and 22: neither is written
+  out, and `ChangeDetectionStrategy.Eager` is refused by lint. State is signals (`signal`, `computed`,
+  `input()`, `model()`), a singleton is a `@Service()`, dependencies come from `inject()`, host bindings go in
+  `host`. Tests use Vitest's globals and wait with `await fixture.whenStable()` rather than forcing
+  `detectChanges()`. Check angular.dev before reaching for an older idiom.
 - **Design tokens.** Every token is a `--rs-*` custom property in `packages/ui/src/styles/tokens.css`, switched
   at run time by `data-theme` and `data-character` on the root element. Components use the semantic Tailwind
   names mapped in `theme.css` (`bg-surface`, `rounded-card`, `type-body`), never a hex value; the default

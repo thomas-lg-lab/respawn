@@ -3,7 +3,6 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "strict": true,
     "paths": {
       // Two namespaces, and the difference is the point: `@respawn/x` is another package's
       // public surface, `@x/…` is a package's own inside. Lint rejects a file that reaches
@@ -34,8 +33,7 @@
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
-    "strictInputAccessModifiers": true,
-    "strictTemplates": true
+    "strictInputAccessModifiers": true
   },
   "files": [],
   "references": [

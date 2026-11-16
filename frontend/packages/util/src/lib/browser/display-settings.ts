@@ -1,4 +1,4 @@
-import { DOCUMENT, Injectable, effect, inject, signal } from '@angular/core';
+import { DOCUMENT, Service, effect, inject, signal } from '@angular/core';
 import { readChoice, writeChoice } from './stored-choice';
 
 /** `system` follows the device's preference and is the default. */
@@ -17,7 +17,7 @@ const CHARACTER_KEY = 'respawn.character';
  * styles read: `data-theme` (absent for `system`, so the style sheet alone follows the
  * device) and `data-character`. Kept in the browser until an account can hold them.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DisplaySettings {
   private readonly root = inject(DOCUMENT).documentElement;
 

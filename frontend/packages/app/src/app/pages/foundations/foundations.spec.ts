@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import en from '@app/i18n/en.json';
@@ -23,7 +21,6 @@ describe('Foundations', () => {
           preloadLangs: true,
         }),
       ],
-      providers: [provideZonelessChangeDetection()],
     });
     const fixture = TestBed.createComponent(Foundations);
     await fixture.whenStable();

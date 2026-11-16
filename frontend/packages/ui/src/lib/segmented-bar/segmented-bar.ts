@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 /**
  * How many of `segments` are filled for `value` out of `max`. Anything above zero fills
@@ -16,7 +16,6 @@ export function filledSegments(value: number, max: number, segments: number): nu
  */
 @Component({
   selector: 'rs-segmented-bar',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex items-center gap-3.5' },
   template: `
     <span class="flex min-w-0 flex-1 gap-segment-gap" aria-hidden="true">

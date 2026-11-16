@@ -1,4 +1,4 @@
-import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
+import { DOCUMENT, Service, inject, signal } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 import { readChoice, writeChoice } from '@respawn/util';
 import { firstValueFrom } from 'rxjs';
@@ -34,7 +34,7 @@ export function initialLanguage(): Language {
  * The language of the interface. Before sign-in it is the browser's, or the one chosen
  * here, which this browser keeps; an account will carry it later.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class LanguageSetting {
   private readonly transloco = inject(TranslocoService);
   private readonly root = inject(DOCUMENT).documentElement;

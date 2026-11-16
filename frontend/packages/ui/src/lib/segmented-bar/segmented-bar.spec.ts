@@ -1,5 +1,4 @@
-import { describe, expect, it } from 'vitest';
-import { Component, provideZonelessChangeDetection } from '@angular/core';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { SegmentedBar, filledSegments } from './segmented-bar';
 
@@ -24,10 +23,9 @@ describe('SegmentedBar', () => {
     expect(filledSegments(Number.NaN, 200, 20)).toBe(0);
   });
 
-  it('draws the segments for the eye only, beside the value in text', () => {
-    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });
+  it('draws the segments for the eye only, beside the value in text', async () => {
     const fixture = TestBed.createComponent(Host);
-    fixture.detectChanges();
+    await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
     const drawing = host.querySelector('[aria-hidden="true"]')!;
 

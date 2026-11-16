@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  booleanAttribute,
-  computed,
-  input,
-} from '@angular/core';
+import { Component, booleanAttribute, computed, input } from '@angular/core';
 
 /**
  * A card: a surface with a hairline border. No shadow anywhere: surfaces are told apart by
@@ -12,7 +6,6 @@ import {
  */
 @Component({
   selector: 'rs-card',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class]': 'classes()' },
   template: `<ng-content />`,
 })

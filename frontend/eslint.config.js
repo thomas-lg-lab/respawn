@@ -102,6 +102,19 @@ module.exports = tseslint.config(
           { type: 'attribute', prefix: 'rs', style: 'camelCase' },
         ],
       ],
+      // OnPush is the default since Angular 22 and is not written out; this rule still asks
+      // for it by name. What must not appear is the opt-out, `Eager`.
+      '@angular-eslint/prefer-on-push-component-change-detection': 'off',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "MemberExpression[object.name='ChangeDetectionStrategy'][property.name=/^(Eager|Default)$/]",
+          message: 'Components are OnPush, the default: state is a signal, not an eager check.',
+        },
+      ],
+      // A singleton is a `@Service()`, not an `@Injectable({ providedIn: 'root' })`.
+      '@angular-eslint/prefer-service-decorator': 'error',
       // Underscore-prefixed names are intentionally unused.
       '@typescript-eslint/no-unused-vars': [
         'error',

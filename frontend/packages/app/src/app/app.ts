@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { Logo } from '@respawn/ui';
 import { Foundations } from './pages/foundations/foundations';
 
@@ -8,7 +8,6 @@ import { Foundations } from './pages/foundations/foundations';
  */
 @Component({
   selector: 'rs-root',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Logo, Foundations],
   host: { class: 'app-container block min-h-dvh' },
   templateUrl: './app.html',

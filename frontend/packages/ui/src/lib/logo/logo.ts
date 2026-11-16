@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 
 /**
  * The logo: the cursor icon (a pixel "r" with its hook, then a block in the accent) and the
@@ -11,7 +11,6 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
  */
 @Component({
   selector: 'rs-logo',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block [container-type:inline-size]' },
   template: `
     <span class="flex items-center gap-2 text-text">

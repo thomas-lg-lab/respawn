@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@angular/core';
+import { Component, booleanAttribute, input } from '@angular/core';
 
 /**
  * A pill: a filter, a wish, or one position of a segmented choice. It is a toggle: its
@@ -6,7 +6,6 @@ import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@an
  */
 @Component({
   selector: 'button[rsPill]',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     type: 'button',
     '[attr.aria-pressed]': 'pressed()',

@@ -4,7 +4,6 @@ import {
   isDevMode,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
-  provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideTransloco } from '@jsverse/transloco';
 import { DisplaySettings } from '@respawn/util';
@@ -14,8 +13,6 @@ import { TranslationLoader } from './i18n/translation-loader';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    // No Zone.js: change detection is driven by signals.
-    provideZonelessChangeDetection(),
     provideTransloco({
       config: {
         availableLangs: [...LANGUAGES],

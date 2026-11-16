@@ -1,5 +1,4 @@
-import { describe, expect, it } from 'vitest';
-import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Button, type ButtonVariant } from './button';
 
@@ -14,7 +13,6 @@ class Host {
 
 describe('Button', () => {
   function create(variant: ButtonVariant, name?: string) {
-    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.variant.set(variant);
     fixture.componentInstance.name.set(name);
@@ -24,16 +22,16 @@ describe('Button', () => {
   const button = (fixture: ReturnType<typeof create>): HTMLButtonElement =>
     (fixture.nativeElement as HTMLElement).querySelector('button')!;
 
-  it('fills the primary action with the accent', () => {
+  it('fills the primary action with the accent', async () => {
     const fixture = create('primary');
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(button(fixture).className).toContain('bg-accent');
   });
 
-  it('outlines every other action', () => {
+  it('outlines every other action', async () => {
     const fixture = create('outlined');
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(button(fixture).className).toContain('border-control-line');
     expect(button(fixture).className).not.toContain('bg-accent');
@@ -45,9 +43,9 @@ describe('Button', () => {
     expect(() => fixture.detectChanges()).toThrowError(/aria-label/);
   });
 
-  it('accepts an icon button once it is named, and carries the name', () => {
+  it('accepts an icon button once it is named, and carries the name', async () => {
     const fixture = create('icon', 'Synchronise');
-    fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(button(fixture).getAttribute('aria-label')).toBe('Synchronise');
     expect(button(fixture).className).toContain('size-touch');

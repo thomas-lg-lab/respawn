@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { browserLanguage } from './language';
 import en from './en.json';
 import fr from './fr.json';

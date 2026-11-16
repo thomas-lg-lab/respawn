@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideRefreshCw } from '@lucide/angular';
 import { Button, Card, Label, Pill, SegmentedBar } from '@respawn/ui';
@@ -15,7 +15,6 @@ type Filter = (typeof FILTERS)[number];
  */
 @Component({
   selector: 'rs-foundations',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [TranslocoDirective, Button, Card, Label, Pill, SegmentedBar, LucideRefreshCw],
   templateUrl: './foundations.html',
 })

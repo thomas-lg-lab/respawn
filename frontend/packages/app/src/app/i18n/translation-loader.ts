@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import type { Translation, TranslocoLoader } from '@jsverse/transloco';
 import type { Language } from './language';
 
@@ -11,7 +11,7 @@ const FILES: Record<Language, () => Promise<{ default: Translation }>> = {
   en: () => import('./en.json'),
 };
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class TranslationLoader implements TranslocoLoader {
   async getTranslation(language: string): Promise<Translation> {
     const file = FILES[language as Language];

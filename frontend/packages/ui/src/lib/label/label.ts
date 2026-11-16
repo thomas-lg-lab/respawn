@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@angular/core';
+import { Component, booleanAttribute, input } from '@angular/core';
 
 /**
  * A section label, on the element that fits the outline (`<h2 rsLabel>`, `<p rsLabel>`).
@@ -8,7 +8,6 @@ import { ChangeDetectionStrategy, Component, booleanAttribute, input } from '@an
  */
 @Component({
   selector: '[rsLabel]',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block type-label text-accent-text' },
   template: `@if (main()) {
       <span class="label-prompt" aria-hidden="true"></span>
