@@ -41,19 +41,47 @@ export class LanguageSetting {
 
   readonly current = signal<Language>(initialLanguage());
 
-  /** Loads the starting language before the first screen is drawn: no flash of keys. */
+  /**
+   * Loads the starting language before the first screen is drawn: no flash of keys. It never
+   * fails: a language whose file cannot be fetched (offline, or a tab older than the version
+   * now served) gives way to the fallback, and with no file at all the app still starts.
+   * The kept choice is left alone: it was not at fault, and the next visit tries it again.
+   */
   async start(): Promise<void> {
-    await this.apply(this.current());
+    const wanted = this.current();
+    if (await this.load(wanted)) {
+      this.show(wanted);
+    } else if (wanted !== FALLBACK_LANGUAGE && (await this.load(FALLBACK_LANGUAGE))) {
+      this.show(FALLBACK_LANGUAGE);
+    }
   }
 
-  async use(language: Language): Promise<void> {
+  /**
+   * Switches to a language once its translations are there, and only then remembers it.
+   * Answers whether it switched: when the file cannot be fetched, nothing changes.
+   */
+  async use(language: Language): Promise<boolean> {
+    if (!(await this.load(language))) return false;
     writeChoice(LANGUAGE_KEY, language);
-    await this.apply(language);
+    this.show(language);
+    return true;
   }
 
-  private async apply(language: Language): Promise<void> {
-    // The switch waits for the translations, so the page never shows a language half loaded.
-    await firstValueFrom(this.transloco.load(language));
+  /** Whether the language's own translations are loaded. */
+  private async load(language: Language): Promise<boolean> {
+    try {
+      // Completes without a value when Transloco answers a failed load from a fallback it
+      // already holds.
+      await firstValueFrom(this.transloco.load(language), { defaultValue: null });
+    } catch {
+      return false;
+    }
+    // After a failed load Transloco quietly holds the fallback's translations instead:
+    // only the language's own count.
+    return Object.keys(this.transloco.getTranslation(language)).length > 0;
+  }
+
+  private show(language: Language): void {
     this.transloco.setActiveLang(language);
     this.root.lang = language;
     this.current.set(language);

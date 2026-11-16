@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, input, isDevMode } from '@angular/core';
 
 /**
  * `primary` is the one filled action of a screen, `outlined` every other, `icon` a round
@@ -22,8 +22,10 @@ const VARIANTS: Record<ButtonVariant, string> = {
  * A button, on the native element so its type, its `disabled` and its focus stay the
  * browser's: `<button rsButton>` or, for a navigation, `<a rsButton>`.
  *
- * An `icon` button shows no text, so it must be named: `aria-label` is required there, and
- * a missing one is an error rather than a silent unnamed control.
+ * An `icon` button shows no text, so it must be named, with `aria-label` or
+ * `aria-labelledby`. While developing and in tests an unnamed one is reported on the
+ * console; it never throws, so a name that arrives late (a value not loaded yet) or a
+ * forgotten one cannot take a screen down.
  */
 @Component({
   selector: 'button[rsButton], a[rsButton]',
@@ -34,11 +36,20 @@ export class Button {
   readonly variant = input<ButtonVariant>('outlined');
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  protected readonly classes = computed(() => {
-    const variant = this.variant();
-    if (variant === 'icon' && !this.ariaLabel()?.trim()) {
-      throw new Error('rsButton: an icon button needs an aria-label, it shows no text.');
+  protected readonly classes = computed(() => `${BASE} ${VARIANTS[this.variant()]}`);
+
+  constructor() {
+    if (isDevMode()) {
+      const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+      effect(() => {
+        const named = !!this.ariaLabel()?.trim() || host.hasAttribute('aria-labelledby');
+        if (this.variant() === 'icon' && !named) {
+          console.error(
+            'rsButton: this icon button has no accessible name. Give it an aria-label.',
+            host,
+          );
+        }
+      });
     }
-    return `${BASE} ${VARIANTS[variant]}`;
-  });
+  }
 }

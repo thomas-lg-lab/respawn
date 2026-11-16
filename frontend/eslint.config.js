@@ -59,6 +59,13 @@ const NO_PAGE_FROM_COMPONENT = {
   message: 'A component must not import a page; pages compose components, never the reverse.',
 };
 
+/** The attributes whose value a person reads or hears, as a selector's regular expression. */
+const SPOKEN_ATTRIBUTES =
+  '/^(alt|title|label|placeholder|aria-label|aria-description|aria-placeholder|aria-roledescription|aria-valuetext)$/';
+
+const NO_TEXT_IN_ATTRIBUTE =
+  'No text written in a template: this attribute is read or heard, so its value comes from the translation files.';
+
 module.exports = tseslint.config(
   {
     // Build outputs, generated code and this file are not linted.
@@ -152,11 +159,26 @@ module.exports = tseslint.config(
       // `x != null` is the intentional "neither null nor undefined" check in templates.
       '@angular-eslint/template/eqeqeq': ['error', { allowNullOrUndefined: true }],
       // No text written in a template: every sentence comes from the translation files.
-      // This is Angular's own i18n rule with its id and attribute checks turned off, which
-      // leaves the part that matters with Transloco: a text node that is not an expression.
+      // Text nodes: Angular's own i18n rule with its id and attribute checks turned off,
+      // which leaves the part that matters with Transloco, a text node that is not an
+      // expression. Its attribute check would flag every attribute, technical ones included.
       '@angular-eslint/template/i18n': [
         'error',
         { checkId: false, checkText: true, checkAttributes: false },
+      ],
+      // Attributes: the ones a person reads or hears are named here, and refused when they
+      // hold a literal, written plainly (`title="Sync"`) or as a bound string
+      // (`[title]="'Sync'"`). An empty one stays allowed: `alt=""` marks a decoration.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: `TextAttribute[name=${SPOKEN_ATTRIBUTES}][value=/\\S/]`,
+          message: NO_TEXT_IN_ATTRIBUTE,
+        },
+        {
+          selector: `BoundAttribute[name=${SPOKEN_ATTRIBUTES}] > ASTWithSource > LiteralPrimitive[value=/\\S/]`,
+          message: NO_TEXT_IN_ATTRIBUTE,
+        },
       ],
     },
   },
@@ -166,6 +188,7 @@ module.exports = tseslint.config(
     files: ['packages/app/src/index.html', '**/*.spec.ts/*.html'],
     rules: {
       '@angular-eslint/template/i18n': 'off',
+      'no-restricted-syntax': 'off',
     },
   },
 );

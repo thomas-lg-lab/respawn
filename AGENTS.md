@@ -59,7 +59,8 @@
   names mapped in `theme.css` (`bg-surface`, `rounded-card`, `type-body`), never a hex value; the default
   palette is removed, so a palette step produces no style. One layout breakpoint: `wide:`.
 - **No text in a template.** Every sentence is a key of `i18n/fr.json` and `i18n/en.json`, which keep the same
-  keys; lint refuses a literal text node.
+  keys; lint refuses a literal text node, and a literal in an attribute that is read or heard (`aria-label`,
+  `placeholder`, `title`, `alt`...). A language is shown and remembered only once its translations loaded.
 - **API types are generated.** `frontend/openapi.json` is the description the API serves and `api-types.ts`
   comes from it (`npm run gen:api`); the CI fails when either is stale. Never edit them by hand.
 - **Checks and dependencies**: CONTRIBUTING.md.

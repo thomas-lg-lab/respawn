@@ -12,6 +12,8 @@ class Host {
 }
 
 describe('Button', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   function create(variant: ButtonVariant, name?: string) {
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.variant.set(variant);
@@ -37,17 +39,34 @@ describe('Button', () => {
     expect(button(fixture).className).not.toContain('bg-accent');
   });
 
-  it('refuses an icon button that has no accessible name', () => {
+  it('reports an icon button that has no accessible name, and still draws it', async () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const fixture = create('icon');
+    await fixture.whenStable();
 
-    expect(() => fixture.detectChanges()).toThrowError(/aria-label/);
+    expect(reported).toHaveBeenCalledWith(expect.stringMatching(/aria-label/), button(fixture));
+    expect(button(fixture).className).toContain('size-touch');
   });
 
-  it('accepts an icon button once it is named, and carries the name', async () => {
-    const fixture = create('icon', 'Synchronise');
+  it('takes a name that arrives after the first render', async () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const fixture = create('icon', '');
+    await fixture.whenStable();
+    expect(reported).toHaveBeenCalledTimes(1);
+
+    fixture.componentInstance.name.set('Synchronise');
     await fixture.whenStable();
 
     expect(button(fixture).getAttribute('aria-label')).toBe('Synchronise');
-    expect(button(fixture).className).toContain('size-touch');
+    expect(reported).toHaveBeenCalledTimes(1);
+  });
+
+  it('says nothing of an icon button that is named', async () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const fixture = create('icon', 'Synchronise');
+    await fixture.whenStable();
+
+    expect(reported).not.toHaveBeenCalled();
+    expect(button(fixture).getAttribute('aria-label')).toBe('Synchronise');
   });
 });

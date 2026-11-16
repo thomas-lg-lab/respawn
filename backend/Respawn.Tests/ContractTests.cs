@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Respawn.Testing;
 
 namespace Respawn.Tests;
@@ -98,10 +99,16 @@ public sealed class ContractTests
         Assert.True(user.TryGetProperty("display_name", out _));
         Assert.False(user.TryGetProperty("displayName", out _));
 
-        // A route that declares its refusals still describes its answer.
-        var paths = document.GetProperty("paths");
-        Assert.True(paths.GetProperty("/api/v1/me").GetProperty("get").GetProperty("responses").TryGetProperty("200", out _));
-        Assert.True(paths.GetProperty("/api/v1/auth/login").GetProperty("post").GetProperty("responses").TryGetProperty("200", out _));
+        // Every route that declares a refusal still describes a success: declaring one answer by hand
+        // hides the one the framework would have inferred, and the front then gets no type for it.
+        var withoutSuccess =
+            from path in document.GetProperty("paths").EnumerateObject()
+            from operation in path.Value.EnumerateObject()
+            where operation.Value.ValueKind == JsonValueKind.Object && operation.Value.TryGetProperty("responses", out _)
+            let statuses = operation.Value.GetProperty("responses").EnumerateObject().Select(response => response.Name).ToList()
+            where statuses.Any(status => status[0] is '4' or '5') && !statuses.Any(status => status[0] == '2')
+            select $"{operation.Name.ToUpperInvariant()} {path.Name}";
+        Assert.Empty(withoutSuccess);
 
         // The same document wherever it is asked: no address of the host in it.
         Assert.False(document.TryGetProperty("servers", out var servers) && servers.GetArrayLength() > 0);

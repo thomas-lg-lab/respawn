@@ -46,7 +46,9 @@ subsets a page uses, about 138 kB for the three Latin files.
 ## Translations
 
 `packages/app/src/app/i18n/fr.json` and `en.json`, with the same keys (a test checks it). No sentence is
-written in a template: a lint rule refuses a text node that is not an expression. Before sign-in the language
+written in a template: lint refuses a text node that is not an expression, and a literal in an attribute a person
+reads or hears (`aria-label`, `placeholder`, `title`, `alt`...). A language whose file cannot be fetched gives
+way to English, and is only remembered once it has loaded. Before sign-in the language
 is the browser's, or the one chosen on the page, which the browser keeps.
 
 ## API types
