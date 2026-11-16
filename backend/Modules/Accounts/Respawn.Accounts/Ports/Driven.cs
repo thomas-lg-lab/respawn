@@ -33,6 +33,16 @@ public interface IUserDirectory
     Task LinkExternalIdentityAsync(Guid accountId, string issuer, string subject, CancellationToken ct);
 }
 
+public interface IGroupDirectory
+{
+    Task<Group?> FindDefaultAsync(CancellationToken ct);
+
+    /// <summary>Creates the default group, owned by this account. The instance has one at most.</summary>
+    Task<Group> CreateDefaultAsync(string name, Guid ownerId, CancellationToken ct);
+
+    Task AddMemberAsync(Guid groupId, Guid accountId, CancellationToken ct);
+}
+
 public interface IInstanceSettings
 {
     Task<bool> GetFlagAsync(string key, bool fallback, CancellationToken ct);

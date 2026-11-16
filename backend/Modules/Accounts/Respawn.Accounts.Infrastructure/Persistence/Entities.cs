@@ -14,6 +14,30 @@ public sealed class AppUser : IdentityUser<Guid>
     public DateTimeOffset CreatedAt { get; set; }
 }
 
+/// <summary>A sharing scope. The default group holds every account; the database allows one only.</summary>
+public sealed class UserGroup
+{
+    public Guid Id { get; set; }
+
+    public string Name { get; set; } = "";
+
+    public Guid OwnerId { get; set; }
+
+    public bool IsDefault { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>An account in a group, once at most.</summary>
+public sealed class GroupMembership
+{
+    public Guid GroupId { get; set; }
+
+    public Guid UserId { get; set; }
+
+    public DateTimeOffset JoinedAt { get; set; }
+}
+
 /// <summary>A signed-in browser. Only the SHA-256 of the cookie's token is stored.</summary>
 public sealed class Session
 {

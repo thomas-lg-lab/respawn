@@ -219,6 +219,29 @@ namespace Respawn.Accounts.Infrastructure.Persistence.Migrations
                     b.ToTable("exchanged_tokens", "accounts");
                 });
 
+            modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.GroupMembership", b =>
+                {
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.HasKey("GroupId", "UserId")
+                        .HasName("pk_group_memberships");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_group_memberships_user_id");
+
+                    b.ToTable("group_memberships", "accounts");
+                });
+
             modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.Session", b =>
                 {
                     b.Property<Guid>("Id")
@@ -275,6 +298,45 @@ namespace Respawn.Accounts.Infrastructure.Persistence.Migrations
                     b.ToTable("settings", "accounts");
                 });
 
+            modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.UserGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_groups");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasDatabaseName("ix_groups_is_default")
+                        .HasFilter("is_default");
+
+                    b.HasIndex("OwnerId")
+                        .HasDatabaseName("ix_groups_owner_id");
+
+                    b.ToTable("groups", "accounts");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.HasOne("Respawn.Accounts.Infrastructure.Persistence.AppUser", null)
@@ -305,6 +367,23 @@ namespace Respawn.Accounts.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_user_tokens_users_user_id");
                 });
 
+            modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.GroupMembership", b =>
+                {
+                    b.HasOne("Respawn.Accounts.Infrastructure.Persistence.UserGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_group_memberships_groups_group_id");
+
+                    b.HasOne("Respawn.Accounts.Infrastructure.Persistence.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_group_memberships_users_user_id");
+                });
+
             modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.Session", b =>
                 {
                     b.HasOne("Respawn.Accounts.Infrastructure.Persistence.AppUser", null)
@@ -313,6 +392,16 @@ namespace Respawn.Accounts.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_sessions_users_user_id");
+                });
+
+            modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.UserGroup", b =>
+                {
+                    b.HasOne("Respawn.Accounts.Infrastructure.Persistence.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_groups_users_owner_id");
                 });
 #pragma warning restore 612, 618
         }

@@ -30,6 +30,36 @@ internal sealed class EfUnitOfWork(AccountsDbContext db) : IUnitOfWork
         });
 }
 
+internal sealed class EfGroupDirectory(AccountsDbContext db, TimeProvider clock) : IGroupDirectory
+{
+    public async Task<Group?> FindDefaultAsync(CancellationToken ct) =>
+        await db.Groups.AsNoTracking()
+            .Where(g => g.IsDefault)
+            .Select(g => new Group(g.Id, g.Name, g.OwnerId, g.IsDefault))
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<Group> CreateDefaultAsync(string name, Guid ownerId, CancellationToken ct)
+    {
+        var group = new UserGroup
+        {
+            Id = Guid.CreateVersion7(),
+            Name = name,
+            OwnerId = ownerId,
+            IsDefault = true,
+            CreatedAt = clock.GetUtcNow(),
+        };
+        db.Groups.Add(group);
+        await db.SaveChangesAsync(ct);
+        return new Group(group.Id, group.Name, group.OwnerId, group.IsDefault);
+    }
+
+    public async Task AddMemberAsync(Guid groupId, Guid accountId, CancellationToken ct)
+    {
+        db.GroupMemberships.Add(new GroupMembership { GroupId = groupId, UserId = accountId, JoinedAt = clock.GetUtcNow() });
+        await db.SaveChangesAsync(ct);
+    }
+}
+
 internal sealed class EfInstanceSettings(AccountsDbContext db) : IInstanceSettings
 {
     public async Task<bool> GetFlagAsync(string key, bool fallback, CancellationToken ct)
