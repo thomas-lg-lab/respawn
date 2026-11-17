@@ -1,10 +1,11 @@
 /* The specs of the whole workspace: one Vitest run covers every package, resolving them
-   through the path aliases of tsconfig.json exactly as the production build does. */
+   through the path aliases of tsconfig.json exactly as the production build does. A
+   `testing/` folder holds what the specs of a package share; it is theirs, not the app's. */
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
     "types": ["vitest/globals"]
   },
-  "include": ["packages/**/*.d.ts", "packages/**/*.spec.ts"]
+  "include": ["packages/**/*.d.ts", "packages/**/*.spec.ts", "packages/**/testing/**/*.ts"]
 }

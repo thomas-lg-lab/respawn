@@ -1,4 +1,16 @@
-# --- Stage 1: publish the host ---
+# --- Stage 1: build the front ---
+# On the BUILD platform too: its output is files a browser reads, the same for every architecture.
+FROM --platform=$BUILDPLATFORM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS front
+WORKDIR /web
+
+# The dependencies first, in a layer of their own: npm ci installs exactly what the committed lock
+# file describes, and runs again only when it changes.
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# --- Stage 2: publish the host ---
 # Pinned to the BUILD platform, not the target: the publish is portable (no runtime identifier), so
 # its output is architecture-neutral IL plus a runtimes/ folder carrying every native asset. The
 # runtime stage below is what makes the image amd64 or arm64.
@@ -12,7 +24,7 @@ COPY backend/ ./backend/
 RUN dotnet restore backend/Respawn.Host/Respawn.Host.csproj --locked-mode
 RUN dotnet publish backend/Respawn.Host/Respawn.Host.csproj --configuration Release --output /publish --no-restore
 
-# --- Stage 2: runtime ---
+# --- Stage 3: runtime ---
 FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e
 
 LABEL org.opencontainers.image.title="respawn"
@@ -32,6 +44,8 @@ ENV APP_VERSION=$VERSION \
 
 WORKDIR /app
 COPY --from=build /publish ./
+# The front, where the host serves its files from.
+COPY --from=front /web/dist/app/browser ./wwwroot/
 
 # Any non-root user works: the app writes nowhere.
 USER 10001:10001

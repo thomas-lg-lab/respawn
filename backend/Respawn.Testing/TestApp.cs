@@ -27,6 +27,19 @@ internal sealed class TestApp : WebApplicationFactory<Program>
         _services = services;
     }
 
+    /// <summary>A stand-in for the front's build, which the image brings and the repository does not hold:
+    /// a document, a file named after its content and one that is not.</summary>
+    private static readonly Lazy<string> FrontBuild = new(() =>
+    {
+        var root = Directory.CreateTempSubdirectory("respawn-front-").FullName;
+        File.WriteAllText(Path.Combine(root, "index.html"), "<!doctype html><title>respawn</title><rs-root></rs-root>");
+        File.WriteAllText(Path.Combine(root, "main-QX2ZHB7T.js"), "");
+        File.WriteAllText(Path.Combine(root, "chunk-f7g-vKq6.js"), "");
+        File.WriteAllText(Path.Combine(root, "theme.js"), "");
+        File.WriteAllText(Path.Combine(root, "favicon.svg"), "<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+        return root;
+    });
+
     public LogCollector Logs { get; } = new();
 
     /// <summary>The address requests seem to come from: the visitor's, or the reverse proxy's.</summary>
@@ -61,6 +74,7 @@ internal sealed class TestApp : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseWebRoot(FrontBuild.Value);
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(_settings));
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
         builder.ConfigureTestServices(services =>

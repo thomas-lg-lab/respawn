@@ -21,11 +21,16 @@ public sealed partial class AccountService(
 
     private const string DefaultGroupName = "Everyone";
 
-    public async Task<SignInOptions> GetSignInOptionsAsync(CancellationToken ct) =>
-        new(
+    public async Task<SignInOptions> GetSignInOptionsAsync(CancellationToken ct)
+    {
+        var firstAccount = await IsFirstAccountAsync(ct);
+        return new(
             await settings.GetFlagAsync(InstanceFlags.LocalSignIn, true, ct),
-            await RegistrationAllowedAsync(ct),
+            firstAccount || await settings.GetFlagAsync(InstanceFlags.RegistrationOpen, false, ct),
+            firstAccount,
+            options.PasswordMinLength,
             options.OidcProviders);
+    }
 
     public async Task<SignedIn> RegisterAsync(string email, string displayName, string password, CancellationToken ct)
     {

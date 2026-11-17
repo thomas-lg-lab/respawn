@@ -36,12 +36,17 @@ docker run --rm -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
   npm test'
 ```
 
-The dev server, on http://localhost:4200:
+The dev server, on http://localhost:4200. It hands `/api` to the app, started beside it
+(`docker compose up --build`, on port 8080); `RESPAWN_API` says where that is when the dev server runs in a
+container:
 
 ```bash
-docker run --rm -it -p 4200:4200 -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
+docker run --rm -it -p 4200:4200 -e RESPAWN_API=http://host.docker.internal:8080   -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
   npm ci && npm start -- --host 0.0.0.0'
 ```
+
+The app itself serves the front only in the image, which builds it: `docker compose up --build` is the way to
+see the two together. Run from the sources, the app has no front and its addresses answer 404; the API works.
 
 The API's types are generated: `frontend/openapi.json` is a copy of what the API serves, and
 `packages/data/src/lib/models/api-types.ts` is what `openapi-typescript` makes of it. After a change to a
@@ -62,7 +67,7 @@ and adapters around it.
 
 | Project | Holds | May reference |
 | --- | --- | --- |
-| `Respawn.Host` | composition only: `Program.cs`, the HTTP pipeline, one `Add<Module>()` per module, the page | everything, but no database driver; nothing references it |
+| `Respawn.Host` | composition only: `Program.cs`, the HTTP pipeline, one `Add<Module>()` per module, the front's files | everything, but no database driver; nothing references it |
 | `Respawn.Persistence` | the database connection: opened on first use, every module's schema migrated then, a rotated password followed | the shared kernel; no module |
 | `Respawn.SharedKernel` | what modules and the host agree on: the error format, the database contracts | nothing, not even a package |
 | `Modules/Accounts/Respawn.Accounts` | the core: use cases and the ports they need | the shared kernel; no package |

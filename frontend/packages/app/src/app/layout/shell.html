@@ -1,0 +1,23 @@
+<header class="border-b border-line">
+  <div class="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 wide:px-10">
+    <a class="rounded-thumb" routerLink="/"><rs-logo class="w-48" /></a>
+
+    @if (me.data(); as account) {
+      <rs-account-menu
+        [account]="account"
+        [language]="language.current()"
+        [theme]="display.theme()"
+        [character]="display.character()"
+        [signingOut]="signingOut.isPending()"
+        (languagePicked)="language.use($event)"
+        (themePicked)="display.setTheme($event)"
+        (characterPicked)="display.setCharacter($event)"
+        (signOut)="signOut()"
+      />
+    }
+  </div>
+</header>
+
+<main class="mx-auto max-w-5xl px-4 py-6 wide:px-10 wide:py-10">
+  <router-outlet />
+</main>

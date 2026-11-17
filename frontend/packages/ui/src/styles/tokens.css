@@ -58,6 +58,11 @@
   --rs-group-3: #dde8ff;
   --rs-on-group-3: #081230;
 
+  /* Colour: a cover's placeholder. Its hue is the game's, set on the cover itself
+     (`--rs-cover-hue`); these two are the same for every cover and in both themes. */
+  --rs-cover-saturation: 38%;
+  --rs-cover-lightness: 26%;
+
   /* Typography: the families. The logo does not follow the character. */
   --rs-font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --rs-font-display: 'Bricolage Grotesque Variable', var(--rs-font-body);

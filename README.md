@@ -16,16 +16,16 @@
 
 Self-hosted game library: stats, backlog and next-game suggestions.
 
-**Status: early days.** Accounts and sign-in work, with the public API they need, one page to try them, and
-the image the rest will ship in. The library has its tables, its rules and one route to read it, and the
-front has its base; no store is read yet, so a library stays empty, and the app does not serve the new
-front yet.
+**Status: early days.** Accounts and sign-in work, with the public API they need, the front's first
+screens (sign in, create an account, who am I), and the image the rest will ship in. The library has its
+tables, its rules and one route to read it; no store is read yet, so a library stays empty and has no
+screen.
 
 | | |
 | --- | --- |
-| Today | Local accounts (the first one is the administrator), sign-in through OpenID Connect providers, sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description |
-| In place, not in use yet | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. Groups, the scope sharing will use: one default group every account joins. The front: Angular, the design tokens with a dark and a light theme, French and English, types generated from the API's description |
-| Planned | A connector that reads a Steam library every day, the library and stats screens, the backlog, more connectors, next-game suggestions |
+| Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; in the API only, sign-in through OpenID Connect providers. The front, served by the app: sign in, create an account, the account menu with its settings (language, theme, character), in French and in English |
+| In place, not in use yet | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. Groups, the scope sharing will use: one default group every account joins |
+| Planned | Sign-in through a provider from the sign-in screen, a connector that reads a Steam library every day, the library and stats screens, the backlog, more connectors, next-game suggestions |
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
@@ -90,7 +90,7 @@ up after five seconds.
 
 ### The database, when it is not there
 
-The app starts, and `GET /healthz` and the page answer, before the database is reachable; the routes that need
+The app starts, and `GET /healthz` and the front answer, before the database is reachable; the routes that need
 it answer 503 (`database_unavailable`) until it is. The schema is migrated on the first connection; if a
 migration fails, the routes keep answering 503, the log holds the error and the migration is tried again a
 minute later.
@@ -125,8 +125,9 @@ administrator, and registration is closed after it. Passwords are stored as Argo
 `RESPAWN_LOCKOUT_THRESHOLD` failed sign-ins an account is locked for `RESPAWN_LOCKOUT_MINUTES`; a locked
 account, a wrong password and an unknown e-mail get the same answer.
 
-**OpenID Connect.** Optional. With a provider configured, the front obtains an ID token (public client, PKCE)
-and posts it to `POST /api/v1/auth/oidc`; any provider with a discovery document works. The token's signature,
+**OpenID Connect.** Optional, and in the API only for now: the sign-in screen does not offer the providers
+yet. With a provider configured, a client obtains an ID token (public client, PKCE) and posts it to
+`POST /api/v1/auth/oidc`; any provider with a discovery document works. The token's signature,
 issuer, audience, lifetime and nonce are checked, and a token is exchanged once. An external identity is its
 issuer and subject, never its e-mail: an account is not attached to a provider because the addresses match, its
 owner signs in first and then links the provider. An account created from a provider takes the e-mail of the
@@ -137,12 +138,12 @@ token only when the provider says it is verified (`email_verified`).
 
 ## API
 
-Everything is under `/api/v1`, described by `GET /api/v1/openapi.json`. The page uses only these routes.
+Everything is under `/api/v1`, described by `GET /api/v1/openapi.json`. The front uses only these routes.
 Bodies are JSON, with names in `snake_case`.
 
 | Route | Does |
 | --- | --- |
-| `GET /api/v1/config` | What the sign-in page may offer: local sign-in, open registration, the providers |
+| `GET /api/v1/config` | What the sign-in page may offer: local sign-in, open registration, whether the account created now is the first one, the minimum length of a password, the providers |
 | `POST /api/v1/auth/register` | Creates a local account and signs in |
 | `POST /api/v1/auth/login` | Signs in with a local account |
 | `POST /api/v1/auth/oidc` | Signs in with an ID token of a configured provider; links it to the account already signed in |
@@ -177,7 +178,7 @@ adapters around it.
 
 | Project | Holds |
 | --- | --- |
-| `Respawn.Host` | Composition only: the HTTP pipeline, one registration per module, the page |
+| `Respawn.Host` | Composition only: the HTTP pipeline, one registration per module, the front's files |
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
 | `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
@@ -186,10 +187,12 @@ adapters around it.
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 | [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API's types) |
 
-The front has its base and one screen that shows it: the type styles, the base components, and the switches
-for the theme (the system's, dark or light), the character of the labels and the language. Its types come
-from `frontend/openapi.json`, a copy of the description the API serves, which the CI compares with the build.
-The app does not serve it yet; the page it serves today is the one in `Respawn.Host`.
+The image builds the front and the app serves it: its files at the root, and its document for every address
+that is neither a file nor under `/api` or `/healthz`, so the front routes its own screens and a reload lands
+on the same one. Its settings (the theme: the system's, dark or light; the character of the labels; the
+language) are kept in the browser for now. Its types come from `frontend/openapi.json`, a copy of the
+description the API serves, which the CI compares with the build. `/foundations` shows the type styles and
+the base components, with no session.
 
 A module owns one PostgreSQL schema and its migrations, and never reads another module's tables. These rules
 are tests: the build fails when a project references what it should not.

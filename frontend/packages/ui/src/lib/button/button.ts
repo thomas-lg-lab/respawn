@@ -6,8 +6,14 @@ import { Component, ElementRef, computed, effect, inject, input, isDevMode } fro
  */
 export type ButtonVariant = 'primary' | 'outlined' | 'icon';
 
+/**
+ * `pill` everywhere but in a form, where a button is a `field`: as wide and as round as the
+ * fields above it.
+ */
+export type ButtonShape = 'pill' | 'field';
+
 const BASE =
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-pill type-control ' +
+  'inline-flex shrink-0 items-center justify-center gap-2 type-control ' +
   'transition-[background-color,opacity,translate] duration-hover ' +
   'active:translate-y-px disabled:pointer-events-none disabled:opacity-50';
 
@@ -16,6 +22,11 @@ const VARIANTS: Record<ButtonVariant, string> = {
   outlined:
     'min-h-touch border border-control-line bg-transparent px-4.5 font-medium text-text hover:bg-surface-2',
   icon: 'size-touch border border-control-line bg-transparent text-text hover:bg-surface-2',
+};
+
+const SHAPES: Record<ButtonShape, string> = {
+  pill: 'rounded-pill',
+  field: 'w-full rounded-field',
 };
 
 /**
@@ -36,7 +47,11 @@ export class Button {
   readonly variant = input<ButtonVariant>('outlined');
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  protected readonly classes = computed(() => `${BASE} ${VARIANTS[this.variant()]}`);
+  readonly shape = input<ButtonShape>('pill');
+
+  protected readonly classes = computed(
+    () => `${BASE} ${SHAPES[this.shape()]} ${VARIANTS[this.variant()]}`,
+  );
 
   constructor() {
     if (isDevMode()) {

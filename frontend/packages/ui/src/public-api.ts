@@ -2,9 +2,15 @@
  * Public API surface of @respawn/ui
  */
 
+export * from './lib/avatar/avatar';
+export * from './lib/banner/banner';
 export * from './lib/button/button';
 export * from './lib/card/card';
+export * from './lib/cover/cover';
+export * from './lib/disclosure/disclosure';
 export * from './lib/label/label';
 export * from './lib/logo/logo';
 export * from './lib/pill/pill';
+export * from './lib/pill-group/pill-group';
 export * from './lib/segmented-bar/segmented-bar';
+export * from './lib/text-field/text-field';

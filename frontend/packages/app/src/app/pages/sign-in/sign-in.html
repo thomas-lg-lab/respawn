@@ -1,0 +1,87 @@
+<div class="flex min-h-dvh flex-col wide:flex-row" *transloco="let t">
+  <rs-sign-in-art class="wide:flex-1" [tagline]="t('signIn.tagline')" />
+
+  <main class="flex flex-1 items-center justify-center px-4 py-10 wide:px-8">
+    <div class="flex w-full max-w-95 flex-col gap-5">
+      @switch (view()) {
+        @case ('loading') {
+          <p class="text-muted" role="status">{{ t('signIn.loading') }}</p>
+        }
+        @case ('unavailable') {
+          <h1 class="type-page-title">{{ t('signIn.title') }}</h1>
+          <rs-banner tone="warn" role="alert">{{ t(failureKey(options.error())) }}</rs-banner>
+          <button rsButton shape="field" type="button" (click)="options.refetch()">
+            {{ t('signIn.retry') }}
+          </button>
+        }
+        @case ('local-disabled') {
+          <h1 class="type-page-title">{{ t('signIn.title') }}</h1>
+          <rs-banner role="status">{{ t('signIn.localDisabled') }}</rs-banner>
+        }
+        @default {
+          <div class="flex flex-col gap-1.5">
+            <p rsLabel main>{{ t(creating() ? 'createAccount.label' : 'signIn.label') }}</p>
+            <h1 class="type-page-title">
+              @switch (view()) {
+                @case ('first-account') {
+                  {{ t('createAccount.firstTitle') }}
+                }
+                @case ('create-account') {
+                  {{ t('createAccount.title') }}
+                }
+                @default {
+                  {{ t('signIn.title') }}
+                }
+              }
+            </h1>
+            @if (view() === 'first-account') {
+              <p class="text-muted">{{ t('createAccount.firstNote') }}</p>
+            }
+          </div>
+
+          @if (failure(); as refusal) {
+            <rs-banner tone="warn" role="alert">{{ t(failureKey(refusal)) }}</rs-banner>
+          }
+
+          @if (creating()) {
+            <rs-account-form
+              [passwordMinLength]="options.data()?.password_min_length ?? 0"
+              [pending]="registering.isPending()"
+              (submitted)="createAccount($event)"
+            />
+          } @else {
+            <rs-sign-in-form [pending]="signingIn.isPending()" (submitted)="signIn($event)" />
+          }
+
+          @if (view() !== 'first-account' && options.data()?.registration_open) {
+            <div
+              class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line pt-4"
+            >
+              <span class="text-muted">{{
+                t(creating() ? 'createAccount.haveAccount' : 'signIn.noAccount')
+              }}</span>
+              <button rsButton type="button" class="font-semibold" (click)="switchForm()">
+                {{ t(creating() ? 'createAccount.signIn' : 'signIn.create') }}
+              </button>
+            </div>
+          }
+        }
+      }
+
+      <rs-pill-group [label]="t('settings.language')">
+        @for (choice of languages; track choice) {
+          <!-- A language is named in itself, so its name is read in that language. -->
+          <button
+            rsPill
+            [pressed]="choice === language.current()"
+            [attr.data-language-choice]="choice"
+            [attr.lang]="choice"
+            (click)="language.use(choice)"
+          >
+            {{ t('settings.languages.' + choice) }}
+          </button>
+        }
+      </rs-pill-group>
+    </div>
+  </main>
+</div>

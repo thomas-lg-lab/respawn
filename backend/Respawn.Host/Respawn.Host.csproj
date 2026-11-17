@@ -3,6 +3,13 @@
   <!-- Composition only: the HTTP pipeline, and the database and the modules put together. No
        business rule lives here, and this is the only project that knows every module. -->
 
+  <!-- The front is not built by this project: the image copies its build into wwwroot/. Without
+       this, a build made while a wwwroot/ exists leaves a manifest that points at it, and the app
+       no longer starts in Development once the folder is gone. -->
+  <PropertyGroup>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
   </ItemGroup>

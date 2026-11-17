@@ -88,6 +88,14 @@
   }
 }
 
+/* The fill of a cover's placeholder. Written here, where the hue is read: a token that named
+   the whole colour would be worked out once, on the root element, and ignore the cover's hue. */
+@utility bg-cover {
+  background-color: hsl(
+    var(--rs-cover-hue, 220) var(--rs-cover-saturation) var(--rs-cover-lightness)
+  );
+}
+
 /* The type styles. One class sets the face, the size, the line height and the tracking. */
 @utility type-hero {
   font-family: var(--rs-font-display);

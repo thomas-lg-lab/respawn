@@ -25,7 +25,54 @@ public sealed class ContractTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("respawn", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.StartsWith("default-src 'self'", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
-        Assert.Equal(HttpStatusCode.OK, await client.GetAsync("/static/app.js").StatusAsync());
+    }
+
+    // The front routes its own addresses: each gets the document, and the front shows the screen.
+    [Theory]
+    [InlineData("/sign-in")]
+    [InlineData("/any/address/of/the/front")]
+    public async Task An_address_of_the_front_gets_its_document(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        var response = await client.GetAsync(path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("<rs-root>", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal("no-cache", response.Headers.CacheControl?.ToString());
+    }
+
+    [Theory]
+    [InlineData("/main-QX2ZHB7T.js", "public, max-age=31536000, immutable")]
+    [InlineData("/chunk-f7g-vKq6.js", "public, max-age=31536000, immutable")]
+    [InlineData("/theme.js", "no-cache")]
+    [InlineData("/favicon.svg", "no-cache")]
+    public async Task A_file_of_the_front_is_kept_only_when_named_after_its_content(string path, string caching)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var response = await client.GetAsync(path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(caching, response.Headers.CacheControl?.ToString());
+        Assert.StartsWith("default-src 'self'", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
+    }
+
+    // The document never stands in for an answer of the API, nor for a file that is not there.
+    [Theory]
+    [InlineData("GET", "/api/v1/nothing", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/api", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/healthz/nothing", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/main-MISSING0.js", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/api/v1/auth/login", HttpStatusCode.MethodNotAllowed)]
+    [InlineData("POST", "/api/v1/me", HttpStatusCode.MethodNotAllowed)]
+    [InlineData("POST", "/sign-in", HttpStatusCode.NotFound)]
+    public async Task What_is_not_the_front_keeps_its_own_answer(string method, string path, HttpStatusCode status)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(new HttpMethod(method), path);
+        Assert.Equal((status, "http_error"), await client.SendAsync(request).RefusalAsync());
     }
 
     [Fact]
