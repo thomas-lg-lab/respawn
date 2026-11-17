@@ -74,7 +74,8 @@
 - **Content security policy.** `default-src 'self'`, and for the document alone the style elements that carry
   the nonce of the response: Angular brings component styles that way, and the host writes the document with
   a new nonce each time. So no inline script, no `style` attribute written in a template, and no style
-  element made by hand. `[style.x]` bindings are fine.
+  element made by hand. `[style.x]` bindings are fine. `/docs`, the page of the API's description, has a
+  policy of its own (`data:` images, no nonce); do not widen the app's for a library.
 - **Design tokens.** Every token is a `--rs-*` custom property in `packages/ui/src/styles/tokens.css`, switched
   at run time by `data-theme` and `data-character` on the root element. Components use the semantic Tailwind
   names mapped in `theme.css` (`bg-surface`, `rounded-card`, `type-body`), never a hex value; the default

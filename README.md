@@ -141,6 +141,10 @@ token only when the provider says it is verified (`email_verified`).
 Everything is under `/api/v1`, described by `GET /api/v1/openapi.json`. The front uses only these routes.
 Bodies are JSON, with names in `snake_case`.
 
+`/docs` draws that description in a browser, with Swagger UI, and can try a route with the session of the
+browser. The page is open, like the description it reads; it loads nothing from another origin, and it is not
+part of the API.
+
 | Route | Does |
 | --- | --- |
 | `GET /api/v1/config` | What the sign-in page may offer: local sign-in, open registration, whether the account created now is the first one, the minimum length of a password, the providers |

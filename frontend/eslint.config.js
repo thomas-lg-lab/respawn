@@ -184,8 +184,9 @@ module.exports = tseslint.config(
   },
   {
     // Not screens: the document the app is mounted in, whose text is read before any
-    // translation can load, and the small host templates the specs write for themselves.
-    files: ['packages/app/src/index.html', '**/*.spec.ts/*.html'],
+    // translation can load, the pages shipped as they are, which are not Angular's, and the
+    // small host templates the specs write for themselves.
+    files: ['packages/app/src/index.html', 'packages/app/public/**/*.html', '**/*.spec.ts/*.html'],
     rules: {
       '@angular-eslint/template/i18n': 'off',
       'no-restricted-syntax': 'off',

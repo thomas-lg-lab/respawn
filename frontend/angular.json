@@ -18,7 +18,14 @@
           "options": {
             "browser": "packages/app/src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "assets": [{ "glob": "**/*", "input": "packages/app/public" }],
+            "assets": [
+              { "glob": "**/*", "input": "packages/app/public" },
+              {
+                "glob": "{swagger-ui.css,swagger-ui-bundle.js,swagger-ui-bundle.js.LICENSE.txt,LICENSE,NOTICE}",
+                "input": "node_modules/swagger-ui-dist",
+                "output": "docs"
+              }
+            ],
             "styles": [
               "@fontsource-variable/inter/index.css",
               "@fontsource-variable/bricolage-grotesque/opsz.css",
