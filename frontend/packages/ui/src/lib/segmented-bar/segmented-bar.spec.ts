@@ -30,7 +30,7 @@ describe('SegmentedBar', () => {
     const drawing = host.querySelector('[aria-hidden="true"]')!;
 
     expect(drawing.children.length).toBe(20);
-    expect(drawing.querySelectorAll('.bg-accent-text').length).toBe(14);
+    expect(drawing.querySelectorAll('[data-filled]').length).toBe(14);
     expect(host.textContent?.trim()).toBe('142 h');
   });
 });

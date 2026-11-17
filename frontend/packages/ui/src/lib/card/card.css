@@ -1,0 +1,23 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  /* No shadow anywhere: a surface is told apart by its fill and by its hairline. */
+  :host {
+    display: block;
+    padding: 1.25rem;
+    border: 1px solid var(--rs-line);
+    border-radius: var(--rs-radius-card);
+    background-color: var(--rs-surface);
+
+    @variant wide {
+      padding: 1.5rem;
+    }
+  }
+
+  :host([data-interactive]) {
+    transition: translate var(--rs-duration-hover);
+  }
+  :host([data-interactive]:hover) {
+    translate: 0 calc(-1 * var(--rs-lift));
+  }
+}

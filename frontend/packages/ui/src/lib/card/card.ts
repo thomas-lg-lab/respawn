@@ -1,4 +1,4 @@
-import { Component, booleanAttribute, computed, input } from '@angular/core';
+import { Component, booleanAttribute, input } from '@angular/core';
 
 /**
  * A card: a surface with a hairline border. No shadow anywhere: surfaces are told apart by
@@ -6,15 +6,10 @@ import { Component, booleanAttribute, computed, input } from '@angular/core';
  */
 @Component({
   selector: 'rs-card',
-  host: { '[class]': 'classes()' },
+  host: { '[attr.data-interactive]': "interactive() ? '' : null" },
   template: `<ng-content />`,
+  styleUrl: './card.css',
 })
 export class Card {
   readonly interactive = input(false, { transform: booleanAttribute });
-
-  protected readonly classes = computed(
-    () =>
-      'block rounded-card border border-line bg-surface p-5 wide:p-6' +
-      (this.interactive() ? ' transition-[translate] duration-hover hover:-translate-y-lift' : ''),
-  );
 }

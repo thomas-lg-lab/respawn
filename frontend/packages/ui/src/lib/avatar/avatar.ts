@@ -6,13 +6,9 @@ import { Component, computed, input } from '@angular/core';
  */
 @Component({
   selector: 'rs-avatar',
-  host: {
-    'aria-hidden': 'true',
-    class:
-      'inline-flex size-avatar shrink-0 items-center justify-center rounded-pill bg-accent ' +
-      'type-control font-semibold text-on-accent',
-  },
+  host: { 'aria-hidden': 'true' },
   template: `{{ initial() }}`,
+  styleUrl: './avatar.css',
 })
 export class Avatar {
   readonly name = input.required<string>();

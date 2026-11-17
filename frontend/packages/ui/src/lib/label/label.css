@@ -1,0 +1,14 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  :host {
+    display: block;
+    color: var(--rs-accent-text);
+    @apply type-label;
+  }
+
+  /* The prompt before the main label of a screen, drawn in the `pixel` character only. */
+  .prompt {
+    @apply label-prompt;
+  }
+}

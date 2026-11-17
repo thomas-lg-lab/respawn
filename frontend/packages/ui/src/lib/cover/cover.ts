@@ -7,11 +7,9 @@ import { Component, input } from '@angular/core';
  */
 @Component({
   selector: 'rs-cover',
-  host: {
-    class: 'block aspect-2/3 rounded-field bg-cover',
-    '[style.--rs-cover-hue]': 'hue()',
-  },
+  host: { '[style.--rs-cover-hue]': 'hue()' },
   template: ``,
+  styleUrl: './cover.css',
 })
 export class Cover {
   /** 0 to 360, on the colour wheel. */

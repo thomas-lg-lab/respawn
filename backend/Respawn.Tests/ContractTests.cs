@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Respawn.Testing;
 
 namespace Respawn.Tests;
@@ -40,8 +41,77 @@ public sealed class ContractTests
         var response = await client.GetAsync(path);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
-        Assert.Contains("<rs-root>", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
-        Assert.Equal("no-cache", response.Headers.CacheControl?.ToString());
+        Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    // The front's components bring their styles as style elements, which the policy only lets through
+    // with the nonce of the response: the document and its policy must name the same one.
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/sign-in")]
+    [InlineData("/index.html")]
+    public async Task The_document_carries_the_nonce_its_policy_allows(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var response = await client.GetAsync(path);
+        var policy = response.Headers.GetValues("Content-Security-Policy").Single();
+        var nonce = Regex.Match(policy, "'nonce-([A-Za-z0-9+/=]+)'").Groups[1].Value;
+
+        Assert.Equal($"default-src 'self'; style-src 'self' 'nonce-{nonce}'; frame-ancestors 'none'", policy);
+        Assert.Equal(16, Convert.FromBase64String(nonce).Length);
+        var document = await response.Content.ReadAsStringAsync();
+        Assert.Contains($"ngCspNonce=\"{nonce}\"", document, StringComparison.Ordinal);
+        Assert.DoesNotContain("RESPAWN_CSP_NONCE", document, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_nonce_is_never_used_twice_and_the_document_never_kept()
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var first = await client.GetAsync("/");
+        var second = await client.GetAsync("/");
+
+        Assert.NotEqual(
+            first.Headers.GetValues("Content-Security-Policy").Single(),
+            second.Headers.GetValues("Content-Security-Policy").Single());
+        Assert.Equal("no-store", first.Headers.CacheControl?.ToString());
+        // Nothing a browser could ask "has it changed?" about: that answer would keep an old nonce.
+        Assert.Null(first.Headers.ETag);
+        Assert.Null(first.Content.Headers.LastModified);
+    }
+
+    [Fact]
+    public async Task Asking_only_for_the_headers_of_the_document_gets_no_body()
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        using var request = new HttpRequestMessage(HttpMethod.Head, "/sign-in");
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("", await response.Content.ReadAsStringAsync());
+        Assert.Contains("'nonce-", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
+    }
+
+    // Only the document needs the nonce: every other answer keeps the policy with no exception in it.
+    [Theory]
+    [InlineData("/healthz")]
+    [InlineData("/favicon.svg")]
+    [InlineData("/main-QX2ZHB7T.js")]
+    [InlineData("/api/v1/openapi.json")]
+    public async Task What_is_not_the_document_allows_no_style_element(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var response = await client.GetAsync(path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("default-src 'self'; frame-ancestors 'none'", response.Headers.GetValues("Content-Security-Policy").Single());
     }
 
     [Theory]

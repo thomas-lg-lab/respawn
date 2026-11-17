@@ -1,0 +1,17 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  :host {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: var(--rs-size-avatar);
+    height: var(--rs-size-avatar);
+    border-radius: var(--rs-radius-pill);
+    background-color: var(--rs-accent);
+    color: var(--rs-on-accent);
+    font-weight: 600;
+    @apply type-control;
+  }
+}

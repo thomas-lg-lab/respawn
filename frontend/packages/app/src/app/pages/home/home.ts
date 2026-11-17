@@ -10,11 +10,7 @@ import { AccountSummary } from './components/account-summary';
 @Component({
   selector: 'rs-home',
   imports: [AccountSummary],
-  template: `
-    @if (me.data(); as account) {
-      <rs-account-summary [account]="account" />
-    }
-  `,
+  templateUrl: './home.html',
 })
 export class Home {
   private readonly queries = inject(AccountQueries);

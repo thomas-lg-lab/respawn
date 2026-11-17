@@ -1,0 +1,12 @@
+@layer components {
+  /* The placeholder: a flat block in a colour made from the hue of its game, set on the host
+     (`--rs-cover-hue`). The saturation and the lightness are the same for every cover. */
+  :host {
+    display: block;
+    aspect-ratio: 2 / 3;
+    border-radius: var(--rs-radius-field);
+    background-color: hsl(
+      var(--rs-cover-hue, 220) var(--rs-cover-saturation) var(--rs-cover-lightness)
+    );
+  }
+}

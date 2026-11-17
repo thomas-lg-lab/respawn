@@ -11,7 +11,9 @@
     <script src="theme.js"></script>
   </head>
   <body>
-    <rs-root></rs-root>
+    <!-- The app sends this document with the nonce of the response in place of the word below:
+         the style elements the components bring carry it, and the policy lets only those through. -->
+    <rs-root ngCspNonce="RESPAWN_CSP_NONCE"></rs-root>
     <noscript>respawn needs JavaScript.</noscript>
   </body>
 </html>

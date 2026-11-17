@@ -19,31 +19,8 @@ let created = 0;
  */
 @Component({
   selector: 'rs-text-field',
-  host: { class: 'flex flex-col gap-1.5' },
-  template: `
-    <label class="type-control font-medium text-text" [for]="id">{{ label() }}</label>
-    <input
-      #control
-      class="h-button w-full rounded-field border bg-surface px-3.5 text-text disabled:opacity-50"
-      [class]="showsError() ? 'border-2 border-warn' : 'border-control-line'"
-      [id]="id"
-      [type]="type()"
-      [attr.name]="name() || null"
-      [attr.autocomplete]="autocomplete()"
-      [attr.aria-invalid]="showsError() ? 'true' : null"
-      [attr.aria-describedby]="describedBy()"
-      [required]="required()"
-      [disabled]="disabled()"
-      [value]="value()"
-      (input)="value.set(control.value)"
-      (blur)="touch.emit()"
-    />
-    @if (showsError()) {
-      <span class="type-caption text-warn" [id]="errorId">{{ error() }}</span>
-    } @else if (hint()) {
-      <span class="type-caption text-muted" [id]="hintId">{{ hint() }}</span>
-    }
-  `,
+  templateUrl: './text-field.html',
+  styleUrl: './text-field.css',
 })
 export class TextField implements FormValueControl<string> {
   readonly label = input.required<string>();

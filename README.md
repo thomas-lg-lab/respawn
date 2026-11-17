@@ -189,7 +189,8 @@ adapters around it.
 
 The image builds the front and the app serves it: its files at the root, and its document for every address
 that is neither a file nor under `/api` or `/healthz`, so the front routes its own screens and a reload lands
-on the same one. Its settings (the theme: the system's, dark or light; the character of the labels; the
+on the same one. The document is written with a nonce of its own at each answer, which the content
+security policy needs to let the front's component styles through and nothing else. Its settings (the theme: the system's, dark or light; the character of the labels; the
 language) are kept in the browser for now. Its types come from `frontend/openapi.json`, a copy of the
 description the API serves, which the CI compares with the build. `/foundations` shows the type styles and
 the base components, with no session.

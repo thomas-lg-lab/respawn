@@ -8,11 +8,8 @@ import { Component, booleanAttribute, input } from '@angular/core';
  */
 @Component({
   selector: '[rsLabel]',
-  host: { class: 'block type-label text-accent-text' },
-  template: `@if (main()) {
-      <span class="label-prompt" aria-hidden="true"></span>
-    }
-    <ng-content />`,
+  templateUrl: './label.html',
+  styleUrl: './label.css',
 })
 export class Label {
   readonly main = input(false, { transform: booleanAttribute });
