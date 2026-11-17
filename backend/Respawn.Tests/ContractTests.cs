@@ -131,12 +131,66 @@ public sealed class ContractTests
         Assert.StartsWith("default-src 'self'", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
     }
 
+    // The page that draws the API's description: open, with no database, and with a policy of its own
+    // that reaches nothing else.
+    [Theory]
+    [InlineData("/docs")]
+    [InlineData("/docs/")]
+    public async Task The_api_page_is_served_without_database(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var response = await client.GetAsync(path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("swagger-ui", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(
+            "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
+            response.Headers.GetValues("Content-Security-Policy").Single());
+    }
+
+    // The licence of what the page ships comes with it, under the name its library gives it: no
+    // extension. It is there to be read; a file of a kind the app does not know is still not served.
+    [Fact]
+    public async Task The_licence_shipped_with_the_api_page_can_be_read()
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var licence = await client.GetAsync("/docs/LICENSE");
+        Assert.Equal(HttpStatusCode.OK, licence.StatusCode);
+        Assert.Equal("text/plain", licence.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("utf-8", licence.Content.Headers.ContentType?.CharSet);
+        Assert.Equal("nosniff", licence.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Contains("licence", await licence.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.NotFound, await client.GetAsync("/docs/bundle.unknown").StatusAsync());
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/sign-in")]
+    [InlineData("/docs-of-the-front")]
+    [InlineData("/healthz")]
+    [InlineData("/api/v1/openapi.json")]
+    public async Task The_policy_of_the_api_page_reaches_nothing_else(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var response = await client.GetAsync(path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("data:", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
+    }
+
     // The document never stands in for an answer of the API, nor for a file that is not there.
     [Theory]
     [InlineData("GET", "/api/v1/nothing", HttpStatusCode.NotFound)]
     [InlineData("GET", "/api", HttpStatusCode.NotFound)]
     [InlineData("GET", "/healthz/nothing", HttpStatusCode.NotFound)]
     [InlineData("GET", "/main-MISSING0.js", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/docs/nothing", HttpStatusCode.NotFound)]
     [InlineData("GET", "/api/v1/auth/login", HttpStatusCode.MethodNotAllowed)]
     [InlineData("POST", "/api/v1/me", HttpStatusCode.MethodNotAllowed)]
     [InlineData("POST", "/sign-in", HttpStatusCode.NotFound)]
@@ -204,6 +258,8 @@ public sealed class ContractTests
         Assert.True(paths.TryGetProperty("/api/v1/me", out _));
         Assert.True(paths.TryGetProperty("/api/v1/auth/login", out _));
         Assert.False(paths.TryGetProperty("/healthz", out _));
+        // The page that draws this description is not part of what it describes.
+        Assert.DoesNotContain(paths.EnumerateObject(), path => path.Name.StartsWith("/docs", StringComparison.Ordinal));
     }
 
     // The front's types are generated from the description: it must say what the API really answers.

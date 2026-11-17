@@ -28,7 +28,8 @@ internal sealed class TestApp : WebApplicationFactory<Program>
     }
 
     /// <summary>A stand-in for the front's build, which the image brings and the repository does not hold:
-    /// a document, a file named after its content and one that is not.</summary>
+    /// a document, files named after their content and files that are not, and the page of the API's
+    /// description.</summary>
     private static readonly Lazy<string> FrontBuild = new(() =>
     {
         var root = Directory.CreateTempSubdirectory("respawn-front-").FullName;
@@ -37,6 +38,11 @@ internal sealed class TestApp : WebApplicationFactory<Program>
         File.WriteAllText(Path.Combine(root, "chunk-f7g-vKq6.js"), "");
         File.WriteAllText(Path.Combine(root, "theme.js"), "");
         File.WriteAllText(Path.Combine(root, "user-settings.js"), "");
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "docs", "index.html"), "<!doctype html><title>respawn API</title><div id=\"swagger-ui\"></div>");
+        File.WriteAllText(Path.Combine(root, "docs", "init.js"), "");
+        File.WriteAllText(Path.Combine(root, "docs", "LICENSE"), "The licence of a library the page ships.");
+        File.WriteAllText(Path.Combine(root, "docs", "bundle.unknown"), "");
         File.WriteAllText(Path.Combine(root, "favicon.svg"), "<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
         return root;
     });

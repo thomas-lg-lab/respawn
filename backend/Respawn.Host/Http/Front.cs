@@ -22,7 +22,7 @@ internal static partial class Front
     internal const string NoncePlaceholder = "RESPAWN_CSP_NONCE";
 
     /// <summary>The addresses that are never the front's, whatever they are followed by.</summary>
-    private static readonly string[] Reserved = ["api", "healthz"];
+    private static readonly string[] Reserved = ["api", "healthz", "docs"];
 
     private static readonly object NonceKey = new();
 
@@ -43,13 +43,25 @@ internal static partial class Front
         {
             var request = context.Request;
             var reading = HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method);
-            return reading && IsDocument(request.Path) ? WriteDocumentAsync(context, next) : next(context);
+            if (reading && IsDocument(request.Path))
+            {
+                return WriteDocumentAsync(context, next);
+            }
+
+            // The page of the API's description is a file like any other, under its own address.
+            if (reading && ApiDocs.IsPage(request.Path))
+            {
+                request.Path = ApiDocs.Document;
+            }
+
+            return next(context);
         });
 
         // A file the build names after its content never changes and is kept for good; any other (the
         // icon) is checked again on every visit.
         return app.UseStaticFiles(new StaticFileOptions
         {
+            ContentTypeProvider = new ServedFileTypes(),
             OnPrepareResponse = file => file.Context.Response.Headers[HeaderNames.CacheControl] =
                 NamedAfterItsContent().IsMatch(file.File.Name) ? "public, max-age=31536000, immutable" : "no-cache",
         });
@@ -58,15 +70,21 @@ internal static partial class Front
     /// <summary>
     /// The content security policy of a response. Everything comes from this origin and from nowhere
     /// else, with no inline script. The document alone also allows the style elements that carry its
-    /// nonce: the front's components bring their styles that way.
+    /// nonce: the front's components bring their styles that way. The page of the API's description
+    /// has a policy of its own.
     /// </summary>
-    public static string ContentSecurityPolicy(HttpContext context) =>
-        context.Items.TryGetValue(NonceKey, out var nonce)
-            ? $"default-src 'self'; style-src 'self' 'nonce-{nonce}'; frame-ancestors 'none'"
-            : "default-src 'self'; frame-ancestors 'none'";
+    public static string ContentSecurityPolicy(HttpContext context)
+    {
+        if (context.Items.TryGetValue(NonceKey, out var nonce))
+        {
+            return $"default-src 'self'; style-src 'self' 'nonce-{nonce}'; frame-ancestors 'none'";
+        }
+
+        return ApiDocs.Covers(context.Request.Path) ? ApiDocs.ContentSecurityPolicy : "default-src 'self'; frame-ancestors 'none'";
+    }
 
     /// <summary>
-    /// Whether an address is one the front routes: not the API's, not a file's.
+    /// Whether an address is one the front routes: not the API's, not the API page's, not a file's.
     ///
     /// A file's address ends like a kind of file the app serves (".js", ".svg"). A dot alone does
     /// not make one: "/games/half-life.2" is a screen of the front.
@@ -119,6 +137,26 @@ internal static partial class Front
         await using var stream = file.CreateReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return await reader.ReadToEndAsync(ct);
+    }
+
+    /// <summary>
+    /// What a file of the build is served as: what its extension says, and plain text for a file with
+    /// no extension at all. The licence and the notice that come with a library the app ships
+    /// ("LICENSE", "NOTICE") are named that way, and are there to be read. A file whose extension is
+    /// unknown is still not served.
+    /// </summary>
+    private sealed class ServedFileTypes : IContentTypeProvider
+    {
+        public bool TryGetContentType(string subpath, out string contentType)
+        {
+            if (FileTypes.TryGetContentType(subpath, out contentType!))
+            {
+                return true;
+            }
+
+            contentType = "text/plain; charset=utf-8";
+            return !Path.HasExtension(subpath);
+        }
     }
 
     // What the front's build appends to the scripts, style sheets and fonts it names after their

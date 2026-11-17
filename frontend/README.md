@@ -21,11 +21,12 @@ npm run gen:api     # the API's types, from openapi.json
 
 The image builds this front and the API process serves it; the router decides the screen from the address.
 
-| Address        | Screen                                                     | Needs      |
-| -------------- | ---------------------------------------------------------- | ---------- |
-| `/sign-in`     | sign in, or create an account where the instance allows it | no session |
-| `/`            | who is signed in, under the header and its account menu    | a session  |
-| `/foundations` | the type styles and the base components                    | nothing    |
+| Address        | Screen                                                            | Needs      |
+| -------------- | ----------------------------------------------------------------- | ---------- |
+| `/sign-in`     | sign in, or create an account where the instance allows it        | no session |
+| `/`            | who is signed in, under the header and its account menu           | a session  |
+| `/foundations` | the type styles and the base components                           | nothing    |
+| `/docs`        | the API's description, drawn by Swagger UI; not an Angular screen | nothing    |
 
 A screen is where the API, the router and the settings are injected (`pages/x/x.ts`, and `layout/shell.ts` for
 the header). What it draws is made of components that only take inputs and emit outputs: its own in
@@ -63,7 +64,10 @@ component is first drawn, and the policy lets through only the ones that carry t
 - The dev server sends no policy, so the word stays as it is there and nothing is blocked.
 
 Two files are shipped as they are, from `packages/app/public/`: the icon, and `theme.js`, which the document
-head loads before the style sheet so a reload paints the chosen theme at once. A file there is never kept by
+head loads before the style sheet so a reload paints the chosen theme at once. `public/docs/` is the page of
+the API's description, at `/docs`: Swagger UI (`swagger-ui-dist`, pinned, copied by the build with its
+licence), a document and the script that starts it. That page is a plain file, with a policy of its own: the
+app's, plus `data:` images for Swagger UI's icons, and no nonce. A file there is never kept by
 browsers; a script there must not be named like a hashed one (`name-XXXXXXXX.js`), which the app serves as
 immutable.
 
