@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Formatting, the build (warnings are errors in Release) and the tests, in the same SDK image as the
-  # Dockerfile, against a real PostgreSQL.
+  # The backend: formatting, the build (warnings are errors in Release) and the tests, in the same SDK
+  # image as the Dockerfile, against a real PostgreSQL.
   checks:
     runs-on: ubuntu-latest
     permissions:
@@ -56,13 +56,67 @@ jobs:
         run: dotnet build Respawn.slnx --no-restore --configuration Release
       - name: Tests
         run: dotnet test Respawn.slnx --no-build --configuration Release
+      # The front's types are generated from frontend/openapi.json: it must be, byte for byte, the
+      # description this build serves. The app starts with no database, which is all this needs.
+      - name: The committed API description is current
+        run: |
+          (cd backend/Respawn.Host/bin/Release/net10.0 && ASPNETCORE_HTTP_PORTS=5080 dotnet Respawn.Host.dll) &
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5080/api/v1/openapi.json -o /tmp/openapi.json; then break; fi
+            sleep 1
+          done
+          if ! diff -u frontend/openapi.json /tmp/openapi.json; then
+            echo "::error file=frontend/openapi.json::The API description changed: save GET /api/v1/openapi.json to frontend/openapi.json, run 'npm run gen:api' in frontend/ and commit both."
+            exit 1
+          fi
+
+  # The front: formatting, lint, the generated API types, the production build and the tests.
+  frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          # No dependency cache: this workflow also publishes the image, and a cache written by one run
+          # and restored by a publishing one is a way in. The install takes a few seconds without it.
+          package-manager-cache: false
+      # npm ci fails when package-lock.json does not match package.json: a dependency cannot change
+      # without its reviewed lock file.
+      - name: Install the locked dependencies
+        run: npm ci
+      - name: Formatting
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
+      # The other half of the check above: the types are what openapi-typescript makes of the
+      # committed description, not a file edited by hand or left behind by an older one.
+      - name: The generated API types are current
+        run: |
+          npm run gen:api
+          if ! git diff --exit-code -- packages/data/src/lib/models/api-types.ts; then
+            echo "::error file=frontend/packages/data/src/lib/models/api-types.ts::The API types are stale: run 'npm run gen:api' in frontend/ and commit the result."
+            exit 1
+          fi
+      # The production build is the compile gate: it type-checks and bundles the app and every package.
+      - name: Build
+        run: npm run build
+      - name: Tests
+        run: npm test
 
   # Build, runtime contract test and Trivy gate on every PR; edge and sha-* from main; X.Y.Z and latest from a release
   # tag. The contract test starts the image as the cluster runs it: non-root, read-only root filesystem, no secret
   # and no database, and it must still answer /healthz. Then with a database that comes up late: /api/v1/config
   # answers 503 until it is there, and /api/v1/me stays closed to a forged Remote-User header.
   image:
-    needs: [checks]
+    needs: [checks, frontend]
     permissions:
       contents: read
       security-events: write

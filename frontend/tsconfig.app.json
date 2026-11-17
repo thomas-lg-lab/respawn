@@ -1,0 +1,11 @@
+/* The app and the packages it is made of, which it reaches through the path aliases of
+   tsconfig.json: one compilation for the whole workspace. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/app",
+    "types": []
+  },
+  "include": ["packages/**/*.ts"],
+  "exclude": ["packages/**/*.spec.ts"]
+}

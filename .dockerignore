@@ -7,3 +7,6 @@ backend/Respawn.Testing
 backend/Modules/*/*.Tests
 docker-compose.yml
 *.md
+**/node_modules
+frontend/dist
+frontend/.angular

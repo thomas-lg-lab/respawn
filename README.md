@@ -172,6 +172,9 @@ than by layer: each module is hexagonal, a core with its use cases and ports, an
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 
+The front is being built in [`frontend/`](frontend/README.md): Angular, Tailwind and the design tokens, in
+French and English. The app does not serve it yet; the page it serves today is the one in `Respawn.Host`.
+
 A module owns one PostgreSQL schema and its migrations, and never reads another module's tables. These rules
 are tests: the build fails when a project references what it should not.
 [CONTRIBUTING.md](CONTRIBUTING.md) has the details and says how to add a module.

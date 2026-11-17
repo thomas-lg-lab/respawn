@@ -23,6 +23,38 @@ name ending in `_test` (anything else is refused); a project puts its own name i
 two more for the connection tests, also ending in `_test`), so the account needs the right to create databases
 and roles.
 
+## The front
+
+The front's checks, in the Node image, or with Node 24 installed the same `npm` commands in `frontend/`:
+
+```bash
+docker run --rm -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
+  npm ci &&
+  npm run format:check &&
+  npm run lint &&
+  npm run build &&
+  npm test'
+```
+
+The dev server, on http://localhost:4200:
+
+```bash
+docker run --rm -it -p 4200:4200 -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
+  npm ci && npm start -- --host 0.0.0.0'
+```
+
+The API's types are generated: `frontend/openapi.json` is a copy of what the API serves, and
+`packages/data/src/lib/models/api-types.ts` is what `openapi-typescript` makes of it. After a change to a
+route or to a body, with the app running (`docker compose up --build`), save the description again and
+regenerate; the CI compares both and fails when one is stale.
+
+```bash
+curl -fsS http://localhost:8080/api/v1/openapi.json -o frontend/openapi.json
+docker run --rm -v "$PWD/frontend:/web" -w /web node:24-slim sh -c 'npm ci && npm run gen:api'
+```
+
+[frontend/README.md](frontend/README.md) describes the design tokens, the fonts and the translations.
+
 ## Layout
 
 The app is split by responsibility, not by layer. Each module under `backend/Modules/` is hexagonal: a core,
@@ -70,7 +102,8 @@ the image restore in locked mode. After changing a version, write the lock files
 dotnet restore Respawn.slnx --force-evaluate
 ```
 
-Renovate keeps both current.
+Renovate keeps both current. The front's versions are in `frontend/package.json` and its resolved graph in
+`frontend/package-lock.json`, which `npm ci` installs exactly.
 
 ## Database changes
 

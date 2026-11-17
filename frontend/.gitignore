@@ -1,0 +1,19 @@
+# Compiled output
+/dist
+/out-tsc
+
+# Node
+/node_modules
+npm-debug.log
+
+# Angular
+/.angular/cache
+
+# Tests
+/coverage
+
+# Editors and system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

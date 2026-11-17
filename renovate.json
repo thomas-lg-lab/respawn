@@ -35,6 +35,33 @@
       "groupName": ".NET"
     },
     {
+      "description": "One PR for every npm minor and patch of the front: they share one lock file, and separate PRs would conflict with each other one merge at a time.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm-minor-patch"
+    },
+    {
+      "description": "Angular pins TypeScript to a narrow peer range (@angular/build 22 wants >=6.0 <6.1): majors and minors move with an Angular upgrade, patches flow. Listed in the Dependency Dashboard (Pending Approval); tick it to get the PR.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major", "minor"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "engines.node lists every major Angular supports: a Node major adds to it rather than replacing it.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["engines"],
+      "matchDepNames": ["node"],
+      "rangeStrategy": "widen"
+    },
+    {
+      "description": "setup-node and .nvmrc say 24, which node versioning reads as 24.0.0: a minor would pin it to a full version and stop it tracking the LTS line, so nothing moves while it is a bare major.",
+      "matchDepNames": ["node"],
+      "matchCurrentValue": "/^\\d+$/",
+      "matchUpdateTypes": ["minor", "patch"],
+      "enabled": false
+    },
+    {
       "description": "global.json is a floor, not a pin (rollForward latestFeature): the SDK that builds is the one of the SDK image, so raising the floor on every patch would only churn.",
       "matchManagers": ["nuget"],
       "matchDepNames": ["dotnet-sdk"],

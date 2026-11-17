@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Respawn.Testing;
 
 namespace Respawn.Tests;
@@ -78,9 +79,54 @@ public sealed class ContractTests
     {
         await using var app = await TestApp.StartAsync();
         using var client = app.Browser();
-        var paths = (await client.GetAsync("/api/v1/openapi.json").JsonAsync()).GetProperty("paths");
+        var document = await client.GetAsync("/api/v1/openapi.json").JsonAsync();
+        var paths = document.GetProperty("paths");
         Assert.True(paths.TryGetProperty("/api/v1/me", out _));
         Assert.True(paths.TryGetProperty("/api/v1/auth/login", out _));
         Assert.False(paths.TryGetProperty("/healthz", out _));
     }
+
+    // The front's types are generated from the description: it must say what the API really answers.
+    [Fact]
+    public async Task The_openapi_description_matches_what_the_api_answers()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var client = app.Browser();
+        var document = await client.GetAsync("/api/v1/openapi.json").JsonAsync();
+
+        // Fields are spelled as on the wire, in snake_case.
+        var user = document.GetProperty("components").GetProperty("schemas").GetProperty("UserResponse").GetProperty("properties");
+        Assert.True(user.TryGetProperty("display_name", out _));
+        Assert.False(user.TryGetProperty("displayName", out _));
+
+        // Every route that declares a refusal still describes a success: declaring one answer by hand
+        // hides the one the framework would have inferred, and the front then gets no type for it.
+        var withoutSuccess =
+            from path in document.GetProperty("paths").EnumerateObject()
+            from operation in path.Value.EnumerateObject()
+            where operation.Value.ValueKind == JsonValueKind.Object && operation.Value.TryGetProperty("responses", out _)
+            let statuses = operation.Value.GetProperty("responses").EnumerateObject().Select(response => response.Name).ToList()
+            where statuses.Any(status => status[0] is '4' or '5') && !statuses.Any(status => status[0] == '2')
+            select $"{operation.Name.ToUpperInvariant()} {path.Name}";
+        Assert.Empty(withoutSuccess);
+
+        // A number is described as a number, never as "a number or a string".
+        Assert.DoesNotContain("\"string\"", NumberTypes(document));
+
+        // The same document wherever it is asked: no address of the host in it.
+        Assert.False(document.TryGetProperty("servers", out var servers) && servers.GetArrayLength() > 0);
+    }
+
+    /// <summary>Every "type" of the description that is a list naming a number, as written.</summary>
+    private static string NumberTypes(JsonElement element) =>
+        element.ValueKind switch
+        {
+            JsonValueKind.Object => string.Concat(element.EnumerateObject().Select(property =>
+                property.Name == "type" && property.Value.ValueKind == JsonValueKind.Array
+                    && property.Value.EnumerateArray().Any(type => type.GetString() is "integer" or "number")
+                    ? property.Value.GetRawText()
+                    : NumberTypes(property.Value))),
+            JsonValueKind.Array => string.Concat(element.EnumerateArray().Select(NumberTypes)),
+            _ => "",
+        };
 }
