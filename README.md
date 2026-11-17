@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+  <img src="docs/logo-light.svg" alt="" width="72" height="72">
+</picture>
+
 # respawn
 
 [![CI](https://github.com/thomas-lg-lab/respawn/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/thomas-lg-lab/respawn/actions/workflows/ci.yml)
@@ -5,18 +10,25 @@
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
 [![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)](global.json)
 [![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-4169E1)](docker-compose.yml)
+[![Angular 22](https://img.shields.io/badge/Angular-22-DD0031)](frontend/package.json)
+[![Tailwind CSS 4](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4)](frontend/package.json)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196)](https://www.conventionalcommits.org)
 
 Self-hosted game library: stats, backlog and next-game suggestions.
 
-**Status: early days.** This is the skeleton: accounts and sign-in, the public API they need, one page to try
-them, and the image the rest will ship in. The library has its tables and one route to read it; nothing
-fills it yet.
+**Status: early days.** Accounts and sign-in work, with the public API they need, one page to try them, and
+the image the rest will ship in. The library has its tables, its rules and one route to read it, and the
+front has its base; no store is read yet, so a library stays empty, and the app does not serve the new
+front yet.
 
 | | |
 | --- | --- |
 | Today | Local accounts (the first one is the administrator), sign-in through OpenID Connect providers, sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description |
-| Planned | The game library and its stats, the backlog, connectors that import a library from outside sources, next-game suggestions |
+| In place, not in use yet | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. Groups, the scope sharing will use: one default group every account joins. The front: Angular, the design tokens with a dark and a light theme, French and English, types generated from the API's description |
+| Planned | A connector that reads a Steam library every day, the library and stats screens, the backlog, more connectors, next-game suggestions |
+
+What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
+pull request. No release is published yet; each one will list its pull requests in its notes.
 
 Contents: [Run it](#run-it) · [Configuration](#configuration) · [Behind a reverse proxy](#behind-a-reverse-proxy) ·
 [Sign-in](#sign-in) · [API](#api) · [How it is built](#how-it-is-built) ·
@@ -159,21 +171,25 @@ A breaking change to these routes means a new version beside `/api/v1`, not a ch
 
 ## How it is built
 
-.NET 10 and ASP.NET Core, PostgreSQL through EF Core. The app is one process, split by responsibility rather
-than by layer: each module is hexagonal, a core with its use cases and ports, and adapters around it.
+.NET 10 and ASP.NET Core, PostgreSQL through EF Core, and an Angular front. The app is one process, split by
+responsibility rather than by layer: each module is hexagonal, a core with its use cases and ports, and
+adapters around it.
 
 | Project | Holds |
 | --- | --- |
 | `Respawn.Host` | Composition only: the HTTP pipeline, one registration per module, the page |
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
-| `Modules/Accounts` | Accounts and sign-in: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
+| `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
 | `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, and who owns and played what |
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
+| [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API's types) |
 
-The front is being built in [`frontend/`](frontend/README.md): Angular, Tailwind and the design tokens, in
-French and English. The app does not serve it yet; the page it serves today is the one in `Respawn.Host`.
+The front has its base and one screen that shows it: the type styles, the base components, and the switches
+for the theme (the system's, dark or light), the character of the labels and the language. Its types come
+from `frontend/openapi.json`, a copy of the description the API serves, which the CI compares with the build.
+The app does not serve it yet; the page it serves today is the one in `Respawn.Host`.
 
 A module owns one PostgreSQL schema and its migrations, and never reads another module's tables. These rules
 are tests: the build fails when a project references what it should not.
@@ -194,7 +210,8 @@ is meant to run (non-root, read-only filesystem, no database, no secret) and sca
 
 ## Development
 
-The checks need Docker only; [CONTRIBUTING.md](CONTRIBUTING.md) has the commands, the layout and the rules.
+The checks need Docker only, for the backend and for the front; [CONTRIBUTING.md](CONTRIBUTING.md) has the
+commands, the layout and the rules, and [AGENTS.md](AGENTS.md) the conventions of the code.
 Changes go through a pull request whose title follows [Conventional Commits](https://www.conventionalcommits.org).
 
 ## Security
