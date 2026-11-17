@@ -171,6 +171,25 @@
           "Sodium.Core": "[1.4.1, )"
         }
       },
+      "respawn.games": {
+        "type": "Project"
+      },
+      "respawn.games.api": {
+        "type": "Project",
+        "dependencies": {
+          "Respawn.Games": "[1.0.0, )",
+          "Respawn.SharedKernel": "[1.0.0, )"
+        }
+      },
+      "respawn.games.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "EFCore.NamingConventions": "[10.0.1, )",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
+          "Respawn.Games": "[1.0.0, )",
+          "Respawn.SharedKernel": "[1.0.0, )"
+        }
+      },
       "respawn.persistence": {
         "type": "Project",
         "dependencies": {

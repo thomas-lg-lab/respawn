@@ -13,4 +13,10 @@
     <Project Path="backend/Modules/Accounts/Respawn.Accounts.Infrastructure/Respawn.Accounts.Infrastructure.csproj" />
     <Project Path="backend/Modules/Accounts/Respawn.Accounts.Tests/Respawn.Accounts.Tests.csproj" />
   </Folder>
+  <Folder Name="/backend/Modules/Games/">
+    <Project Path="backend/Modules/Games/Respawn.Games/Respawn.Games.csproj" />
+    <Project Path="backend/Modules/Games/Respawn.Games.Api/Respawn.Games.Api.csproj" />
+    <Project Path="backend/Modules/Games/Respawn.Games.Infrastructure/Respawn.Games.Infrastructure.csproj" />
+    <Project Path="backend/Modules/Games/Respawn.Games.Tests/Respawn.Games.Tests.csproj" />
+  </Folder>
 </Solution>

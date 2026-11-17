@@ -1,0 +1,136 @@
+namespace Respawn.Games.Infrastructure.Persistence;
+
+// The rows of the games schema. An owner is an account of the instance: its id is kept, and nothing
+// here points into the tables of the module that holds accounts.
+
+/// <summary>A game, once, whatever the store: the canonical record. Its IGDB id when it is known; no
+/// name while no source has given one.</summary>
+public sealed class GameRow
+{
+    public Guid Id { get; set; }
+
+    public string? Name { get; set; }
+
+    /// <summary>The store entry the record took its name from, when it was created: the name follows
+    /// that entry, and no other that points here since a merge. Whatever names the game otherwise (a
+    /// person, a merge, another source) sets it to null, and readings leave the name alone from then
+    /// on. Not a foreign key: the two tables would point at each other, and a store entry is never
+    /// deleted.</summary>
+    public Guid? NameSourceEntryId { get; set; }
+
+    public long? IgdbId { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>A game as one store knows it. It points to one canonical record; several may point to the
+/// same one. Its name is the store's latest word.</summary>
+public sealed class StoreEntryRow
+{
+    public Guid Id { get; set; }
+
+    public Guid GameId { get; set; }
+
+    public string Source { get; set; } = "";
+
+    public string ExternalId { get; set; } = "";
+
+    public string? Name { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>A store account proven to belong to an owner. A store account has one owner.</summary>
+public sealed class LinkedAccountRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OwnerId { get; set; }
+
+    public string Source { get; set; } = "";
+
+    public string ExternalId { get; set; } = "";
+
+    public string? DisplayName { get; set; }
+
+    public DateTimeOffset LinkedAt { get; set; }
+}
+
+/// <summary>A source's answer, untouched and dated. With an owner and a linked account when it is
+/// personal; with neither when it is the instance's.</summary>
+public sealed class RawSnapshotRow
+{
+    public Guid Id { get; set; }
+
+    public string Source { get; set; } = "";
+
+    public string Kind { get; set; } = "";
+
+    /// <summary>When the source answered.</summary>
+    public DateTimeOffset TakenAt { get; set; }
+
+    /// <summary>When the answer was stored, which may be much later.</summary>
+    public DateTimeOffset RecordedAt { get; set; }
+
+    public Guid? OwnerId { get; set; }
+
+    public Guid? LinkedAccountId { get; set; }
+
+    /// <summary>True when it was taken as the whole of what it lists: what it leaves out was then no
+    /// longer there. Never true of an answer that lists nothing.</summary>
+    public bool Complete { get; set; }
+
+    /// <summary>Text, as received: `jsonb` would reorder a document's keys, and a source may answer
+    /// something that is not JSON at all.</summary>
+    public string Payload { get; set; } = "";
+}
+
+/// <summary>What one snapshot said of one store entry, as it said it: null where it said nothing. Never
+/// changed afterwards; the history of a library is a query over these rows and their snapshots' dates.</summary>
+public sealed class ObservationRow
+{
+    public Guid SnapshotId { get; set; }
+
+    public Guid StoreEntryId { get; set; }
+
+    /// <summary>The total played as the snapshot said it, a poor answer included.</summary>
+    public long? PlaytimeSeconds { get; set; }
+
+    /// <summary>The total played as it was known once the snapshot was read: what it said, or what was
+    /// known before when it did not say. What a history takes differences of.</summary>
+    public long? KnownPlaytimeSeconds { get; set; }
+
+    /// <summary>What was played lately, over the store's own window, as the snapshot said it.</summary>
+    public long? RecentPlaytimeSeconds { get; set; }
+
+    public DateTimeOffset? LastPlayedAt { get; set; }
+}
+
+/// <summary>A store entry a linked account owns: the best that is known of it from every snapshot so
+/// far, which is not always what the latest one said.</summary>
+public sealed class OwnershipRow
+{
+    public Guid LinkedAccountId { get; set; }
+
+    public Guid StoreEntryId { get; set; }
+
+    public long? PlaytimeSeconds { get; set; }
+
+    public DateTimeOffset? LastPlayedAt { get; set; }
+
+    /// <summary>The date of the earliest snapshot that listed it.</summary>
+    public DateTimeOffset FirstSeenAt { get; set; }
+
+    /// <summary>The date of the latest snapshot that listed it.</summary>
+    public DateTimeOffset AsOf { get; set; }
+
+    /// <summary>That latest snapshot.</summary>
+    public Guid SnapshotId { get; set; }
+
+    /// <summary>What was played lately, as that latest snapshot said it; never carried over.</summary>
+    public long? RecentPlaytimeSeconds { get; set; }
+
+    /// <summary>The date of the complete snapshot that first left it out; null while it is in the
+    /// library. The row and its history stay.</summary>
+    public DateTimeOffset? UnlistedSince { get; set; }
+}

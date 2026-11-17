@@ -20,6 +20,7 @@
     <Using Include="Xunit" />
     <InternalsVisibleTo Include="Respawn.Tests" />
     <InternalsVisibleTo Include="Respawn.Accounts.Tests" />
+    <InternalsVisibleTo Include="Respawn.Games.Tests" />
   </ItemGroup>
 
 </Project>

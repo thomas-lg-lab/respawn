@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The inbound adapter of the Games module: its routes under /api/v1. It knows the module's core,
+       never its infrastructure, and no other module. -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Respawn.Games\Respawn.Games.csproj" />
+    <ProjectReference Include="..\..\..\Respawn.SharedKernel\Respawn.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

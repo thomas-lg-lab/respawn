@@ -30,10 +30,12 @@
   migrated on first use), `Respawn.SharedKernel` (the error format,
   the database contracts; no package), and one hexagonal module per responsibility under `Modules/`. Today
   `Modules/Accounts`: `Respawn.Accounts` (the core: use cases and ports, no package), `.Infrastructure` (EF Core
-  and its migrations, ASP.NET Core Identity, ID token validation), `.Api` (the controllers, the session cookie).
-  One test project per module (`Modules/Accounts/Respawn.Accounts.Tests`), `Respawn.Tests` for the host and the
+  and its migrations, ASP.NET Core Identity, ID token validation), `.Api` (the controllers, the session cookie);
+  and `Modules/Games`, the same three projects: the catalogue (a game as one record whatever the store), the
+  linked store accounts, the sources' answers kept untouched, ownership and playtime.
+  One test project per module (`Modules/<Name>/Respawn.<Name>.Tests`), `Respawn.Tests` for the host and the
   architecture rules, `Respawn.Testing` for what they share; they start the real app against a real PostgreSQL.
-- **Architecture is checked.** A module never references another module's infrastructure or tables; an inbound
+- **Architecture is checked.** A module never references another module, its infrastructure or its tables; an inbound
   adapter never references its module's infrastructure; a core references no framework; each module owns one
   PostgreSQL schema and its migrations; no empty project. `ArchitectureTests` fails otherwise; CONTRIBUTING.md
   says how to add a module.
