@@ -27,16 +27,16 @@ describe('DisplaySettings', () => {
   it('puts a chosen theme on the root and keeps it for the next visit', () => {
     const settings = create();
 
-    settings.setTheme('sombre');
+    settings.setTheme('dark');
     TestBed.tick();
 
-    expect(root.getAttribute('data-theme')).toBe('sombre');
-    expect(localStorage.getItem('respawn.theme')).toBe('sombre');
+    expect(root.getAttribute('data-theme')).toBe('dark');
+    expect(localStorage.getItem('respawn.theme')).toBe('dark');
   });
 
   it('goes back to the system by removing the attribute and the kept choice', () => {
     const settings = create();
-    settings.setTheme('clair');
+    settings.setTheme('light');
     TestBed.tick();
 
     settings.setTheme('system');
@@ -47,14 +47,14 @@ describe('DisplaySettings', () => {
   });
 
   it('starts from the choices kept in the browser', () => {
-    localStorage.setItem('respawn.theme', 'clair');
-    localStorage.setItem('respawn.character', 'sobre');
+    localStorage.setItem('respawn.theme', 'light');
+    localStorage.setItem('respawn.character', 'plain');
 
     const settings = create();
 
-    expect(settings.theme()).toBe('clair');
-    expect(root.getAttribute('data-theme')).toBe('clair');
-    expect(root.getAttribute('data-character')).toBe('sobre');
+    expect(settings.theme()).toBe('light');
+    expect(root.getAttribute('data-theme')).toBe('light');
+    expect(root.getAttribute('data-character')).toBe('plain');
   });
 
   it('ignores a kept value that is not a setting', () => {
@@ -70,10 +70,10 @@ describe('DisplaySettings', () => {
   it('switches the character on the root', () => {
     const settings = create();
 
-    settings.setCharacter('sobre');
+    settings.setCharacter('plain');
     TestBed.tick();
 
-    expect(root.getAttribute('data-character')).toBe('sobre');
-    expect(localStorage.getItem('respawn.character')).toBe('sobre');
+    expect(root.getAttribute('data-character')).toBe('plain');
+    expect(localStorage.getItem('respawn.character')).toBe('plain');
   });
 });

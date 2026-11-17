@@ -2,11 +2,11 @@ import { DOCUMENT, Service, effect, inject, signal } from '@angular/core';
 import { readChoice, writeChoice } from './stored-choice';
 
 /** `system` follows the device's preference and is the default. */
-export const THEMES = ['system', 'sombre', 'clair'] as const;
+export const THEMES = ['system', 'dark', 'light'] as const;
 export type Theme = (typeof THEMES)[number];
 
 /** What labels look like. `pixel` is the default. */
-export const CHARACTERS = ['pixel', 'sobre'] as const;
+export const CHARACTERS = ['pixel', 'plain'] as const;
 export type Character = (typeof CHARACTERS)[number];
 
 const THEME_KEY = 'respawn.theme';

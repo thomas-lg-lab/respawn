@@ -8,13 +8,13 @@
       "theme": "Thème",
       "themes": {
         "system": "Système",
-        "sombre": "Sombre",
-        "clair": "Clair"
+        "dark": "Sombre",
+        "light": "Clair"
       },
       "character": "Caractère",
       "characters": {
         "pixel": "Pixel",
-        "sobre": "Sobre"
+        "plain": "Sobre"
       },
       "language": "Langue",
       "languages": {

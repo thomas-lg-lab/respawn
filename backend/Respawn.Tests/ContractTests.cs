@@ -110,7 +110,23 @@ public sealed class ContractTests
             select $"{operation.Name.ToUpperInvariant()} {path.Name}";
         Assert.Empty(withoutSuccess);
 
+        // A number is described as a number, never as "a number or a string".
+        Assert.DoesNotContain("\"string\"", NumberTypes(document));
+
         // The same document wherever it is asked: no address of the host in it.
         Assert.False(document.TryGetProperty("servers", out var servers) && servers.GetArrayLength() > 0);
     }
+
+    /// <summary>Every "type" of the description that is a list naming a number, as written.</summary>
+    private static string NumberTypes(JsonElement element) =>
+        element.ValueKind switch
+        {
+            JsonValueKind.Object => string.Concat(element.EnumerateObject().Select(property =>
+                property.Name == "type" && property.Value.ValueKind == JsonValueKind.Array
+                    && property.Value.EnumerateArray().Any(type => type.GetString() is "integer" or "number")
+                    ? property.Value.GetRawText()
+                    : NumberTypes(property.Value))),
+            JsonValueKind.Array => string.Concat(element.EnumerateArray().Select(NumberTypes)),
+            _ => "",
+        };
 }

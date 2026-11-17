@@ -154,12 +154,14 @@
   text-transform: uppercase;
 }
 
-/* The prompt before the main label of a screen: drawn in the `pixel` character only. */
+/* The prompt before the main label of a screen: drawn in the `pixel` character only. It blinks a
+   few times and then stays lit: nothing on a page blinks without end, since nothing here could
+   pause it. */
 @utility label-prompt {
   &::before {
     content: var(--rs-label-prompt);
     margin-inline-end: 0.5ch;
-    animation: rs-blink var(--rs-duration-blink) steps(2, start) infinite;
+    animation: rs-blink var(--rs-duration-blink) steps(2, start) var(--rs-blink-count);
   }
 }
 @keyframes rs-blink {
@@ -192,6 +194,12 @@
   select,
   textarea {
     font-size: var(--rs-text-field);
+  }
+  /* A hint is read like any secondary text. The default, half of the text colour, is too faint
+     on the light theme. */
+  ::placeholder {
+    color: var(--rs-muted);
+    opacity: 1;
   }
   /* Preflight no longer sets the pointer on buttons. */
   button:not(:disabled),

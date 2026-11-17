@@ -70,11 +70,11 @@ describe('Foundations', () => {
     expect(pill(fixture, '[data-theme-choice="system"]').getAttribute('aria-pressed')).toBe('true');
     expect(root.hasAttribute('data-theme')).toBe(false);
 
-    pill(fixture, '[data-theme-choice="clair"]').click();
+    pill(fixture, '[data-theme-choice="light"]').click();
     await fixture.whenStable();
 
-    expect(root.getAttribute('data-theme')).toBe('clair');
-    expect(pill(fixture, '[data-theme-choice="clair"]').getAttribute('aria-pressed')).toBe('true');
+    expect(root.getAttribute('data-theme')).toBe('light');
+    expect(pill(fixture, '[data-theme-choice="light"]').getAttribute('aria-pressed')).toBe('true');
     expect(pill(fixture, '[data-theme-choice="system"]').getAttribute('aria-pressed')).toBe(
       'false',
     );
@@ -83,10 +83,10 @@ describe('Foundations', () => {
   it('switches the character on the root element', async () => {
     const fixture = await create('en');
 
-    pill(fixture, '[data-character-choice="sobre"]').click();
+    pill(fixture, '[data-character-choice="plain"]').click();
     await fixture.whenStable();
 
-    expect(root.getAttribute('data-character')).toBe('sobre');
+    expect(root.getAttribute('data-character')).toBe('plain');
   });
 
   it('names the button that shows only an icon', async () => {

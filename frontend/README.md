@@ -21,10 +21,10 @@ npm run gen:api     # the API's types, from openapi.json
 `packages/ui/src/styles/tokens.css` holds every token as a CSS custom property (`--rs-*`), read at run time.
 Two attributes on the root element switch them, and nothing else changes:
 
-| Attribute        | Values            | Default                         |
-| ---------------- | ----------------- | ------------------------------- |
-| `data-theme`     | `sombre`, `clair` | absent: the system's preference |
-| `data-character` | `pixel`, `sobre`  | `pixel`                         |
+| Attribute        | Values           | Default                         |
+| ---------------- | ---------------- | ------------------------------- |
+| `data-theme`     | `dark`, `light`  | absent: the system's preference |
+| `data-character` | `pixel`, `plain` | `pixel`                         |
 
 `theme.css` maps Tailwind's names onto them with `@theme inline`, so a utility carries the variable itself
 (`.bg-surface { background-color: var(--rs-surface) }`) and follows a switch. Tailwind's default palette, radii
