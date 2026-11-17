@@ -34,9 +34,9 @@ public interface ICatalogue
     Task AddAsync(IReadOnlyCollection<NewStoreEntry> entries, DateTimeOffset at, CancellationToken ct);
 
     /// <summary>Gives store entries the name their store now says: a store entry's name is the store's
-    /// word, and always follows it. The canonical record follows only while its own name is still the
-    /// one this entry gave it: a record named otherwise since (by hand, by a merge, from another source)
-    /// keeps its name.</summary>
+    /// word, and always follows it. The canonical record follows only the entry it took its name from:
+    /// a record named otherwise since (by hand, by a merge, from another source) keeps its name, and so
+    /// does one whose other entries are renamed, even from the same name.</summary>
     Task RenameAsync(IReadOnlyCollection<StoreEntryRename> renames, CancellationToken ct);
 }
 
@@ -54,6 +54,7 @@ public interface ILibraryStore
         IReadOnlyCollection<Ownership> owned,
         CancellationToken ct);
 
-    /// <summary>Sorted by name, the games without one last.</summary>
-    Task<IReadOnlyList<OwnedGame>> ListAsync(Guid ownerId, CancellationToken ct);
+    /// <summary>Every way the owner owns a game today, in no order: the ownerships of their linked
+    /// accounts, without those a complete reading left out since.</summary>
+    Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
 }

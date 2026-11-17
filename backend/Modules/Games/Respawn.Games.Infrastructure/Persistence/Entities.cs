@@ -11,10 +11,12 @@ public sealed class GameRow
 
     public string? Name { get; set; }
 
-    /// <summary>True while the name is the one a store entry gave when the record was created: a
-    /// reading may then replace it. Whatever names the game otherwise (a person, a merge, another
-    /// source) sets it to false, and readings leave the name alone from then on.</summary>
-    public bool NameFromStore { get; set; }
+    /// <summary>The store entry the record took its name from, when it was created: the name follows
+    /// that entry, and no other that points here since a merge. Whatever names the game otherwise (a
+    /// person, a merge, another source) sets it to null, and readings leave the name alone from then
+    /// on. Not a foreign key: the two tables would point at each other, and a store entry is never
+    /// deleted.</summary>
+    public Guid? NameSourceEntryId { get; set; }
 
     public long? IgdbId { get; set; }
 
@@ -74,7 +76,12 @@ public sealed class RawSnapshotRow
 
     public Guid? LinkedAccountId { get; set; }
 
-    /// <summary>Text, not JSON: the database would reorder a JSON document's keys.</summary>
+    /// <summary>True when it was taken as the whole of what it lists: what it leaves out was then no
+    /// longer there. Never true of an answer that lists nothing.</summary>
+    public bool Complete { get; set; }
+
+    /// <summary>Text, as received: `jsonb` would reorder a document's keys, and a source may answer
+    /// something that is not JSON at all.</summary>
     public string Payload { get; set; } = "";
 }
 
@@ -86,7 +93,15 @@ public sealed class ObservationRow
 
     public Guid StoreEntryId { get; set; }
 
+    /// <summary>The total played as the snapshot said it, a poor answer included.</summary>
     public long? PlaytimeSeconds { get; set; }
+
+    /// <summary>The total played as it was known once the snapshot was read: what it said, or what was
+    /// known before when it did not say. What a history takes differences of.</summary>
+    public long? KnownPlaytimeSeconds { get; set; }
+
+    /// <summary>What was played lately, over the store's own window, as the snapshot said it.</summary>
+    public long? RecentPlaytimeSeconds { get; set; }
 
     public DateTimeOffset? LastPlayedAt { get; set; }
 }
@@ -111,4 +126,11 @@ public sealed class OwnershipRow
 
     /// <summary>That latest snapshot.</summary>
     public Guid SnapshotId { get; set; }
+
+    /// <summary>What was played lately, as that latest snapshot said it; never carried over.</summary>
+    public long? RecentPlaytimeSeconds { get; set; }
+
+    /// <summary>The date of the complete snapshot that first left it out; null while it is in the
+    /// library. The row and its history stay.</summary>
+    public DateTimeOffset? UnlistedSince { get; set; }
 }

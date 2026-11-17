@@ -21,7 +21,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    name_from_store = table.Column<bool>(type: "boolean", nullable: false),
+                    name_source_entry_id = table.Column<Guid>(type: "uuid", nullable: true),
                     igdb_id = table.Column<long>(type: "bigint", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -83,6 +83,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     recorded_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     owner_id = table.Column<Guid>(type: "uuid", nullable: true),
                     linked_account_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    complete = table.Column<bool>(type: "boolean", nullable: false),
                     payload = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
@@ -106,12 +107,14 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     snapshot_id = table.Column<Guid>(type: "uuid", nullable: false),
                     store_entry_id = table.Column<Guid>(type: "uuid", nullable: false),
                     playtime_seconds = table.Column<long>(type: "bigint", nullable: true),
+                    known_playtime_seconds = table.Column<long>(type: "bigint", nullable: true),
+                    recent_playtime_seconds = table.Column<long>(type: "bigint", nullable: true),
                     last_played_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_observations", x => new { x.snapshot_id, x.store_entry_id });
-                    table.CheckConstraint("ck_observations_playtime", "playtime_seconds >= 0");
+                    table.CheckConstraint("ck_observations_playtime", "playtime_seconds >= 0 AND known_playtime_seconds >= 0 AND recent_playtime_seconds >= 0");
                     table.ForeignKey(
                         name: "fk_observations_raw_snapshots_snapshot_id",
                         column: x => x.snapshot_id,
@@ -139,12 +142,14 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     last_played_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     first_seen_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     as_of = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    snapshot_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    snapshot_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    recent_playtime_seconds = table.Column<long>(type: "bigint", nullable: true),
+                    unlisted_since = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_ownerships", x => new { x.linked_account_id, x.store_entry_id });
-                    table.CheckConstraint("ck_ownerships_playtime", "playtime_seconds >= 0");
+                    table.CheckConstraint("ck_ownerships_playtime", "playtime_seconds >= 0 AND recent_playtime_seconds >= 0");
                     table.ForeignKey(
                         name: "fk_ownerships_linked_accounts_linked_account_id",
                         column: x => x.linked_account_id,

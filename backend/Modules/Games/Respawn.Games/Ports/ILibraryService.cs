@@ -14,7 +14,8 @@ public interface ILibraryService
     /// Records what a store said of a linked account's library. Returns the snapshot's id.
     ///
     /// Always kept: the answer as a snapshot, dated when the source answered, and what it says of each
-    /// game as an observation of that snapshot. The history of a library is read from these.
+    /// game as an observation of that snapshot, beside the total that was known once it was read. The
+    /// history of a library is read from these.
     ///
     /// Then the library itself, the best that is known, is brought up to date, by these rules.
     /// A game the catalogue did not know is added to it.
@@ -22,14 +23,24 @@ public interface ILibraryService
     /// first seen.
     /// A reading that does not say (no playtime, no date, no name) erases nothing, and a playtime of
     /// zero does not replace a known one.
-    /// A game an earlier reading listed and this one does not is left as it was.
+    /// A game an earlier reading listed and this one does not is left as it was, unless the reading is
+    /// complete (<see cref="LibraryReading.Complete"/>) and lists at least one game: the game is then
+    /// marked as gone from that date and leaves the library, with what was known of it and its history
+    /// kept; a later reading that lists it brings it back.
+    /// What was played lately is the latest reading's word, or nothing: a window that moves is not
+    /// carried over.
     /// A store entry takes the name its store now gives it; <see cref="ICatalogue.RenameAsync"/> says
     /// when the game follows.
     /// </summary>
     /// <exception cref="GamesException"><see cref="GamesError.UnknownLinkedAccount"/>.</exception>
     /// <exception cref="ArgumentException">The reading is dated in the future, or malformed.</exception>
+    /// <remarks>Recording the same answer twice keeps it twice: totals are cumulative, so a history
+    /// reads no playtime between the two.</remarks>
     Task<Guid> RecordLibraryAsync(Guid linkedAccountId, LibraryReading reading, CancellationToken ct);
 
-    /// <summary>What an owner owns, through every store account linked to them.</summary>
-    Task<IReadOnlyList<OwnedGame>> GetLibraryAsync(Guid ownerId, CancellationToken ct);
+    /// <summary>What an owner owns today, through every store account linked to them: one item per
+    /// game, in the order asked, and the part of it from <paramref name="offset"/> on.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">A negative offset, or a limit outside 1 to
+    /// <see cref="Limits.LibraryPage"/>.</exception>
+    Task<LibraryPage> GetLibraryAsync(Guid ownerId, LibrarySort sort, int offset, int limit, CancellationToken ct);
 }

@@ -20,6 +20,8 @@ public sealed record LinkedAccount(
 /// <param name="Kind">Which of the source's answers this is.</param>
 /// <param name="TakenAt">When the source answered: the date the answer is true for.</param>
 /// <param name="RecordedAt">When it was stored here, which may be later: a retry, an import of the past.</param>
+/// <param name="Complete">True when it is taken as the whole of what it lists: what it leaves out is
+/// then no longer there. See <see cref="LibraryReading"/>.</param>
 /// <param name="OwnerId">The account it is about, when personal.</param>
 /// <param name="LinkedAccountId">The store account it was read from, when personal.</param>
 /// <param name="Payload">The answer as received.</param>
@@ -31,7 +33,8 @@ public sealed record RawSnapshot(
     DateTimeOffset RecordedAt,
     Guid? OwnerId,
     Guid? LinkedAccountId,
-    string Payload);
+    string Payload,
+    bool Complete = false);
 
 /// <summary>A store entry the catalogue has, with the name its store last gave it, if any.</summary>
 public sealed record StoreEntry(Guid Id, string? Name);
@@ -41,14 +44,19 @@ public sealed record StoreEntry(Guid Id, string? Name);
 public sealed record NewStoreEntry(Guid Id, Guid GameId, string Source, string ExternalId, string? Name);
 
 /// <summary>A store entry whose store now gives another name than the one kept.</summary>
-public sealed record StoreEntryRename(Guid Id, string? Was, string Name);
+public sealed record StoreEntryRename(Guid Id, string Name);
 
 /// <summary>A library as a connector read it: the source's answer untouched, and what it says.</summary>
 /// <param name="Kind">Which of the source's answers this is, in the connector's words.</param>
 /// <param name="TakenAt">When the source answered, not when the reading is handed over.</param>
 /// <param name="Payload">The answer as received.</param>
 /// <param name="Items">The games it lists.</param>
-public sealed record LibraryReading(string Kind, DateTimeOffset TakenAt, string Payload, IReadOnlyList<OwnedItem> Items);
+/// <param name="Complete">True when the connector vouches that this is the whole library: the source
+/// answered in full, nothing was cut or filtered. A game it does not list is then taken as gone from
+/// the library. A reading that lists nothing is never taken as complete, whatever this says: a
+/// profile made private answers an empty list that looks the same.</param>
+public sealed record LibraryReading(
+    string Kind, DateTimeOffset TakenAt, string Payload, IReadOnlyList<OwnedItem> Items, bool Complete = false);
 
 /// <summary>A game of a library, in the store's words. What the store does not say is null, never a
 /// value standing for it: an answer may be poorer than the one before.</summary>
@@ -56,10 +64,22 @@ public sealed record LibraryReading(string Kind, DateTimeOffset TakenAt, string 
 /// <param name="Name">Null when the store gives none.</param>
 /// <param name="Playtime">The total played, as the store counts it; null when it does not say.</param>
 /// <param name="LastPlayedAt">Null when the store does not say, or the game was never launched.</param>
-public sealed record OwnedItem(string ExternalId, string? Name, TimeSpan? Playtime, DateTimeOffset? LastPlayedAt);
+/// <param name="RecentPlaytime">What was played lately, over the window the store itself counts (Steam:
+/// the last two weeks); null when it does not say. It is the store's own figure: nothing here can
+/// compute it before two weeks of readings exist.</param>
+public sealed record OwnedItem(
+    string ExternalId, string? Name, TimeSpan? Playtime, DateTimeOffset? LastPlayedAt, TimeSpan? RecentPlaytime = null);
 
-/// <summary>What one snapshot said of one store entry, as it said it: the history of a library.</summary>
-public sealed record Observation(Guid StoreEntryId, TimeSpan? Playtime, DateTimeOffset? LastPlayedAt);
+/// <summary>What one snapshot said of one store entry: the history of a library.</summary>
+/// <param name="StoreEntryId">The store entry.</param>
+/// <param name="Playtime">The total played, as the snapshot said it: null or zero when it was poor.</param>
+/// <param name="LastPlayedAt">As the snapshot said it.</param>
+/// <param name="KnownPlaytime">The total played as it was known once this snapshot was read: what it
+/// said, or what was known before when it did not say. A history is a difference between these, never
+/// between what was said: a poor answer between two good ones would count the same hours twice.</param>
+/// <param name="RecentPlaytime">What was played lately, as the snapshot said it.</param>
+public sealed record Observation(
+    Guid StoreEntryId, TimeSpan? Playtime, DateTimeOffset? LastPlayedAt, TimeSpan? KnownPlaytime, TimeSpan? RecentPlaytime);
 
 /// <summary>A store entry a linked account owns: the best that is known of it, from every reading so
 /// far.</summary>
@@ -69,23 +89,68 @@ public sealed record Observation(Guid StoreEntryId, TimeSpan? Playtime, DateTime
 /// <param name="FirstSeenAt">The date of the earliest reading that listed it.</param>
 /// <param name="AsOf">The date of the latest reading that listed it.</param>
 /// <param name="SnapshotId">That latest reading's snapshot.</param>
+/// <param name="RecentPlaytime">What was played lately, as that latest reading said it. A window that
+/// moves cannot be carried over: when the reading does not say, it is null again.</param>
+/// <param name="UnlistedSince">The date of the complete reading that first left it out (a refund, a
+/// share that ended, a free weekend over); null while it is in the library. What was known of it and
+/// its history stay; a reading that lists it again brings it back.</param>
 public sealed record Ownership(
     Guid StoreEntryId,
     TimeSpan? Playtime,
     DateTimeOffset? LastPlayedAt,
     DateTimeOffset FirstSeenAt,
     DateTimeOffset AsOf,
-    Guid SnapshotId);
+    Guid SnapshotId,
+    TimeSpan? RecentPlaytime = null,
+    DateTimeOffset? UnlistedSince = null);
 
-/// <summary>A game of an owner's library: the canonical record, and the store entry it is owned through.
-/// The name is null while no source has named the game.</summary>
-public sealed record OwnedGame(
+/// <summary>One way an owner owns a game: a store entry, through one of their linked accounts. The pair
+/// of the two ids is unique in a library.</summary>
+public sealed record OwnedEntry(
     Guid GameId,
-    string? Name,
+    string? GameName,
+    Guid StoreEntryId,
+    Guid LinkedAccountId,
     string Source,
     string ExternalId,
     TimeSpan? Playtime,
-    DateTimeOffset? LastPlayedAt);
+    TimeSpan? RecentPlaytime,
+    DateTimeOffset? LastPlayedAt,
+    DateTimeOffset FirstSeenAt,
+    DateTimeOffset AsOf);
+
+/// <summary>A game of an owner's library, once, however many store entries it is owned through: after
+/// a merge, or with two accounts of one store, a game has several.</summary>
+/// <param name="GameId">The canonical record.</param>
+/// <param name="Name">Null while no source has named the game.</param>
+/// <param name="Playtime">The sum over its entries; null while none said.</param>
+/// <param name="RecentPlaytime">The sum over its entries; null while none said.</param>
+/// <param name="LastPlayedAt">The latest over its entries.</param>
+/// <param name="Entries">The ways it is owned, at least one.</param>
+public sealed record OwnedGame(
+    Guid GameId,
+    string? Name,
+    TimeSpan? Playtime,
+    TimeSpan? RecentPlaytime,
+    DateTimeOffset? LastPlayedAt,
+    IReadOnlyList<OwnedEntry> Entries);
+
+/// <summary>The orders a library is read in. Whatever the order, the games it cannot place (no name,
+/// no playtime said, never launched) come last.</summary>
+public enum LibrarySort
+{
+    /// <summary>By name, A to Z.</summary>
+    Name,
+
+    /// <summary>The most played first.</summary>
+    Playtime,
+
+    /// <summary>The last played first.</summary>
+    LastPlayed,
+}
+
+/// <summary>A part of a library, and how many games the whole of it has.</summary>
+public sealed record LibraryPage(int Total, IReadOnlyList<OwnedGame> Games);
 
 /// <summary>The sizes the catalogue accepts.</summary>
 public static class Limits
@@ -99,4 +164,7 @@ public static class Limits
     public const int DisplayName = 200;
 
     public const int SnapshotKind = 64;
+
+    /// <summary>The most games one request for a library is answered with.</summary>
+    public const int LibraryPage = 500;
 }

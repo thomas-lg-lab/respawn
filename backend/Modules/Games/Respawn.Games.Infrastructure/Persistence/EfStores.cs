@@ -64,6 +64,7 @@ internal sealed class EfSnapshotStore(GamesDbContext db) : ISnapshotStore
             RecordedAt = snapshot.RecordedAt,
             OwnerId = snapshot.OwnerId,
             LinkedAccountId = snapshot.LinkedAccountId,
+            Complete = snapshot.Complete,
             Payload = snapshot.Payload,
         });
         await db.SaveChangesAsync(ct);
@@ -85,7 +86,7 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
     {
         foreach (var entry in entries)
         {
-            db.Games.Add(new GameRow { Id = entry.GameId, Name = entry.Name, NameFromStore = true, CreatedAt = at });
+            db.Games.Add(new GameRow { Id = entry.GameId, Name = entry.Name, NameSourceEntryId = entry.Id, CreatedAt = at });
             db.StoreEntries.Add(new StoreEntryRow
             {
                 Id = entry.Id,
@@ -105,14 +106,14 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         Guid[] ids = [.. renames.Select(rename => rename.Id)];
         var entries = await db.StoreEntries.Where(e => ids.Contains(e.Id)).ToDictionaryAsync(e => e.Id, ct);
         Guid[] gameIds = [.. entries.Values.Select(e => e.GameId).Distinct()];
-        var games = await db.Games.Where(g => gameIds.Contains(g.Id) && g.NameFromStore).ToDictionaryAsync(g => g.Id, ct);
+        var games = await db.Games.Where(g => gameIds.Contains(g.Id) && g.NameSourceEntryId != null).ToDictionaryAsync(g => g.Id, ct);
         foreach (var rename in renames)
         {
             var entry = entries[rename.Id];
             entry.Name = rename.Name;
-            // The record follows while its name is still this entry's previous one. After a merge, the
-            // record keeps the name of the entry it was created with, whatever the others become.
-            if (games.TryGetValue(entry.GameId, out var game) && game.Name == rename.Was)
+            // The record follows the entry it took its name from, and that one only. After a merge the
+            // other entries that point to it are renamed alone, even when they bore the same name.
+            if (games.TryGetValue(entry.GameId, out var game) && game.NameSourceEntryId == entry.Id)
             {
                 game.Name = rename.Name;
             }
@@ -129,7 +130,15 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         var rows = await db.Ownerships.AsNoTracking().Where(o => o.LinkedAccountId == linkedAccountId).ToListAsync(ct);
         return rows.ToDictionary(
             row => row.StoreEntryId,
-            row => new Ownership(row.StoreEntryId, Playtime(row.PlaytimeSeconds), row.LastPlayedAt, row.FirstSeenAt, row.AsOf, row.SnapshotId));
+            row => new Ownership(
+                row.StoreEntryId,
+                Playtime(row.PlaytimeSeconds),
+                row.LastPlayedAt,
+                row.FirstSeenAt,
+                row.AsOf,
+                row.SnapshotId,
+                Playtime(row.RecentPlaytimeSeconds),
+                row.UnlistedSince));
     }
 
     public async Task RecordAsync(
@@ -144,6 +153,8 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             SnapshotId = snapshotId,
             StoreEntryId = observation.StoreEntryId,
             PlaytimeSeconds = Seconds(observation.Playtime),
+            KnownPlaytimeSeconds = Seconds(observation.KnownPlaytime),
+            RecentPlaytimeSeconds = Seconds(observation.RecentPlaytime),
             LastPlayedAt = observation.LastPlayedAt,
         }));
 
@@ -164,24 +175,48 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             row.FirstSeenAt = ownership.FirstSeenAt;
             row.AsOf = ownership.AsOf;
             row.SnapshotId = ownership.SnapshotId;
+            row.RecentPlaytimeSeconds = Seconds(ownership.RecentPlaytime);
+            row.UnlistedSince = ownership.UnlistedSince;
         }
 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<OwnedGame>> ListAsync(Guid ownerId, CancellationToken ct)
+    public async Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct)
     {
         var rows = await (
             from ownership in db.Ownerships.AsNoTracking()
             join account in db.LinkedAccounts on ownership.LinkedAccountId equals account.Id
-            where account.OwnerId == ownerId
+            where account.OwnerId == ownerId && ownership.UnlistedSince == null
             join entry in db.StoreEntries on ownership.StoreEntryId equals entry.Id
             join game in db.Games on entry.GameId equals game.Id
-            orderby game.Name == null, game.Name, entry.Source, entry.ExternalId, account.Id
-            select new { game.Id, game.Name, entry.Source, entry.ExternalId, ownership.PlaytimeSeconds, ownership.LastPlayedAt })
+            select new
+            {
+                GameId = game.Id,
+                GameName = game.Name,
+                StoreEntryId = entry.Id,
+                LinkedAccountId = account.Id,
+                entry.Source,
+                entry.ExternalId,
+                ownership.PlaytimeSeconds,
+                ownership.RecentPlaytimeSeconds,
+                ownership.LastPlayedAt,
+                ownership.FirstSeenAt,
+                ownership.AsOf,
+            })
             .ToListAsync(ct);
-        return [.. rows.Select(row => new OwnedGame(
-            row.Id, row.Name, row.Source, row.ExternalId, Playtime(row.PlaytimeSeconds), row.LastPlayedAt))];
+        return [.. rows.Select(row => new OwnedEntry(
+            row.GameId,
+            row.GameName,
+            row.StoreEntryId,
+            row.LinkedAccountId,
+            row.Source,
+            row.ExternalId,
+            Playtime(row.PlaytimeSeconds),
+            Playtime(row.RecentPlaytimeSeconds),
+            row.LastPlayedAt,
+            row.FirstSeenAt,
+            row.AsOf))];
     }
 
     private static long? Seconds(TimeSpan? playtime) => playtime is { } value ? (long)value.TotalSeconds : null;

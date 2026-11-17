@@ -88,7 +88,7 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
         modelBuilder.Entity<ObservationRow>(observation =>
         {
             observation.ToTable("observations", table => table.HasCheckConstraint(
-                "ck_observations_playtime", "playtime_seconds >= 0"));
+                "ck_observations_playtime", "playtime_seconds >= 0 AND known_playtime_seconds >= 0 AND recent_playtime_seconds >= 0"));
             // By snapshot first: a period is a range of snapshots. By store entry for one game over time.
             observation.HasKey(o => new { o.SnapshotId, o.StoreEntryId });
             observation.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(o => o.SnapshotId).OnDelete(DeleteBehavior.Restrict);
@@ -98,7 +98,7 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
         modelBuilder.Entity<OwnershipRow>(ownership =>
         {
             ownership.ToTable("ownerships", table => table.HasCheckConstraint(
-                "ck_ownerships_playtime", "playtime_seconds >= 0"));
+                "ck_ownerships_playtime", "playtime_seconds >= 0 AND recent_playtime_seconds >= 0"));
             ownership.HasKey(o => new { o.LinkedAccountId, o.StoreEntryId });
             ownership.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(o => o.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
             ownership.HasOne<StoreEntryRow>().WithMany().HasForeignKey(o => o.StoreEntryId).OnDelete(DeleteBehavior.Restrict);

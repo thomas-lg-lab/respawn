@@ -43,7 +43,11 @@ public sealed class LibraryService(
     public Task<Guid> RecordLibraryAsync(Guid linkedAccountId, LibraryReading reading, CancellationToken ct)
     {
         CheckLength(reading.Kind, Limits.SnapshotKind, nameof(reading));
-        ArgumentNullException.ThrowIfNull(reading.Payload, nameof(reading));
+        if (reading.Payload is null || reading.Items is null)
+        {
+            throw new ArgumentException("a reading has a payload and a list of games, empty when it lists none", nameof(reading));
+        }
+
         var takenAt = reading.TakenAt.ToUniversalTime();
         if (takenAt > clock.GetUtcNow() + ClockSkew)
         {
@@ -51,6 +55,9 @@ public sealed class LibraryService(
         }
 
         var items = Items(reading);
+
+        // An empty answer is what a profile made private looks like: never the proof of an empty library.
+        var complete = reading.Complete && items.Count > 0;
 
         return unitOfWork.RunAsync(
             async () =>
@@ -61,7 +68,7 @@ public sealed class LibraryService(
 
                 // The answer first, as it came: everything below can be derived from it again.
                 var snapshot = new RawSnapshot(
-                    Guid.CreateVersion7(), account.Source, reading.Kind, takenAt, now, account.OwnerId, account.Id, reading.Payload);
+                    Guid.CreateVersion7(), account.Source, reading.Kind, takenAt, now, account.OwnerId, account.Id, reading.Payload, complete);
                 await snapshots.AddAsync(snapshot, ct);
 
                 // A game the catalogue does not know gets a canonical record of its own. Finding out
@@ -88,6 +95,7 @@ public sealed class LibraryService(
                 // What the reading says is kept whole; what is known only moves by the rules.
                 var before = await library.FindOwnershipsAsync(account.Id, ct);
                 var owned = new List<Ownership>();
+                var said = new List<Observation>();
                 var renames = new List<StoreEntryRename>();
                 foreach (var item in items)
                 {
@@ -95,8 +103,9 @@ public sealed class LibraryService(
                     var current = before.GetValueOrDefault(entry);
                     if (current is not null && current.AsOf > takenAt)
                     {
-                        // Older than what is known: it is history, and may only tell the game was
-                        // owned earlier than thought.
+                        // Older than what is known: it is history, taken at its word, and may only
+                        // tell the game was owned earlier than thought.
+                        said.Add(new Observation(entry, item.Playtime, item.LastPlayedAt, item.Playtime, item.RecentPlaytime));
                         if (takenAt < current.FirstSeenAt)
                         {
                             owned.Add(current with { FirstSeenAt = takenAt });
@@ -105,10 +114,12 @@ public sealed class LibraryService(
                         continue;
                     }
 
-                    owned.Add(Updated(current, item, entry, takenAt, snapshot.Id));
+                    var updated = Updated(current, item, entry, takenAt, snapshot.Id);
+                    owned.Add(updated);
+                    said.Add(new Observation(entry, item.Playtime, item.LastPlayedAt, updated.Playtime, item.RecentPlaytime));
                     if (item.Name is not null && known.TryGetValue(item.ExternalId, out var kept) && kept.Name != item.Name)
                     {
-                        renames.Add(new StoreEntryRename(kept.Id, kept.Name, item.Name));
+                        renames.Add(new StoreEntryRename(kept.Id, item.Name));
                     }
                 }
 
@@ -117,34 +128,130 @@ public sealed class LibraryService(
                     await catalogue.RenameAsync(renames, ct);
                 }
 
-                await library.RecordAsync(
-                    account.Id,
-                    snapshot.Id,
-                    [.. items.Select(item => new Observation(entries[item.ExternalId], item.Playtime, item.LastPlayedAt))],
-                    owned,
-                    ct);
+                if (complete)
+                {
+                    // The whole library, and these are not in it any more: gone since this reading,
+                    // unless something more recent already says otherwise.
+                    var listed = items.Select(item => entries[item.ExternalId]).ToHashSet();
+                    owned.AddRange(before.Values
+                        .Where(gone => !listed.Contains(gone.StoreEntryId) && gone.UnlistedSince is null && gone.AsOf <= takenAt)
+                        .Select(gone => gone with { UnlistedSince = takenAt, RecentPlaytime = null }));
+                }
+
+                await library.RecordAsync(account.Id, snapshot.Id, said, owned, ct);
                 return snapshot.Id;
             },
             ct);
     }
 
-    public Task<IReadOnlyList<OwnedGame>> GetLibraryAsync(Guid ownerId, CancellationToken ct) => library.ListAsync(ownerId, ct);
+    public async Task<LibraryPage> GetLibraryAsync(Guid ownerId, LibrarySort sort, int offset, int limit, CancellationToken ct)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(limit, Limits.LibraryPage);
+
+        // The whole library is read and put in order here: a few thousand rows at most, and the order
+        // is then the same on every database, whatever its collation.
+        var games = (await library.ListAsync(ownerId, ct))
+            .GroupBy(entry => entry.GameId)
+            .Select(Game)
+            .ToList();
+        games.Sort(Order(sort));
+        return new LibraryPage(games.Count, [.. games.Skip(offset).Take(limit)]);
+    }
+
+    /// <summary>A game from the entries it is owned through: its totals add up, its last session is
+    /// the latest, and its entries come in an order that does not change.</summary>
+    private static OwnedGame Game(IGrouping<Guid, OwnedEntry> owned)
+    {
+        OwnedEntry[] entries =
+        [
+            .. owned.OrderBy(entry => entry.Source, StringComparer.Ordinal)
+                .ThenBy(entry => entry.ExternalId, StringComparer.Ordinal)
+                .ThenBy(entry => entry.LinkedAccountId),
+        ];
+        return new OwnedGame(
+            owned.Key,
+            entries[0].GameName,
+            Sum(entries.Select(entry => entry.Playtime)),
+            Sum(entries.Select(entry => entry.RecentPlaytime)),
+            entries.Max(entry => entry.LastPlayedAt),
+            entries);
+    }
+
+    private static TimeSpan? Sum(IEnumerable<TimeSpan?> times)
+    {
+        TimeSpan? total = null;
+        foreach (var time in times)
+        {
+            if (time is { } said)
+            {
+                total = (total ?? TimeSpan.Zero) + said;
+            }
+        }
+
+        return total;
+    }
+
+    /// <summary>The order of a library. What cannot be placed comes last, and two games the order does
+    /// not tell apart come by name, then by id: a page never depends on chance.</summary>
+    private static Comparison<OwnedGame> Order(LibrarySort sort)
+    {
+        // Letters before their case and their accents, the same in every language of the interface.
+        var names = StringComparer.InvariantCultureIgnoreCase;
+        int ByName(OwnedGame a, OwnedGame b)
+        {
+            var order = (a.Name, b.Name) switch
+            {
+                (null, null) => 0,
+                (null, _) => 1,
+                (_, null) => -1,
+                _ => names.Compare(a.Name, b.Name),
+            };
+            return order != 0 ? order : a.GameId.CompareTo(b.GameId);
+        }
+
+        int Then(int order, OwnedGame a, OwnedGame b) => order != 0 ? order : ByName(a, b);
+
+        return sort switch
+        {
+            LibrarySort.Playtime => (a, b) => Then(Descending(a.Playtime, b.Playtime), a, b),
+            LibrarySort.LastPlayed => (a, b) => Then(Descending(a.LastPlayedAt, b.LastPlayedAt), a, b),
+            _ => ByName,
+        };
+    }
+
+    /// <summary>The greatest first, and what is not known last.</summary>
+    private static int Descending<T>(T? a, T? b)
+        where T : struct, IComparable<T> =>
+        (a, b) switch
+        {
+            (null, null) => 0,
+            (null, _) => 1,
+            (_, null) => -1,
+            _ => b.Value.CompareTo(a.Value),
+        };
 
     /// <summary>What is known of a game after a reading at least as recent as the last one. An answer
     /// may be poorer than the one before (a profile made private, a store having a bad day): what it
     /// does not say is kept, and a playtime of zero is taken as not said when one is known. A playtime
-    /// that goes down without reaching zero is the store correcting itself, and is taken.</summary>
+    /// that goes down without reaching zero is the store correcting itself, and is taken. Listing a
+    /// game brings it back into the library, unless a complete reading more recent than this one has
+    /// already left it out: a reading that arrives late does not undo what is known since.</summary>
     private static Ownership Updated(Ownership? current, OwnedItem item, Guid entry, DateTimeOffset takenAt, Guid snapshot)
     {
         var silent = item.Playtime is null || (item.Playtime == TimeSpan.Zero && current?.Playtime > TimeSpan.Zero);
         var firstSeen = current is not null && current.FirstSeenAt < takenAt ? current.FirstSeenAt : takenAt;
+        var goneSince = current?.UnlistedSince > takenAt ? current.UnlistedSince : null;
         return new Ownership(
             entry,
             silent ? current?.Playtime : item.Playtime,
             item.LastPlayedAt ?? current?.LastPlayedAt,
             firstSeen,
             takenAt,
-            snapshot);
+            snapshot,
+            goneSince is null ? item.RecentPlaytime : null,
+            goneSince);
     }
 
     /// <summary>The items of a reading, checked, one per store id: the last one listed wins.</summary>
@@ -154,7 +261,7 @@ public sealed class LibraryService(
         foreach (var item in reading.Items)
         {
             CheckLength(item.ExternalId, Limits.ExternalId, nameof(reading));
-            if (item.Playtime < TimeSpan.Zero)
+            if (item.Playtime < TimeSpan.Zero || item.RecentPlaytime < TimeSpan.Zero)
             {
                 throw new ArgumentException($"the game {item.ExternalId} has a negative playtime", nameof(reading));
             }

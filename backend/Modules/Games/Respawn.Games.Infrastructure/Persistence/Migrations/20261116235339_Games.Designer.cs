@@ -46,9 +46,9 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("name");
 
-                    b.Property<bool>("NameFromStore")
-                        .HasColumnType("boolean")
-                        .HasColumnName("name_from_store");
+                    b.Property<Guid?>("NameSourceEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("name_source_entry_id");
 
                     b.HasKey("Id")
                         .HasName("pk_games");
@@ -115,6 +115,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("store_entry_id");
 
+                    b.Property<long?>("KnownPlaytimeSeconds")
+                        .HasColumnType("bigint")
+                        .HasColumnName("known_playtime_seconds");
+
                     b.Property<DateTimeOffset?>("LastPlayedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_played_at");
@@ -122,6 +126,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     b.Property<long?>("PlaytimeSeconds")
                         .HasColumnType("bigint")
                         .HasColumnName("playtime_seconds");
+
+                    b.Property<long?>("RecentPlaytimeSeconds")
+                        .HasColumnType("bigint")
+                        .HasColumnName("recent_playtime_seconds");
 
                     b.HasKey("SnapshotId", "StoreEntryId")
                         .HasName("pk_observations");
@@ -131,7 +139,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
 
                     b.ToTable("observations", "games", t =>
                         {
-                            t.HasCheckConstraint("ck_observations_playtime", "playtime_seconds >= 0");
+                            t.HasCheckConstraint("ck_observations_playtime", "playtime_seconds >= 0 AND known_playtime_seconds >= 0 AND recent_playtime_seconds >= 0");
                         });
                 });
 
@@ -161,9 +169,17 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("playtime_seconds");
 
+                    b.Property<long?>("RecentPlaytimeSeconds")
+                        .HasColumnType("bigint")
+                        .HasColumnName("recent_playtime_seconds");
+
                     b.Property<Guid>("SnapshotId")
                         .HasColumnType("uuid")
                         .HasColumnName("snapshot_id");
+
+                    b.Property<DateTimeOffset?>("UnlistedSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("unlisted_since");
 
                     b.HasKey("LinkedAccountId", "StoreEntryId")
                         .HasName("pk_ownerships");
@@ -176,7 +192,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
 
                     b.ToTable("ownerships", "games", t =>
                         {
-                            t.HasCheckConstraint("ck_ownerships_playtime", "playtime_seconds >= 0");
+                            t.HasCheckConstraint("ck_ownerships_playtime", "playtime_seconds >= 0 AND recent_playtime_seconds >= 0");
                         });
                 });
 
@@ -186,6 +202,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("Complete")
+                        .HasColumnType("boolean")
+                        .HasColumnName("complete");
 
                     b.Property<string>("Kind")
                         .IsRequired()
