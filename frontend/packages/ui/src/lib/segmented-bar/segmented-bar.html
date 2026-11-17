@@ -1,0 +1,6 @@
+<span class="bar" aria-hidden="true">
+  @for (filled of cells(); track $index) {
+    <span class="segment" [attr.data-filled]="filled ? '' : null"></span>
+  }
+</span>
+<span class="value"><ng-content /></span>

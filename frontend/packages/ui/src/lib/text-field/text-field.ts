@@ -19,28 +19,7 @@ let created = 0;
  */
 @Component({
   selector: 'rs-text-field',
-  template: `
-    <label [for]="id">{{ label() }}</label>
-    <input
-      #control
-      [id]="id"
-      [type]="type()"
-      [attr.name]="name() || null"
-      [attr.autocomplete]="autocomplete()"
-      [attr.aria-invalid]="showsError() ? 'true' : null"
-      [attr.aria-describedby]="describedBy()"
-      [required]="required()"
-      [disabled]="disabled()"
-      [value]="value()"
-      (input)="value.set(control.value)"
-      (blur)="touch.emit()"
-    />
-    @if (showsError()) {
-      <span class="error" [id]="errorId">{{ error() }}</span>
-    } @else if (hint()) {
-      <span class="hint" [id]="hintId">{{ hint() }}</span>
-    }
-  `,
+  templateUrl: './text-field.html',
   styleUrl: './text-field.css',
 })
 export class TextField implements FormValueControl<string> {

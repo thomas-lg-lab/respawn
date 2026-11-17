@@ -16,14 +16,7 @@ export function filledSegments(value: number, max: number, segments: number): nu
  */
 @Component({
   selector: 'rs-segmented-bar',
-  template: `
-    <span class="bar" aria-hidden="true">
-      @for (filled of cells(); track $index) {
-        <span class="segment" [attr.data-filled]="filled ? '' : null"></span>
-      }
-    </span>
-    <span class="value"><ng-content /></span>
-  `,
+  templateUrl: './segmented-bar.html',
   styleUrl: './segmented-bar.css',
 })
 export class SegmentedBar {

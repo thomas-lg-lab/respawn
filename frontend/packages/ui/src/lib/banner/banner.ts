@@ -13,14 +13,7 @@ export type BannerTone = 'status' | 'warn';
   selector: 'rs-banner',
   imports: [LucideCircleAlert, LucideInfo],
   host: { '[attr.data-tone]': 'tone()' },
-  template: `
-    @if (tone() === 'warn') {
-      <svg lucideCircleAlert class="icon" [strokeWidth]="2" aria-hidden="true"></svg>
-    } @else {
-      <svg lucideInfo class="icon" [strokeWidth]="2" aria-hidden="true"></svg>
-    }
-    <div class="content"><ng-content /></div>
-  `,
+  templateUrl: './banner.html',
   styleUrl: './banner.css',
 })
 export class Banner {

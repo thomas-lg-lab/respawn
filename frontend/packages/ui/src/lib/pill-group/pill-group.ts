@@ -17,10 +17,7 @@ let created = 0;
     role: 'group',
     '[attr.aria-labelledby]': 'labelId',
   },
-  template: `
-    <span class="label" [id]="labelId">{{ label() }}</span>
-    <div class="pills"><ng-content /></div>
-  `,
+  templateUrl: './pill-group.html',
   styleUrl: './pill-group.css',
 })
 export class PillGroup {

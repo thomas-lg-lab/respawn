@@ -11,19 +11,7 @@ import { Component } from '@angular/core';
  */
 @Component({
   selector: 'rs-logo',
-  template: `
-    <span class="mark">
-      <svg class="icon" viewBox="0 0 48 48" aria-hidden="true">
-        <rect x="7" y="14" width="7" height="24" fill="currentColor" />
-        <rect x="14" y="14" width="13" height="7" fill="currentColor" />
-        <rect x="20" y="21" width="7" height="6" fill="currentColor" />
-        <rect class="cursor" x="31" y="14" width="10" height="24" />
-      </svg>
-      <span class="name"
-        >{{ name }}<span class="dot">{{ dot }}</span></span
-      >
-    </span>
-  `,
+  templateUrl: './logo.html',
   styleUrl: './logo.css',
 })
 export class Logo {

@@ -69,7 +69,8 @@
 - **Where a look is written.** A base component of `packages/ui` carries its look in its own stylesheet
   (`x.css` beside `x.ts`, `styleUrl`), written as CSS on the `--rs-*` tokens inside `@layer components`: a
   variant or a state is a selector (`:host([data-variant='primary'])`, `[aria-pressed='true']`), never a table
-  of class strings in the `.ts`. Tailwind utilities are for the layout of a screen, in its template.
+  of class strings in the `.ts`. Its template is in `x.html` as soon as it is more than a slot or a value.
+  Tailwind utilities are for the layout of a screen, in its template.
 - **Content security policy.** `default-src 'self'`, and for the document alone the style elements that carry
   the nonce of the response: Angular brings component styles that way, and the host writes the document with
   a new nonce each time. So no inline script, no `style` attribute written in a template, and no style

@@ -8,10 +8,7 @@ import { Component, booleanAttribute, input } from '@angular/core';
  */
 @Component({
   selector: '[rsLabel]',
-  template: `@if (main()) {
-      <span class="prompt" aria-hidden="true"></span>
-    }
-    <ng-content />`,
+  templateUrl: './label.html',
   styleUrl: './label.css',
 })
 export class Label {
