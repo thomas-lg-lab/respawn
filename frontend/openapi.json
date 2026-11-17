@@ -220,6 +220,83 @@
           }
         }
       }
+    },
+    "/api/v1/library": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The games the signed-in account owns",
+        "description": "One item per game, with the store entries it is owned through. Read it in parts with offset and limit; total says how many games there are in all.",
+        "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "The order: name (A to Z), playtime (the most played first) or last_played (the last played first). What an order cannot place comes last.",
+            "schema": {
+              "pattern": "^(name|playtime|last_played)$",
+              "type": "string",
+              "default": "name"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "How many games to skip, in that order.",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "The most games to answer with.",
+            "schema": {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -266,6 +343,144 @@
         "properties": {
           "error": {
             "$ref": "#/components/schemas/ErrorBody"
+          }
+        }
+      },
+      "LibraryEntryResponse": {
+        "required": [
+          "store_entry_id",
+          "linked_account_id",
+          "source",
+          "external_id",
+          "playtime_seconds",
+          "recent_playtime_seconds",
+          "last_played_at",
+          "first_seen_at",
+          "as_of"
+        ],
+        "type": "object",
+        "properties": {
+          "store_entry_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "linked_account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "recent_playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "last_played_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "first_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LibraryGameResponse": {
+        "required": [
+          "game_id",
+          "name",
+          "playtime_seconds",
+          "recent_playtime_seconds",
+          "last_played_at",
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "recent_playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "last_played_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryEntryResponse"
+            }
+          }
+        }
+      },
+      "LibraryResponse": {
+        "required": [
+          "total",
+          "offset",
+          "limit",
+          "games"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryGameResponse"
+            }
           }
         }
       },
@@ -395,6 +610,9 @@
     },
     {
       "name": "Me"
+    },
+    {
+      "name": "Library"
     }
   ]
 }

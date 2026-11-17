@@ -274,6 +274,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The games the signed-in account owns
+         * @description One item per game, with the store entries it is owned through. Read it in parts with offset and limit; total says how many games there are in all.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The order: name (A to Z), playtime (the most played first) or last_played (the last played first). What an order cannot place comes last. */
+                    sort?: string;
+                    /** @description How many games to skip, in that order. */
+                    offset?: number;
+                    /** @description The most games to answer with. */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LibraryResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -289,6 +353,45 @@ export interface components {
         };
         ErrorResponse: {
             error?: components["schemas"]["ErrorBody"];
+        };
+        LibraryEntryResponse: {
+            /** Format: uuid */
+            store_entry_id: string;
+            /** Format: uuid */
+            linked_account_id: string;
+            source: string;
+            external_id: string;
+            /** Format: int64 */
+            playtime_seconds: null | number;
+            /** Format: int64 */
+            recent_playtime_seconds: null | number;
+            /** Format: date-time */
+            last_played_at: null | string;
+            /** Format: date-time */
+            first_seen_at: string;
+            /** Format: date-time */
+            as_of: string;
+        };
+        LibraryGameResponse: {
+            /** Format: uuid */
+            game_id: string;
+            name: null | string;
+            /** Format: int64 */
+            playtime_seconds: null | number;
+            /** Format: int64 */
+            recent_playtime_seconds: null | number;
+            /** Format: date-time */
+            last_played_at: null | string;
+            entries: components["schemas"]["LibraryEntryResponse"][];
+        };
+        LibraryResponse: {
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            offset: number;
+            /** Format: int32 */
+            limit: number;
+            games: components["schemas"]["LibraryGameResponse"][];
         };
         LoginRequest: {
             email: string;
