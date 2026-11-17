@@ -99,7 +99,11 @@ internal static class TestDatabase
     public static void Truncate()
     {
         using var connection = Open(Url);
-        Execute(connection, "TRUNCATE accounts.users, accounts.groups, accounts.group_memberships, accounts.sessions, accounts.external_identities, accounts.exchanged_tokens, accounts.settings, accounts.user_claims, accounts.user_tokens CASCADE");
+        Execute(
+            connection,
+            "TRUNCATE accounts.users, accounts.groups, accounts.group_memberships, accounts.sessions, accounts.external_identities, "
+            + "accounts.exchanged_tokens, accounts.settings, accounts.user_claims, accounts.user_tokens, "
+            + "games.games, games.store_entries, games.linked_accounts, games.raw_snapshots, games.observations, games.ownerships CASCADE");
     }
 
     /// <summary>Runs a statement on the tests' database: what an administrator's route will do later.</summary>

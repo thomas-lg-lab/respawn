@@ -13,6 +13,9 @@
     <ProjectReference Include="..\Modules\Accounts\Respawn.Accounts\Respawn.Accounts.csproj" />
     <ProjectReference Include="..\Modules\Accounts\Respawn.Accounts.Api\Respawn.Accounts.Api.csproj" />
     <ProjectReference Include="..\Modules\Accounts\Respawn.Accounts.Infrastructure\Respawn.Accounts.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Games\Respawn.Games\Respawn.Games.csproj" />
+    <ProjectReference Include="..\Modules\Games\Respawn.Games.Api\Respawn.Games.Api.csproj" />
+    <ProjectReference Include="..\Modules\Games\Respawn.Games.Infrastructure\Respawn.Games.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

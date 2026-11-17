@@ -10,7 +10,8 @@
 Self-hosted game library: stats, backlog and next-game suggestions.
 
 **Status: early days.** This is the skeleton: accounts and sign-in, the public API they need, one page to try
-them, and the image the rest will ship in. The library itself is not there yet.
+them, and the image the rest will ship in. The library has its tables and one route to read it; nothing
+fills it yet.
 
 | | |
 | --- | --- |
@@ -135,6 +136,7 @@ Bodies are JSON, with names in `snake_case`.
 | `POST /api/v1/auth/oidc` | Signs in with an ID token of a configured provider; links it to the account already signed in |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
 | `GET /api/v1/me` | The signed-in account |
+| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through and the playtime each store counts; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 
 Errors always have the same shape, whatever answered:
 
@@ -166,7 +168,8 @@ than by layer: each module is hexagonal, a core with its use cases and ports, an
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
 | `Modules/Accounts` | Accounts and sign-in: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
-| `Modules/Accounts/Respawn.Accounts.Tests` | The tests of the module, which start the real app against a real PostgreSQL |
+| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, and who owns and played what |
+| `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 
 A module owns one PostgreSQL schema and its migrations, and never reads another module's tables. These rules

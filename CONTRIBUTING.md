@@ -19,7 +19,7 @@ docker build -t respawn .
 Each test project runs in a database of its own, beside the `respawn` database the compose app uses: the
 projects run side by side, and each empties its tables. `RESPAWN_TEST_DATABASE_URL` gives the server and a base
 name ending in `_test` (anything else is refused); a project puts its own name in it, so `respawn_test` gives
-`respawn_accounts_test` and `respawn_host_test`. The tests create these databases when they are missing (and
+`respawn_accounts_test`, `respawn_games_test` and `respawn_host_test`. The tests create these databases when they are missing (and
 two more for the connection tests, also ending in `_test`), so the account needs the right to create databases
 and roles.
 
@@ -37,19 +37,27 @@ and adapters around it.
 | `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, ID token validation, sessions | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
+| `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, and the ports they need | nothing; no package |
+| `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1` | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Respawn.Tests` | the tests of the host and of the solution as a whole: the runtime contract, the database connection, the architecture rules | everything |
 | `Respawn.Testing` | what every test project shares: the app started in-process, the test database; not a test project | the host |
 
 The rules, checked by `ArchitectureTests`:
 
-- A module never references another module's infrastructure or tables, only its public contract.
+- A module never references another module's infrastructure or tables, only its public contract. No module
+  has one yet, so today a module references no other module at all, and no table points into another schema:
+  another module's row is known by its id (an account, in `Games`).
 - An inbound adapter never references its module's infrastructure: the host puts them together.
-- Each module owns one PostgreSQL schema, one `DbContext` and its migrations (`accounts` for Accounts).
+- Each module owns one PostgreSQL schema, one `DbContext` and its migrations (`accounts` for Accounts, `games`
+  for Games).
 - The host holds no database driver: the connection is `Respawn.Persistence`'s, which knows no module.
 - No empty project: a module or a layer is created when it has something to hold.
 
 A new module adds its three projects and its test project under `backend/Modules/<Name>/`, an `Add<Name>()`
-in `Respawn.Host/Modules/`, and its assemblies to `ArchitectureTests`. A module's tests live in the module;
+in `Respawn.Host/Modules/`, its assemblies and its schema to `ArchitectureTests`, and its tables to the list
+`Respawn.Testing` empties before each test. A module's tests live in the module;
 what only they need (a fake of an outside service) stays there, not in `Respawn.Testing`. A port belongs to the module that uses it;
 an adapter that lives in its own project (a connector to an outside source) only references that module's core.
 
