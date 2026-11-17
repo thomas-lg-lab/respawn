@@ -150,6 +150,24 @@ public sealed class ContractTests
             response.Headers.GetValues("Content-Security-Policy").Single());
     }
 
+    // The licence of what the page ships comes with it, under the name its library gives it: no
+    // extension. It is there to be read; a file of a kind the app does not know is still not served.
+    [Fact]
+    public async Task The_licence_shipped_with_the_api_page_can_be_read()
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+
+        var licence = await client.GetAsync("/docs/LICENSE");
+        Assert.Equal(HttpStatusCode.OK, licence.StatusCode);
+        Assert.Equal("text/plain", licence.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("utf-8", licence.Content.Headers.ContentType?.CharSet);
+        Assert.Equal("nosniff", licence.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Contains("licence", await licence.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.NotFound, await client.GetAsync("/docs/bundle.unknown").StatusAsync());
+    }
+
     [Theory]
     [InlineData("/")]
     [InlineData("/sign-in")]

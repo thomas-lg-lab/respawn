@@ -61,6 +61,7 @@ internal static partial class Front
         // icon) is checked again on every visit.
         return app.UseStaticFiles(new StaticFileOptions
         {
+            ContentTypeProvider = new ServedFileTypes(),
             OnPrepareResponse = file => file.Context.Response.Headers[HeaderNames.CacheControl] =
                 NamedAfterItsContent().IsMatch(file.File.Name) ? "public, max-age=31536000, immutable" : "no-cache",
         });
@@ -136,6 +137,26 @@ internal static partial class Front
         await using var stream = file.CreateReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return await reader.ReadToEndAsync(ct);
+    }
+
+    /// <summary>
+    /// What a file of the build is served as: what its extension says, and plain text for a file with
+    /// no extension at all. The licence and the notice that come with a library the app ships
+    /// ("LICENSE", "NOTICE") are named that way, and are there to be read. A file whose extension is
+    /// unknown is still not served.
+    /// </summary>
+    private sealed class ServedFileTypes : IContentTypeProvider
+    {
+        public bool TryGetContentType(string subpath, out string contentType)
+        {
+            if (FileTypes.TryGetContentType(subpath, out contentType!))
+            {
+                return true;
+            }
+
+            contentType = "text/plain; charset=utf-8";
+            return !Path.HasExtension(subpath);
+        }
     }
 
     // What the front's build appends to the scripts, style sheets and fonts it names after their

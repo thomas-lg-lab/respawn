@@ -41,6 +41,8 @@ internal sealed class TestApp : WebApplicationFactory<Program>
         Directory.CreateDirectory(Path.Combine(root, "docs"));
         File.WriteAllText(Path.Combine(root, "docs", "index.html"), "<!doctype html><title>respawn API</title><div id=\"swagger-ui\"></div>");
         File.WriteAllText(Path.Combine(root, "docs", "init.js"), "");
+        File.WriteAllText(Path.Combine(root, "docs", "LICENSE"), "The licence of a library the page ships.");
+        File.WriteAllText(Path.Combine(root, "docs", "bundle.unknown"), "");
         File.WriteAllText(Path.Combine(root, "favicon.svg"), "<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
         return root;
     });
