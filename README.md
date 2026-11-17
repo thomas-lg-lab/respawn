@@ -27,9 +27,8 @@ front yet.
 | In place, not in use yet | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. Groups, the scope sharing will use: one default group every account joins. The front: Angular, the design tokens with a dark and a light theme, French and English, types generated from the API's description |
 | Planned | A connector that reads a Steam library every day, the library and stats screens, the backlog, more connectors, next-game suggestions |
 
-What changed lately: the [releases](https://github.com/thomas-lg-lab/respawn/releases) list the merged pull
-requests, and the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main) are one per
-pull request.
+What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
+pull request. No release is published yet; each one will list its pull requests in its notes.
 
 Contents: [Run it](#run-it) · [Configuration](#configuration) · [Behind a reverse proxy](#behind-a-reverse-proxy) ·
 [Sign-in](#sign-in) · [API](#api) · [How it is built](#how-it-is-built) ·
