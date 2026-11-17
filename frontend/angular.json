@@ -18,6 +18,7 @@
           "options": {
             "browser": "packages/app/src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "assets": [{ "glob": "**/*", "input": "packages/app/public" }],
             "styles": [
               "@fontsource-variable/inter/index.css",
               "@fontsource-variable/bricolage-grotesque/opsz.css",
@@ -59,6 +60,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.js"
+          },
           "configurations": {
             "production": {
               "buildTarget": "app:build:production"

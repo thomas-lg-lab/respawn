@@ -11,3 +11,6 @@ obj/
 *.user
 .vs/
 .idea/
+
+# The front's build, when copied beside the host to run it from the sources
+backend/Respawn.Host/wwwroot/

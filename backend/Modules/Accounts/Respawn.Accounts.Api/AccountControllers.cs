@@ -24,6 +24,8 @@ public sealed class ConfigController(IAccountService accounts) : ControllerBase
         return new ConfigResponse(
             options.LocalSignIn,
             options.RegistrationOpen,
+            options.FirstAccount,
+            options.PasswordMinLength,
             [.. options.Providers.Select(p => new ProviderResponse(p.Name, p.Issuer, p.ClientId))]);
     }
 }

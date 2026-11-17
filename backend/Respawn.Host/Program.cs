@@ -11,7 +11,7 @@ using Respawn.Host.Http;
 using Respawn.Host.Modules;
 using Respawn.Persistence;
 
-// The host: /healthz, one static page, the HTTP pipeline, the database, and the modules that
+// The host: /healthz, the front, the HTTP pipeline, the database, and the modules that
 // provide the public API under /api/v1. Composition only: no business rule lives here.
 
 var builder = WebApplication.CreateBuilder(args);
@@ -99,7 +99,7 @@ app.UseStatusCodePages(context => ApiErrors.WriteAsync(
     context.HttpContext.Response.StatusCode,
     "http_error",
     ReasonPhrases.GetReasonPhrase(context.HttpContext.Response.StatusCode)));
-app.UseStaticFiles(new StaticFileOptions { RequestPath = "/static" });
+app.UseFront();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -107,8 +107,6 @@ app.UseAuthorization();
 
 // Answers without the database or any secret: it says the process is up, nothing more.
 app.MapGet("/healthz", () => Results.Json(new { status = "ok" })).ExcludeFromDescription();
-app.MapGet("/", (IWebHostEnvironment environment) =>
-    Results.File(Path.Combine(environment.WebRootPath, "index.html"), "text/html; charset=utf-8")).ExcludeFromDescription();
 app.MapOpenApi("/api/v1/openapi.json");
 app.MapControllers();
 

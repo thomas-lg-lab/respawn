@@ -21,11 +21,16 @@ public sealed partial class AccountService(
 
     private const string DefaultGroupName = "Everyone";
 
-    public async Task<SignInOptions> GetSignInOptionsAsync(CancellationToken ct) =>
-        new(
+    public async Task<SignInOptions> GetSignInOptionsAsync(CancellationToken ct)
+    {
+        var firstAccount = await IsFirstAccountAsync(ct);
+        return new(
             await settings.GetFlagAsync(InstanceFlags.LocalSignIn, true, ct),
-            await RegistrationAllowedAsync(ct),
+            await RegistrationAllowedAsync(firstAccount, ct),
+            firstAccount,
+            options.PasswordMinLength,
             options.OidcProviders);
+    }
 
     public async Task<SignedIn> RegisterAsync(string email, string displayName, string password, CancellationToken ct)
     {
@@ -166,7 +171,11 @@ public sealed partial class AccountService(
     /// <summary>The first account is always allowed and becomes the administrator; after it,
     /// registration is closed until an administrator opens it.</summary>
     private async Task<bool> RegistrationAllowedAsync(CancellationToken ct) =>
-        await IsFirstAccountAsync(ct) || await settings.GetFlagAsync(InstanceFlags.RegistrationOpen, false, ct);
+        await RegistrationAllowedAsync(await IsFirstAccountAsync(ct), ct);
+
+    /// <summary>The first account can always be created; after it, only where the instance says so.</summary>
+    private async Task<bool> RegistrationAllowedAsync(bool firstAccount, CancellationToken ct) =>
+        firstAccount || await settings.GetFlagAsync(InstanceFlags.RegistrationOpen, false, ct);
 
     private async Task<bool> IsFirstAccountAsync(CancellationToken ct) => !await users.AnyAsync(ct);
 

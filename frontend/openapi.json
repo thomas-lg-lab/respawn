@@ -305,6 +305,8 @@
         "required": [
           "local_sign_in",
           "registration_open",
+          "first_account",
+          "password_min_length",
           "oidc_providers"
         ],
         "type": "object",
@@ -314,6 +316,13 @@
           },
           "registration_open": {
             "type": "boolean"
+          },
+          "first_account": {
+            "type": "boolean"
+          },
+          "password_min_length": {
+            "type": "integer",
+            "format": "int32"
           },
           "oidc_providers": {
             "type": "array",

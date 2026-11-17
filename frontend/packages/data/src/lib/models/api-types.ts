@@ -345,6 +345,9 @@ export interface components {
         ConfigResponse: {
             local_sign_in: boolean;
             registration_open: boolean;
+            first_account: boolean;
+            /** Format: int32 */
+            password_min_length: number;
             oidc_providers: components["schemas"]["ProviderResponse"][];
         };
         ErrorBody: {

@@ -7,60 +7,15 @@
 
   <rs-card>
     <section class="flex flex-col gap-5" aria-labelledby="settings-label">
-      <h2 rsLabel id="settings-label">{{ t('settings.label') }}</h2>
-
-      <div class="flex flex-col gap-2">
-        <span class="type-caption text-muted" id="theme-label">{{ t('settings.theme') }}</span>
-        <div class="flex flex-wrap gap-2" role="group" aria-labelledby="theme-label">
-          @for (theme of themes; track theme) {
-            <button
-              rsPill
-              [pressed]="display.theme() === theme"
-              [attr.data-theme-choice]="theme"
-              (click)="display.setTheme(theme)"
-            >
-              {{ t('settings.themes.' + theme) }}
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <span class="type-caption text-muted" id="character-label">{{
-          t('settings.character')
-        }}</span>
-        <div class="flex flex-wrap gap-2" role="group" aria-labelledby="character-label">
-          @for (character of characters; track character) {
-            <button
-              rsPill
-              [pressed]="display.character() === character"
-              [attr.data-character-choice]="character"
-              (click)="display.setCharacter(character)"
-            >
-              {{ t('settings.characters.' + character) }}
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <span class="type-caption text-muted" id="language-label">{{
-          t('settings.language')
-        }}</span>
-        <div class="flex flex-wrap gap-2" role="group" aria-labelledby="language-label">
-          @for (choice of languages; track choice) {
-            <button
-              rsPill
-              [pressed]="language.current() === choice"
-              [attr.data-language-choice]="choice"
-              [attr.lang]="choice"
-              (click)="language.use(choice)"
-            >
-              {{ t('settings.languages.' + choice) }}
-            </button>
-          }
-        </div>
-      </div>
+      <h2 rsLabel id="settings-label">{{ t('settings') }}</h2>
+      <rs-settings-choices
+        [language]="language.current()"
+        [theme]="display.theme()"
+        [character]="display.character()"
+        (languagePicked)="language.use($event)"
+        (themePicked)="display.setTheme($event)"
+        (characterPicked)="display.setCharacter($event)"
+      />
     </section>
   </rs-card>
 
@@ -96,16 +51,13 @@
           </div>
         </div>
 
-        <div class="flex flex-col gap-2">
-          <span class="type-caption text-muted" id="pills-label">{{ t('components.pills') }}</span>
-          <div class="flex flex-wrap gap-2" role="group" aria-labelledby="pills-label">
-            @for (choice of filters; track choice) {
-              <button rsPill [pressed]="filter() === choice" (click)="filter.set(choice)">
-                {{ t('components.filters.' + choice) }}
-              </button>
-            }
-          </div>
-        </div>
+        <rs-pill-group [label]="t('components.pills')">
+          @for (choice of filters; track choice) {
+            <button rsPill [pressed]="filter() === choice" (click)="filter.set(choice)">
+              {{ t('components.filters.' + choice) }}
+            </button>
+          }
+        </rs-pill-group>
 
         <div class="flex flex-col gap-2">
           <span class="type-caption text-muted">{{ t('components.bar') }}</span>
@@ -113,7 +65,51 @@
             t('components.hours', { count: hours })
           }}</rs-segmented-bar>
         </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.banners') }}</span>
+          <rs-banner>{{ t('components.status') }}</rs-banner>
+          <rs-banner tone="warn">{{ t('components.warning') }}</rs-banner>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.avatar') }}</span>
+          <div class="flex items-center gap-3">
+            <rs-avatar [name]="person" />
+            <span class="font-semibold">{{ person }}</span>
+          </div>
+        </div>
       </section>
     </rs-card>
   </div>
+
+  <rs-card>
+    <section class="flex flex-col gap-5" aria-labelledby="form-label">
+      <h2 rsLabel id="form-label">{{ t('form.label') }}</h2>
+      <!-- `all` reads any key: the reasons of a refused field are shared by every form. -->
+      <form class="flex max-w-95 flex-col gap-4" [formRoot]="sample" *transloco="let all">
+        @let nameError = fieldErrorKey(sample.name().errors());
+        <rs-text-field
+          autocomplete="off"
+          [formField]="sample.name"
+          [label]="t('form.name')"
+          [hint]="t('form.nameHint')"
+          [error]="nameError && all(nameError)"
+        />
+
+        @let emailError = fieldErrorKey(sample.email().errors());
+        <rs-text-field
+          type="email"
+          autocomplete="off"
+          [formField]="sample.email"
+          [label]="t('form.email')"
+          [error]="emailError && all(emailError)"
+        />
+
+        <button rsButton variant="primary" shape="field" type="submit">
+          {{ t('form.submit') }}
+        </button>
+      </form>
+    </section>
+  </rs-card>
 </div>

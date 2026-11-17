@@ -1,0 +1,49 @@
+<div class="relative" rsDisclosure *transloco="let t; prefix: 'account'">
+  <button rsButton rsDisclosureTrigger variant="icon" [aria-label]="t('menu')">
+    <svg lucideUserRound class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+  </button>
+
+  <section
+    rsDisclosurePanel
+    class="absolute top-full right-0 z-10 mt-2.5 flex w-77.5 max-w-[calc(100cqw-2rem)] flex-col gap-4 rounded-card border border-control-line bg-surface p-4.5"
+    [attr.aria-label]="t('menu')"
+  >
+    <div class="flex items-center gap-3">
+      <rs-avatar [name]="account().display_name" />
+      <div class="flex min-w-0 flex-col">
+        <span class="truncate font-semibold" data-account-name>{{ account().display_name }}</span>
+        <span class="truncate type-caption text-muted" data-account-detail>
+          @if (account().email; as email) {
+            {{ account().is_admin ? t('emailAndAdministrator', { email }) : email }}
+          } @else if (account().is_admin) {
+            {{ t('administrator') }}
+          }
+        </span>
+      </div>
+    </div>
+
+    <rs-settings-choices
+      [language]="language()"
+      [theme]="theme()"
+      [character]="character()"
+      (languagePicked)="languagePicked.emit($event)"
+      (themePicked)="themePicked.emit($event)"
+      (characterPicked)="characterPicked.emit($event)"
+    />
+
+    <p class="type-caption text-muted">{{ t('settingsKept') }}</p>
+
+    <button
+      rsButton
+      shape="field"
+      type="button"
+      class="font-semibold"
+      data-sign-out
+      [disabled]="signingOut()"
+      (click)="signOut.emit()"
+    >
+      <svg lucideLogOut class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+      {{ t('signOut') }}
+    </button>
+  </section>
+</div>

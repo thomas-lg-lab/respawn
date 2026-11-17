@@ -18,7 +18,12 @@ public sealed record ExternalIdentity(
 public sealed record OidcProvider(string Name, string Issuer, string ClientId);
 
 /// <summary>What the sign-in page may offer.</summary>
-public sealed record SignInOptions(bool LocalSignIn, bool RegistrationOpen, IReadOnlyList<OidcProvider> Providers);
+public sealed record SignInOptions(
+    bool LocalSignIn,
+    bool RegistrationOpen,
+    bool FirstAccount,
+    int PasswordMinLength,
+    IReadOnlyList<OidcProvider> Providers);
 
 /// <summary>A sign-in that succeeded: the account, and the session token for the browser.</summary>
 public sealed record SignedIn(Account Account, string SessionToken);

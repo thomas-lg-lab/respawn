@@ -12,7 +12,14 @@ public sealed record UserResponse(Guid Id, string? Email, string DisplayName, bo
 
 public sealed record ProviderResponse(string Name, string Issuer, string ClientId);
 
-public sealed record ConfigResponse(bool LocalSignIn, bool RegistrationOpen, IReadOnlyList<ProviderResponse> OidcProviders);
+/// <summary>What the sign-in page may offer. <c>FirstAccount</c>: no account exists yet, so the one created
+/// now becomes the administrator. <c>PasswordMinLength</c>: the one rule a new local password must meet.</summary>
+public sealed record ConfigResponse(
+    bool LocalSignIn,
+    bool RegistrationOpen,
+    bool FirstAccount,
+    int PasswordMinLength,
+    IReadOnlyList<ProviderResponse> OidcProviders);
 
 public sealed class RegisterRequest
 {

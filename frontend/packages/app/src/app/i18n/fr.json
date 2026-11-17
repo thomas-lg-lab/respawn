@@ -1,27 +1,96 @@
 {
+  "settings": {
+    "language": "Langue",
+    "languages": {
+      "fr": "Français",
+      "en": "English"
+    },
+    "theme": "Thème",
+    "themes": {
+      "system": "Système",
+      "dark": "Sombre",
+      "light": "Clair"
+    },
+    "character": "Caractère",
+    "characters": {
+      "pixel": "Pixel",
+      "plain": "Sobre"
+    }
+  },
+  "signIn": {
+    "tagline": "Toute votre ludothèque, au même endroit.",
+    "label": "Continuer",
+    "title": "Connexion",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "noAccount": "Pas encore de compte ?",
+    "create": "Créer un compte",
+    "loading": "Chargement…",
+    "retry": "Réessayer",
+    "localDisabled": "La connexion par compte local est désactivée sur cette instance."
+  },
+  "createAccount": {
+    "label": "Nouvelle partie",
+    "title": "Créer un compte",
+    "firstTitle": "Créer le premier compte",
+    "firstNote": "Ce compte sera administrateur. Les inscriptions seront ensuite fermées.",
+    "displayName": "Nom affiché",
+    "passwordRule": "{{ count }} caractères au minimum.",
+    "submit": "Créer le compte",
+    "haveAccount": "Déjà un compte ?",
+    "signIn": "Se connecter"
+  },
+  "fields": {
+    "errors": {
+      "required": "Ce champ est à remplir.",
+      "email": "Cette adresse e-mail n’est pas valide.",
+      "minLength": "Il faut {{ count }} caractères au minimum.",
+      "maxLength": "Cette valeur est trop longue.",
+      "invalid": "Cette valeur n’est pas valide."
+    }
+  },
+  "errors": {
+    "invalid_credentials": "E-mail ou mot de passe incorrect, ou compte verrouillé pour un moment.",
+    "too_many_requests": "Trop de tentatives. Réessayez dans quelques minutes.",
+    "registration_closed": "Les inscriptions sont fermées sur cette instance.",
+    "local_sign_in_disabled": "La connexion par compte local est désactivée sur cette instance.",
+    "account_exists": "Un compte existe déjà avec cette adresse e-mail.",
+    "invalid_email": "Cette adresse e-mail n’est pas valide.",
+    "weak_password": "Ce mot de passe est trop court.",
+    "invalid_request": "La demande n’a pas été comprise. Vérifiez les champs.",
+    "cross_site_request": "La demande a été refusée : elle semble venir d’un autre site. Rechargez la page.",
+    "database_unavailable": "La base de données ne répond pas. Réessayez dans un instant.",
+    "internal_error": "Une erreur s’est produite sur le serveur. Réessayez dans un instant.",
+    "network_error": "Le serveur ne répond pas. Vérifiez votre connexion et réessayez.",
+    "unknown": "Quelque chose s’est mal passé. Réessayez dans un instant."
+  },
+  "account": {
+    "menu": "Compte et réglages",
+    "administrator": "administrateur",
+    "emailAndAdministrator": "{{ email }} · administrateur",
+    "settingsKept": "Ces réglages sont gardés dans ce navigateur.",
+    "signOut": "Se déconnecter"
+  },
+  "home": {
+    "label": "Compte",
+    "title": "Bonjour, {{ name }}",
+    "email": "E-mail",
+    "role": "Rôle",
+    "administrator": "Administrateur",
+    "member": "Membre"
+  },
+  "notFound": {
+    "label": "Introuvable",
+    "title": "Cette page n’existe pas",
+    "text": "L’adresse ne mène à aucun écran de respawn.",
+    "back": "Revenir à l’accueil"
+  },
   "foundations": {
     "label": "Fondations",
     "title": "Les fondations visuelles",
     "intro": "Les couleurs, la typographie et les composants de base. Tout suit le thème, le caractère et la langue choisis ci-dessous.",
-    "settings": {
-      "label": "Réglages",
-      "theme": "Thème",
-      "themes": {
-        "system": "Système",
-        "dark": "Sombre",
-        "light": "Clair"
-      },
-      "character": "Caractère",
-      "characters": {
-        "pixel": "Pixel",
-        "plain": "Sobre"
-      },
-      "language": "Langue",
-      "languages": {
-        "fr": "Français",
-        "en": "English"
-      }
-    },
+    "settings": "Réglages",
     "type": {
       "label": "Typographie",
       "hero": "Titre vedette",
@@ -45,7 +114,18 @@
         "never": "Jamais lancés"
       },
       "bar": "Barre segmentée",
-      "hours": "{{ count }} h"
+      "hours": "{{ count }} h",
+      "banners": "Bandeaux",
+      "status": "Synchronisation en cours : vos jeux restent affichés.",
+      "warning": "Synchronisation impossible. Vos jeux restent affichés tels qu’hier.",
+      "avatar": "Avatar"
+    },
+    "form": {
+      "label": "Formulaire",
+      "name": "Nom affiché",
+      "nameHint": "Le nom que les autres membres verront.",
+      "email": "E-mail",
+      "submit": "Bouton de formulaire"
     }
   }
 }

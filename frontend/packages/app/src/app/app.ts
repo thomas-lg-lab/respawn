@@ -1,15 +1,14 @@
 import { Component } from '@angular/core';
-import { Logo } from '@respawn/ui';
-import { Foundations } from './pages/foundations/foundations';
+import { RouterOutlet } from '@angular/router';
 
 /**
- * The shell: the header and, for now, the one screen. It is the `app` container every
+ * The root: the screen the address names, and nothing else. It is the `app` container every
  * `wide:` style measures, so the layout follows the width the app is given, not the window's.
  */
 @Component({
   selector: 'rs-root',
-  imports: [Logo, Foundations],
+  imports: [RouterOutlet],
   host: { class: 'app-container block min-h-dvh' },
-  templateUrl: './app.html',
+  template: `<router-outlet />`,
 })
 export class App {}

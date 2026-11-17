@@ -1,27 +1,96 @@
 {
+  "settings": {
+    "language": "Language",
+    "languages": {
+      "fr": "Français",
+      "en": "English"
+    },
+    "theme": "Theme",
+    "themes": {
+      "system": "System",
+      "dark": "Dark",
+      "light": "Light"
+    },
+    "character": "Character",
+    "characters": {
+      "pixel": "Pixel",
+      "plain": "Plain"
+    }
+  },
+  "signIn": {
+    "tagline": "Your whole game library, in one place.",
+    "label": "Continue",
+    "title": "Sign in",
+    "email": "E-mail",
+    "password": "Password",
+    "submit": "Sign in",
+    "noAccount": "No account yet?",
+    "create": "Create an account",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "localDisabled": "Sign-in with a local account is disabled on this instance."
+  },
+  "createAccount": {
+    "label": "New game",
+    "title": "Create an account",
+    "firstTitle": "Create the first account",
+    "firstNote": "This account will be the administrator. Registration closes after it.",
+    "displayName": "Display name",
+    "passwordRule": "{{ count }} characters at least.",
+    "submit": "Create the account",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign in"
+  },
+  "fields": {
+    "errors": {
+      "required": "This field is needed.",
+      "email": "This e-mail address is not valid.",
+      "minLength": "It takes {{ count }} characters at least.",
+      "maxLength": "This value is too long.",
+      "invalid": "This value is not valid."
+    }
+  },
+  "errors": {
+    "invalid_credentials": "Wrong e-mail or password, or the account is locked for a while.",
+    "too_many_requests": "Too many attempts. Try again in a few minutes.",
+    "registration_closed": "Registration is closed on this instance.",
+    "local_sign_in_disabled": "Sign-in with a local account is disabled on this instance.",
+    "account_exists": "An account already exists with this e-mail address.",
+    "invalid_email": "This e-mail address is not valid.",
+    "weak_password": "This password is too short.",
+    "invalid_request": "The request was not understood. Check the fields.",
+    "cross_site_request": "The request was refused: it seems to come from another site. Reload the page.",
+    "database_unavailable": "The database is not answering. Try again in a moment.",
+    "internal_error": "Something failed on the server. Try again in a moment.",
+    "network_error": "The server is not answering. Check your connection and try again.",
+    "unknown": "Something went wrong. Try again in a moment."
+  },
+  "account": {
+    "menu": "Account and settings",
+    "administrator": "administrator",
+    "emailAndAdministrator": "{{ email }} · administrator",
+    "settingsKept": "These settings are kept in this browser.",
+    "signOut": "Sign out"
+  },
+  "home": {
+    "label": "Account",
+    "title": "Hello, {{ name }}",
+    "email": "E-mail",
+    "role": "Role",
+    "administrator": "Administrator",
+    "member": "Member"
+  },
+  "notFound": {
+    "label": "Not found",
+    "title": "This page does not exist",
+    "text": "The address leads to no screen of respawn.",
+    "back": "Back to the home"
+  },
   "foundations": {
     "label": "Foundations",
     "title": "The visual foundations",
     "intro": "The colours, the typography and the base components. Everything follows the theme, the character and the language chosen below.",
-    "settings": {
-      "label": "Settings",
-      "theme": "Theme",
-      "themes": {
-        "system": "System",
-        "dark": "Dark",
-        "light": "Light"
-      },
-      "character": "Character",
-      "characters": {
-        "pixel": "Pixel",
-        "plain": "Plain"
-      },
-      "language": "Language",
-      "languages": {
-        "fr": "Français",
-        "en": "English"
-      }
-    },
+    "settings": "Settings",
     "type": {
       "label": "Typography",
       "hero": "Hero title",
@@ -37,7 +106,7 @@
       "primary": "Primary button",
       "outlined": "Secondary button",
       "disabled": "Unavailable",
-      "sync": "Synchronise",
+      "sync": "Sync",
       "pills": "Pills",
       "filters": {
         "all": "All",
@@ -45,7 +114,18 @@
         "never": "Never launched"
       },
       "bar": "Segmented bar",
-      "hours": "{{ count }} h"
+      "hours": "{{ count }} h",
+      "banners": "Banners",
+      "status": "Sync in progress: your games stay on screen.",
+      "warning": "Sync failed. Your games stay on screen as they were yesterday.",
+      "avatar": "Avatar"
+    },
+    "form": {
+      "label": "Form",
+      "name": "Display name",
+      "nameHint": "The name other members will see.",
+      "email": "E-mail",
+      "submit": "Form button"
     }
   }
 }

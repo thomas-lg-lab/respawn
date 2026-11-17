@@ -18,7 +18,10 @@ public sealed class AccountsTests
     {
         await using var app = await TestApp.StartAsync();
         using var browser = app.Browser();
-        Assert.True((await browser.GetAsync("/api/v1/config").JsonAsync()).GetProperty("registration_open").GetBoolean());
+        var config = await browser.GetAsync("/api/v1/config").JsonAsync();
+        Assert.True(config.GetProperty("registration_open").GetBoolean());
+        Assert.True(config.GetProperty("first_account").GetBoolean());
+        Assert.Equal(12, config.GetProperty("password_min_length").GetInt32());
 
         var response = await browser.RegisterAsync();
 
@@ -38,7 +41,9 @@ public sealed class AccountsTests
         await first.RegisterAsync();
 
         using var second = app.Browser();
-        Assert.False((await second.GetAsync("/api/v1/config").JsonAsync()).GetProperty("registration_open").GetBoolean());
+        var config = await second.GetAsync("/api/v1/config").JsonAsync();
+        Assert.False(config.GetProperty("registration_open").GetBoolean());
+        Assert.False(config.GetProperty("first_account").GetBoolean());
         Assert.Equal(
             (HttpStatusCode.Forbidden, "registration_closed"),
             await second.RegisterAsync("second@example.org", "Second").RefusalAsync());

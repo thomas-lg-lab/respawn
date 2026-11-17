@@ -1,0 +1,29 @@
+<header class="border-b border-line">
+  <div class="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 wide:px-10">
+    <a class="rounded-thumb" routerLink="/"><rs-logo class="w-48" /></a>
+
+    @if (me.data(); as account) {
+      <rs-account-menu
+        [account]="account"
+        [language]="language.current()"
+        [theme]="display.theme()"
+        [character]="display.character()"
+        [signingOut]="signingOut.isPending()"
+        (languagePicked)="language.use($event)"
+        (themePicked)="display.setTheme($event)"
+        (characterPicked)="display.setCharacter($event)"
+        (signOut)="signOut()"
+      />
+    }
+  </div>
+</header>
+
+<main class="mx-auto max-w-5xl px-4 py-6 wide:px-10 wide:py-10">
+  <!-- A sign-out that failed: the session is still open, and that must be said. -->
+  @if (signingOut.error(); as refusal) {
+    <rs-banner class="mb-6" tone="warn" role="alert" *transloco="let t">{{
+      t(failureKey(refusal))
+    }}</rs-banner>
+  }
+  <router-outlet />
+</main>
