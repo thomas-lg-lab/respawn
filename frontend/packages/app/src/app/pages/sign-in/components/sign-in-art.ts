@@ -14,16 +14,7 @@ import { Cover, Logo } from '@respawn/ui';
     class:
       'flex min-h-75 flex-col justify-between gap-6 overflow-hidden bg-bg p-6 text-text wide:p-12',
   },
-  template: `
-    <rs-logo class="w-48" />
-    <div class="grid -rotate-4 scale-108 grid-cols-4 gap-3" aria-hidden="true">
-      @for (hue of hues; track hue) {
-        <!-- One row is enough on a phone. -->
-        <div [class]="$index < 4 ? '' : 'hidden wide:block'"><rs-cover [hue]="hue" /></div>
-      }
-    </div>
-    <p class="max-w-[14em] type-page-title">{{ tagline() }}</p>
-  `,
+  templateUrl: './sign-in-art.html',
 })
 export class SignInArt {
   readonly tagline = input.required<string>();

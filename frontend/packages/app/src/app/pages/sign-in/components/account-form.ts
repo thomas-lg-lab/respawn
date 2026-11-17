@@ -22,40 +22,7 @@ import { fieldErrorKey } from '@app/forms/field-error';
 @Component({
   selector: 'rs-account-form',
   imports: [TranslocoDirective, FormField, FormRoot, Button, TextField],
-  template: `
-    <form class="flex flex-col gap-4" [formRoot]="form" *transloco="let t">
-      @let nameError = fieldErrorKey(form.display_name().errors());
-      <rs-text-field
-        autocomplete="name"
-        [formField]="form.display_name"
-        [label]="t('createAccount.displayName')"
-        [error]="nameError && t(nameError)"
-      />
-
-      @let emailError = fieldErrorKey(form.email().errors());
-      <rs-text-field
-        type="email"
-        autocomplete="username"
-        [formField]="form.email"
-        [label]="t('signIn.email')"
-        [error]="emailError && t(emailError)"
-      />
-
-      @let passwordError = fieldErrorKey(form.password().errors());
-      <rs-text-field
-        type="password"
-        autocomplete="new-password"
-        [formField]="form.password"
-        [label]="t('signIn.password')"
-        [hint]="t('createAccount.passwordRule', { count: passwordMinLength() })"
-        [error]="passwordError && t(passwordError, { count: passwordMinLength() })"
-      />
-
-      <button rsButton variant="primary" shape="field" type="submit" [disabled]="pending()">
-        {{ t('createAccount.submit') }}
-      </button>
-    </form>
-  `,
+  templateUrl: './account-form.html',
 })
 export class AccountForm {
   /** The shortest password the instance accepts. */

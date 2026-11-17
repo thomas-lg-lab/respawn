@@ -13,31 +13,7 @@ import { fieldErrorKey } from '@app/forms/field-error';
 @Component({
   selector: 'rs-sign-in-form',
   imports: [TranslocoDirective, FormField, FormRoot, Button, TextField],
-  template: `
-    <form class="flex flex-col gap-4" [formRoot]="form" *transloco="let t">
-      @let emailError = fieldErrorKey(form.email().errors());
-      <rs-text-field
-        type="email"
-        autocomplete="username"
-        [formField]="form.email"
-        [label]="t('signIn.email')"
-        [error]="emailError && t(emailError)"
-      />
-
-      @let passwordError = fieldErrorKey(form.password().errors());
-      <rs-text-field
-        type="password"
-        autocomplete="current-password"
-        [formField]="form.password"
-        [label]="t('signIn.password')"
-        [error]="passwordError && t(passwordError)"
-      />
-
-      <button rsButton variant="primary" shape="field" type="submit" [disabled]="pending()">
-        {{ t('signIn.submit') }}
-      </button>
-    </form>
-  `,
+  templateUrl: './sign-in-form.html',
 })
 export class SignInForm {
   /** While the sign-in is on its way: the button waits. */
