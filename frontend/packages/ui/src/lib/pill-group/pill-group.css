@@ -1,0 +1,19 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  :host {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .label {
+    color: var(--rs-muted);
+    @apply type-label;
+  }
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+}

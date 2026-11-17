@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, effect, inject, input, isDevMode } from '@angular/core';
+import { Component, ElementRef, effect, inject, input, isDevMode } from '@angular/core';
 
 /**
  * `primary` is the one filled action of a screen, `outlined` every other, `icon` a round
@@ -12,23 +12,6 @@ export type ButtonVariant = 'primary' | 'outlined' | 'icon';
  */
 export type ButtonShape = 'pill' | 'field';
 
-const BASE =
-  'inline-flex shrink-0 items-center justify-center gap-2 type-control ' +
-  'transition-[background-color,opacity,translate] duration-hover ' +
-  'active:translate-y-px disabled:pointer-events-none disabled:opacity-50';
-
-const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'min-h-button bg-accent px-5.5 font-semibold text-on-accent hover:opacity-90',
-  outlined:
-    'min-h-touch border border-control-line bg-transparent px-4.5 font-medium text-text hover:bg-surface-2',
-  icon: 'size-touch border border-control-line bg-transparent text-text hover:bg-surface-2',
-};
-
-const SHAPES: Record<ButtonShape, string> = {
-  pill: 'rounded-pill',
-  field: 'w-full rounded-field',
-};
-
 /**
  * A button, on the native element so its type, its `disabled` and its focus stay the
  * browser's: `<button rsButton>` or, for a navigation, `<a rsButton>`.
@@ -40,18 +23,18 @@ const SHAPES: Record<ButtonShape, string> = {
  */
 @Component({
   selector: 'button[rsButton], a[rsButton]',
-  host: { '[class]': 'classes()', '[attr.aria-label]': 'ariaLabel()' },
+  host: {
+    '[attr.data-variant]': 'variant()',
+    '[attr.data-shape]': 'shape()',
+    '[attr.aria-label]': 'ariaLabel()',
+  },
   template: `<ng-content />`,
+  styleUrl: './button.css',
 })
 export class Button {
   readonly variant = input<ButtonVariant>('outlined');
-  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
-
   readonly shape = input<ButtonShape>('pill');
-
-  protected readonly classes = computed(
-    () => `${BASE} ${SHAPES[this.shape()]} ${VARIANTS[this.variant()]}`,
-  );
+  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
   constructor() {
     if (isDevMode()) {

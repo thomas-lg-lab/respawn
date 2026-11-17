@@ -1,0 +1,29 @@
+@layer components {
+  :host {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+  }
+
+  .bar {
+    display: flex;
+    flex: 1;
+    gap: var(--rs-segment-gap);
+    min-width: 0;
+  }
+
+  /* Square segments: the pixel accent, in both characters. */
+  .segment {
+    flex: 1;
+    height: var(--rs-segment-height);
+    background-color: var(--rs-line);
+  }
+  .segment[data-filled] {
+    background-color: var(--rs-accent-text);
+  }
+
+  .value {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}

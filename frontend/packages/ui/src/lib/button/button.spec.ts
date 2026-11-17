@@ -24,19 +24,16 @@ describe('Button', () => {
   const button = (fixture: ReturnType<typeof create>): HTMLButtonElement =>
     (fixture.nativeElement as HTMLElement).querySelector('button')!;
 
-  it('fills the primary action with the accent', async () => {
+  // The look itself is the stylesheet's, which selects on these two attributes.
+  it('says which action it is and which shape it has', async () => {
     const fixture = create('primary');
     await fixture.whenStable();
+    expect(button(fixture).getAttribute('data-variant')).toBe('primary');
+    expect(button(fixture).getAttribute('data-shape')).toBe('pill');
 
-    expect(button(fixture).className).toContain('bg-accent');
-  });
-
-  it('outlines every other action', async () => {
-    const fixture = create('outlined');
+    fixture.componentInstance.variant.set('outlined');
     await fixture.whenStable();
-
-    expect(button(fixture).className).toContain('border-control-line');
-    expect(button(fixture).className).not.toContain('bg-accent');
+    expect(button(fixture).getAttribute('data-variant')).toBe('outlined');
   });
 
   it('reports an icon button that has no accessible name, and still draws it', async () => {
@@ -45,7 +42,7 @@ describe('Button', () => {
     await fixture.whenStable();
 
     expect(reported).toHaveBeenCalledWith(expect.stringMatching(/aria-label/), button(fixture));
-    expect(button(fixture).className).toContain('size-touch');
+    expect(button(fixture).getAttribute('data-variant')).toBe('icon');
   });
 
   it('takes a name that arrives after the first render', async () => {

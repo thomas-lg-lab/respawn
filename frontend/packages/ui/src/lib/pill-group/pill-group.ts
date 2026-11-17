@@ -15,13 +15,13 @@ let created = 0;
   selector: 'rs-pill-group',
   host: {
     role: 'group',
-    class: 'flex flex-col gap-1.5',
     '[attr.aria-labelledby]': 'labelId',
   },
   template: `
-    <span class="type-label text-muted" [id]="labelId">{{ label() }}</span>
-    <div class="flex flex-wrap gap-1.5"><ng-content /></div>
+    <span class="label" [id]="labelId">{{ label() }}</span>
+    <div class="pills"><ng-content /></div>
   `,
+  styleUrl: './pill-group.css',
 })
 export class PillGroup {
   readonly label = input.required<string>();

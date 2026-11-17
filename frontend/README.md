@@ -51,12 +51,21 @@ checks what can be checked in the browser and hands the values over; the screen 
 
 ## Content security policy
 
-The app is served with `default-src 'self'`, and the front fits in it as it is: no component has `styles`
-(Angular would insert a `<style>` element at run time, which the policy refuses), the document has no inline
-script or style, and nothing is fetched from another origin. Two files are shipped as they are, from
-`packages/app/public/`: the icon, and `theme.js`, which the document head loads before the style sheet so a
-reload paints the chosen theme at once. A file there is never kept by browsers; a script there must not be
-named like a hashed one (`name-XXXXXXXX.js`), which the app serves as immutable.
+Every answer of the app carries `default-src 'self'; frame-ancestors 'none'`. The document carries one thing
+more, `style-src 'self' 'nonce-…'`: Angular inserts the styles of a component as a `<style>` element when the
+component is first drawn, and the policy lets through only the ones that carry the nonce of the response.
+
+- The app writes the document itself, with a new nonce each time (sixteen random bytes), in place of the
+  word `RESPAWN_CSP_NONCE` that `index.html` holds on the root element (`ngCspNonce`, which Angular reads).
+  The document is sent `no-store`: a kept copy would meet the nonce of another response.
+- Scripts stay on `'self'`: no inline script anywhere. A `style` attribute written in a template, or a style
+  element made by hand, is refused; a `[style.x]` binding goes through the DOM and is fine.
+- The dev server sends no policy, so the word stays as it is there and nothing is blocked.
+
+Two files are shipped as they are, from `packages/app/public/`: the icon, and `theme.js`, which the document
+head loads before the style sheet so a reload paints the chosen theme at once. A file there is never kept by
+browsers; a script there must not be named like a hashed one (`name-XXXXXXXX.js`), which the app serves as
+immutable.
 
 ## Design tokens
 
@@ -72,6 +81,13 @@ Two attributes on the root element switch them, and nothing else changes:
 (`.bg-surface { background-color: var(--rs-surface) }`) and follows a switch. Tailwind's default palette, radii
 and type scale are removed: a component names a semantic token (`bg-surface`, `rounded-card`, `type-body`),
 never a hex value or a palette step.
+
+A base component of `packages/ui` has its own stylesheet beside it (`button.css` for `button.ts`), plain CSS
+on the tokens: a variant or a state is a selector on the host (`:host([data-variant='primary'])`,
+`:host([aria-pressed='true'])`), so its whole look reads in one place. `@reference` gives it the `type-*`
+styles (`@apply type-control`) and the `wide` variant without emitting the theme again. Every rule sits in
+`@layer components`, so a utility a screen puts on the component (a width, a weight) still wins. Tailwind
+utilities are for laying out a screen, in its template.
 
 Colours that differ by theme are written once, with `light-dark()`, which needs a browser from 2024 or later
 (Chrome 123, Firefox 120, Safari 17.5).

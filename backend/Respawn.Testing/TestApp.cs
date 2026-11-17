@@ -32,7 +32,7 @@ internal sealed class TestApp : WebApplicationFactory<Program>
     private static readonly Lazy<string> FrontBuild = new(() =>
     {
         var root = Directory.CreateTempSubdirectory("respawn-front-").FullName;
-        File.WriteAllText(Path.Combine(root, "index.html"), "<!doctype html><title>respawn</title><rs-root></rs-root>");
+        File.WriteAllText(Path.Combine(root, "index.html"), "<!doctype html><title>respawn</title><rs-root ngCspNonce=\"RESPAWN_CSP_NONCE\"></rs-root>");
         File.WriteAllText(Path.Combine(root, "main-QX2ZHB7T.js"), "");
         File.WriteAllText(Path.Combine(root, "chunk-f7g-vKq6.js"), "");
         File.WriteAllText(Path.Combine(root, "theme.js"), "");

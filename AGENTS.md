@@ -66,8 +66,14 @@
   `injectMutation`, a guard to the `QueryClient`. A refusal is an `ApiFailure`, and a screen picks its sentence
   from the failure's `code`.
 - **Forms** are signal forms (`@angular/forms/signals`); a field is `rs-text-field` bound with `[formField]`.
-- **No inline style.** The content security policy is `default-src 'self'`: a component has no `styles`, the
-  document no inline script or style. Classes and `[style.x]` bindings are fine.
+- **Where a look is written.** A base component of `packages/ui` carries its look in its own stylesheet
+  (`x.css` beside `x.ts`, `styleUrl`), written as CSS on the `--rs-*` tokens inside `@layer components`: a
+  variant or a state is a selector (`:host([data-variant='primary'])`, `[aria-pressed='true']`), never a table
+  of class strings in the `.ts`. Tailwind utilities are for the layout of a screen, in its template.
+- **Content security policy.** `default-src 'self'`, and for the document alone the style elements that carry
+  the nonce of the response: Angular brings component styles that way, and the host writes the document with
+  a new nonce each time. So no inline script, no `style` attribute written in a template, and no style
+  element made by hand. `[style.x]` bindings are fine.
 - **Design tokens.** Every token is a `--rs-*` custom property in `packages/ui/src/styles/tokens.css`, switched
   at run time by `data-theme` and `data-character` on the root element. Components use the semantic Tailwind
   names mapped in `theme.css` (`bg-surface`, `rounded-card`, `type-body`), never a hex value; the default

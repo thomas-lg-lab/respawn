@@ -1,0 +1,63 @@
+@reference '../../styles/theme.css';
+
+/* In the `components` layer, like every base component: a utility a screen puts on the host
+   (a width, a weight) still wins over what is set here. */
+@layer components {
+  :host {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--rs-radius-pill);
+    transition-property: background-color, opacity, translate;
+    transition-duration: var(--rs-duration-hover);
+    @apply type-control;
+  }
+  :host(:active) {
+    translate: 0 1px;
+  }
+  :host(:disabled) {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* In a form: as wide and as round as the fields above it. */
+  :host([data-shape='field']) {
+    width: 100%;
+    border-radius: var(--rs-radius-field);
+  }
+
+  /* The one filled action of a screen. */
+  :host([data-variant='primary']) {
+    min-height: var(--rs-size-button);
+    padding-inline: 1.375rem;
+    background-color: var(--rs-accent);
+    color: var(--rs-on-accent);
+    font-weight: 600;
+  }
+  :host([data-variant='primary']:hover) {
+    opacity: 0.9;
+  }
+
+  /* Every other action, and the round one that holds only an icon. */
+  :host([data-variant='outlined']),
+  :host([data-variant='icon']) {
+    border: 1px solid var(--rs-control-line);
+    background-color: transparent;
+    color: var(--rs-text);
+  }
+  :host([data-variant='outlined']:hover),
+  :host([data-variant='icon']:hover) {
+    background-color: var(--rs-surface-2);
+  }
+  :host([data-variant='outlined']) {
+    min-height: var(--rs-size-touch);
+    padding-inline: 1.125rem;
+    font-weight: 500;
+  }
+  :host([data-variant='icon']) {
+    width: var(--rs-size-touch);
+    height: var(--rs-size-touch);
+  }
+}

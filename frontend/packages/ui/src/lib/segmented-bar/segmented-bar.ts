@@ -16,15 +16,15 @@ export function filledSegments(value: number, max: number, segments: number): nu
  */
 @Component({
   selector: 'rs-segmented-bar',
-  host: { class: 'flex items-center gap-3.5' },
   template: `
-    <span class="flex min-w-0 flex-1 gap-segment-gap" aria-hidden="true">
+    <span class="bar" aria-hidden="true">
       @for (filled of cells(); track $index) {
-        <span class="h-segment flex-1" [class]="filled ? 'bg-accent-text' : 'bg-line'"></span>
+        <span class="segment" [attr.data-filled]="filled ? '' : null"></span>
       }
     </span>
-    <span class="font-semibold tabular-nums"><ng-content /></span>
+    <span class="value"><ng-content /></span>
   `,
+  styleUrl: './segmented-bar.css',
 })
 export class SegmentedBar {
   readonly value = input.required<number>();

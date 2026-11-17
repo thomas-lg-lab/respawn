@@ -42,7 +42,7 @@ internal sealed class SiteGuardMiddleware(RequestDelegate next)
             var headers = context.Response.Headers;
             headers.XContentTypeOptions = "nosniff";
             headers["Referrer-Policy"] = "same-origin";
-            headers.ContentSecurityPolicy = "default-src 'self'; frame-ancestors 'none'";
+            headers.ContentSecurityPolicy = Front.ContentSecurityPolicy(context);
             return Task.CompletedTask;
         });
 

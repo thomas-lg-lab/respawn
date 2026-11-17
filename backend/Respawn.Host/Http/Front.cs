@@ -1,5 +1,8 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Net.Http.Headers;
 
 namespace Respawn.Host.Http;
@@ -13,43 +16,54 @@ namespace Respawn.Host.Http;
 /// </summary>
 internal static partial class Front
 {
-    private const string Document = "/index.html";
+    private const string DocumentFile = "index.html";
+
+    /// <summary>What the front's build leaves in the document where the nonce of a response goes.</summary>
+    internal const string NoncePlaceholder = "RESPAWN_CSP_NONCE";
 
     /// <summary>The addresses that are never the front's, whatever they are followed by.</summary>
     private static readonly string[] Reserved = ["api", "healthz"];
+
+    private static readonly object NonceKey = new();
 
     /// <summary>The kinds of files the app can serve, by their extension.</summary>
     private static readonly FileExtensionContentTypeProvider FileTypes = new();
 
     /// <summary>
-    /// Serves the build's files at the root, and the document where the front routes: the front then
-    /// shows the screen, or says that there is none.
+    /// Serves the document where the front routes (the front then shows the screen, or says that there
+    /// is none), and the build's files at the root.
     ///
-    /// The document is not a route of the app: a read of one of the front's addresses is turned into a
-    /// read of the document before the files are looked up. So the routes of the API never see it, and
-    /// there an unknown address stays a 404 and a wrong method a 405, in the API's error format.
+    /// The document is not a route of the app: a read of one of the front's addresses is answered here,
+    /// ahead of the routing. So the routes of the API never see it, and there an unknown address stays
+    /// a 404 and a wrong method a 405, in the API's error format.
     /// </summary>
     public static IApplicationBuilder UseFront(this IApplicationBuilder app)
     {
         app.Use((context, next) =>
         {
             var request = context.Request;
-            if ((HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method)) && Routes(request.Path))
-            {
-                request.Path = Document;
-            }
-
-            return next(context);
+            var reading = HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method);
+            return reading && IsDocument(request.Path) ? WriteDocumentAsync(context, next) : next(context);
         });
 
         // A file the build names after its content never changes and is kept for good; any other (the
-        // document, the icon) is checked again on every visit.
+        // icon) is checked again on every visit.
         return app.UseStaticFiles(new StaticFileOptions
         {
             OnPrepareResponse = file => file.Context.Response.Headers[HeaderNames.CacheControl] =
                 NamedAfterItsContent().IsMatch(file.File.Name) ? "public, max-age=31536000, immutable" : "no-cache",
         });
     }
+
+    /// <summary>
+    /// The content security policy of a response. Everything comes from this origin and from nowhere
+    /// else, with no inline script. The document alone also allows the style elements that carry its
+    /// nonce: the front's components bring their styles that way.
+    /// </summary>
+    public static string ContentSecurityPolicy(HttpContext context) =>
+        context.Items.TryGetValue(NonceKey, out var nonce)
+            ? $"default-src 'self'; style-src 'self' 'nonce-{nonce}'; frame-ancestors 'none'"
+            : "default-src 'self'; frame-ancestors 'none'";
 
     /// <summary>
     /// Whether an address is one the front routes: not the API's, not a file's.
@@ -62,6 +76,49 @@ internal static partial class Front
         var value = path.Value ?? "";
         var first = value.TrimStart('/').Split('/', 2)[0];
         return !Reserved.Contains(first, StringComparer.OrdinalIgnoreCase) && !FileTypes.TryGetContentType(value, out _);
+    }
+
+    /// <summary>Whether an address gets the document: one the front routes, or the document's own
+    /// file, which is never sent as it is (it would carry no nonce).</summary>
+    private static bool IsDocument(PathString path) =>
+        Routes(path) || path.Equals("/" + DocumentFile, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Writes the document with a nonce of its own, the same one as in the policy of the response.
+    ///
+    /// The nonce is what lets the front's own style elements through and nothing else, so it must not
+    /// be guessable nor reused: sixteen random bytes for each response, and a document no cache may
+    /// keep, since a kept copy would meet the nonce of another response.
+    /// </summary>
+    private static async Task WriteDocumentAsync(HttpContext context, RequestDelegate next)
+    {
+        var file = context.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider.GetFileInfo(DocumentFile);
+        if (!file.Exists)
+        {
+            // No front in this build: the address is unknown, like any other.
+            await next(context);
+            return;
+        }
+
+        var nonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
+        context.Items[NonceKey] = nonce;
+
+        var body = Encoding.UTF8.GetBytes((await ReadAsync(file, context.RequestAborted)).Replace(NoncePlaceholder, nonce, StringComparison.Ordinal));
+        var response = context.Response;
+        response.ContentType = "text/html; charset=utf-8";
+        response.ContentLength = body.Length;
+        response.Headers[HeaderNames.CacheControl] = "no-store";
+        if (!HttpMethods.IsHead(context.Request.Method))
+        {
+            await response.Body.WriteAsync(body, context.RequestAborted);
+        }
+    }
+
+    private static async Task<string> ReadAsync(IFileInfo file, CancellationToken ct)
+    {
+        await using var stream = file.CreateReadStream();
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        return await reader.ReadToEndAsync(ct);
     }
 
     // What the front's build appends to the scripts, style sheets and fonts it names after their
