@@ -97,6 +97,22 @@ describe('routes', () => {
     expect(router.url).toBe('/sign-in');
   });
 
+  it('says that the sign-out failed, and stays signed in', async () => {
+    const { harness, server, router, screen } = await visit('/', signedIn);
+
+    screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    await harness.fixture.whenStable();
+    button(screen, 'Se déconnecter').click();
+    await server.refuse('/auth/logout', 503, 'database_unavailable');
+    await harness.fixture.whenStable();
+
+    expect(router.url).toBe('/');
+    expect(screen.querySelector('[role="alert"]')?.textContent).toContain(
+      'La base de données ne répond pas.',
+    );
+    expect(title(screen)).toBe('Bonjour, First');
+  });
+
   it('keeps the settings of the menu in the browser', async () => {
     const { harness, screen } = await visit('/', signedIn);
     const root = document.documentElement;

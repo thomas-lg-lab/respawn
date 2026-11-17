@@ -36,6 +36,7 @@ internal sealed class TestApp : WebApplicationFactory<Program>
         File.WriteAllText(Path.Combine(root, "main-QX2ZHB7T.js"), "");
         File.WriteAllText(Path.Combine(root, "chunk-f7g-vKq6.js"), "");
         File.WriteAllText(Path.Combine(root, "theme.js"), "");
+        File.WriteAllText(Path.Combine(root, "user-settings.js"), "");
         File.WriteAllText(Path.Combine(root, "favicon.svg"), "<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
         return root;
     });

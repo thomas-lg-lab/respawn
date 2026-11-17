@@ -204,6 +204,25 @@ describe('SignIn', () => {
     expect(alert(screen)).toBe('Un compte existe déjà avec cette adresse e-mail.');
   });
 
+  it('shows the sign-in, and says why, when the first account was created meanwhile', async () => {
+    const { fixture, server, screen } = await open({
+      registration_open: true,
+      first_account: true,
+    });
+
+    type(field(screen, 'Nom affiché'), 'Second');
+    type(field(screen, 'E-mail'), 'second@example.org');
+    type(field(screen, 'Mot de passe'), 'correct horse battery');
+    submit(screen);
+    await server.refuse('/auth/register', 403, 'registration_closed');
+    // The screen asks again what the instance offers.
+    await server.answer('/config', SIGN_IN_OPTIONS);
+    await fixture.whenStable();
+
+    expect(title(screen)).toBe('Connexion');
+    expect(alert(screen)).toBe('Les inscriptions sont fermées sur cette instance.');
+  });
+
   it('says that local sign-in is off, and shows no form', async () => {
     const { screen } = await open({ local_sign_in: false });
 

@@ -1,10 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { AccountQueries } from '@respawn/data';
-import { Logo } from '@respawn/ui';
+import { Banner, Logo } from '@respawn/ui';
 import { DisplaySettings } from '@respawn/util';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { AccountMenu } from '@app/components/account-menu/account-menu';
+import { failureKey } from '@app/errors/failure-message';
 import { LanguageSetting } from '@app/i18n/language';
 
 /**
@@ -14,7 +16,7 @@ import { LanguageSetting } from '@app/i18n/language';
  */
 @Component({
   selector: 'rs-shell',
-  imports: [RouterLink, RouterOutlet, Logo, AccountMenu],
+  imports: [RouterLink, RouterOutlet, TranslocoDirective, Banner, Logo, AccountMenu],
   templateUrl: './shell.html',
 })
 export class Shell {
@@ -23,6 +25,7 @@ export class Shell {
 
   protected readonly display = inject(DisplaySettings);
   protected readonly language = inject(LanguageSetting);
+  protected readonly failureKey = failureKey;
 
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly signingOut = injectMutation(() => this.queries.signOut());

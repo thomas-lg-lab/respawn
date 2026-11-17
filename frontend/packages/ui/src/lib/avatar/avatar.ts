@@ -19,7 +19,9 @@ export class Avatar {
 
   /** The first character as a reader sees it, not half of a pair: an accented letter, an emoji. */
   protected readonly initial = computed(() => {
-    const [first] = this.name().trim();
-    return first?.toLocaleUpperCase() ?? '';
+    const [first] = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(
+      this.name().trim(),
+    );
+    return first?.segment.toLocaleUpperCase() ?? '';
   });
 }

@@ -125,6 +125,23 @@ describe('AccountQueries', () => {
     expect(client.getQueryData(accountKeys.me)).toEqual(ACCOUNT);
   });
 
+  it('asks again what the page may offer when a registration is refused as closed', async () => {
+    client.setQueryData(accountKeys.signInOptions, OPTIONS);
+    const register = new MutationObserver(client, queries.register());
+
+    const done = register
+      .mutate({
+        email: 'second@example.org',
+        display_name: 'Second',
+        password: 'correct horse battery',
+      })
+      .catch((thrown: unknown) => thrown);
+    (await request('/api/v1/auth/register')).flush(...refuse('registration_closed', 403));
+
+    expect(await done).toMatchObject({ code: 'registration_closed' });
+    expect(client.getQueryState(accountKeys.signInOptions)?.isInvalidated).toBe(true);
+  });
+
   it('leaves nothing of the account behind after a sign-out', async () => {
     client.setQueryData(accountKeys.me, ACCOUNT);
     client.setQueryData(['library'], { total: 3 });

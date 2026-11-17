@@ -16,6 +16,9 @@ describe('Avatar', () => {
 
   it('never cuts a character in two', async () => {
     expect(await initialOf('🎮 player')).toBe('🎮');
+    // A letter and its accent written as two characters, and a flag, which is two as well.
+    expect(await initialOf('élodie')).toBe('É');
+    expect(await initialOf('🇫🇷 player')).toBe('🇫🇷');
   });
 
   it('is a decoration: the name is written beside it', async () => {

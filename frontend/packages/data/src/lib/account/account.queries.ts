@@ -9,6 +9,9 @@ export const accountKeys = {
   signInOptions: ['account', 'sign-in-options'] as const,
 };
 
+/** The refusals that mean the sign-in page offered what the instance no longer does. */
+const NO_LONGER_OFFERED = ['registration_closed', 'local_sign_in_disabled'];
+
 /**
  * The server state of the account: who is signed in, what the sign-in page may offer, and
  * the three actions that change it. Each method gives the options of a query or of a
@@ -56,6 +59,7 @@ export class AccountQueries {
     return mutationOptions({
       mutationFn: (body: LoginRequest) => this.api.post<Account>('/auth/login', body),
       onSuccess: (account) => this.signedIn(account),
+      onError: (failure) => this.refused(failure),
     });
   }
 
@@ -64,6 +68,7 @@ export class AccountQueries {
     return mutationOptions({
       mutationFn: (body: RegisterRequest) => this.api.post<Account>('/auth/register', body),
       onSuccess: (account) => this.signedIn(account),
+      onError: (failure) => this.refused(failure),
     });
   }
 
@@ -84,5 +89,15 @@ export class AccountQueries {
     this.client.setQueryData(accountKeys.me, account);
     // The first account closes registration: what the page offered is not kept for a later visit.
     this.client.removeQueries({ queryKey: accountKeys.signInOptions });
+  }
+
+  /**
+   * What the page offered changed since it asked (the first account was created meanwhile,
+   * say): it asks again, so the screen shows what the instance offers now.
+   */
+  private refused(failure: unknown): void {
+    if (failure instanceof ApiFailure && NO_LONGER_OFFERED.includes(failure.code)) {
+      void this.client.invalidateQueries({ queryKey: accountKeys.signInOptions });
+    }
   }
 }

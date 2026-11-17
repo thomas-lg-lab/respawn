@@ -30,7 +30,6 @@ let created = 0;
       [type]="type()"
       [attr.name]="name() || null"
       [attr.autocomplete]="autocomplete()"
-      [attr.maxlength]="maxLength() ?? null"
       [attr.aria-invalid]="showsError() ? 'true' : null"
       [attr.aria-describedby]="describedBy()"
       [required]="required()"
@@ -61,7 +60,8 @@ export class TextField implements FormValueControl<string> {
   readonly disabled = input(false);
   readonly invalid = input(false);
   readonly touched = input(false);
-  readonly maxLength = input<number | undefined>(undefined);
+  // No `maxLength` here on purpose: as an attribute of the input it would cut a pasted value
+  // short without a word (a password, say). The form's rule refuses a value too long instead.
   readonly touch = output<void>();
 
   private readonly control = viewChild.required<ElementRef<HTMLInputElement>>('control');

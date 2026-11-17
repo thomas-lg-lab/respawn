@@ -19,5 +19,11 @@
 </header>
 
 <main class="mx-auto max-w-5xl px-4 py-6 wide:px-10 wide:py-10">
+  <!-- A sign-out that failed: the session is still open, and that must be said. -->
+  @if (signingOut.error(); as refusal) {
+    <rs-banner class="mb-6" tone="warn" role="alert" *transloco="let t">{{
+      t(failureKey(refusal))
+    }}</rs-banner>
+  }
   <router-outlet />
 </main>

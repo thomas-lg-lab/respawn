@@ -31,6 +31,8 @@ public sealed class ContractTests
     [Theory]
     [InlineData("/sign-in")]
     [InlineData("/any/address/of/the/front")]
+    [InlineData("/games/half-life.2")]
+    [InlineData("/users/j.doe")]
     public async Task An_address_of_the_front_gets_its_document(string path)
     {
         await using var app = TestApp.Offline();
@@ -46,6 +48,7 @@ public sealed class ContractTests
     [InlineData("/main-QX2ZHB7T.js", "public, max-age=31536000, immutable")]
     [InlineData("/chunk-f7g-vKq6.js", "public, max-age=31536000, immutable")]
     [InlineData("/theme.js", "no-cache")]
+    [InlineData("/user-settings.js", "no-cache")]
     [InlineData("/favicon.svg", "no-cache")]
     public async Task A_file_of_the_front_is_kept_only_when_named_after_its_content(string path, string caching)
     {

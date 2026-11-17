@@ -70,16 +70,19 @@ export class SignIn {
     () => this.view() === 'first-account' || this.view() === 'create-account',
   );
 
-  /** Why the last attempt on the form in view was refused. */
-  protected readonly failure = computed(() =>
-    this.creating() ? this.registering.error() : this.signingIn.error(),
-  );
+  /**
+   * Why the last attempt was refused. Not tied to the form in view: a refusal can change the
+   * form (registration closed meanwhile), and its reason must still be said.
+   */
+  protected readonly failure = computed(() => this.registering.error() ?? this.signingIn.error());
 
   protected signIn(body: LoginRequest): void {
+    this.registering.reset();
     this.signingIn.mutate(body, { onSuccess: () => this.enter() });
   }
 
   protected createAccount(body: RegisterRequest): void {
+    this.signingIn.reset();
     this.registering.mutate(body, { onSuccess: () => this.enter() });
   }
 

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Net.Http.Headers;
 
 namespace Respawn.Host.Http;
@@ -16,6 +17,9 @@ internal static partial class Front
 
     /// <summary>The addresses that are never the front's, whatever they are followed by.</summary>
     private static readonly string[] Reserved = ["api", "healthz"];
+
+    /// <summary>The kinds of files the app can serve, by their extension.</summary>
+    private static readonly FileExtensionContentTypeProvider FileTypes = new();
 
     /// <summary>
     /// Serves the build's files at the root, and the document where the front routes: the front then
@@ -47,18 +51,25 @@ internal static partial class Front
         });
     }
 
-    /// <summary>Whether an address is one the front routes: not the API's, not a file's.</summary>
+    /// <summary>
+    /// Whether an address is one the front routes: not the API's, not a file's.
+    ///
+    /// A file's address ends like a kind of file the app serves (".js", ".svg"). A dot alone does
+    /// not make one: "/games/half-life.2" is a screen of the front.
+    /// </summary>
     internal static bool Routes(PathString path)
     {
         var value = path.Value ?? "";
         var first = value.TrimStart('/').Split('/', 2)[0];
-        return !Reserved.Contains(first, StringComparer.OrdinalIgnoreCase) && !Path.HasExtension(value);
+        return !Reserved.Contains(first, StringComparer.OrdinalIgnoreCase) && !FileTypes.TryGetContentType(value, out _);
     }
 
     // What the front's build appends to the scripts, style sheets and fonts it names after their
     // content: "main-QX2ZHB7T.js", "chunk-f7g-vKq6.js", "styles-5INURTSO.css". Only those kinds: a
     // file the front ships as it is (its icon) could end the same way by chance, and must stay
-    // checked. A script shipped as it is must not be named this way.
-    [GeneratedRegex(@"-[A-Za-z0-9_-]{8}\.(js|css|woff2)$", RegexOptions.CultureInvariant)]
+    // checked. The eight characters hold a capital or a digit, so a script shipped as it is under an
+    // ordinary name ("user-settings.js") is not taken for one of them; a hash that happens to hold
+    // neither is only checked again on each visit.
+    [GeneratedRegex(@"-(?=[a-z_-]*[A-Z0-9])[A-Za-z0-9_-]{8}\.(js|css|woff2)$", RegexOptions.CultureInvariant)]
     private static partial Regex NamedAfterItsContent();
 }
