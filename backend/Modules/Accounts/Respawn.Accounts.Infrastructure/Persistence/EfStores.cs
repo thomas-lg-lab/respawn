@@ -41,6 +41,8 @@ internal sealed class EfGroupDirectory(AccountsDbContext db, TimeProvider clock)
         // right under concurrency: the unique index on the default group and the key of a membership
         // make a second writer wait for the first, then skip. The same choice of owner as the
         // migration that created groups: the first administrator, else the oldest account.
+        // Memberships are written in the order of the accounts' ids: two repairs at once then take
+        // their rows in the same order, and neither can hold one the other waits for.
         await db.Database.ExecuteSqlAsync(
             $"""
             INSERT INTO accounts.groups (id, name, owner_id, is_default, created_at)
@@ -59,6 +61,7 @@ internal sealed class EfGroupDirectory(AccountsDbContext db, TimeProvider clock)
             FROM accounts.groups g CROSS JOIN accounts.users u
             WHERE g.is_default
               AND NOT EXISTS (SELECT 1 FROM accounts.group_memberships m WHERE m.group_id = g.id AND m.user_id = u.id)
+            ORDER BY u.id
             ON CONFLICT DO NOTHING
             """,
             ct);
