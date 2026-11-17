@@ -22,7 +22,9 @@ public interface IUserDirectory
 
     Task<Account?> FindByExternalIdentityAsync(string issuer, string subject, CancellationToken ct);
 
-    /// <summary>Creates the account; without a password it only signs in through a provider.</summary>
+    /// <summary>Creates the account; without a password it only signs in through a provider. It is in
+    /// no group yet: the caller restores the rule of <see cref="IGroupDirectory"/> in the same
+    /// transaction.</summary>
     /// <exception cref="AccountException">The e-mail is already used, or the password is refused.</exception>
     Task<Account> CreateAsync(string? email, string displayName, string? password, bool isAdmin, CancellationToken ct);
 

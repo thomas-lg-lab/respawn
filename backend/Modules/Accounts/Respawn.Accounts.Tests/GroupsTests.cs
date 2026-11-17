@@ -195,6 +195,30 @@ public sealed class GroupsTests
     }
 
     [Fact]
+    public async Task A_group_keeps_its_owner_and_a_deleted_account_leaves_its_groups()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var first = app.Browser();
+        var owner = (await first.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        using var second = app.Browser();
+        var member = (await second.RegisterAsync("second@example.org", "Second").JsonAsync()).GetProperty("id").GetGuid();
+        var group = Assert.Single(await GroupsAsync(app));
+
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AccountsDbContext>();
+
+        // A group does not vanish with its owner's account: the database refuses, until it is handed over.
+        var refused = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlAsync(
+            $"DELETE FROM accounts.users WHERE id = {owner}"));
+        Assert.Equal(PostgresErrorCodes.RestrictViolation, refused.SqlState);
+
+        // Any other account goes, and its memberships with it.
+        await db.Database.ExecuteSqlAsync($"DELETE FROM accounts.users WHERE id = {member}");
+        Assert.Equal([owner], await MembersAsync(app, group.Id));
+    }
+
+    [Fact]
     public async Task The_migration_puts_the_existing_accounts_in_a_default_group()
     {
         // A database as it was before groups: migrated up to the first migration, with two accounts.
@@ -211,22 +235,21 @@ public sealed class GroupsTests
         var migrator = db.GetService<IMigrator>();
         await migrator.MigrateAsync("Accounts");
 
+        // Written as that schema knows them, not through today's model: a column added to the accounts
+        // later must not reach back into this test.
         var member = Guid.CreateVersion7();
         var administrator = Guid.CreateVersion7();
         foreach (var (id, isAdmin, daysAgo) in new[] { (member, false, 2), (administrator, true, 1) })
         {
-            db.Users.Add(new AppUser
-            {
-                Id = id,
-                UserName = id.ToString("N"),
-                NormalizedUserName = id.ToString("N").ToUpperInvariant(),
-                DisplayName = "Before groups",
-                IsAdmin = isAdmin,
-                CreatedAt = DateTimeOffset.UtcNow.AddDays(-daysAgo),
-            });
+            var createdAt = DateTimeOffset.UtcNow.AddDays(-daysAgo);
+            await db.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO accounts.users
+                    (id, display_name, is_admin, created_at, email_confirmed, phone_number_confirmed,
+                     two_factor_enabled, lockout_enabled, access_failed_count)
+                VALUES ({id}, 'Before groups', {isAdmin}, {createdAt}, FALSE, FALSE, FALSE, TRUE, 0)
+                """);
         }
-
-        await db.SaveChangesAsync();
 
         await migrator.MigrateAsync();
 
