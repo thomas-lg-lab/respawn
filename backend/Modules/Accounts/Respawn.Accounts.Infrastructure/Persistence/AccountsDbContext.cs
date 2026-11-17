@@ -14,6 +14,10 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
     /// <summary>The PostgreSQL schema this module owns. No other module reads or writes it.</summary>
     public const string Schema = "accounts";
 
+    public DbSet<UserGroup> Groups => Set<UserGroup>();
+
+    public DbSet<GroupMembership> GroupMemberships => Set<GroupMembership>();
+
     public DbSet<Session> Sessions => Set<Session>();
 
     public DbSet<ExchangedToken> ExchangedTokens => Set<ExchangedToken>();
@@ -59,6 +63,24 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
         });
         builder.Entity<IdentityUserClaim<Guid>>().ToTable("user_claims");
         builder.Entity<IdentityUserToken<Guid>>().ToTable("user_tokens");
+
+        builder.Entity<UserGroup>(group =>
+        {
+            group.ToTable("groups");
+            group.Property(g => g.Name).HasMaxLength(100);
+            // One default group at most: only the rows that are the default one are in the index.
+            group.HasIndex(g => g.IsDefault).IsUnique().HasFilter("is_default");
+            // A group does not vanish with its owner's account: it is handed over or deleted first.
+            group.HasOne<AppUser>().WithMany().HasForeignKey(g => g.OwnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<GroupMembership>(membership =>
+        {
+            membership.ToTable("group_memberships");
+            membership.HasKey(m => new { m.GroupId, m.UserId });
+            membership.HasOne<UserGroup>().WithMany().HasForeignKey(m => m.GroupId).OnDelete(DeleteBehavior.Cascade);
+            membership.HasOne<AppUser>().WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         builder.Entity<Session>(session =>
         {

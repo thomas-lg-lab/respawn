@@ -30,6 +30,44 @@ internal sealed class EfUnitOfWork(AccountsDbContext db) : IUnitOfWork
         });
 }
 
+internal sealed class EfGroupDirectory(AccountsDbContext db, TimeProvider clock) : IGroupDirectory
+{
+    public async Task EnsureEveryoneInDefaultGroupAsync(string defaultGroupName, CancellationToken ct)
+    {
+        var id = Guid.CreateVersion7();
+        var now = clock.GetUtcNow();
+
+        // Two statements that change nothing when there is nothing to do, and that the database keeps
+        // right under concurrency: the unique index on the default group and the key of a membership
+        // make a second writer wait for the first, then skip. The same choice of owner as the
+        // migration that created groups: the first administrator, else the oldest account.
+        // Memberships are written in the order of the accounts' ids: two repairs at once then take
+        // their rows in the same order, and neither can hold one the other waits for.
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO accounts.groups (id, name, owner_id, is_default, created_at)
+            SELECT {id}, {defaultGroupName}, u.id, TRUE, {now}
+            FROM accounts.users u
+            WHERE NOT EXISTS (SELECT 1 FROM accounts.groups WHERE is_default)
+            ORDER BY u.is_admin DESC, u.created_at, u.id
+            LIMIT 1
+            ON CONFLICT DO NOTHING
+            """,
+            ct);
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO accounts.group_memberships (group_id, user_id, joined_at)
+            SELECT g.id, u.id, {now}
+            FROM accounts.groups g CROSS JOIN accounts.users u
+            WHERE g.is_default
+              AND NOT EXISTS (SELECT 1 FROM accounts.group_memberships m WHERE m.group_id = g.id AND m.user_id = u.id)
+            ORDER BY u.id
+            ON CONFLICT DO NOTHING
+            """,
+            ct);
+    }
+}
+
 internal sealed class EfInstanceSettings(AccountsDbContext db) : IInstanceSettings
 {
     public async Task<bool> GetFlagAsync(string key, bool fallback, CancellationToken ct)

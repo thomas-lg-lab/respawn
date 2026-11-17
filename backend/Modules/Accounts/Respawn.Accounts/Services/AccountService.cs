@@ -9,6 +9,7 @@ namespace Respawn.Accounts.Services;
 public sealed partial class AccountService(
     IUnitOfWork unitOfWork,
     IUserDirectory users,
+    IGroupDirectory groups,
     IInstanceSettings settings,
     ISessionStore sessions,
     IExchangedTokens exchangedTokens,
@@ -17,6 +18,8 @@ public sealed partial class AccountService(
     TimeProvider clock) : IAccountService
 {
     private const int DisplayNameMaxLength = 100;
+
+    private const string DefaultGroupName = "Everyone";
 
     public async Task<SignInOptions> GetSignInOptionsAsync(CancellationToken ct) =>
         new(
@@ -51,8 +54,7 @@ public sealed partial class AccountService(
                     throw new AccountException(AccountError.AccountExists);
                 }
 
-                var account = await users.CreateAsync(
-                    address, displayName.Trim(), password, await IsFirstAccountAsync(ct), ct);
+                var account = await CreateAccountAsync(address, displayName.Trim(), password, ct);
                 return await OpenSessionAsync(account, ct);
             },
             ct);
@@ -138,11 +140,25 @@ public sealed partial class AccountService(
             name = name[..DisplayNameMaxLength];
         }
 
-        return await users.CreateAsync(email, name, password: null, await IsFirstAccountAsync(ct), ct);
+        return await CreateAccountAsync(email, name, password: null, ct);
     }
 
+    /// <summary>Every account is created here, inside the caller's transaction: it is in the default
+    /// group as soon as it exists, whether or not a sign-in follows.</summary>
+    private async Task<Account> CreateAccountAsync(string? email, string displayName, string? password, CancellationToken ct)
+    {
+        var account = await users.CreateAsync(email, displayName, password, await IsFirstAccountAsync(ct), ct);
+        await groups.EnsureEveryoneInDefaultGroupAsync(DefaultGroupName, ct);
+        return account;
+    }
+
+    /// <summary>Every sign-in ends here, the one of a new account included, inside its transaction.</summary>
     private async Task<SignedIn> OpenSessionAsync(Account account, CancellationToken ct)
     {
+        // Every account is in the default group. The rule is restored here as well as when an account
+        // is created: an account may have been created by something that knows no groups (an instance
+        // of the previous version during an update), and the group itself may be missing.
+        await groups.EnsureEveryoneInDefaultGroupAsync(DefaultGroupName, ct);
         var token = await sessions.OpenAsync(account.Id, clock.GetUtcNow().AddDays(options.SessionDays), ct);
         return new SignedIn(account, token);
     }

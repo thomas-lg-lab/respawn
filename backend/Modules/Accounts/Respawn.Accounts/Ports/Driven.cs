@@ -22,7 +22,9 @@ public interface IUserDirectory
 
     Task<Account?> FindByExternalIdentityAsync(string issuer, string subject, CancellationToken ct);
 
-    /// <summary>Creates the account; without a password it only signs in through a provider.</summary>
+    /// <summary>Creates the account; without a password it only signs in through a provider. It is in
+    /// no group yet: the caller restores the rule of <see cref="IGroupDirectory"/> in the same
+    /// transaction.</summary>
     /// <exception cref="AccountException">The e-mail is already used, or the password is refused.</exception>
     Task<Account> CreateAsync(string? email, string displayName, string? password, bool isAdmin, CancellationToken ct);
 
@@ -31,6 +33,17 @@ public interface IUserDirectory
     Task<Account?> AuthenticateAsync(string email, string password, CancellationToken ct);
 
     Task LinkExternalIdentityAsync(Guid accountId, string issuer, string subject, CancellationToken ct);
+}
+
+/// <summary>Groups are sharing scopes: what an account makes visible, it shares with a group, never with
+/// the instance as a whole.</summary>
+public interface IGroupDirectory
+{
+    /// <summary>Makes the rule true again, whatever broke it: the instance has one default group, and
+    /// every account is a member of it. A default group that is missing while accounts exist is created
+    /// under this name and owned by the first administrator. Changes nothing when the rule already
+    /// holds, and may be asked by several requests at once.</summary>
+    Task EnsureEveryoneInDefaultGroupAsync(string defaultGroupName, CancellationToken ct);
 }
 
 public interface IInstanceSettings

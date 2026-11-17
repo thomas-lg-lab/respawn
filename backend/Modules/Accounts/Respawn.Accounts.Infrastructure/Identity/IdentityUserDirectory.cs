@@ -61,10 +61,13 @@ internal sealed class IdentityUserDirectory(
     public async Task<Account?> AuthenticateAsync(string email, string password, CancellationToken ct)
     {
         // The row is locked until the transaction ends: sign-ins to one account are counted one by one,
-        // so parallel attempts cannot all be judged against the same failed-attempt count.
+        // so parallel attempts cannot all be judged against the same failed-attempt count. Locked as an
+        // update that leaves the key alone, which is what follows: a row that only refers to the account
+        // (a group membership) can still be written meanwhile, where FOR UPDATE would make two sign-ins
+        // wait for each other.
         var normalized = users.NormalizeEmail(email);
         var matches = await db.Users
-            .FromSql($"SELECT * FROM accounts.users WHERE normalized_email = {normalized} FOR UPDATE")
+            .FromSql($"SELECT * FROM accounts.users WHERE normalized_email = {normalized} FOR NO KEY UPDATE")
             .ToListAsync(ct);
         var user = matches.FirstOrDefault();
 

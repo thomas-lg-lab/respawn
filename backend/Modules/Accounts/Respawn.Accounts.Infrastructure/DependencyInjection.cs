@@ -42,6 +42,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IUserDirectory, IdentityUserDirectory>();
+        services.AddScoped<IGroupDirectory, EfGroupDirectory>();
         services.AddScoped<IInstanceSettings, EfInstanceSettings>();
         services.AddScoped<ISessionStore, EfSessionStore>();
         services.AddScoped<IExchangedTokens, EfExchangedTokens>();

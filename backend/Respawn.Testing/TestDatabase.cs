@@ -99,7 +99,7 @@ internal static class TestDatabase
     public static void Truncate()
     {
         using var connection = Open(Url);
-        Execute(connection, "TRUNCATE accounts.users, accounts.sessions, accounts.external_identities, accounts.exchanged_tokens, accounts.settings, accounts.user_claims, accounts.user_tokens CASCADE");
+        Execute(connection, "TRUNCATE accounts.users, accounts.groups, accounts.group_memberships, accounts.sessions, accounts.external_identities, accounts.exchanged_tokens, accounts.settings, accounts.user_claims, accounts.user_tokens CASCADE");
     }
 
     /// <summary>Runs a statement on the tests' database: what an administrator's route will do later.</summary>
@@ -117,6 +117,9 @@ internal static class TestDatabase
         connection.Open();
         return connection;
     }
+
+    /// <summary>A data source on one of the tests' databases, for a test that migrates it itself.</summary>
+    public static NpgsqlDataSource DataSource(string url) => NpgsqlDataSource.Create(ConnectionStrings.Parse(url).ConnectionString);
 
     private static NpgsqlConnection OpenAdmin() => Open(UrlFor("postgres"));
 
