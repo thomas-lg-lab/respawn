@@ -111,7 +111,6 @@ describe('the return after a sign-in', () => {
   it('comes back there when a new try finds the session the API could not read', async () => {
     const { router, screen, server, returnTo } = await visit('/library', async (server) => {
       await server.refuse('/me', 503, 'database_unavailable');
-      await server.refuse('/me', 503, 'database_unavailable');
       await server.answer('/config', SIGN_IN_OPTIONS);
     });
     expect(returnTo()).toBe('/library');

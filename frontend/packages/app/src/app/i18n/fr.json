@@ -1,4 +1,7 @@
 {
+  "app": {
+    "loading": "Chargement…"
+  },
   "settings": {
     "language": "Langue",
     "languages": {
