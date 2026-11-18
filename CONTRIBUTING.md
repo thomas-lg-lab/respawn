@@ -77,7 +77,7 @@ and adapters around it.
 | `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, and the ports they need | nothing; no package |
 | `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` | its core only |
-| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1` | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Respawn.Tests` | the tests of the host and of the solution as a whole: the runtime contract, the database connection, the architecture rules | everything |
 | `Respawn.Testing` | what every test project shares: the app started in-process, the test database; not a test project | the host |

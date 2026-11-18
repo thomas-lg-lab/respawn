@@ -329,13 +329,14 @@ public sealed class ContractTests
         Assert.False(user.TryGetProperty("displayName", out _));
 
         // Every route that declares a refusal still describes a success: declaring one answer by hand
-        // hides the one the framework would have inferred, and the front then gets no type for it.
+        // hides the one the framework would have inferred, and the front then gets no type for it. A
+        // route the browser is sent through succeeds with a redirect.
         var withoutSuccess =
             from path in document.GetProperty("paths").EnumerateObject()
             from operation in path.Value.EnumerateObject()
             where operation.Value.ValueKind == JsonValueKind.Object && operation.Value.TryGetProperty("responses", out _)
             let statuses = operation.Value.GetProperty("responses").EnumerateObject().Select(response => response.Name).ToList()
-            where statuses.Any(status => status[0] is '4' or '5') && !statuses.Any(status => status[0] == '2')
+            where statuses.Any(status => status[0] is '4' or '5') && !statuses.Any(status => status[0] is '2' or '3')
             select $"{operation.Name.ToUpperInvariant()} {path.Name}";
         Assert.Empty(withoutSuccess);
 

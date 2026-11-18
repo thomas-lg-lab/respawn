@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Respawn.Games.Api;
 using Respawn.Host.Configuration;
 using Respawn.Host.Errors;
 using Respawn.Host.Http;
@@ -34,9 +35,11 @@ services.TryAddSingleton(TimeProvider.System);
 // The one database. Nothing connects here: a module's first query does, and every module is migrated then.
 services.AddDatabase(provider => RespawnSettings.Database(provider.GetRequiredService<IConfiguration>()));
 
-// The modules. AddAuthentication, which Accounts calls, brings ASP.NET Core Data Protection along;
-// nothing uses it (a session is a row of the database, not an encrypted cookie), so its start-up
-// warnings about keys that are not persisted are silenced in appsettings.json.
+// The modules. AddAuthentication, which Accounts calls, brings ASP.NET Core Data Protection along.
+// A session does not use it (it is a row of the database, not an encrypted cookie); the Steam link
+// does, for the state Steam hands back during the minute a link takes. Its keys stay in memory, so a
+// link started before a restart is started again, and its start-up warnings about keys that are not
+// persisted are silenced in appsettings.json: nothing lasting depends on them.
 services.AddAccounts();
 services.AddGames();
 
@@ -90,6 +93,7 @@ var app = builder.Build();
 
 app.UseMiddleware<ProxyWarningMiddleware>();
 app.UseForwardedHeaders();
+app.UseSteamLinkAddress();
 app.UseMiddleware<SiteGuardMiddleware>();
 app.UseExceptionHandler(_ => { });
 // A status without a body (an unknown route, a method that is not allowed) still answers in the one

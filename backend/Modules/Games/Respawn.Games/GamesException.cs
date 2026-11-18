@@ -7,6 +7,9 @@ public enum GamesError
     LinkedToAnotherAccount,
 
     UnknownLinkedAccount,
+
+    /// <summary>A link was asked for from another site's page.</summary>
+    CrossSiteLink,
 }
 
 public sealed class GamesException(GamesError error) : Exception(error.ToString())

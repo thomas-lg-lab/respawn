@@ -297,6 +297,131 @@
           }
         }
       }
+    },
+    "/api/v1/linked-accounts": {
+      "get": {
+        "tags": [
+          "LinkedAccounts"
+        ],
+        "summary": "The store accounts linked to the signed-in account",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedAccountsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/linked-accounts/{id}": {
+      "delete": {
+        "tags": [
+          "LinkedAccounts"
+        ],
+        "summary": "Unlink a store account",
+        "description": "Forgets everything that was read from it: the library it gave, its history and the store's answers. It cannot be undone; linking the same store account again starts from nothing.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/linked-accounts/steam/link": {
+      "get": {
+        "tags": [
+          "LinkedAccounts"
+        ],
+        "summary": "Link a Steam account: sends the browser to Steam",
+        "description": "A navigation from the app's own pages, not a call: the browser is sent to Steam (\"Sign in through Steam\"), which sends it back to the app once the visitor has proven a Steam account is theirs. The browser then lands on return_to with the outcome in the steam_link parameter: linked, linked_elsewhere (that Steam account is linked to another account of this instance), failed (nothing was proven) or unavailable (Steam could not be asked to confirm; trying again may work). It links a library and never opens a session.",
+        "parameters": [
+          {
+            "name": "return_to",
+            "in": "query",
+            "description": "The path of the app to come back to, at most 512 characters; the home when it is not one.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -493,6 +618,52 @@
           }
         }
       },
+      "LinkedAccountResponse": {
+        "required": [
+          "id",
+          "source",
+          "external_id",
+          "display_name",
+          "linked_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "linked_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LinkedAccountsResponse": {
+        "required": [
+          "accounts"
+        ],
+        "type": "object",
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkedAccountResponse"
+            }
+          }
+        }
+      },
       "LoginRequest": {
         "required": [
           "email",
@@ -622,6 +793,9 @@
     },
     {
       "name": "Library"
+    },
+    {
+      "name": "LinkedAccounts"
     }
   ]
 }

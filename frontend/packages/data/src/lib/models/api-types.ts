@@ -338,6 +338,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/linked-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store accounts linked to the signed-in account */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LinkedAccountsResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/linked-accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink a store account
+         * @description Forgets everything that was read from it: the library it gave, its history and the store's answers. It cannot be undone; linking the same store account again starts from nothing.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/linked-accounts/steam/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Link a Steam account: sends the browser to Steam
+         * @description A navigation from the app's own pages, not a call: the browser is sent to Steam ("Sign in through Steam"), which sends it back to the app once the visitor has proven a Steam account is theirs. The browser then lands on return_to with the outcome in the steam_link parameter: linked, linked_elsewhere (that Steam account is linked to another account of this instance), failed (nothing was proven) or unavailable (Steam could not be asked to confirm; trying again may work). It links a library and never opens a session.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The path of the app to come back to, at most 512 characters; the home when it is not one. */
+                    return_to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Found */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -395,6 +559,18 @@ export interface components {
             /** Format: int32 */
             limit: number;
             games: components["schemas"]["LibraryGameResponse"][];
+        };
+        LinkedAccountResponse: {
+            /** Format: uuid */
+            id: string;
+            source: string;
+            external_id: string;
+            display_name: null | string;
+            /** Format: date-time */
+            linked_at: string;
+        };
+        LinkedAccountsResponse: {
+            accounts: components["schemas"]["LinkedAccountResponse"][];
         };
         LoginRequest: {
             email: string;
