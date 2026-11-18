@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,12 +8,12 @@ namespace Respawn.Games.Api;
 public static class GamesApi
 {
     /// <summary>The routes of the Games module and the Steam link. The host registers
-    /// <see cref="SteamLinkOptions"/>, and a session other routes are authorized with.</summary>
+    /// <see cref="SteamLinkOptions"/> and a session other routes are authorized with, and places
+    /// <see cref="SteamLinkPipeline.UseSteamLinkAddress"/> in its pipeline.</summary>
     public static IServiceCollection AddGamesApi(this IServiceCollection services)
     {
         // A scheme of its own, that opens no session: it only answers on the link's routes.
         services.AddAuthentication().AddSteam(SteamLink.Scheme, SteamLink.Configure);
-        services.AddTransient<IStartupFilter, SteamLinkAddress>();
         return services;
     }
 
@@ -25,6 +24,7 @@ public static class GamesApi
     internal static ObjectResult Refusal(GamesError error) => error switch
     {
         GamesError.UnknownLinkedAccount => Error(404, "unknown_linked_account", "No such linked account."),
+        GamesError.CrossSiteLink => Error(403, "cross_site_request", "This request comes from another site."),
         GamesError.LinkedToAnotherAccount => Error(409, "linked_to_another_account", "This store account is linked to another account of this instance."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };

@@ -15,8 +15,8 @@ namespace Respawn.Accounts.Api;
 /// Who is asking, from the session cookie and nothing else: a request header such as Remote-User never
 /// identifies anyone.
 ///
-/// Only the routes that ask for a signed-in account look the session up. ASP.NET Core authenticates
-/// every request with the app's one scheme; without this, /healthz and the page would need the database.
+/// Only the routes that ask for a signed-in account look the session up: the others, /healthz and the
+/// page among them, are answered without the database.
 /// </summary>
 internal sealed class SessionAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Respawn.Games.Ports;
 using Respawn.SharedKernel;
 
@@ -15,7 +14,7 @@ namespace Respawn.Games.Api;
 [Route("api/v1/linked-accounts")]
 [Produces("application/json")]
 [GamesRefusals]
-public sealed class LinkedAccountsController(ILibraryService library, ILogger<LinkedAccountsController> logger) : ControllerBase
+public sealed class LinkedAccountsController(ILibraryService library) : ControllerBase
 {
     [HttpGet]
     [Authorize]
@@ -53,32 +52,30 @@ public sealed class LinkedAccountsController(ILibraryService library, ILogger<Li
     [Authorize]
     [EndpointSummary("Link a Steam account: sends the browser to Steam")]
     [EndpointDescription(
-        "A navigation, not a call: the browser is sent to Steam (\"Sign in through Steam\"), which sends it back "
-        + "to the app once the visitor has proven a Steam account is theirs. The browser then lands on return_to "
-        + "with the outcome in the steam_link parameter: linked, linked_elsewhere (that Steam account is linked "
-        + "to another account of this instance), failed (nothing was proven) or unavailable (Steam did not "
-        + "answer). It links a library and never opens a session.")]
+        "A navigation from the app's own pages, not a call: the browser is sent to Steam (\"Sign in through "
+        + "Steam\"), which sends it back to the app once the visitor has proven a Steam account is theirs. The "
+        + "browser then lands on return_to with the outcome in the steam_link parameter: linked, "
+        + "linked_elsewhere (that Steam account is linked to another account of this instance), failed "
+        + "(nothing was proven) or unavailable (Steam could not be asked to confirm; trying again may work). "
+        + "It links a library and never opens a session.")]
     [ProducesResponseType(StatusCodes.Status302Found)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> LinkSteam(
-        [FromQuery(Name = "return_to"), Description("The path of the app to come back to; the home when it is not one.")]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    public async Task LinkSteam(
+        [FromQuery(Name = "return_to"), Description("The path of the app to come back to, at most 512 characters; the home when it is not one.")]
         string? returnTo = null)
     {
-        var back = SteamLink.ReturnPath(returnTo);
-        var properties = new AuthenticationProperties { RedirectUri = back };
+        // Another site's page must not send a signed-in visitor to Steam in the app's name. The
+        // browser says where a navigation comes from; one typed or bookmarked says "none".
+        if (Request.Headers["Sec-Fetch-Site"].ToString() is { Length: > 0 } from && from is not ("same-origin" or "none"))
+        {
+            throw new GamesException(GamesError.CrossSiteLink);
+        }
+
+        var properties = new AuthenticationProperties { RedirectUri = SteamLink.ReturnPath(returnTo) };
         properties.Items[SteamLink.OwnerItem] = Caller.Id(User).ToString();
         Response.Headers.CacheControl = "no-store";
-        try
-        {
-            // The library asks Steam where its sign-in is, then sends the browser there.
-            await HttpContext.ChallengeAsync(SteamLink.Scheme, properties);
-            return new EmptyResult();
-        }
-        catch (Exception ex) when (!HttpContext.RequestAborted.IsCancellationRequested
-            && ex is HttpRequestException or IOException or InvalidOperationException or OperationCanceledException)
-        {
-            logger.LogWarning(ex, "Steam's sign-in could not be reached");
-            return Redirect(SteamLink.WithOutcome(back, "unavailable"));
-        }
+        // Nothing is asked of Steam here: the browser is sent to its sign-in.
+        await HttpContext.ChallengeAsync(SteamLink.Scheme, properties);
     }
 }

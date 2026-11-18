@@ -451,12 +451,12 @@ export interface paths {
         };
         /**
          * Link a Steam account: sends the browser to Steam
-         * @description A navigation, not a call: the browser is sent to Steam ("Sign in through Steam"), which sends it back to the app once the visitor has proven a Steam account is theirs. The browser then lands on return_to with the outcome in the steam_link parameter: linked, linked_elsewhere (that Steam account is linked to another account of this instance), failed (nothing was proven) or unavailable (Steam did not answer). It links a library and never opens a session.
+         * @description A navigation from the app's own pages, not a call: the browser is sent to Steam ("Sign in through Steam"), which sends it back to the app once the visitor has proven a Steam account is theirs. The browser then lands on return_to with the outcome in the steam_link parameter: linked, linked_elsewhere (that Steam account is linked to another account of this instance), failed (nothing was proven) or unavailable (Steam could not be asked to confirm; trying again may work). It links a library and never opens a session.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description The path of the app to come back to; the home when it is not one. */
+                    /** @description The path of the app to come back to, at most 512 characters; the home when it is not one. */
                     return_to?: string;
                 };
                 header?: never;
@@ -476,6 +476,15 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };

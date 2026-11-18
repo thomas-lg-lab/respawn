@@ -104,7 +104,7 @@ the app runs (the log says so): restart the app, which migrates the new database
 
 ## Behind a reverse proxy
 
-Two things depend on what the proxy tells the app, and neither is guessed:
+Three things depend on where the app stands behind the proxy, and none is guessed:
 
 - **The client's address**, which the sign-in rate limit counts by. The app sees the proxy's address unless the
   proxy is listed in `RESPAWN_TRUSTED_PROXIES`; without it every visitor shares one count, and ten sign-in requests
@@ -116,6 +116,11 @@ Two things depend on what the proxy tells the app, and neither is guessed:
   it is judged on its `Origin`, compared with the `Host` header: for those, the proxy must pass the original
   `Host` on (nginx: `proxy_set_header Host $host`; Traefik and Caddy do it by default), or their sign-in is
   refused as `cross_site_request`. `X-Forwarded-Host` is not read.
+- **The address Steam sends the browser back to** when a Steam account is linked: set `RESPAWN_PUBLIC_URL` to
+  the address visitors use. Without it Steam is told the address the app itself sees. A link only completes
+  through that address: started from another one (the proxy bypassed on the local network), it fails. A
+  link in progress does not survive a restart of the app, and is simply started again; for the same reason
+  the app runs as one replica.
 
 A header such as `Remote-User` never identifies anyone: who is asking comes from the session cookie only, even
 behind a proxy that signs users in.

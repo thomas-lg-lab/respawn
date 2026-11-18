@@ -58,6 +58,7 @@ public sealed class SteamLinkTests
         Assert.Equal(HttpStatusCode.Redirect, back.StatusCode);
         Assert.Equal("/library?sort=playtime&steam_link=linked", back.Headers.Location!.OriginalString);
         Assert.Equal("check_authentication", Assert.Single(steam.Asked)["openid.mode"]);
+        Assert.Empty(steam.Unexpected);
         Assert.Equal(FakeSteamSignIn.ClaimedId(SteamId), steam.Asked[0]["openid.claimed_id"]);
 
         var account = Assert.Single(await AccountsAsync(browser));
@@ -156,22 +157,115 @@ public sealed class SteamLinkTests
     [Fact]
     public async Task An_answer_only_counts_in_the_browser_that_asked()
     {
-        // Someone else's answer, pasted into another browser: the exchange was not started there.
+        // The same account in two browsers, and the address Steam sent the first back to, pasted into
+        // the second: only the exchange's cookie tells them apart, and Steam is not even asked.
         var steam = new FakeSteamSignIn();
         await using var app = await steam.StartAppAsync();
         using var asker = app.Browser();
         using var other = app.Browser();
         await asker.RegisterAsync();
-        OpenRegistration();
-        await other.RegisterAsync("second@example.org", "Second");
+        Assert.Equal(HttpStatusCode.OK, await other.LoginAsync("first@example.org", TestApp.Password).StatusAsync());
 
         var toSteam = await StartAsync(asker);
         var back = await other.GetAsync(FakeSteamSignIn.ComingBack(toSteam, FakeSteamSignIn.ClaimedId(SteamId)));
 
-        Assert.Equal(HttpStatusCode.Redirect, back.StatusCode);
-        Assert.EndsWith("steam_link=failed", back.Headers.Location!.OriginalString, StringComparison.Ordinal);
+        Assert.Equal("/?steam_link=failed", back.Headers.Location!.OriginalString);
+        Assert.Empty(steam.Asked);
         Assert.Empty(await AccountsAsync(asker));
-        Assert.Empty(await AccountsAsync(other));
+    }
+
+    [Fact]
+    public async Task An_answer_counts_once()
+    {
+        var steam = new FakeSteamSignIn();
+        await using var app = await steam.StartAppAsync();
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+        var toSteam = await StartAsync(browser);
+        var comingBack = FakeSteamSignIn.ComingBack(toSteam, FakeSteamSignIn.ClaimedId(SteamId));
+
+        Assert.Equal("/?steam_link=linked", (await browser.GetAsync(comingBack)).Headers.Location!.OriginalString);
+        var mine = (await AccountsAsync(browser))[0].GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/linked-accounts/{mine}").StatusAsync());
+
+        // The same address again, in the same browser: the exchange is over.
+        Assert.Equal("/?steam_link=failed", (await browser.GetAsync(comingBack)).Headers.Location!.OriginalString);
+        Assert.Empty(await AccountsAsync(browser));
+    }
+
+    [Fact]
+    public async Task An_answer_whose_signature_does_not_cover_the_account_links_nothing()
+    {
+        var steam = new FakeSteamSignIn();
+        await using var app = await steam.StartAppAsync();
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+
+        var toSteam = await StartAsync(browser);
+        var back = await browser.GetAsync(FakeSteamSignIn.ComingBack(
+            toSteam, FakeSteamSignIn.ClaimedId(SteamId), signed: "signed,op_endpoint,return_to,response_nonce,assoc_handle"));
+
+        Assert.Equal("/?steam_link=failed", back.Headers.Location!.OriginalString);
+        Assert.Empty(await AccountsAsync(browser));
+    }
+
+    [Theory]
+    [InlineData("cross-site", HttpStatusCode.Forbidden)]
+    [InlineData("same-site", HttpStatusCode.Forbidden)]
+    [InlineData("same-origin", HttpStatusCode.Redirect)]
+    [InlineData("none", HttpStatusCode.Redirect)]
+    [InlineData(null, HttpStatusCode.Redirect)]
+    public async Task A_link_is_only_started_from_the_apps_own_pages(string? from, HttpStatusCode expected)
+    {
+        var steam = new FakeSteamSignIn();
+        await using var app = await steam.StartAppAsync();
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, Start);
+        if (from is not null)
+        {
+            request.Headers.Add("Sec-Fetch-Site", from);
+        }
+
+        var answer = await browser.SendAsync(request);
+
+        Assert.Equal(expected, answer.StatusCode);
+        if (expected == HttpStatusCode.Forbidden)
+        {
+            Assert.Equal("cross_site_request", (await answer.JsonAsync()).GetProperty("error").GetProperty("code").GetString());
+            Assert.False(answer.Headers.Contains("Set-Cookie"));
+        }
+    }
+
+    [Fact]
+    public async Task The_exchanges_cookie_stays_on_the_way_back_and_out_of_scripts()
+    {
+        var steam = new FakeSteamSignIn();
+        await using var app = await steam.StartAppAsync();
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+
+        var cookie = Assert.Single((await browser.GetAsync(Start)).Headers.GetValues("Set-Cookie")).ToLowerInvariant();
+
+        Assert.Contains("path=/api/v1/linked-accounts/steam/link/callback", cookie, StringComparison.Ordinal);
+        Assert.Contains("samesite=lax", cookie, StringComparison.Ordinal);
+        Assert.Contains("httponly", cookie, StringComparison.Ordinal);
+        // Over plain HTTP, as on localhost: a cookie for HTTPS only would never come back.
+        Assert.DoesNotContain("secure", cookie, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_outcome_written_in_advance_is_not_the_one_that_comes_back()
+    {
+        var steam = new FakeSteamSignIn();
+        await using var app = await steam.StartAppAsync();
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+
+        var toSteam = await StartAsync(browser, "/library?steam_link=linked&sort=name#top");
+        var back = await browser.GetAsync(FakeSteamSignIn.ComingBack(toSteam, FakeSteamSignIn.ClaimedId(SteamId), mode: "cancel"));
+
+        Assert.Equal("/library?sort=name&steam_link=failed#top", back.Headers.Location!.OriginalString);
     }
 
     [Fact]
@@ -219,17 +313,19 @@ public sealed class SteamLinkTests
     }
 
     [Fact]
-    public async Task Steam_not_answering_sends_back_to_the_app_saying_so()
+    public async Task Steam_not_answering_at_the_return_sends_back_to_the_app_saying_so()
     {
+        // Starting a link asks nothing of Steam; confirming its answer does.
         var steam = new FakeSteamSignIn { Unreachable = true };
         await using var app = await steam.StartAppAsync();
         using var browser = app.Browser();
         await browser.RegisterAsync();
 
-        var answer = await browser.GetAsync(Start + "?return_to=/library");
+        var toSteam = await StartAsync(browser, "/library");
+        var back = await browser.GetAsync(FakeSteamSignIn.ComingBack(toSteam, FakeSteamSignIn.ClaimedId(SteamId)));
 
-        Assert.Equal(HttpStatusCode.Redirect, answer.StatusCode);
-        Assert.Equal("/library?steam_link=unavailable", answer.Headers.Location!.OriginalString);
+        Assert.Equal("/library?steam_link=unavailable", back.Headers.Location!.OriginalString);
+        Assert.Empty(await AccountsAsync(browser));
     }
 
     [Fact]
@@ -243,6 +339,7 @@ public sealed class SteamLinkTests
 
         var start = await SendAsync(browser, Start, session);
         var toSteam = start.Headers.Location!;
+        Assert.Contains("secure", Assert.Single(start.Headers.GetValues("Set-Cookie")).ToLowerInvariant(), StringComparison.Ordinal);
         var asked = QueryHelpers.ParseQuery(toSteam.Query);
         Assert.Equal("https://respawn.example.org", asked["openid.realm"]);
         Assert.StartsWith("https://respawn.example.org" + Start + "/callback?state=", asked["openid.return_to"].ToString(), StringComparison.Ordinal);
@@ -251,9 +348,6 @@ public sealed class SteamLinkTests
         var back = await SendAsync(browser, comingBack.PathAndQuery, session + "; " + Cookies(start));
 
         Assert.Equal("/?steam_link=linked", back.Headers.Location!.OriginalString);
-
-        // Nothing else of the app takes the setting for its own address.
-        Assert.Equal(HttpStatusCode.OK, await browser.GetAsync("/healthz").StatusAsync());
     }
 
     [Theory]
@@ -271,8 +365,23 @@ public sealed class SteamLinkTests
     [InlineData("/a\r\nSet-Cookie: x=1", "/")]
     [InlineData("/api/v1/auth/logout", "/")]
     [InlineData("/API/v1/me", "/")]
+    [InlineData("/caf\u00e9", "/")]
+    [InlineData("/a\u2028b", "/")]
+    [InlineData("/a b", "/")]
     public void Only_a_screen_of_the_app_is_come_back_to(string? asked, string expected) =>
         Assert.Equal(expected, SteamLink.ReturnPath(asked));
+
+    [Fact]
+    public void An_address_to_come_back_to_is_short() =>
+        Assert.Equal(("/" + new string('a', 511), "/"), (SteamLink.ReturnPath("/" + new string('a', 511)), SteamLink.ReturnPath("/" + new string('a', 512))));
+
+    [Theory]
+    [InlineData("https://steamcommunity.com/openid/id/76561190000000001", "76561190000000001")]
+    [InlineData("http://steamcommunity.com/openid/id/76561190000000001", "76561190000000001")]
+    [InlineData("https://steamcommunity.com/openid/id/76561190000000001\n", null)]
+    [InlineData(null, null)]
+    public void A_claimed_identifier_gives_its_steam_id(string? claimedId, string? expected) =>
+        Assert.Equal(expected, SteamLink.SteamId(claimedId));
 
     [Fact]
     public async Task Unlinking_forgets_everything_read_from_the_account_and_keeps_the_catalogue()
@@ -333,7 +442,7 @@ public sealed class SteamLinkTests
         var unlink = paths.GetProperty("/api/v1/linked-accounts/{id}").GetProperty("delete").GetProperty("responses");
         Assert.Equal(["204", "401", "404"], unlink.EnumerateObject().Select(response => response.Name).Order());
         var link = paths.GetProperty(Start).GetProperty("get");
-        Assert.True(link.GetProperty("responses").TryGetProperty("302", out _));
+        Assert.Equal(["302", "401", "403"], link.GetProperty("responses").EnumerateObject().Select(response => response.Name).Order());
         Assert.Equal("return_to", Assert.Single(link.GetProperty("parameters").EnumerateArray()).GetProperty("name").GetString());
         // Where Steam sends the browser back is the exchange's, not a route of the contract.
         Assert.DoesNotContain(paths.EnumerateObject(), path => path.Name.Contains("callback", StringComparison.Ordinal));
