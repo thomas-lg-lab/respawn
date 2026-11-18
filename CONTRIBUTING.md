@@ -75,7 +75,7 @@ and adapters around it.
 | `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, and the ports they need | nothing; no package |
-| `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core, and the encryption of the store keys users give (libsodium) | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` | its core only |
 | `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, the schedule of the sync (a timer in the app's process), and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
