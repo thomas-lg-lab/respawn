@@ -1,15 +1,8 @@
 import { MutationObserver } from '@tanstack/angular-query';
 import { accountKeys } from './account/account.queries';
 import { ApiFailure } from './api/api';
-import type { Account } from './models/models';
 import { serverState } from './server-state';
-
-const ACCOUNT: Account = {
-  id: '0b0f6f3e-6a59-4c8c-9a55-2d7f3f0d6c11',
-  email: 'first@example.org',
-  display_name: 'First',
-  is_admin: true,
-};
+import { TEST_ACCOUNT as ACCOUNT } from './testing/fixtures';
 
 const refusal = (status: number, code: string) =>
   Promise.reject(new ApiFailure(status, code, 'In English, for the log.'));
@@ -61,6 +54,34 @@ describe('serverState', () => {
 
     expect(client.getQueryData(accountKeys.me)).toBeNull();
     expect(client.getQueryData(['library'])).toBeUndefined();
+  });
+
+  // Several requests were on their way when the session ended: each is refused in turn.
+  it('closes the session once, and leaves alone what was asked after it', async () => {
+    const client = signedIn();
+    const late = (key: string) =>
+      client
+        .fetchQuery({ queryKey: [key], queryFn: () => refusal(401, 'not_signed_in') })
+        .catch(() => undefined);
+
+    await late('games');
+    // The sign-in screen has asked what the instance offers by the time the second arrives.
+    client.setQueryData(accountKeys.signInOptions, { local_sign_in: true });
+    await late('friends');
+
+    expect(ended).toHaveBeenCalledOnce();
+    expect(client.getQueryData(accountKeys.signInOptions)).toEqual({ local_sign_in: true });
+  });
+
+  it('closes the session on a 401 that is not the API’s: something in front refused', async () => {
+    const client = signedIn();
+
+    await client
+      .fetchQuery({ queryKey: ['games'], queryFn: () => refusal(401, 'http_error') })
+      .catch(() => undefined);
+
+    expect(client.getQueryData(accountKeys.me)).toBeNull();
+    expect(ended).toHaveBeenCalledOnce();
   });
 
   it('keeps the session through any other refusal', async () => {

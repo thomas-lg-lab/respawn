@@ -67,6 +67,8 @@ export class SignIn {
   protected readonly view = computed<View>(() => {
     const options = this.options.data();
     if (this.account.isError()) return 'unavailable';
+    // A new try for who is there: no form, and no button to press twice, until it answers.
+    if (this.account.isFetching()) return 'loading';
     if (!options) return this.options.isError() ? 'unavailable' : 'loading';
     if (!options.local_sign_in) return 'local-disabled';
     if (options.first_account) return 'first-account';

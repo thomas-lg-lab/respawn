@@ -43,9 +43,31 @@ internal static partial class Front
         {
             var request = context.Request;
             var reading = HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method);
-            if (reading && (IsDocument(request.Path) || IsPageWithNoFile(context)))
+            if (reading && IsDocument(request.Path))
             {
                 return WriteDocumentAsync(context, next);
+            }
+
+            if (reading && NamesNoFile(context))
+            {
+                // A screen whose address ends like a file, or a file that is missing: which one
+                // depends on how it is asked for. A cache is told so, and the 404 is not kept:
+                // it must never be served to a browser that goes to the same address.
+                var asksForAPage = AsksForAPage(request);
+                context.Response.OnStarting(() =>
+                {
+                    context.Response.Headers.Vary = HeaderNames.Accept;
+                    if (!asksForAPage)
+                    {
+                        context.Response.Headers.CacheControl = "no-store";
+                    }
+
+                    return Task.CompletedTask;
+                });
+                if (asksForAPage)
+                {
+                    return WriteDocumentAsync(context, next);
+                }
             }
 
             // The page of the API's description is a file like any other, under its own address.
@@ -99,18 +121,23 @@ internal static partial class Front
     }
 
     /// <summary>
-    /// Whether a request is for a screen whose address happens to end like a file
-    /// ("/games/archive.zip"): the address holds no file, and it is asked for as a page. A browser
-    /// that goes to an address accepts "text/html" by name; a script, a style sheet or a font it
-    /// fetches for a page does not, so a file that is missing stays a 404 for them.
+    /// Whether an address of the front that ends like a file holds none: a screen that happens to
+    /// be named that way ("/games/archive.zip"), or a file that is missing.
     /// </summary>
-    private static bool IsPageWithNoFile(HttpContext context)
+    private static bool NamesNoFile(HttpContext context)
     {
-        var request = context.Request;
-        return !IsReserved(request.Path)
-            && request.GetTypedHeaders().Accept.Any(type => type.MediaType.Equals("text/html", StringComparison.OrdinalIgnoreCase))
-            && !context.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider.GetFileInfo(request.Path.Value ?? "").Exists;
+        var path = context.Request.Path;
+        return !IsReserved(path)
+            && !context.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider.GetFileInfo(path.Value ?? "").Exists;
     }
+
+    /// <summary>
+    /// Whether a request asks for a page. A browser that goes to an address accepts "text/html" by
+    /// name; a script, a style sheet or a font it fetches for a page does not, so a file that is
+    /// missing stays a 404 for them.
+    /// </summary>
+    private static bool AsksForAPage(HttpRequest request) =>
+        request.GetTypedHeaders().Accept.Any(type => type.MediaType.Equals("text/html", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Whether an address gets the document: one the front routes, or the document's own
     /// file, which is never sent as it is (it would carry no nonce).</summary>

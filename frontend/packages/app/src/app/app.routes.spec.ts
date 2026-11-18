@@ -86,7 +86,14 @@ describe('routes', () => {
     );
 
     button(screen, 'Réessayer').click();
-    await server.answer('/me', ACCOUNT);
+    // One try at a time: until the answer, neither the button nor a form, only the wait.
+    const asked = await server.request('/me');
+    await vi.waitFor(() =>
+      expect(screen.querySelector('[role="status"]')?.textContent).toContain('Chargement'),
+    );
+    expect(() => button(screen, 'Réessayer')).toThrow();
+    expect(screen.querySelector('form')).toBeNull();
+    asked.flush(ACCOUNT);
     await harness.fixture.whenStable();
 
     await vi.waitFor(() => expect(router.url).toBe('/'));

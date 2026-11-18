@@ -1,6 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { QueryClient, hashKey, mutationOptions, queryOptions } from '@tanstack/angular-query';
-import { Api, ApiFailure } from '../api/api';
+import { Api, ApiFailure, HTTP_ERROR } from '../api/api';
 import type { Account, LoginRequest, RegisterRequest, SignInOptions } from '../models/models';
 
 /** The keys of what the cache holds about the account, so each is named in one place. */
@@ -11,6 +11,18 @@ export const accountKeys = {
 
 /** The API's refusal of a request that needs a session and has none. */
 export const NOT_SIGNED_IN = 'not_signed_in';
+
+/**
+ * Whether a refusal says there is no session: the API's own words, or a 401 that is not
+ * the API's, from something in front of it that turned the request away. Wrong credentials
+ * are a 401 of the API with another code, and say nothing of a session.
+ */
+export function saysNoSession(failure: unknown): boolean {
+  return (
+    failure instanceof ApiFailure &&
+    (failure.code === NOT_SIGNED_IN || (failure.status === 401 && failure.code === HTTP_ERROR))
+  );
+}
 
 /**
  * Nobody is signed in any more, whether they left or the session ended on its own: nothing
@@ -55,7 +67,7 @@ export class AccountQueries {
           // With an account in the cache, "not signed in" is news: the session ended, and
           // the refusal goes on to the server state, which closes it like any other.
           const known = this.client.getQueryData(accountKeys.me);
-          if (failure instanceof ApiFailure && failure.status === 401 && !known) return null;
+          if (saysNoSession(failure) && !known) return null;
           throw failure;
         }
       },

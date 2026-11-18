@@ -69,6 +69,35 @@ public sealed class ContractTests
         }
     }
 
+    // The same address answers a screen or a 404 by how it is asked for: a cache between the browser
+    // and the app is told so, and never keeps the 404 for a browser that goes there next.
+    [Theory]
+    [InlineData("text/html", HttpStatusCode.OK)]
+    [InlineData("*/*", HttpStatusCode.NotFound)]
+    public async Task An_answer_that_depends_on_how_it_is_asked_says_so_and_is_not_kept(string accept, HttpStatusCode status)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/games/archive.zip");
+        request.Headers.TryAddWithoutValidation("Accept", accept);
+
+        var response = await client.SendAsync(request);
+        Assert.Equal(status, response.StatusCode);
+        Assert.Equal("Accept", response.Headers.Vary.Single());
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+    }
+
+    // An address of the API answers the same however it is asked for: nothing is added there.
+    [Fact]
+    public async Task An_unknown_address_of_the_api_does_not_vary()
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        var response = await client.GetAsync("/api/v1/nothing.zip");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Empty(response.Headers.Vary);
+    }
+
     // A file that is there is served as it is, to a browser that goes to it too.
     [Fact]
     public async Task A_file_asked_as_a_page_is_still_the_file()

@@ -3,19 +3,14 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import type { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import type { Account, SignInOptions } from '@respawn/data';
+import type { SignInOptions } from '@respawn/data';
 import { routes } from '@app/app.routes';
 import { provideServerState } from '@app/session/session.providers';
 import type { Language } from '@app/i18n/language';
 import { testTranslations } from './translations';
 
 /** An account as the API describes one. */
-export const ACCOUNT: Account = {
-  id: '0b0f6f3e-6a59-4c8c-9a55-2d7f3f0d6c11',
-  email: 'first@example.org',
-  display_name: 'First',
-  is_admin: true,
-};
+export { TEST_ACCOUNT as ACCOUNT } from '@respawn/data';
 
 /** What an instance offers once it has its first account: local sign-in, registration closed. */
 export const SIGN_IN_OPTIONS: SignInOptions = {

@@ -9,6 +9,9 @@ const BASE = '/api/v1';
 /** The code of a failure that is not an answer of the API: the request never got one. */
 export const NETWORK_ERROR = 'network_error';
 
+/** The code of an answer that is not in the API's error format: it came from something in front of it. */
+export const HTTP_ERROR = 'http_error';
+
 /**
  * A refusal: the status and the stable `code` of the API's one error format. The `message`
  * is the API's English sentence, for the console; a screen shows its own words, chosen from
@@ -41,7 +44,7 @@ export function toApiFailure(thrown: unknown): ApiFailure {
     // the error format came from something between the browser and the API.
     return new ApiFailure(
       thrown.status,
-      thrown.status === 0 ? NETWORK_ERROR : 'http_error',
+      thrown.status === 0 ? NETWORK_ERROR : HTTP_ERROR,
       thrown.message,
     );
   }
