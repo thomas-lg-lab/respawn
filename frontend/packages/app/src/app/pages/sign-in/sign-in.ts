@@ -1,11 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { AccountQueries, type LoginRequest, type RegisterRequest } from '@respawn/data';
 import { Banner, Button, Label, Pill, PillGroup } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { LANGUAGES, LanguageSetting } from '@app/i18n/language';
+import { RETURN_TO, returnAddress } from '@app/session/return-address';
 import { AccountForm } from './components/account-form';
 import { SignInArt } from './components/sign-in-art';
 import { SignInForm } from './components/sign-in-form';
@@ -47,6 +48,7 @@ type View =
 export class SignIn {
   private readonly queries = inject(AccountQueries);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly language = inject(LanguageSetting);
   protected readonly languages = LANGUAGES;
@@ -111,7 +113,9 @@ export class SignIn {
     this.registering.reset();
   }
 
+  /** Into the app: where the visitor was headed when they were sent here, else the home. */
   private enter(): void {
-    void this.router.navigateByUrl('/');
+    const asked = this.route.snapshot.queryParamMap.get(RETURN_TO);
+    void this.router.navigateByUrl(returnAddress(asked));
   }
 }
