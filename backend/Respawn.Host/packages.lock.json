@@ -190,6 +190,12 @@
           "Respawn.SharedKernel": "[1.0.0, )"
         }
       },
+      "respawn.games.steam": {
+        "type": "Project",
+        "dependencies": {
+          "Respawn.Games": "[1.0.0, )"
+        }
+      },
       "respawn.persistence": {
         "type": "Project",
         "dependencies": {

@@ -32,11 +32,14 @@
   `Modules/Accounts`: `Respawn.Accounts` (the core: use cases and ports, no package), `.Infrastructure` (EF Core
   and its migrations, ASP.NET Core Identity, ID token validation), `.Api` (the controllers, the session cookie);
   and `Modules/Games`, the same three projects: the catalogue (a game as one record whatever the store), the
-  linked store accounts, the sources' answers kept untouched, ownership and playtime.
+  linked store accounts, the sources' answers kept untouched, ownership and playtime; and its connectors, one
+  project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API), tested
+  against recorded answers under `Recorded/`, never against the source.
   One test project per module (`Modules/<Name>/Respawn.<Name>.Tests`), `Respawn.Tests` for the host and the
   architecture rules, `Respawn.Testing` for what they share; they start the real app against a real PostgreSQL.
 - **Architecture is checked.** A module never references another module, its infrastructure or its tables; an inbound
-  adapter never references its module's infrastructure; a core references no framework; each module owns one
+  adapter never references its module's infrastructure; a core references no framework; a connector references
+  its module's core only; each module owns one
   PostgreSQL schema and its migrations; no empty project. `ArchitectureTests` fails otherwise; CONTRIBUTING.md
   says how to add a module.
 - **The public API is a contract.** Routes live under `/api/v1`; a breaking change means a new version. The front
