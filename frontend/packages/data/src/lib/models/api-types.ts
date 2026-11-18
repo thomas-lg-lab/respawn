@@ -442,6 +442,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/linked-accounts/{id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read a linked account's library from its store, now
+         * @description The library is read every day without being asked; this reads it at once, and answers when it is done, which takes the time the store takes to answer. A store that cannot be read is not an error of the request: the answer is the sync with its outcome, failed, and why. What a reading asked for here leaves out is never taken as gone from the library: only the daily readings tell, two days in a row.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SyncRunResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/linked-accounts/steam/link": {
         parameters: {
             query?: never;
@@ -590,6 +667,19 @@ export interface components {
             email: string;
             display_name: string;
             password: string;
+        };
+        SyncRunResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            linked_account_id: string;
+            trigger: string;
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at: string;
+            outcome: string;
+            error: null | string;
         };
         UserResponse: {
             /** Format: uuid */

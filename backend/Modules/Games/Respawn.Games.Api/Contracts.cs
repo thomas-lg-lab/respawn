@@ -80,6 +80,65 @@ public sealed record LinkedAccountResponse(Guid Id, string Source, string Extern
         new(account.Id, account.Source, account.ExternalId, account.DisplayName, account.LinkedAt);
 }
 
+/// <param name="Id">The sync.</param>
+/// <param name="LinkedAccountId">The store account that was read.</param>
+/// <param name="Trigger">Why it ran: scheduled (the reading of the day) or manual (it was asked for).</param>
+/// <param name="StartedAt">When it started.</param>
+/// <param name="FinishedAt">When it ended.</param>
+/// <param name="Outcome">succeeded: the store answered a library, and it was recorded. nothing_visible:
+/// the store answered and showed no game, as it does for a profile whose game details are private; the
+/// library is left as it was. failed: the store could not be read.</param>
+/// <param name="Error">Why it failed, null unless it did: not_configured (the instance has no access to
+/// the store), refused (the store refused that access), unavailable (the store did not answer; trying
+/// again may work) or unreadable (the store answered something that cannot be read).</param>
+public sealed record SyncRunResponse(
+    Guid Id,
+    Guid LinkedAccountId,
+    string Trigger,
+    DateTimeOffset StartedAt,
+    DateTimeOffset FinishedAt,
+    string Outcome,
+    string? Error)
+{
+    public static SyncRunResponse From(SyncRun run) =>
+        new(
+            run.Id,
+            run.LinkedAccountId,
+            SyncWords.Of(run.Trigger),
+            run.StartedAt,
+            run.FinishedAt,
+            SyncWords.Of(run.Outcome),
+            run.Error is { } error ? SyncWords.Of(error) : null);
+}
+
+/// <summary>A sync, as the API spells it.</summary>
+internal static class SyncWords
+{
+    public static string Of(SyncTrigger trigger) => trigger switch
+    {
+        SyncTrigger.Scheduled => "scheduled",
+        SyncTrigger.Manual => "manual",
+        _ => throw new ArgumentOutOfRangeException(nameof(trigger), trigger, null),
+    };
+
+    public static string Of(SyncOutcome outcome) => outcome switch
+    {
+        SyncOutcome.Succeeded => "succeeded",
+        SyncOutcome.NothingVisible => "nothing_visible",
+        SyncOutcome.Failed => "failed",
+        _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null),
+    };
+
+    public static string Of(SourceError error) => error switch
+    {
+        SourceError.NotConfigured => "not_configured",
+        SourceError.Refused => "refused",
+        SourceError.Unavailable => "unavailable",
+        SourceError.Unreadable => "unreadable",
+        _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
+    };
+}
+
 internal static class Seconds
 {
     public static long? Of(TimeSpan? time) => time is { } said ? (long)said.TotalSeconds : null;

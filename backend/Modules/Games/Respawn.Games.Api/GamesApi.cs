@@ -7,13 +7,15 @@ namespace Respawn.Games.Api;
 
 public static class GamesApi
 {
-    /// <summary>The routes of the Games module and the Steam link. The host registers
-    /// <see cref="SteamLinkOptions"/> and a session other routes are authorized with, and places
+    /// <summary>What drives the Games module: its routes, the Steam link, and the schedule of the
+    /// sync. The host registers <see cref="SteamLinkOptions"/>, a <see cref="TimeProvider"/> and a
+    /// session other routes are authorized with, and places
     /// <see cref="SteamLinkPipeline.UseSteamLinkAddress"/> in its pipeline.</summary>
     public static IServiceCollection AddGamesApi(this IServiceCollection services)
     {
         // A scheme of its own, that opens no session: it only answers on the link's routes.
         services.AddAuthentication().AddSteam(SteamLink.Scheme, SteamLink.Configure);
+        services.AddHostedService<SyncScheduler>();
         return services;
     }
 
@@ -26,6 +28,8 @@ public static class GamesApi
         GamesError.UnknownLinkedAccount => Error(404, "unknown_linked_account", "No such linked account."),
         GamesError.CrossSiteLink => Error(403, "cross_site_request", "This request comes from another site."),
         GamesError.LinkedToAnotherAccount => Error(409, "linked_to_another_account", "This store account is linked to another account of this instance."),
+        GamesError.SyncInProgress => Error(409, "sync_in_progress", "This store account is being read right now."),
+        GamesError.SyncTooSoon => Error(429, "too_many_requests", "This store account was read a moment ago. Wait a minute and try again."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };
 }

@@ -56,8 +56,8 @@ public sealed class LinkedAccountRow
     public DateTimeOffset LinkedAt { get; set; }
 }
 
-/// <summary>A source's answer, untouched and dated. With an owner and a linked account when it is
-/// personal; with neither when it is the instance's.</summary>
+/// <summary>A source's answer, untouched and dated. With a linked account when it is personal, and
+/// its owner is that account's; without one when it is the instance's.</summary>
 public sealed class RawSnapshotRow
 {
     public Guid Id { get; set; }
@@ -71,8 +71,6 @@ public sealed class RawSnapshotRow
 
     /// <summary>When the answer was stored, which may be much later.</summary>
     public DateTimeOffset RecordedAt { get; set; }
-
-    public Guid? OwnerId { get; set; }
 
     public Guid? LinkedAccountId { get; set; }
 
@@ -130,7 +128,40 @@ public sealed class OwnershipRow
     /// <summary>What was played lately, as that latest snapshot said it; never carried over.</summary>
     public long? RecentPlaytimeSeconds { get; set; }
 
-    /// <summary>The date of the complete snapshot that first left it out; null while it is in the
-    /// library. The row and its history stay.</summary>
+    /// <summary>The date of the complete snapshot that first left it out, once a second one confirmed
+    /// it; null while it is in the library. The row and its history stay.</summary>
     public DateTimeOffset? UnlistedSince { get; set; }
+
+    /// <summary>The date of a complete snapshot of the day that left it out, while no other has
+    /// confirmed it; the game is still in the library.</summary>
+    public DateTimeOffset? MissingSince { get; set; }
+}
+
+/// <summary>One sync of a linked account, once it has ended: when, why, and how it went. The words are
+/// those of <see cref="SyncWords"/>.</summary>
+public sealed class SyncRunRow
+{
+    public Guid Id { get; set; }
+
+    public Guid LinkedAccountId { get; set; }
+
+    /// <summary>`scheduled` or `manual`.</summary>
+    public string Trigger { get; set; } = "";
+
+    public DateTimeOffset StartedAt { get; set; }
+
+    public DateTimeOffset FinishedAt { get; set; }
+
+    /// <summary>`succeeded`, `nothing_visible` or `failed`.</summary>
+    public string Outcome { get; set; } = "";
+
+    /// <summary>Why it failed: `not_configured`, `refused`, `unavailable` or `unreadable`. Null unless
+    /// it did.</summary>
+    public string? Error { get; set; }
+
+    /// <summary>What happened, in the connector's words, when it failed.</summary>
+    public string? Detail { get; set; }
+
+    /// <summary>The source's answer, when there was one.</summary>
+    public Guid? SnapshotId { get; set; }
 }

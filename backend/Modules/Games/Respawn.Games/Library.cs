@@ -14,7 +14,8 @@ public sealed record LinkedAccount(
     DateTimeOffset LinkedAt);
 
 /// <summary>What a source answered, kept as it came and dated: a field can be read from it again later
-/// without asking the source. Personal when it has an owner (a library), the instance's otherwise.</summary>
+/// without asking the source. Personal when it was read from a linked account (a library, its owner's),
+/// the instance's otherwise.</summary>
 /// <param name="Id">The snapshot.</param>
 /// <param name="Source">The source that answered.</param>
 /// <param name="Kind">Which of the source's answers this is.</param>
@@ -22,7 +23,6 @@ public sealed record LinkedAccount(
 /// <param name="RecordedAt">When it was stored here, which may be later: a retry, an import of the past.</param>
 /// <param name="Complete">True when it is taken as the whole of what it lists: what it leaves out is
 /// then no longer there. See <see cref="LibraryReading"/>.</param>
-/// <param name="OwnerId">The account it is about, when personal.</param>
 /// <param name="LinkedAccountId">The store account it was read from, when personal.</param>
 /// <param name="Payload">The answer as received.</param>
 public sealed record RawSnapshot(
@@ -31,7 +31,6 @@ public sealed record RawSnapshot(
     string Kind,
     DateTimeOffset TakenAt,
     DateTimeOffset RecordedAt,
-    Guid? OwnerId,
     Guid? LinkedAccountId,
     string Payload,
     bool Complete = false);
@@ -52,9 +51,10 @@ public sealed record StoreEntryRename(Guid Id, string Name);
 /// <param name="Payload">The answer as received.</param>
 /// <param name="Items">The games it lists.</param>
 /// <param name="Complete">True when the connector vouches that this is the whole library: the source
-/// answered in full, nothing was cut or filtered. A game it does not list is then taken as gone from
-/// the library. A reading that lists nothing is never taken as complete, whatever this says: a
-/// profile made private answers an empty list that looks the same.</param>
+/// answered in full, nothing was cut or filtered. Only such a reading can tell that a game it does not
+/// list is gone from the library, and it takes two (<see cref="Ownership"/>). A reading that lists
+/// nothing is never taken as complete, whatever this says: a profile made private answers an empty
+/// list that looks the same.</param>
 public sealed record LibraryReading(
     string Kind, DateTimeOffset TakenAt, string Payload, IReadOnlyList<OwnedItem> Items, bool Complete = false);
 
@@ -92,8 +92,12 @@ public sealed record Observation(
 /// <param name="RecentPlaytime">What was played lately, as that latest reading said it. A window that
 /// moves cannot be carried over: when the reading does not say, it is null again.</param>
 /// <param name="UnlistedSince">The date of the complete reading that first left it out (a refund, a
-/// share that ended, a free weekend over); null while it is in the library. What was known of it and
-/// its history stay; a reading that lists it again brings it back.</param>
+/// share that ended, a free weekend over), once a second one has confirmed it; null while it is in the
+/// library. What was known of it and its history stay; a reading that lists it again brings it back.</param>
+/// <param name="MissingSince">The date of a complete reading of the day that left it out, while no
+/// other has confirmed it: the game is still in the library. One answer that agrees with itself may
+/// still be partial, so one is never enough. Null once a reading lists the game again, and once it
+/// is gone.</param>
 public sealed record Ownership(
     Guid StoreEntryId,
     TimeSpan? Playtime,
@@ -102,7 +106,8 @@ public sealed record Ownership(
     DateTimeOffset AsOf,
     Guid SnapshotId,
     TimeSpan? RecentPlaytime = null,
-    DateTimeOffset? UnlistedSince = null);
+    DateTimeOffset? UnlistedSince = null,
+    DateTimeOffset? MissingSince = null);
 
 /// <summary>One way an owner owns a game: a store entry, through one of their linked accounts. The pair
 /// of the two ids is unique in a library.</summary>
@@ -164,6 +169,9 @@ public static class Limits
     public const int DisplayName = 200;
 
     public const int SnapshotKind = 64;
+
+    /// <summary>What is kept of a connector's words when a sync fails.</summary>
+    public const int SyncDetail = 500;
 
     /// <summary>The most games one request for a library is answered with.</summary>
     public const int LibraryPage = 500;

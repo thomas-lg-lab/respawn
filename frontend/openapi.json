@@ -376,6 +376,78 @@
         }
       }
     },
+    "/api/v1/linked-accounts/{id}/sync": {
+      "post": {
+        "tags": [
+          "LinkedAccounts"
+        ],
+        "summary": "Read a linked account's library from its store, now",
+        "description": "The library is read every day without being asked; this reads it at once, and answers when it is done, which takes the time the store takes to answer. A store that cannot be read is not an error of the request: the answer is the sync with its outcome, failed, and why. What a reading asked for here leaves out is never taken as gone from the library: only the daily readings tell, two days in a row.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncRunResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/linked-accounts/steam/link": {
       "get": {
         "tags": [
@@ -749,6 +821,48 @@
             "maxLength": 256,
             "minLength": 0,
             "type": "string"
+          }
+        }
+      },
+      "SyncRunResponse": {
+        "required": [
+          "id",
+          "linked_account_id",
+          "trigger",
+          "started_at",
+          "finished_at",
+          "outcome",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "linked_account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trigger": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

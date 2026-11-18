@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ILinkedAccountStore, EfLinkedAccountStore>();
         services.AddScoped<ISnapshotStore, EfSnapshotStore>();
+        services.AddScoped<ISyncRunStore, EfSyncRunStore>();
         services.AddScoped<ICatalogue, EfCatalogue>();
         services.AddScoped<ILibraryStore, EfLibraryStore>();
 

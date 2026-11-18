@@ -32,7 +32,9 @@
   `Modules/Accounts`: `Respawn.Accounts` (the core: use cases and ports, no package), `.Infrastructure` (EF Core
   and its migrations, ASP.NET Core Identity, ID token validation), `.Api` (the controllers, the session cookie);
   and `Modules/Games`, the same three projects: the catalogue (a game as one record whatever the store), the
-  linked store accounts, the sources' answers kept untouched, ownership and playtime; and its connectors, one
+  linked store accounts, the sources' answers kept untouched, ownership and playtime, and the sync (what is
+  due and what a run becomes are the core's, `SyncService`; the timer that asks every few minutes is an
+  inbound adapter, `SyncScheduler` in `.Api`; tests set the clock and run a turn by hand); and its connectors, one
   project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API), tested
   against recorded answers under `Recorded/`, never against the source.
   One test project per module (`Modules/<Name>/Respawn.<Name>.Tests`), `Respawn.Tests` for the host and the
@@ -45,7 +47,8 @@
 - **The public API is a contract.** Routes live under `/api/v1`; a breaking change means a new version. The front
   uses only these routes. Errors are always `{"error": {"code", "message"}}`.
 - **Runtime rules.** The app starts and `/healthz` answers with no database and no secret; nothing is written
-  outside `/tmp`; logs go to stdout. Keep it that way: the image is tested like this in CI.
+  outside `/tmp`; logs go to stdout. Keep it that way: the image is tested like this in CI. What runs in the
+  background (the sync's schedule) never stops the app, and says a trouble that lasts once, not at every turn.
 - **Sign-in code.** Accounts, password checks and lockout go through ASP.NET Core Identity; cryptography comes
   from libraries (libsodium through Sodium.Core for Argon2id, Microsoft.IdentityModel for ID tokens); never write
   a hash or a signature check by hand. A request header such as `Remote-User` never identifies anyone.

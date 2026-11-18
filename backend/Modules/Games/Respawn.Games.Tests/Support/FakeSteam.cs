@@ -42,7 +42,7 @@ internal sealed class FakeSteam
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Recorded", "steam", file));
 
     /// <summary>The app with its database, given a key and reaching this Steam in memory.</summary>
-    public Task<TestApp> StartAppAsync(Dictionary<string, string?>? settings = null)
+    public Task<TestApp> StartAppAsync(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null)
     {
         var all = new Dictionary<string, string?> { ["RESPAWN_STEAM_API_KEY"] = Key };
         foreach (var (key, value) in settings ?? [])
@@ -50,8 +50,11 @@ internal sealed class FakeSteam
             all[key] = value;
         }
 
-        return TestApp.StartAsync(all, services =>
-            services.AddHttpClient(SteamLibrarySource.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new Transport(this)));
+        return TestApp.StartAsync(all, collection =>
+        {
+            collection.AddHttpClient(SteamLibrarySource.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new Transport(this));
+            services?.Invoke(collection);
+        });
     }
 
     private sealed class Transport(FakeSteam steam) : HttpMessageHandler

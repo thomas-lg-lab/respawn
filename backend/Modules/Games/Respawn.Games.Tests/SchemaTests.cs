@@ -40,18 +40,45 @@ public sealed class SchemaTests
     public async Task A_snapshot_is_personal_or_the_instances()
     {
         await using var app = await TestApp.StartAsync();
-        var owner = Guid.CreateVersion7();
-        var account = new LinkedAccountRow { Id = Guid.CreateVersion7(), OwnerId = owner, Source = "steam", ExternalId = "76561190000000001", LinkedAt = Now };
+        var account = new LinkedAccountRow { Id = Guid.CreateVersion7(), OwnerId = Guid.CreateVersion7(), Source = "steam", ExternalId = "76561190000000001", LinkedAt = Now };
         await SaveAsync(app, account);
 
-        // The instance's: what a source says of a game, to nobody in particular.
-        await SaveAsync(app, Snapshot(null, null));
-        await SaveAsync(app, Snapshot(owner, account.Id));
+        // The instance's: what a source says of a game, to nobody in particular. A personal one is
+        // its linked account's, and its owner is that account's: it is written nowhere else.
+        await SaveAsync(app, Snapshot(null));
+        await SaveAsync(app, Snapshot(account.Id));
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, await RefusalAsync(app, Snapshot(Guid.CreateVersion7())));
+    }
 
-        // An owner without the store account it was read from, or the reverse: refused.
-        Assert.Equal(PostgresErrorCodes.CheckViolation, await RefusalAsync(app, Snapshot(owner, null)));
-        Assert.Equal(PostgresErrorCodes.CheckViolation, await RefusalAsync(app, Snapshot(null, account.Id)));
-        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, await RefusalAsync(app, Snapshot(owner, Guid.CreateVersion7())));
+    [Fact]
+    public async Task A_sync_run_says_how_it_ended_in_the_tables_own_words()
+    {
+        await using var app = await TestApp.StartAsync();
+        var account = new LinkedAccountRow { Id = Guid.CreateVersion7(), OwnerId = Guid.CreateVersion7(), Source = "steam", ExternalId = "76561190000000001", LinkedAt = Now };
+        var snapshot = Snapshot(account.Id);
+        await SaveAsync(app, account, snapshot);
+        SyncRunRow Run(string trigger, string outcome, string? error, Guid? answer = null, Guid? of = null) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            LinkedAccountId = of ?? account.Id,
+            Trigger = trigger,
+            StartedAt = Now,
+            FinishedAt = Now,
+            Outcome = outcome,
+            Error = error,
+            SnapshotId = answer,
+        };
+        await SaveAsync(app, Run("scheduled", "succeeded", null, snapshot.Id), Run("manual", "nothing_visible", null, snapshot.Id), Run("scheduled", "failed", "unavailable"));
+
+        // A failure says why and nothing else does; a word the table does not know is refused.
+        Assert.Equal(PostgresErrorCodes.CheckViolation, await RefusalAsync(app, Run("scheduled", "failed", null)));
+        Assert.Equal(PostgresErrorCodes.CheckViolation, await RefusalAsync(app, Run("scheduled", "succeeded", "refused")));
+        Assert.Equal(PostgresErrorCodes.CheckViolation, await RefusalAsync(app, Run("hourly", "succeeded", null)));
+        Assert.Equal(PostgresErrorCodes.CheckViolation, await RefusalAsync(app, Run("manual", "partial", null)));
+
+        // It is a linked account's, about an answer that is there.
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, await RefusalAsync(app, Run("manual", "succeeded", null, of: Guid.CreateVersion7())));
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, await RefusalAsync(app, Run("manual", "succeeded", null, Guid.CreateVersion7())));
     }
 
     [Fact]
@@ -61,7 +88,7 @@ public sealed class SchemaTests
         var game = new GameRow { Id = Guid.CreateVersion7(), Name = "Portal 2", CreatedAt = Now };
         var entry = Entry(game.Id, "steam", "620");
         var account = new LinkedAccountRow { Id = Guid.CreateVersion7(), OwnerId = Guid.CreateVersion7(), Source = "steam", ExternalId = "76561190000000001", LinkedAt = Now };
-        var snapshot = Snapshot(account.OwnerId, account.Id);
+        var snapshot = Snapshot(account.Id);
         await SaveAsync(app, game, entry, account, snapshot);
         OwnershipRow Owned(long seconds) => new()
         {
@@ -99,8 +126,8 @@ public sealed class SchemaTests
     private static StoreEntryRow Entry(Guid game, string source, string externalId) =>
         new() { Id = Guid.CreateVersion7(), GameId = game, Source = source, ExternalId = externalId, Name = "Portal 2", CreatedAt = Now };
 
-    private static RawSnapshotRow Snapshot(Guid? owner, Guid? account) =>
-        new() { Id = Guid.CreateVersion7(), Source = "steam", Kind = "owned-games", TakenAt = Now, RecordedAt = Now, OwnerId = owner, LinkedAccountId = account, Payload = "{}" };
+    private static RawSnapshotRow Snapshot(Guid? account) =>
+        new() { Id = Guid.CreateVersion7(), Source = "steam", Kind = "owned-games", TakenAt = Now, RecordedAt = Now, LinkedAccountId = account, Payload = "{}" };
 
     private static async Task SaveAsync(TestApp app, params object[] rows)
     {

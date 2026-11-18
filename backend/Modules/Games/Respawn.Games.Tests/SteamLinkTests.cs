@@ -484,7 +484,7 @@ public sealed class SteamLinkTests
             DateTimeOffset.UtcNow.AddMinutes(-1),
             "{}",
             [.. items.Select(item => new OwnedItem(item.Id, item.Name, TimeSpan.FromMinutes(item.Minutes), null))]);
-        await scope.ServiceProvider.GetRequiredService<ILibraryService>().RecordLibraryAsync(account, reading, default);
+        await scope.ServiceProvider.GetRequiredService<ILibraryService>().RecordLibraryAsync(account, reading, daily: true, default);
     }
 
     private static Task<HttpResponseMessage> SendAsync(HttpClient browser, string address, string cookies)
