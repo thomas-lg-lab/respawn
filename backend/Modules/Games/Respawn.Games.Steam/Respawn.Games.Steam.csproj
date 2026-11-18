@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Steam connector: an outbound adapter of the Games module that reads a library through the
+       Steam Web API. It only knows the module's core, so it can leave the repository one day. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Respawn.Games\Respawn.Games.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Respawn.Games.Tests" />
+  </ItemGroup>
+
+</Project>

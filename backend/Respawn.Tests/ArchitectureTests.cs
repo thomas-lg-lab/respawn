@@ -36,13 +36,15 @@ public sealed class ArchitectureTests
             "accounts",
             typeof(Accounts.Services.AccountService).Assembly,
             typeof(Accounts.Infrastructure.DependencyInjection).Assembly,
-            typeof(Accounts.Api.AccountsApi).Assembly),
+            typeof(Accounts.Api.AccountsApi).Assembly,
+            []),
         new(
             "Respawn.Games",
             "games",
             typeof(Games.Services.LibraryService).Assembly,
             typeof(Games.Infrastructure.DependencyInjection).Assembly,
-            typeof(Games.Api.LibraryController).Assembly),
+            typeof(Games.Api.LibraryController).Assembly,
+            [typeof(Games.Steam.SteamOptions).Assembly]),
     ];
 
     private static readonly Assembly Kernel = typeof(ErrorResponse).Assembly;
@@ -56,7 +58,7 @@ public sealed class ArchitectureTests
     {
         foreach (var module in Modules)
         {
-            Allowed(module.Core, [.. Technical, module.Name + ".Infrastructure", module.Name + ".Api", Host]);
+            Allowed(module.Core, [.. Technical, module.Name + ".Infrastructure", module.Name + ".Api", .. module.ConnectorNames, Host]);
         }
     }
 
@@ -65,7 +67,7 @@ public sealed class ArchitectureTests
     {
         foreach (var module in Modules)
         {
-            Allowed(module.Inbound, [module.Name + ".Infrastructure", "Microsoft.EntityFrameworkCore", "Npgsql", "Sodium", Host]);
+            Allowed(module.Inbound, [module.Name + ".Infrastructure", .. module.ConnectorNames, "Microsoft.EntityFrameworkCore", "Npgsql", "Sodium", Host]);
         }
     }
 
@@ -74,7 +76,24 @@ public sealed class ArchitectureTests
     {
         foreach (var module in Modules)
         {
-            Allowed(module.Outbound, [module.Name + ".Api", "Microsoft.AspNetCore.Mvc", "Microsoft.AspNetCore.Http", Host]);
+            Allowed(module.Outbound, [module.Name + ".Api", .. module.ConnectorNames, "Microsoft.AspNetCore.Mvc", "Microsoft.AspNetCore.Http", Host]);
+        }
+    }
+
+    [Fact]
+    public void A_connector_knows_the_core_and_nothing_else_of_the_app()
+    {
+        // An adapter to an outside source, in a project of its own: it could leave the repository
+        // with the core's ports, so it knows neither the database nor how the app is served.
+        foreach (var module in Modules)
+        {
+            foreach (var connector in module.Connectors)
+            {
+                string[] siblings = [.. module.ConnectorNames.Where(name => name != connector.GetName().Name)];
+                Allowed(
+                    connector,
+                    [module.Name + ".Infrastructure", module.Name + ".Api", .. siblings, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore", "Npgsql", Host]);
+            }
         }
     }
 
@@ -116,6 +135,7 @@ public sealed class ArchitectureTests
             Assert.Empty(References(module.Core));
             Assert.Equal([module.Name, "Respawn.SharedKernel"], References(module.Inbound));
             Assert.Equal([module.Name, "Respawn.SharedKernel"], References(module.Outbound));
+            Assert.All(module.Connectors, connector => Assert.Equal([module.Name], References(connector)));
         }
     }
 
@@ -173,10 +193,13 @@ public sealed class ArchitectureTests
         return rows;
     }
 
-    /// <summary>A module: its name, which its assemblies' names start with, its PostgreSQL schema, and
-    /// its three assemblies.</summary>
-    private sealed record AppModule(string Name, string Schema, Assembly Core, Assembly Outbound, Assembly Inbound)
+    /// <summary>A module: its name, which its assemblies' names start with, its PostgreSQL schema, its
+    /// three assemblies, and its connectors to outside sources.</summary>
+    private sealed record AppModule(
+        string Name, string Schema, Assembly Core, Assembly Outbound, Assembly Inbound, Assembly[] Connectors)
     {
-        public Assembly[] Assemblies => [Core, Outbound, Inbound];
+        public Assembly[] Assemblies => [Core, Outbound, Inbound, .. Connectors];
+
+        public string[] ConnectorNames => [.. Connectors.Select(connector => connector.GetName().Name!)];
     }
 }

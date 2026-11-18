@@ -579,6 +579,13 @@
           "Respawn.SharedKernel": "[1.0.0, )"
         }
       },
+      "respawn.games.steam": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.Http": "[10.0.15, )",
+          "Respawn.Games": "[1.0.0, )"
+        }
+      },
       "respawn.host": {
         "type": "Project",
         "dependencies": {
@@ -589,6 +596,7 @@
           "Respawn.Games": "[1.0.0, )",
           "Respawn.Games.Api": "[1.0.0, )",
           "Respawn.Games.Infrastructure": "[1.0.0, )",
+          "Respawn.Games.Steam": "[1.0.0, )",
           "Respawn.Persistence": "[1.0.0, )",
           "Respawn.SharedKernel": "[1.0.0, )"
         }

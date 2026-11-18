@@ -17,6 +17,12 @@
     <ProjectReference Include="..\Respawn.Games\Respawn.Games.csproj" />
     <ProjectReference Include="..\Respawn.Games.Api\Respawn.Games.Api.csproj" />
     <ProjectReference Include="..\Respawn.Games.Infrastructure\Respawn.Games.Infrastructure.csproj" />
+    <ProjectReference Include="..\Respawn.Games.Steam\Respawn.Games.Steam.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Answers in the sources' own shape, played back in place of the sources. -->
+    <None Include="Recorded\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
