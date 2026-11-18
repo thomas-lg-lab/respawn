@@ -54,7 +54,7 @@
 - **Warnings are errors** in a Release build, and `dotnet format --verify-no-changes` is a required check.
 - **Front.** `frontend/`, Angular 22 with signals and no Zone.js, Tailwind 4, Transloco, Vitest, in packages
   under `packages/`: `app` (the shell, its screens in `pages/`), `ui` (the tokens and the base components),
-  `util`, `data` (the API's types). A package imports another through its `@respawn/x` barrel only, and only
+  `util` (the display settings), `data` (the API: its types, its client, each feature's queries). A package imports another through its `@respawn/x` barrel only, and only
   the ones `eslint.config.js` lists for it; `@x/...` is a package's own inside.
 - **Angular as it is today.** Zoneless and OnPush are the defaults since Angular 21 and 22: neither is written
   out, and `ChangeDetectionStrategy.Eager` is refused by lint. State is signals (`signal`, `computed`,

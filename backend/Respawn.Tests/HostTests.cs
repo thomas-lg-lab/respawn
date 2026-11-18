@@ -36,6 +36,29 @@ public sealed class HostTests
         Assert.Contains("RESPAWN_AUTH_RATE_LIMIT", error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("RESPAWN_COOKIE_SECURE", "treu")]
+    [InlineData("RESPAWN_COOKIE_SECURE", "2")]
+    [InlineData("RESPAWN_TRUSTED_PROXIES", "192.0.2.300")]
+    [InlineData("RESPAWN_TRUSTED_PROXIES", "192.0.2.0/33")]
+    [InlineData("RESPAWN_TRUSTED_PROXIES", "127.0.0.1,proxy.example.org")]
+    public void An_http_setting_that_cannot_be_read_is_refused_by_name(string name, string value)
+    {
+        var error = Assert.Throws<FormatException>(() => RespawnSettings.Http(Configuration(name, value)));
+        Assert.Contains(name, error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData(" ON ", true)]
+    [InlineData("1", true)]
+    [InlineData("false", false)]
+    [InlineData("No", false)]
+    [InlineData("0", false)]
+    [InlineData("", true)]
+    public void The_cookie_is_for_https_only_unless_plainly_said_otherwise(string value, bool secure) =>
+        Assert.Equal(secure, RespawnSettings.Http(Configuration("RESPAWN_COOKIE_SECURE", value)).CookieSecure);
+
     [Fact]
     public void The_rate_limit_counts_an_ipv6_network_as_one_client()
     {

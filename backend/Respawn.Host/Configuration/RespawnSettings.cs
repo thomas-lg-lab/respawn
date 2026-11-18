@@ -67,7 +67,7 @@ internal static partial class RespawnSettings
         var (permits, window) = RateLimit(configuration["RESPAWN_AUTH_RATE_LIMIT"] ?? "10/minute");
         return new HttpSettings
         {
-            CookieSecure = Flag(configuration["RESPAWN_COOKIE_SECURE"], true),
+            CookieSecure = Flag(configuration, "RESPAWN_COOKIE_SECURE", true),
             AuthPermits = permits,
             AuthWindow = window,
             TrustedProxies = Proxies(configuration["RESPAWN_TRUSTED_PROXIES"] ?? "127.0.0.1,::1"),
@@ -107,8 +107,22 @@ internal static partial class RespawnSettings
             : throw new FormatException($"{name} must be a whole number, 1 or more");
     }
 
-    private static bool Flag(string? value, bool fallback) =>
-        value is null ? fallback : value.Trim().ToLowerInvariant() is "1" or "true" or "yes" or "on";
+    /// <summary>On or off, said plainly. Anything else is refused: a mistyped "true" must not quietly
+    /// turn a protection off.</summary>
+    private static bool Flag(IConfiguration configuration, string name, bool fallback)
+    {
+        if (configuration[name] is not { } value || string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "1" or "true" or "yes" or "on" => true,
+            "0" or "false" or "no" or "off" => false,
+            _ => throw new FormatException($"{name} must be true or false"),
+        };
+    }
 
     /// <summary>RESPAWN_OIDC_PROVIDERS is a JSON list of {"name", "issuer", "client_id"}.</summary>
     internal static IReadOnlyList<OidcProvider> Providers(string? raw)
@@ -161,8 +175,18 @@ internal static partial class RespawnSettings
     }
 
     /// <summary>Comma-separated addresses or networks: 192.0.2.10, 198.51.100.0/24.</summary>
-    private static IReadOnlyList<IPNetwork> Proxies(string value) =>
-        [.. value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Network)];
+    private static IReadOnlyList<IPNetwork> Proxies(string value)
+    {
+        try
+        {
+            return [.. value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Network)];
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            throw new FormatException(
+                "RESPAWN_TRUSTED_PROXIES must be comma-separated addresses or networks: 192.0.2.10, 198.51.100.0/24", ex);
+        }
+    }
 
     private static IPNetwork Network(string entry)
     {

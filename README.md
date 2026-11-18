@@ -84,8 +84,8 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with. An issuer is an `https` URL |
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
 
-Numbers are whole numbers of 1 or more. A value that cannot be read is refused by name, not replaced by its
-default.
+Numbers are whole numbers of 1 or more. `RESPAWN_COOKIE_SECURE` is `true` or `false` (`1`, `yes`, `on` and
+`0`, `no`, `off` are read too). A value that cannot be read is refused by name, not replaced by its default.
 
 A URI connection string accepts the options `sslmode`, `sslrootcert`, `connect_timeout` and `application_name`;
 any other is refused, so a typo is not silently ignored. Without `connect_timeout`, a connection attempt is given
@@ -161,6 +161,9 @@ part of the API.
 | `POST /api/v1/auth/oidc` | Signs in with an ID token of a configured provider; links it to the account already signed in |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
 | `GET /api/v1/me` | The signed-in account |
+| `GET /api/v1/linked-accounts` | The store accounts linked to the signed-in account, the earliest link first |
+| `GET /api/v1/linked-accounts/steam/link` | Links a Steam account. A navigation from the app's pages, not a call: the browser is sent to Steam, then comes back on `return_to` (a path of the app, the home by default) with the outcome in the `steam_link` parameter: `linked`, `linked_elsewhere`, `failed` or `unavailable` |
+| `DELETE /api/v1/linked-accounts/{id}` | Unlinks a store account and forgets everything that was read from it |
 | `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through and the playtime each store counts; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 
 Errors always have the same shape, whatever answered:
@@ -173,12 +176,15 @@ Errors always have the same shape, whatever answered:
 | --- | --- |
 | 401 | `not_signed_in`, `invalid_credentials`, `invalid_token` |
 | 403 | `registration_closed`, `local_sign_in_disabled`, `cross_site_request`, `forbidden` |
-| 404 | `unknown_provider`, `http_error` |
+| 404 | `unknown_provider`, `unknown_linked_account`, `http_error` |
 | 409 | `account_exists` |
 | 422 | `invalid_request`, `invalid_email`, `weak_password` |
 | 429 | `too_many_requests` |
 | 500 | `internal_error` |
 | 503 | `database_unavailable`, `provider_unavailable` |
+
+`http_error` is the code of any status answered without a body of its own: an unknown route (404), and also a
+method a route does not allow (405).
 
 A breaking change to these routes means a new version beside `/api/v1`, not a change to it.
 
@@ -200,7 +206,7 @@ adapters around it.
 | [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API's types) |
 
 The image builds the front and the app serves it: its files at the root, and its document for every address
-that is neither a file nor under `/api` or `/healthz`, so the front routes its own screens and a reload lands
+that is neither a file nor under `/api`, `/healthz` or `/docs`, so the front routes its own screens and a reload lands
 on the same one. The document is written with a nonce of its own at each answer, which the content
 security policy needs to let the front's component styles through and nothing else. Its settings (the theme: the system's, dark or light; the character of the labels; the
 language) are kept in the browser for now. Its types come from `frontend/openapi.json`, a copy of the
@@ -217,8 +223,8 @@ The image is `ghcr.io/thomas-lg-lab/respawn`.
 
 | Tag | Follows |
 | --- | --- |
-| `edge` | `main`: every merged change |
-| `X.Y.Z`, `latest` | Published releases |
+| `edge`, `sha-<commit>` | `main`: every merged change |
+| `X.Y.Z`, `X.Y`, `X`, `latest` | Published releases (`latest` leaves pre-releases out) |
 
 Merging is not releasing: a release is published by hand from its draft, whose notes are written from the
 titles of the merged pull requests. Every image is built by the CI after the checks pass, then started as it
