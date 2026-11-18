@@ -260,7 +260,10 @@ public sealed class LibraryService(
     /// that goes down without reaching zero is the store correcting itself, and is taken. Listing a
     /// game brings it back into the library, and it is no longer missing, unless it left the library,
     /// or a complete reading left it out, more recently than this one: a reading that arrives late
-    /// does not undo what is known since.</summary>
+    /// does not undo what is known since. One date cannot say both "since the earliest reading that left
+    /// it out" and "since it was last listed": readings that arrive out of order, between two that
+    /// left the game out, may clear the note or date it wrongly, until the next complete reading sets
+    /// it again. Nothing reads the past yet.</summary>
     private static Ownership Updated(Ownership? current, OwnedItem item, Guid entry, DateTimeOffset takenAt, Guid snapshot)
     {
         var silent = item.Playtime is null || (item.Playtime == TimeSpan.Zero && current?.Playtime > TimeSpan.Zero);

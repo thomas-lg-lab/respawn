@@ -28,6 +28,12 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                 type: "timestamp with time zone",
                 nullable: true);
 
+            // Written by hand. Until now a complete reading took a game out of its library; from now
+            // on no reading does, it only flags the game. Nothing else ever set unlisted_since, so
+            // every game taken out so far comes back, flagged since the same date.
+            migrationBuilder.Sql(
+                "UPDATE games.ownerships SET missing_since = unlisted_since, unlisted_since = NULL WHERE unlisted_since IS NOT NULL");
+
             migrationBuilder.CreateTable(
                 name: "sync_runs",
                 schema: "games",

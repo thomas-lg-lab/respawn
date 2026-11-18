@@ -57,10 +57,21 @@ public sealed class LinkedAccountsController(ILibraryService library, ISyncServi
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status429TooManyRequests)]
-    public async Task<SyncRunResponse> Sync(Guid id) =>
-        // Not the request's token: a visitor who leaves the page does not stop a reading on its way,
-        // and its run is kept. The app stopping does.
-        SyncRunResponse.From(await sync.SyncNowAsync(Caller.Id(User), id, app.ApplicationStopping));
+    public async Task<ActionResult<SyncRunResponse>> Sync(Guid id)
+    {
+        try
+        {
+            // Not the request's token: a visitor who leaves the page does not stop a reading on its
+            // way, and its run is kept. The app stopping does.
+            return SyncRunResponse.From(await sync.SyncNowAsync(Caller.Id(User), id, app.ApplicationStopping));
+        }
+        catch (OperationCanceledException) when (app.ApplicationStopping.IsCancellationRequested)
+        {
+            // Nothing went wrong and nothing was kept: the connection ends with the app.
+            HttpContext.Abort();
+            return new EmptyResult();
+        }
+    }
 
     /// <summary>Where Steam sends the browser back. The exchange's handler answers there before any
     /// route does; this route only says that the address wants a session, which is how the app's

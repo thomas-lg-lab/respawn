@@ -74,8 +74,8 @@ public sealed class RawSnapshotRow
 
     public Guid? LinkedAccountId { get; set; }
 
-    /// <summary>True when it was taken as the whole of what it lists: what it leaves out was then no
-    /// longer there. Never true of an answer that lists nothing.</summary>
+    /// <summary>True when it was taken as the whole of what it lists: what it leaves out was then
+    /// noted as missing. Never true of an answer that lists nothing.</summary>
     public bool Complete { get; set; }
 
     /// <summary>Text, as received: `jsonb` would reorder a document's keys, and a source may answer

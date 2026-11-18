@@ -84,7 +84,12 @@ public sealed class SyncService(
             }
 
             gate.Started(account.Id, SyncTrigger.Scheduled, now);
-            return await RunAsync(account, SyncTrigger.Scheduled, now, ct);
+            var run = await RunAsync(account, SyncTrigger.Scheduled, now, ct);
+
+            // Kept: from here the runs say when the next one is due, and a reading made late in a
+            // day does not hold back the next day's.
+            gate.Forget(account.Id, SyncTrigger.Scheduled);
+            return run;
         }
         catch (GamesException ex) when (ex.Error == GamesError.UnknownLinkedAccount)
         {

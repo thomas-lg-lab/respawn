@@ -497,6 +497,78 @@ public sealed class SyncTests
     }
 
     [Fact]
+    public async Task A_reading_made_late_in_a_day_does_not_hold_back_the_next_days()
+    {
+        var (steam, clock) = (new FakeSteam(), new TestClock());
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+        var day = SyncSchedule.DayOf(clock.Now);
+
+        // Steam did not answer all day, and does five minutes before the next day starts.
+        steam.Unreachable = true;
+        clock.Now = day.AddHours(22).AddMinutes(55);
+        Assert.Equal(1, await TurnAsync(app));
+        steam.Unreachable = false;
+        clock.Now = day.AddHours(23).AddMinutes(55);
+        Assert.Equal(1, await TurnAsync(app));
+
+        // The new day's reading is made at its first turn, ten minutes later.
+        clock.Now = day.AddDays(1).AddMinutes(5);
+        Assert.Equal([account], await DueAsync(app));
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Equal(3, steam.Requests.Count);
+    }
+
+    [Fact]
+    public async Task The_pause_holds_for_a_sync_that_left_no_run()
+    {
+        var (steam, clock) = (new FakeSteam(), new TestClock());
+        await using var app = await steam.StartAppAsync(null, services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.AddScoped<ISyncRunStore, FailingRuns>();
+        });
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        // Steam is asked, and the run cannot be written: nothing in the database says a sync ran.
+        Assert.Equal(HttpStatusCode.InternalServerError, await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).StatusAsync());
+        Assert.Equal(
+            (HttpStatusCode.TooManyRequests, "too_many_requests"),
+            await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).RefusalAsync());
+        Assert.Single(steam.Requests);
+
+        clock.Advance(TimeSpan.FromSeconds(61));
+        Assert.Equal(HttpStatusCode.InternalServerError, await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).StatusAsync());
+        Assert.Equal(2, steam.Requests.Count);
+    }
+
+    [Fact]
+    public async Task The_app_stopping_while_a_library_is_read_is_not_an_error()
+    {
+        var (steam, clock) = (new FakeSteam(), new TestClock());
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        steam.Before = () =>
+        {
+            reached.TrySetResult();
+            return Task.Delay(Timeout.Infinite);
+        };
+
+        var request = browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
+        await reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        app.Services.GetRequiredService<IHostApplicationLifetime>().StopApplication();
+
+        // Whoever was waiting gets no answer, the log no error, and nothing is kept.
+        await Assert.ThrowsAnyAsync<Exception>(() => request);
+        Assert.DoesNotContain("unhandled error", app.Logs.Text, StringComparison.Ordinal);
+        Assert.True(app.Services.GetRequiredService<SyncGate>().TryEnter(account));
+    }
+
+    [Fact]
     public async Task Unlinking_forgets_the_syncs_too()
     {
         var (steam, clock) = (new FakeSteam(), new TestClock());

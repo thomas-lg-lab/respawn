@@ -22,7 +22,7 @@ public sealed record LinkedAccount(
 /// <param name="TakenAt">When the source answered: the date the answer is true for.</param>
 /// <param name="RecordedAt">When it was stored here, which may be later: a retry, an import of the past.</param>
 /// <param name="Complete">True when it is taken as the whole of what it lists: what it leaves out is
-/// then no longer there. See <see cref="LibraryReading"/>.</param>
+/// then noted as missing. See <see cref="LibraryReading"/>.</param>
 /// <param name="LinkedAccountId">The store account it was read from, when personal.</param>
 /// <param name="Payload">The answer as received.</param>
 public sealed record RawSnapshot(

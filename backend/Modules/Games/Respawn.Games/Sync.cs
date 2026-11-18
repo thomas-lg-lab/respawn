@@ -114,4 +114,14 @@ public sealed class SyncGate
             _started[(linkedAccountId, trigger)] = at;
         }
     }
+
+    /// <summary>Forgets when the last sync of that account started for that reason: its run is kept,
+    /// and says it from now on.</summary>
+    public void Forget(Guid linkedAccountId, SyncTrigger trigger)
+    {
+        lock (_running)
+        {
+            _started.Remove((linkedAccountId, trigger));
+        }
+    }
 }

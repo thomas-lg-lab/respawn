@@ -22,7 +22,7 @@ public interface ISyncService
 
     /// <summary>Makes a linked account's reading of the day. Null when there is nothing to do: the
     /// account is gone, is being read right now, or a scheduled reading of it started less than
-    /// <see cref="SyncSchedule.RetryAfter"/> ago in this process, whatever became of it (a reading
+    /// <see cref="SyncSchedule.RetryAfter"/> ago in this process and left no run (a reading
     /// whose run could not be kept is not made again at every turn).</summary>
     Task<SyncRun?> RunScheduledAsync(Guid linkedAccountId, CancellationToken ct);
 }
