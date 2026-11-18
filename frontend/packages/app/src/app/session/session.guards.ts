@@ -7,11 +7,17 @@ import { QueryClient } from '@tanstack/angular-query';
  * Who is signed in, from the cache when it knows, else asked once. A request that fails
  * (the database away, no network) counts as nobody here: the sign-in screen is then the one
  * that says what is wrong and offers to try again, which asks this again too.
+ *
+ * An account the cache holds stays the answer, even when asking again has failed since (the
+ * window came back in front with no network): only the API saying so ends a session, and
+ * the server state then empties this.
  */
 async function currentAccount(
   client: QueryClient,
   queries: AccountQueries,
 ): Promise<Account | null> {
+  const known = client.getQueryData(queries.me().queryKey);
+  if (known) return known;
   try {
     return await client.query(queries.me());
   } catch {

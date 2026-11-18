@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Api } from '@respawn/data';
+import { Api, accountKeys } from '@respawn/data';
 import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, SIGN_IN_OPTIONS, api, button, configureApp } from '@app/testing/app-testing';
 // The screens are chunks the router fetches when first shown. Here the first fetch of one is
@@ -114,6 +114,21 @@ describe('routes', () => {
 
     await vi.waitFor(() => expect(router.url).toBe('/sign-in'));
     await vi.waitFor(() => expect(title(screen)).toBe('Connexion'));
+  });
+
+  // The account is asked again when the window comes back in front, and that can fail for a
+  // moment (no network): a failure is not the API saying the session ended.
+  it('keeps a signed-in visitor in when asking again who they are fails', async () => {
+    const { harness, server, router, screen } = await visit('/', signedIn);
+
+    const asked = TestBed.inject(QueryClient).refetchQueries({ queryKey: accountKeys.me });
+    await server.refuse('/me', 503, 'database_unavailable');
+    await asked;
+
+    // A guard runs again, and asks the API nothing: the account it knows is still the answer.
+    await harness.navigateByUrl('/sign-in');
+    expect(router.url).toBe('/');
+    expect(title(screen)).toBe('Bonjour, First');
   });
 
   it('says who is signed in', async () => {
