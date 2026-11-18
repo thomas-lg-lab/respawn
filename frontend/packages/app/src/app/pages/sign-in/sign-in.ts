@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { AccountQueries, type LoginRequest, type RegisterRequest } from '@respawn/data';
@@ -86,27 +86,20 @@ export class SignIn {
   /** Why the instance could not say who is there, or what it offers. */
   protected readonly unavailable = computed(() => this.account.error() ?? this.options.error());
 
-  constructor() {
-    // Someone is signed in: they just did it here, or trying again found their session.
-    effect(() => {
-      if (this.account.data()) void this.router.navigateByUrl('/');
-    });
-  }
-
   protected signIn(body: LoginRequest): void {
     this.registering.reset();
-    this.signingIn.mutate(body);
+    this.signingIn.mutate(body, { onSuccess: () => this.enter() });
   }
 
   protected createAccount(body: RegisterRequest): void {
     this.signingIn.reset();
-    this.registering.mutate(body);
+    this.registering.mutate(body, { onSuccess: () => this.enter() });
   }
 
-  /** Asks again whatever could not be told. */
-  protected retry(): void {
-    if (this.account.isError()) void this.account.refetch();
+  /** Asks again whatever could not be told; a session found that way opens the app. */
+  protected async retry(): Promise<void> {
     if (this.options.isError()) void this.options.refetch();
+    if (this.account.isError() && (await this.account.refetch()).data) this.enter();
   }
 
   /** From one form to the other: a refusal of the first says nothing of the second. */
@@ -114,5 +107,9 @@ export class SignIn {
     this.wantsAccount.update((wants) => !wants);
     this.signingIn.reset();
     this.registering.reset();
+  }
+
+  private enter(): void {
+    void this.router.navigateByUrl('/');
   }
 }

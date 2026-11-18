@@ -15,9 +15,13 @@ const refusal = (status: number, code: string) =>
   Promise.reject(new ApiFailure(status, code, 'In English, for the log.'));
 
 describe('serverState', () => {
+  const ended = vi.fn();
+
+  beforeEach(() => ended.mockClear());
+
   /** The state of someone signed in, who has read their library. */
   function signedIn() {
-    const client = serverState();
+    const client = serverState(ended);
     client.setQueryData(accountKeys.me, ACCOUNT);
     client.setQueryData(['library'], { total: 3 });
     return client;
@@ -33,6 +37,18 @@ describe('serverState', () => {
     expect(client.getQueryData(accountKeys.me)).toBeNull();
     // Nothing read for the account that was there stays behind for the next one.
     expect(client.getQueryData(['library'])).toBeUndefined();
+    expect(ended).toHaveBeenCalledOnce();
+  });
+
+  it('closes the session when the account itself is refused, and ends up with nobody', async () => {
+    const client = signedIn();
+
+    await client
+      .fetchQuery({ queryKey: accountKeys.me, queryFn: () => refusal(401, 'not_signed_in') })
+      .catch(() => undefined);
+
+    expect(client.getQueryState(accountKeys.me)).toMatchObject({ status: 'success', data: null });
+    expect(ended).toHaveBeenCalledOnce();
   });
 
   it('closes the session when an action is refused for want of one', async () => {
@@ -60,5 +76,6 @@ describe('serverState', () => {
 
     expect(client.getQueryData(accountKeys.me)).toEqual(ACCOUNT);
     expect(client.getQueryData(['library'])).toEqual({ total: 3 });
+    expect(ended).not.toHaveBeenCalled();
   });
 });

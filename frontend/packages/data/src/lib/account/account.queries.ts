@@ -52,7 +52,10 @@ export class AccountQueries {
         try {
           return await this.api.get<Account>('/me');
         } catch (failure) {
-          if (failure instanceof ApiFailure && failure.status === 401) return null;
+          // With an account in the cache, "not signed in" is news: the session ended, and
+          // the refusal goes on to the server state, which closes it like any other.
+          const known = this.client.getQueryData(accountKeys.me);
+          if (failure instanceof ApiFailure && failure.status === 401 && !known) return null;
           throw failure;
         }
       },

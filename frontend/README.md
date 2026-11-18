@@ -43,8 +43,9 @@ signing in writes it, signing out empties the cache.
 
 The session can also end without a sign-out (its age, another tab). The front learns it two ways: the account
 is asked again each time the window comes back in front, and any request the API refuses with `not_signed_in`
-closes the session in the cache (`serverState()` in `packages/data`, the `QueryClient` the app is given). The
-shell then leads to the sign-in. A request for the account that fails for another reason (the database away)
+closes the session in the cache (`serverState()` in `packages/data`, the `QueryClient` the app is given),
+which then calls what the app gave it: a navigation to the sign-in (`session/session.providers.ts`). No
+component watches for it. A request for the account that fails for another reason (the database away)
 is not an answer: the sign-in screen says what is wrong, shows no form, and its "try again" asks who is there
 again.
 

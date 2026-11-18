@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { AccountQueries } from '@respawn/data';
@@ -13,9 +13,6 @@ import { LanguageSetting } from '@app/i18n/language';
  * The frame of the signed-in screens: the header, with the account menu, and the screen
  * under it. It is where the menu's requests meet what answers them: the settings kept in
  * this browser, and the sign-out.
- *
- * It is also the way out: as soon as nobody is signed in (a sign-out, or a session that
- * ended on its own, which the server state learns from the API), it leads to the sign-in.
  */
 @Component({
   selector: 'rs-shell',
@@ -33,13 +30,9 @@ export class Shell {
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly signingOut = injectMutation(() => this.queries.signOut());
 
-  constructor() {
-    effect(() => {
-      if (this.me.data() === null) void this.router.navigateByUrl('/sign-in');
-    });
-  }
-
   protected signOut(): void {
-    this.signingOut.mutate();
+    this.signingOut.mutate(undefined, {
+      onSuccess: () => void this.router.navigateByUrl('/sign-in'),
+    });
   }
 }

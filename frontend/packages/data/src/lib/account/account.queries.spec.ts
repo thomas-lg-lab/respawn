@@ -61,6 +61,15 @@ describe('AccountQueries', () => {
     expect(await me).toBeNull();
   });
 
+  // The server state closes the session on that refusal, as on any other request's.
+  it('takes "not signed in" as a refusal once it knew an account: the session ended', async () => {
+    client.setQueryData(accountKeys.me, ACCOUNT);
+    const me = client.fetchQuery({ ...queries.me(), staleTime: 0 });
+    (await request('/api/v1/me')).flush(...refuse('not_signed_in', 401));
+
+    expect(await me.catch((thrown: unknown) => thrown)).toMatchObject({ code: 'not_signed_in' });
+  });
+
   it('fails with the code of the API when it cannot say who is signed in', async () => {
     const me = client.fetchQuery(queries.me());
     (await request('/api/v1/me')).flush(...refuse('database_unavailable', 503));

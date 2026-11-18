@@ -5,13 +5,16 @@ import { ApiFailure } from './api/api';
 /**
  * The server state of the app: what the API answered, kept and shared between screens.
  *
- * It also learns here that the session ended. Any request the API refuses for want of a
- * session, whatever asked it, closes the session as the front knows it; the screens then
- * see that nobody is signed in, and the frame of the app leads back to the sign-in.
+ * It is also where the app learns that the session ended. Any request the API refuses for
+ * want of a session, whatever asked it, closes the session as the front knows it, then
+ * calls `sessionEnded`: the app says there where that leads (the sign-in).
  */
-export function serverState(): QueryClient {
+export function serverState(sessionEnded: () => void = () => undefined): QueryClient {
   const refused = (failure: unknown): void => {
-    if (failure instanceof ApiFailure && failure.code === NOT_SIGNED_IN) closeSession(client);
+    if (failure instanceof ApiFailure && failure.code === NOT_SIGNED_IN) {
+      closeSession(client);
+      sessionEnded();
+    }
   };
   const client = new QueryClient({
     queryCache: new QueryCache({ onError: refused }),
