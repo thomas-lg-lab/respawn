@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import type { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { type Routes, provideRouter } from '@angular/router';
 import type { SignInOptions } from '@respawn/data';
 import { routes } from '@app/app.routes';
 import { provideServerState } from '@app/session/session.providers';
@@ -23,17 +23,19 @@ export const SIGN_IN_OPTIONS: SignInOptions = {
 
 /**
  * For the specs of the screens: the real routes, the real translations and the real server
- * state, with the API played by `HttpTestingController`.
+ * state, with the API played by `HttpTestingController`. `screens` stands in for the routes
+ * where a spec needs a screen the app does not have yet.
  */
 export function configureApp(
   language: Language,
   extra: (Provider | EnvironmentProviders)[] = [],
+  screens: Routes = routes,
 ): void {
   localStorage.setItem('respawn.language', language);
   TestBed.configureTestingModule({
     imports: [testTranslations(language)],
     providers: [
-      provideRouter(routes),
+      provideRouter(screens),
       provideHttpClient(),
       provideHttpClientTesting(),
       provideServerState(),

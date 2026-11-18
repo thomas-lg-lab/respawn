@@ -45,7 +45,11 @@ The session can also end without a sign-out (its age, another tab). The front le
 is asked again each time the window comes back in front, and any request the API refuses with `not_signed_in`
 closes the session in the cache (`serverState()` in `packages/data`, the `QueryClient` the app is given),
 which then calls what the app gave it: a navigation to the sign-in (`session/session.providers.ts`). No
-component watches for it. A request for the account that fails for another reason (the database away)
+component watches for it.
+
+The sign-in is told where the visitor was (`?returnTo=`), by the guard of a screen that needs a session and
+by the end of a session alike, and leads back there once signed in. That address comes from a link anyone
+can write, so `returnAddress()` only ever gives a path of this origin, and the home for anything else. A request for the account that fails for another reason (the database away)
 is not an answer: the sign-in screen says what is wrong, shows no form, and its "try again" asks who is there
 again.
 

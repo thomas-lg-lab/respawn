@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { type CanActivateFn, Router } from '@angular/router';
 import { type Account, AccountQueries } from '@respawn/data';
 import { QueryClient } from '@tanstack/angular-query';
+import { RETURN_TO, returnAddress, signInFrom } from './return-address';
 
 /**
  * Who is signed in, from the cache when it knows, else asked once. A request that fails
@@ -19,16 +20,22 @@ async function currentAccount(
   }
 }
 
-/** The screens of the app: without a session, the way in is the sign-in screen. */
-export const signedInOnly: CanActivateFn = async () => {
+/**
+ * The screens of the app: without a session, the way in is the sign-in screen, which is told
+ * the address that was asked for.
+ */
+export const signedInOnly: CanActivateFn = async (_route, state) => {
   const router = inject(Router);
   const account = await currentAccount(inject(QueryClient), inject(AccountQueries));
-  return account ? true : router.parseUrl('/sign-in');
+  return account ? true : signInFrom(router, state.url);
 };
 
-/** The sign-in screen: with a session there is nothing to do there. */
-export const signedOutOnly: CanActivateFn = async () => {
+/**
+ * The sign-in screen: with a session there is nothing to do there, and the visitor goes on to
+ * where they were headed.
+ */
+export const signedOutOnly: CanActivateFn = async (route) => {
   const router = inject(Router);
   const account = await currentAccount(inject(QueryClient), inject(AccountQueries));
-  return account ? router.parseUrl('/') : true;
+  return account ? router.parseUrl(returnAddress(route.queryParamMap.get(RETURN_TO))) : true;
 };
