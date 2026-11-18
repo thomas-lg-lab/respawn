@@ -44,6 +44,44 @@ public sealed class ContractTests
         Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
+    // A screen may end like a file. Going there is asking for a page, which a browser says; fetching a
+    // file for a page is not, so a file that is missing stays missing.
+    [Theory]
+    [InlineData("/games/archive.zip", "text/html,application/xhtml+xml,*/*;q=0.8", HttpStatusCode.OK)]
+    [InlineData("/users/someone@example.com", "text/html", HttpStatusCode.OK)]
+    [InlineData("/games/archive.zip", "*/*", HttpStatusCode.NotFound)]
+    [InlineData("/main-MISSING0.js", "*/*", HttpStatusCode.NotFound)]
+    [InlineData("/api/v1/nothing.zip", "text/html", HttpStatusCode.NotFound)]
+    [InlineData("/docs/nothing.js", "text/html", HttpStatusCode.NotFound)]
+    public async Task An_address_that_ends_like_a_file_is_a_screen_only_when_asked_as_a_page(string path, string accept, HttpStatusCode status)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.TryAddWithoutValidation("Accept", accept);
+
+        var response = await client.SendAsync(request);
+        Assert.Equal(status, response.StatusCode);
+        if (status == HttpStatusCode.OK)
+        {
+            Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            Assert.Contains("'nonce-", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
+        }
+    }
+
+    // A file that is there is served as it is, to a browser that goes to it too.
+    [Fact]
+    public async Task A_file_asked_as_a_page_is_still_the_file()
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/favicon.svg");
+        request.Headers.TryAddWithoutValidation("Accept", "text/html");
+
+        var response = await client.SendAsync(request);
+        Assert.Equal("image/svg+xml", response.Content.Headers.ContentType?.MediaType);
+    }
+
     // The front's components bring their styles as style elements, which the policy only lets through
     // with the nonce of the response: the document and its policy must name the same one.
     [Theory]

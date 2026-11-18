@@ -5,8 +5,8 @@ import { QueryClient } from '@tanstack/angular-query';
 
 /**
  * Who is signed in, from the cache when it knows, else asked once. A request that fails
- * (the database away, no network) counts as nobody: the sign-in screen is then the one that
- * says what is wrong, and offers to try again.
+ * (the database away, no network) counts as nobody here: the sign-in screen is then the one
+ * that says what is wrong and offers to try again, which asks this again too.
  */
 async function currentAccount(
   client: QueryClient,

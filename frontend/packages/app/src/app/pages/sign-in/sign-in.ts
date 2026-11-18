@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { AccountQueries, type LoginRequest, type RegisterRequest } from '@respawn/data';
@@ -12,7 +12,8 @@ import { SignInForm } from './components/sign-in-form';
 
 /**
  * What the screen shows, from what the instance offers:
- * - `loading`, then `unavailable` when the instance could not say;
+ * - `loading`, then `unavailable` when the instance could not say what it offers, or who
+ *   is there: a visitor the API could not identify may well have a session;
  * - `local-disabled`: no local sign-in here;
  * - `first-account`: nobody has an account yet, the one created now is the administrator;
  * - `sign-in`, and `create-account` where registration is open and the visitor asked for it.
@@ -52,6 +53,11 @@ export class SignIn {
   protected readonly failureKey = failureKey;
 
   protected readonly options = injectQuery(() => this.queries.signInOptions());
+  /**
+   * Who is signed in, as the guard left it: never asked from here on its own, only read,
+   * and asked again when the visitor tries again.
+   */
+  protected readonly account = injectQuery(() => ({ ...this.queries.me(), enabled: false }));
   protected readonly signingIn = injectMutation(() => this.queries.signIn());
   protected readonly registering = injectMutation(() => this.queries.register());
 
@@ -60,6 +66,7 @@ export class SignIn {
 
   protected readonly view = computed<View>(() => {
     const options = this.options.data();
+    if (this.account.isError()) return 'unavailable';
     if (!options) return this.options.isError() ? 'unavailable' : 'loading';
     if (!options.local_sign_in) return 'local-disabled';
     if (options.first_account) return 'first-account';
@@ -76,14 +83,30 @@ export class SignIn {
    */
   protected readonly failure = computed(() => this.registering.error() ?? this.signingIn.error());
 
+  /** Why the instance could not say who is there, or what it offers. */
+  protected readonly unavailable = computed(() => this.account.error() ?? this.options.error());
+
+  constructor() {
+    // Someone is signed in: they just did it here, or trying again found their session.
+    effect(() => {
+      if (this.account.data()) void this.router.navigateByUrl('/');
+    });
+  }
+
   protected signIn(body: LoginRequest): void {
     this.registering.reset();
-    this.signingIn.mutate(body, { onSuccess: () => this.enter() });
+    this.signingIn.mutate(body);
   }
 
   protected createAccount(body: RegisterRequest): void {
     this.signingIn.reset();
-    this.registering.mutate(body, { onSuccess: () => this.enter() });
+    this.registering.mutate(body);
+  }
+
+  /** Asks again whatever could not be told. */
+  protected retry(): void {
+    if (this.account.isError()) void this.account.refetch();
+    if (this.options.isError()) void this.options.refetch();
   }
 
   /** From one form to the other: a refusal of the first says nothing of the second. */
@@ -91,9 +114,5 @@ export class SignIn {
     this.wantsAccount.update((wants) => !wants);
     this.signingIn.reset();
     this.registering.reset();
-  }
-
-  private enter(): void {
-    void this.router.navigateByUrl('/');
   }
 }

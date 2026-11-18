@@ -43,7 +43,7 @@ internal static partial class Front
         {
             var request = context.Request;
             var reading = HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method);
-            if (reading && IsDocument(request.Path))
+            if (reading && (IsDocument(request.Path) || IsPageWithNoFile(context)))
             {
                 return WriteDocumentAsync(context, next);
             }
@@ -89,11 +89,27 @@ internal static partial class Front
     /// A file's address ends like a kind of file the app serves (".js", ".svg"). A dot alone does
     /// not make one: "/games/half-life.2" is a screen of the front.
     /// </summary>
-    internal static bool Routes(PathString path)
+    internal static bool Routes(PathString path) =>
+        !IsReserved(path) && !FileTypes.TryGetContentType(path.Value ?? "", out _);
+
+    private static bool IsReserved(PathString path)
     {
-        var value = path.Value ?? "";
-        var first = value.TrimStart('/').Split('/', 2)[0];
-        return !Reserved.Contains(first, StringComparer.OrdinalIgnoreCase) && !FileTypes.TryGetContentType(value, out _);
+        var first = (path.Value ?? "").TrimStart('/').Split('/', 2)[0];
+        return Reserved.Contains(first, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Whether a request is for a screen whose address happens to end like a file
+    /// ("/games/archive.zip"): the address holds no file, and it is asked for as a page. A browser
+    /// that goes to an address accepts "text/html" by name; a script, a style sheet or a font it
+    /// fetches for a page does not, so a file that is missing stays a 404 for them.
+    /// </summary>
+    private static bool IsPageWithNoFile(HttpContext context)
+    {
+        var request = context.Request;
+        return !IsReserved(request.Path)
+            && request.GetTypedHeaders().Accept.Any(type => type.MediaType.Equals("text/html", StringComparison.OrdinalIgnoreCase))
+            && !context.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider.GetFileInfo(request.Path.Value ?? "").Exists;
     }
 
     /// <summary>Whether an address gets the document: one the front routes, or the document's own

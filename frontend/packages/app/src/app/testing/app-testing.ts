@@ -3,8 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import type { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import type { Account, SignInOptions } from '@respawn/data';
-import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query';
+import { type Account, type SignInOptions, serverState } from '@respawn/data';
+import { provideTanStackQuery } from '@tanstack/angular-query';
 import { routes } from '@app/app.routes';
 import type { Language } from '@app/i18n/language';
 import { testTranslations } from './translations';
@@ -41,7 +41,7 @@ export function configureApp(
       provideRouter(routes),
       provideHttpClient(),
       provideHttpClientTesting(),
-      provideTanStackQuery(() => new QueryClient()),
+      provideTanStackQuery(serverState),
       ...extra,
     ],
   });

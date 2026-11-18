@@ -7,8 +7,9 @@ import {
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideTransloco } from '@jsverse/transloco';
+import { serverState } from '@respawn/data';
 import { DisplaySettings } from '@respawn/util';
-import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query';
+import { provideTanStackQuery } from '@tanstack/angular-query';
 import { routes } from './app.routes';
 import { FALLBACK_LANGUAGE, LANGUAGES, LanguageSetting, initialLanguage } from './i18n/language';
 import { TranslationLoader } from './i18n/translation-loader';
@@ -19,7 +20,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     // Server state: what the API answered, kept and shared between screens. Each feature
     // says how in its `<feature>.queries.ts`.
-    provideTanStackQuery(() => new QueryClient()),
+    provideTanStackQuery(serverState),
     provideTransloco({
       config: {
         availableLangs: [...LANGUAGES],

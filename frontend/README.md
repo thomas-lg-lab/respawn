@@ -41,6 +41,13 @@ methods of one service in `packages/data` (`account/account.queries.ts`); a comp
 `injectQuery` or `injectMutation`, a route guard to the `QueryClient`. The signed-in account is one such query:
 signing in writes it, signing out empties the cache.
 
+The session can also end without a sign-out (its age, another tab). The front learns it two ways: the account
+is asked again each time the window comes back in front, and any request the API refuses with `not_signed_in`
+closes the session in the cache (`serverState()` in `packages/data`, the `QueryClient` the app is given). The
+shell then leads to the sign-in. A request for the account that fails for another reason (the database away)
+is not an answer: the sign-in screen says what is wrong, shows no form, and its "try again" asks who is there
+again.
+
 Every refusal is an `ApiFailure` carrying the API's `code`; a screen shows its own sentence for the code
 (`errors.*` in the translation files), never the API's English message.
 
