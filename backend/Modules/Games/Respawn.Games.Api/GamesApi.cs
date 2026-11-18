@@ -30,6 +30,8 @@ public static class GamesApi
         GamesError.LinkedToAnotherAccount => Error(409, "linked_to_another_account", "This store account is linked to another account of this instance."),
         GamesError.SyncInProgress => Error(409, "sync_in_progress", "This store account is being read right now."),
         GamesError.SyncTooSoon => Error(429, "too_many_requests", "This store account was read a moment ago. Wait a minute and try again."),
+        GamesError.InvalidCredential => Error(400, "invalid_key", "This is not a key of this store."),
+        GamesError.CredentialsUnavailable => Error(503, "keys_unavailable", "This instance cannot keep a key: it has no encryption key."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };
 }

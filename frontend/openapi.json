@@ -504,6 +504,170 @@
           }
         }
       }
+    },
+    "/api/v1/linked-accounts/{id}/key": {
+      "put": {
+        "tags": [
+          "LinkedAccounts"
+        ],
+        "summary": "Give a linked account the owner's own key of the store",
+        "description": "Replaces the key the account had, if any. From then on every sync of that account reads it with this key, and only this one: a key the store refuses makes the sync fail (refused, own_key true), never a reading with the instance's key. The store is not asked here: the next sync says whether it takes the key. The key is stored encrypted and never answered. 400 invalid_key: not in the shape of the store's keys (Steam: a Steam Web API key, letters and digits). 503 keys_unavailable: this instance cannot keep a key.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnKeyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnKeyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "LinkedAccounts"
+        ],
+        "summary": "Take the owner's own key away from a linked account",
+        "description": "The account is read with the instance's key again. Removing a key that is not there changes nothing.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -714,7 +878,8 @@
           "source",
           "external_id",
           "display_name",
-          "linked_at"
+          "linked_at",
+          "has_own_key"
         ],
         "type": "object",
         "properties": {
@@ -737,6 +902,9 @@
           "linked_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "has_own_key": {
+            "type": "boolean"
           }
         }
       },
@@ -798,6 +966,19 @@
           }
         }
       },
+      "OwnKeyRequest": {
+        "required": [
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string"
+          }
+        }
+      },
       "ProviderResponse": {
         "required": [
           "name",
@@ -850,7 +1031,8 @@
           "started_at",
           "finished_at",
           "outcome",
-          "error"
+          "error",
+          "own_key"
         ],
         "type": "object",
         "properties": {
@@ -881,6 +1063,9 @@
               "null",
               "string"
             ]
+          },
+          "own_key": {
+            "type": "boolean"
           }
         }
       },

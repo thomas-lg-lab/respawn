@@ -16,9 +16,10 @@ internal static class GamesModule
     {
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ISyncService, SyncService>();
+        services.AddScoped<ICredentialService, CredentialService>();
         // The syncs on their way: one for the app, which is one replica.
         services.AddSingleton<SyncGate>();
-        services.AddGamesInfrastructure();
+        services.AddGamesInfrastructure(provider => RespawnSettings.Encryption(provider.GetRequiredService<IConfiguration>()));
         services.AddSingleton(provider => new SteamLinkOptions { PublicUrl = provider.GetRequiredService<HttpSettings>().PublicUrl });
         services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));

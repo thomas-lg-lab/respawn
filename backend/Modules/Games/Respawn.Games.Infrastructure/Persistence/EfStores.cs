@@ -73,7 +73,7 @@ internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountSt
     }
 
     private static LinkedAccount? ToLinkedAccount(LinkedAccountRow? row) =>
-        row is null ? null : new LinkedAccount(row.Id, row.OwnerId, row.Source, row.ExternalId, row.DisplayName, row.LinkedAt);
+        row is null ? null : new LinkedAccount(row.Id, row.OwnerId, row.Source, row.ExternalId, row.DisplayName, row.LinkedAt, row.Credential is not null);
 }
 
 internal sealed class EfSnapshotStore(GamesDbContext db) : ISnapshotStore
@@ -110,6 +110,7 @@ internal sealed class EfSyncRunStore(GamesDbContext db) : ISyncRunStore
             Error = run.Error is { } error ? SyncWords.Of(error) : null,
             Detail = run.Detail,
             SnapshotId = run.SnapshotId,
+            OwnCredential = run.OwnCredential,
         });
         await db.SaveChangesAsync(ct);
     }
@@ -136,7 +137,8 @@ internal sealed class EfSyncRunStore(GamesDbContext db) : ISyncRunStore
             SyncWords.Outcome(row.Outcome),
             row.Error is { } error ? SyncWords.Error(error) : null,
             row.Detail,
-            row.SnapshotId);
+            row.SnapshotId,
+            row.OwnCredential);
 }
 
 /// <summary>The words a sync run is stored in: the table's own, which a renamed enum must not change.</summary>

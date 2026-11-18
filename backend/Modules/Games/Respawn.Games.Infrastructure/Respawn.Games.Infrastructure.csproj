@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The outbound adapters of the Games module: its PostgreSQL schema. -->
+  <!-- The outbound adapters of the Games module: its PostgreSQL schema, and the encryption of the keys
+       owners give on their linked accounts. -->
 
   <ItemGroup>
     <ProjectReference Include="..\Respawn.Games\Respawn.Games.csproj" />
@@ -16,6 +17,8 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- libsodium: the authenticated encryption of an owner's key, as Accounts uses it for Argon2id. -->
+    <PackageReference Include="Sodium.Core" Version="1.4.1" />
   </ItemGroup>
 
   <ItemGroup>

@@ -63,7 +63,7 @@ What the app expects from where it runs:
 | Filesystem | read-only root filesystem; nothing is written outside `/tmp` |
 | User | any non-root user (the image runs as 10001) |
 | Logs | stdout |
-| Secrets | the database connection string and the Steam Web API key, each from the environment or a mounted file; none is needed to start |
+| Secrets | the database connection string, the Steam Web API key and the encryption key, each from the environment or a mounted file; none is needed to start |
 
 ## Configuration
 
@@ -74,8 +74,10 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string: a URI (`postgresql://user:password@host:5432/database`) or Npgsql's `Host=...;Username=...` form |
 | `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set; its password is read again for every new connection |
 | `RESPAWN_PUBLIC_URL` | none | The address the instance is reached at, scheme and host (`https://respawn.example.org`). Set it behind a reverse proxy: linking a Steam account sends the browser to Steam, which sends it back to this address. Without it, the address of the request is used |
-| `RESPAWN_STEAM_API_KEY` | none | The instance's [Steam Web API key](https://steamcommunity.com/dev/apikey), which reads the libraries of the linked Steam accounts. Without one, no Steam library is read |
+| `RESPAWN_STEAM_API_KEY` | none | The instance's [Steam Web API key](https://steamcommunity.com/dev/apikey), which reads the libraries of the linked Steam accounts. A user may give their own key on their linked account, which is then the only one that reads it. Without either, no Steam library is read |
 | `RESPAWN_STEAM_API_KEY_FILE` | `/secrets/steam-api-key` | File holding the key, read when the variable is not set, and read again at each reading |
+| `RESPAWN_ENCRYPTION_KEY` | none | 32 random bytes in base64 (`openssl rand -base64 32`), which encrypt the Steam Web API keys users give on their own linked accounts. Without it, nobody can give one. Changed or lost, the keys already given can no longer be read: their syncs fail until each user gives their key again |
+| `RESPAWN_ENCRYPTION_KEY_FILE` | `/secrets/encryption-key` | File holding the encryption key, read when the variable is not set, and read again each time it is needed |
 | `RESPAWN_COOKIE_SECURE` | `true` | Session cookie sent over HTTPS only; `false` for plain HTTP on localhost |
 | `RESPAWN_SESSION_DAYS` | `30` | Lifetime of a sign-in |
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |

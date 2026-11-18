@@ -4,14 +4,16 @@ namespace Respawn.Games;
 // game as one store knows it, and points to one canonical record. An owner is an account of the
 // instance, known here by its id only.
 
-/// <summary>A store account proven to belong to an account of the instance.</summary>
+/// <summary>A store account proven to belong to an account of the instance. <paramref name="HasCredential"/>
+/// says whether its owner gave their own access to the store (a key), never what it is.</summary>
 public sealed record LinkedAccount(
     Guid Id,
     Guid OwnerId,
     string Source,
     string ExternalId,
     string? DisplayName,
-    DateTimeOffset LinkedAt);
+    DateTimeOffset LinkedAt,
+    bool HasCredential = false);
 
 /// <summary>What a source answered, kept as it came and dated: a field can be read from it again later
 /// without asking the source. Personal when it was read from a linked account (a library, its owner's),
