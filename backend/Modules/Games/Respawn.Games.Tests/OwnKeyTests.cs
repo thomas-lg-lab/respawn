@@ -26,6 +26,9 @@ public sealed class OwnKeyTests
     /// <summary>An encryption key for the tests: 32 bytes in base64. Nobody's.</summary>
     private static readonly string Encryption = Convert.ToBase64String([.. Enumerable.Range(1, 32).Select(i => (byte)i)]);
 
+    /// <summary>Another one, for an instance whose encryption key changed. Nobody's.</summary>
+    private static readonly string OtherEncryption = Convert.ToBase64String([.. Enumerable.Range(101, 32).Select(i => (byte)i)]);
+
     [Fact]
     public async Task A_key_given_on_the_account_reads_it_and_is_never_answered()
     {
@@ -149,7 +152,7 @@ public sealed class OwnKeyTests
         await SetKeyAsync(browser, account);
 
         // The instance's encryption key changes: what was sealed with the old one stays shut.
-        await File.WriteAllTextAsync(file, Convert.ToBase64String(new byte[EncryptionOptions.KeyBytes]));
+        await File.WriteAllTextAsync(file, OtherEncryption);
         JsonElement run;
         try
         {
@@ -256,6 +259,25 @@ public sealed class OwnKeyTests
     }
 
     [Fact]
+    public async Task Giving_and_taking_away_keys_is_rate_limited()
+    {
+        var steam = new FakeSteam();
+        await using var app = await StartAsync(steam, new() { ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute" });
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        await SetKeyAsync(browser, account);
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/linked-accounts/{account}/key").StatusAsync());
+        Assert.Equal(
+            (HttpStatusCode.TooManyRequests, "too_many_requests"),
+            await browser.PutAsJsonAsync($"/api/v1/linked-accounts/{account}/key", new { key = OwnKey }).RefusalAsync());
+        Assert.False(await HasOwnKeyAsync(browser));
+
+        // A bucket of its own: the other routes of the account still answer.
+        Assert.Equal("succeeded", (await SyncNowAsync(browser, account)).GetProperty("outcome").GetString());
+    }
+
+    [Fact]
     public async Task A_key_goes_with_its_account_when_it_is_unlinked()
     {
         var steam = new FakeSteam();
@@ -286,13 +308,24 @@ public sealed class OwnKeyTests
         // A new nonce each time: the same key sealed twice is never the same bytes.
         Assert.NotEqual(kept, cipher.Seal(one, OwnKey));
         Assert.Throws<CredentialException>(() => cipher.Open(two, kept));
-        var other = new CredentialCipher(() => new EncryptionOptions { Key = Convert.ToBase64String(new byte[EncryptionOptions.KeyBytes]), KeyFile = "" });
+        var other = new CredentialCipher(() => new EncryptionOptions { Key = OtherEncryption, KeyFile = "" });
         Assert.Throws<CredentialException>(() => other.Open(one, kept));
         var tampered = kept.ToArray();
         tampered[^1] ^= 1;
         Assert.Throws<CredentialException>(() => cipher.Open(one, tampered));
         Assert.Throws<CredentialException>(() => cipher.Open(one, [2, .. kept[1..]]));
         Assert.Throws<CredentialException>(() => new CredentialCipher(() => new EncryptionOptions { Key = "c2hvcnQ=", KeyFile = "" }).Seal(one, OwnKey));
+    }
+
+    [Theory]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")] // 32 zeros
+    [InlineData("QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=")] // "A" 32 times
+    [InlineData("Y2hhbmdlbWVjaGFuZ2VtZWNoYW5nZW1lY2hhbmdlbWU=")] // "changeme" 4 times
+    public void A_placeholder_is_not_taken_as_an_encryption_key(string placeholder)
+    {
+        var error = Assert.Throws<CredentialException>(() => new EncryptionOptions { Key = placeholder, KeyFile = "" }.Resolve());
+        Assert.Contains("not random", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(placeholder, error.Message, StringComparison.Ordinal);
     }
 
     private static Task<TestApp> StartAsync(FakeSteam steam, Dictionary<string, string?>? settings = null, TestClock? clock = null)

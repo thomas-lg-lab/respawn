@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Respawn.Games.Ports;
 using Respawn.SharedKernel;
 
@@ -13,6 +14,7 @@ namespace Respawn.Games.Api;
 [Produces("application/json")]
 [Tags("LinkedAccounts")]
 [GamesRefusals]
+[EnableRateLimiting(GamesApi.OwnKeyRateLimit)]
 public sealed class OwnKeyController(ICredentialService credentials) : ControllerBase
 {
     [HttpPut]

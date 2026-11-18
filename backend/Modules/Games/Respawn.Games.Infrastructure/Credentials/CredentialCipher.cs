@@ -25,15 +25,18 @@ internal sealed class CredentialCipher(Func<EncryptionOptions> options)
     public byte[] Seal(Guid linkedAccountId, string credential)
     {
         var key = options().Resolve();
+        var clear = Encoding.UTF8.GetBytes(credential);
         try
         {
             var nonce = SecretAeadXChaCha20Poly1305.GenerateNonce();
-            var text = SecretAeadXChaCha20Poly1305.Encrypt(Encoding.UTF8.GetBytes(credential), nonce, key, Bound(linkedAccountId));
+            var text = SecretAeadXChaCha20Poly1305.Encrypt(clear, nonce, key, Bound(linkedAccountId));
             return [Version, .. nonce, .. text];
         }
         finally
         {
+            // Neither the instance's key nor the owner's is left in a buffer of ours.
             CryptographicOperations.ZeroMemory(key);
+            CryptographicOperations.ZeroMemory(clear);
         }
     }
 
@@ -47,10 +50,12 @@ internal sealed class CredentialCipher(Func<EncryptionOptions> options)
         }
 
         var key = options().Resolve();
+        byte[]? clear = null;
         try
         {
-            var text = SecretAeadXChaCha20Poly1305.Decrypt(kept[(1 + NonceBytes)..], kept[1..(1 + NonceBytes)], key, Bound(linkedAccountId));
-            return Encoding.UTF8.GetString(text);
+            clear = SecretAeadXChaCha20Poly1305.Decrypt(kept[(1 + NonceBytes)..], kept[1..(1 + NonceBytes)], key, Bound(linkedAccountId));
+            // The string handed to the sync is the one copy left: a string cannot be wiped.
+            return Encoding.UTF8.GetString(clear);
         }
         catch (CryptographicException ex)
         {
@@ -59,6 +64,10 @@ internal sealed class CredentialCipher(Func<EncryptionOptions> options)
         finally
         {
             CryptographicOperations.ZeroMemory(key);
+            if (clear is not null)
+            {
+                CryptographicOperations.ZeroMemory(clear);
+            }
         }
     }
 

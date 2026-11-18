@@ -11,20 +11,32 @@ public sealed class EncryptionOptions
     /// <summary>The most a key file may weigh: a key is 44 characters.</summary>
     private const int MaxFileBytes = 4096;
 
+    /// <summary>The fewest different bytes a key may hold. 32 random bytes hold about 30 different
+    /// values, and fewer than 16 practically never happens; a placeholder (all zeros, one repeated
+    /// letter, a short pattern) holds a handful. A placeholder is a key anyone can guess.</summary>
+    private const int MinDistinctBytes = 16;
+
     public string? Key { get; init; }
 
     public string KeyFile { get; init; } = "/secrets/encryption-key";
 
     /// <summary>The key, as it is now: read again on each call, nothing is cached.</summary>
-    /// <exception cref="CredentialException">No key was given, or what was given is not 32 bytes in
-    /// base64. The message never quotes it.</exception>
+    /// <exception cref="CredentialException">No key was given, what was given is not 32 bytes in
+    /// base64, or it is a placeholder rather than random bytes. The message never quotes it.</exception>
     public byte[] Resolve()
     {
         var text = Given() ?? throw new CredentialException("the instance has no encryption key");
         var key = new byte[KeyBytes];
         if (!Convert.TryFromBase64String(text, key, out var written) || written != KeyBytes)
         {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
             throw new CredentialException($"what the instance was given as its encryption key is not {KeyBytes} bytes in base64");
+        }
+
+        if (key.Distinct().Count() < MinDistinctBytes)
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
+            throw new CredentialException("what the instance was given as its encryption key is not random: make one with openssl rand -base64 32");
         }
 
         return key;

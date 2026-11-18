@@ -7,6 +7,10 @@ namespace Respawn.Games.Api;
 
 public static class GamesApi
 {
+    /// <summary>The rate-limit policy of the routes that give or take away an owner's own key. The
+    /// host defines it.</summary>
+    public const string OwnKeyRateLimit = "games-own-key";
+
     /// <summary>What drives the Games module: its routes, the Steam link, and the schedule of the
     /// sync. The host registers <see cref="SteamLinkOptions"/>, a <see cref="TimeProvider"/> and a
     /// session other routes are authorized with, and places
