@@ -44,16 +44,14 @@ public sealed class ContractTests
         Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
-    // A screen may end like a file. Going there is asking for a page, which a browser says; fetching a
-    // file for a page is not, so a file that is missing stays missing.
+    // What is a file is what the build ships, not what an address looks like: a screen may end like
+    // a file, and gets the document whatever asks for it. So the answer needs no word to a cache.
     [Theory]
-    [InlineData("/games/archive.zip", "text/html,application/xhtml+xml,*/*;q=0.8", HttpStatusCode.OK)]
-    [InlineData("/users/someone@example.com", "text/html", HttpStatusCode.OK)]
-    [InlineData("/games/archive.zip", "*/*", HttpStatusCode.NotFound)]
-    [InlineData("/main-MISSING0.js", "*/*", HttpStatusCode.NotFound)]
-    [InlineData("/api/v1/nothing.zip", "text/html", HttpStatusCode.NotFound)]
-    [InlineData("/docs/nothing.js", "text/html", HttpStatusCode.NotFound)]
-    public async Task An_address_that_ends_like_a_file_is_a_screen_only_when_asked_as_a_page(string path, string accept, HttpStatusCode status)
+    [InlineData("/games/archive.zip", "text/html,application/xhtml+xml,*/*;q=0.8")]
+    [InlineData("/games/archive.zip", "*/*")]
+    [InlineData("/users/someone@example.com", "*/*")]
+    [InlineData("/theme.css", "text/css,*/*;q=0.1")]
+    public async Task A_screen_that_ends_like_a_file_gets_the_document_whatever_asks(string path, string accept)
     {
         await using var app = TestApp.Offline();
         using var client = app.Browser();
@@ -61,44 +59,30 @@ public sealed class ContractTests
         request.Headers.TryAddWithoutValidation("Accept", accept);
 
         var response = await client.SendAsync(request);
-        Assert.Equal(status, response.StatusCode);
-        if (status == HttpStatusCode.OK)
-        {
-            Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
-            Assert.Contains("'nonce-", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
-        }
-    }
-
-    // The same address answers a screen or a 404 by how it is asked for: a cache between the browser
-    // and the app is told so, and never keeps the 404 for a browser that goes there next.
-    [Theory]
-    [InlineData("text/html", HttpStatusCode.OK)]
-    [InlineData("*/*", HttpStatusCode.NotFound)]
-    public async Task An_answer_that_depends_on_how_it_is_asked_says_so_and_is_not_kept(string accept, HttpStatusCode status)
-    {
-        await using var app = TestApp.Offline();
-        using var client = app.Browser();
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/games/archive.zip");
-        request.Headers.TryAddWithoutValidation("Accept", accept);
-
-        var response = await client.SendAsync(request);
-        Assert.Equal(status, response.StatusCode);
-        Assert.Equal("Accept", response.Headers.Vary.Single());
-        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
-    }
-
-    // An address of the API answers the same however it is asked for: nothing is added there.
-    [Fact]
-    public async Task An_unknown_address_of_the_api_does_not_vary()
-    {
-        await using var app = TestApp.Offline();
-        using var client = app.Browser();
-        var response = await client.GetAsync("/api/v1/nothing.zip");
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Contains("'nonce-", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
         Assert.Empty(response.Headers.Vary);
     }
 
-    // A file that is there is served as it is, to a browser that goes to it too.
+    // Where only the build puts files, nothing there is a missing file, to a browser that goes there
+    // too: a script or a font of an older build gets a 404, never a page.
+    [Theory]
+    [InlineData("/main-MISSING0.js")]
+    [InlineData("/styles-5INURTSO.css")]
+    [InlineData("/media/inter-latin-wght-normal-NRMW37G5.woff2")]
+    [InlineData("/media/anything")]
+    public async Task A_file_of_the_build_that_is_missing_stays_missing(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.TryAddWithoutValidation("Accept", "text/html");
+
+        Assert.Equal((HttpStatusCode.NotFound, "http_error"), await client.SendAsync(request).RefusalAsync());
+    }
+
+    // A file the build ships is served as it is, to a browser that goes to it too.
     [Fact]
     public async Task A_file_asked_as_a_page_is_still_the_file()
     {
@@ -258,6 +242,8 @@ public sealed class ContractTests
     [InlineData("GET", "/healthz/nothing", HttpStatusCode.NotFound)]
     [InlineData("GET", "/main-MISSING0.js", HttpStatusCode.NotFound)]
     [InlineData("GET", "/docs/nothing", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/docs/nothing.js", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/api/v1/nothing.zip", HttpStatusCode.NotFound)]
     [InlineData("GET", "/api/v1/auth/login", HttpStatusCode.MethodNotAllowed)]
     [InlineData("POST", "/api/v1/me", HttpStatusCode.MethodNotAllowed)]
     [InlineData("POST", "/sign-in", HttpStatusCode.NotFound)]
