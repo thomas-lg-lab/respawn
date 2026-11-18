@@ -9,8 +9,8 @@
         }
         @case ('unavailable') {
           <h1 class="type-page-title">{{ t('signIn.title') }}</h1>
-          <rs-banner tone="warn" role="alert">{{ t(failureKey(options.error())) }}</rs-banner>
-          <button rsButton shape="field" type="button" (click)="options.refetch()">
+          <rs-banner tone="warn" role="alert">{{ t(failureKey(unavailable())) }}</rs-banner>
+          <button rsButton shape="field" type="button" (click)="retry()">
             {{ t('signIn.retry') }}
           </button>
         }

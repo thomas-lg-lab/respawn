@@ -44,6 +44,57 @@ public sealed class ContractTests
         Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
+    // What is a file is what the build ships, not what an address looks like: a screen may end like
+    // a file, and gets the document whatever asks for it. So the answer needs no word to a cache.
+    [Theory]
+    [InlineData("/games/archive.zip", "text/html,application/xhtml+xml,*/*;q=0.8")]
+    [InlineData("/games/archive.zip", "*/*")]
+    [InlineData("/users/someone@example.com", "*/*")]
+    [InlineData("/theme.css", "text/css,*/*;q=0.1")]
+    public async Task A_screen_that_ends_like_a_file_gets_the_document_whatever_asks(string path, string accept)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.TryAddWithoutValidation("Accept", accept);
+
+        var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<rs-root", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Contains("'nonce-", response.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
+        Assert.Empty(response.Headers.Vary);
+    }
+
+    // Where only the build puts files, nothing there is a missing file, to a browser that goes there
+    // too: a script or a font of an older build gets a 404, never a page.
+    [Theory]
+    [InlineData("/main-MISSING0.js")]
+    [InlineData("/styles-5INURTSO.css")]
+    [InlineData("/media/inter-latin-wght-normal-NRMW37G5.woff2")]
+    [InlineData("/media/anything")]
+    public async Task A_file_of_the_build_that_is_missing_stays_missing(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.TryAddWithoutValidation("Accept", "text/html");
+
+        Assert.Equal((HttpStatusCode.NotFound, "http_error"), await client.SendAsync(request).RefusalAsync());
+    }
+
+    // A file the build ships is served as it is, to a browser that goes to it too.
+    [Fact]
+    public async Task A_file_asked_as_a_page_is_still_the_file()
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/favicon.svg");
+        request.Headers.TryAddWithoutValidation("Accept", "text/html");
+
+        var response = await client.SendAsync(request);
+        Assert.Equal("image/svg+xml", response.Content.Headers.ContentType?.MediaType);
+    }
+
     // The front's components bring their styles as style elements, which the policy only lets through
     // with the nonce of the response: the document and its policy must name the same one.
     [Theory]
@@ -191,6 +242,8 @@ public sealed class ContractTests
     [InlineData("GET", "/healthz/nothing", HttpStatusCode.NotFound)]
     [InlineData("GET", "/main-MISSING0.js", HttpStatusCode.NotFound)]
     [InlineData("GET", "/docs/nothing", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/docs/nothing.js", HttpStatusCode.NotFound)]
+    [InlineData("GET", "/api/v1/nothing.zip", HttpStatusCode.NotFound)]
     [InlineData("GET", "/api/v1/auth/login", HttpStatusCode.MethodNotAllowed)]
     [InlineData("POST", "/api/v1/me", HttpStatusCode.MethodNotAllowed)]
     [InlineData("POST", "/sign-in", HttpStatusCode.NotFound)]

@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { Api, accountKeys } from '@respawn/data';
+import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, SIGN_IN_OPTIONS, api, button, configureApp } from '@app/testing/app-testing';
 // The screens are chunks the router fetches when first shown. Here the first fetch of one is
 // slow enough to outlast a test, so they are loaded up front: a navigation then finds them.
@@ -69,6 +71,64 @@ describe('routes', () => {
     expect(screen.querySelector('[role="alert"]')?.textContent).toContain(
       'La base de données ne répond pas.',
     );
+  });
+
+  it('lets back in, on a new try, a visitor whose session the API could not read', async () => {
+    const { harness, server, router, screen } = await visit('/', async (server) => {
+      await server.refuse('/me', 503, 'database_unavailable');
+      await server.refuse('/me', 503, 'database_unavailable');
+      // The instance says what it offers, but still not who is there: no form is shown.
+      await server.answer('/config', SIGN_IN_OPTIONS);
+    });
+    expect(screen.querySelector('form')).toBeNull();
+    expect(screen.querySelector('[role="alert"]')?.textContent).toContain(
+      'La base de données ne répond pas.',
+    );
+
+    button(screen, 'Réessayer').click();
+    // One try at a time: until the answer, neither the button nor a form, only the wait.
+    const asked = await server.request('/me');
+    await vi.waitFor(() =>
+      expect(screen.querySelector('[role="status"]')?.textContent).toContain('Chargement'),
+    );
+    expect(() => button(screen, 'Réessayer')).toThrow();
+    expect(screen.querySelector('form')).toBeNull();
+    asked.flush(ACCOUNT);
+    await harness.fixture.whenStable();
+
+    await vi.waitFor(() => expect(router.url).toBe('/'));
+    await vi.waitFor(() => expect(title(screen)).toBe('Bonjour, First'));
+  });
+
+  it('leads to the sign-in as soon as the API says the session ended', async () => {
+    const { harness, server, router, screen } = await visit('/', signedIn);
+
+    // Any request of a screen, refused for want of a session.
+    const read = TestBed.inject(QueryClient)
+      .fetchQuery({ queryKey: ['library'], queryFn: () => TestBed.inject(Api).get('/library') })
+      .catch(() => undefined);
+    await server.refuse('/library', 401, 'not_signed_in');
+    await read;
+    await server.answer('/config', SIGN_IN_OPTIONS);
+    await harness.fixture.whenStable();
+
+    await vi.waitFor(() => expect(router.url).toBe('/sign-in'));
+    await vi.waitFor(() => expect(title(screen)).toBe('Connexion'));
+  });
+
+  // The account is asked again when the window comes back in front, and that can fail for a
+  // moment (no network): a failure is not the API saying the session ended.
+  it('keeps a signed-in visitor in when asking again who they are fails', async () => {
+    const { harness, server, router, screen } = await visit('/', signedIn);
+
+    const asked = TestBed.inject(QueryClient).refetchQueries({ queryKey: accountKeys.me });
+    await server.refuse('/me', 503, 'database_unavailable');
+    await asked;
+
+    // A guard runs again, and asks the API nothing: the account it knows is still the answer.
+    await harness.navigateByUrl('/sign-in');
+    expect(router.url).toBe('/');
+    expect(title(screen)).toBe('Bonjour, First');
   });
 
   it('says who is signed in', async () => {

@@ -24,6 +24,9 @@ internal static partial class Front
     /// <summary>The addresses that are never the front's, whatever they are followed by.</summary>
     private static readonly string[] Reserved = ["api", "healthz", "docs"];
 
+    /// <summary>Where the front's build puts the fonts its style sheet names.</summary>
+    private const string BuildMedia = "/media";
+
     private static readonly object NonceKey = new();
 
     /// <summary>The kinds of files the app can serve, by their extension.</summary>
@@ -43,7 +46,7 @@ internal static partial class Front
         {
             var request = context.Request;
             var reading = HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method);
-            if (reading && IsDocument(request.Path))
+            if (reading && IsDocument(context))
             {
                 return WriteDocumentAsync(context, next);
             }
@@ -84,22 +87,42 @@ internal static partial class Front
     }
 
     /// <summary>
-    /// Whether an address is one the front routes: not the API's, not the API page's, not a file's.
+    /// Whether an address gets the document: any address of the front that is not a file of its build.
     ///
-    /// A file's address ends like a kind of file the app serves (".js", ".svg"). A dot alone does
-    /// not make one: "/games/half-life.2" is a screen of the front.
+    /// What is a file is what the build ships, not what an address looks like: "/games/archive.zip"
+    /// and "/users/someone@example.org" are screens, whatever asks for them. Two exceptions. The
+    /// document's own file is never sent as it is (it would carry no nonce), so it is written like
+    /// any screen. And an address where only the build puts files (its media folder, a name that
+    /// ends with a hash of the content) stays a missing file when nothing is there: a script or a
+    /// font from an older build must get a 404, not a page.
     /// </summary>
-    internal static bool Routes(PathString path)
+    private static bool IsDocument(HttpContext context)
     {
-        var value = path.Value ?? "";
-        var first = value.TrimStart('/').Split('/', 2)[0];
-        return !Reserved.Contains(first, StringComparer.OrdinalIgnoreCase) && !FileTypes.TryGetContentType(value, out _);
+        var path = context.Request.Path;
+        if (IsReserved(path))
+        {
+            return false;
+        }
+
+        if (path.Equals("/" + DocumentFile, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var files = context.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider;
+        return !files.GetFileInfo(path.Value ?? "").Exists && !IsTheBuildsOwn(path);
     }
 
-    /// <summary>Whether an address gets the document: one the front routes, or the document's own
-    /// file, which is never sent as it is (it would carry no nonce).</summary>
-    private static bool IsDocument(PathString path) =>
-        Routes(path) || path.Equals("/" + DocumentFile, StringComparison.OrdinalIgnoreCase);
+    private static bool IsReserved(PathString path)
+    {
+        var first = (path.Value ?? "").TrimStart('/').Split('/', 2)[0];
+        return Reserved.Contains(first, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Whether only the build puts files at an address: under its media folder, or under a
+    /// name that ends with a hash of the content.</summary>
+    private static bool IsTheBuildsOwn(PathString path) =>
+        path.StartsWithSegments(BuildMedia, StringComparison.OrdinalIgnoreCase) || NamedAfterItsContent().IsMatch(path.Value ?? "");
 
     /// <summary>
     /// Writes the document with a nonce of its own, the same one as in the policy of the response.

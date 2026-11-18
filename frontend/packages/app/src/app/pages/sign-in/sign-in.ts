@@ -12,7 +12,8 @@ import { SignInForm } from './components/sign-in-form';
 
 /**
  * What the screen shows, from what the instance offers:
- * - `loading`, then `unavailable` when the instance could not say;
+ * - `loading`, then `unavailable` when the instance could not say what it offers, or who
+ *   is there: a visitor the API could not identify may well have a session;
  * - `local-disabled`: no local sign-in here;
  * - `first-account`: nobody has an account yet, the one created now is the administrator;
  * - `sign-in`, and `create-account` where registration is open and the visitor asked for it.
@@ -52,6 +53,11 @@ export class SignIn {
   protected readonly failureKey = failureKey;
 
   protected readonly options = injectQuery(() => this.queries.signInOptions());
+  /**
+   * Who is signed in, as the guard left it: never asked from here on its own, only read,
+   * and asked again when the visitor tries again.
+   */
+  protected readonly account = injectQuery(() => ({ ...this.queries.me(), enabled: false }));
   protected readonly signingIn = injectMutation(() => this.queries.signIn());
   protected readonly registering = injectMutation(() => this.queries.register());
 
@@ -60,6 +66,9 @@ export class SignIn {
 
   protected readonly view = computed<View>(() => {
     const options = this.options.data();
+    if (this.account.isError()) return 'unavailable';
+    // A new try for who is there: no form, and no button to press twice, until it answers.
+    if (this.account.isFetching()) return 'loading';
     if (!options) return this.options.isError() ? 'unavailable' : 'loading';
     if (!options.local_sign_in) return 'local-disabled';
     if (options.first_account) return 'first-account';
@@ -76,6 +85,9 @@ export class SignIn {
    */
   protected readonly failure = computed(() => this.registering.error() ?? this.signingIn.error());
 
+  /** Why the instance could not say who is there, or what it offers. */
+  protected readonly unavailable = computed(() => this.account.error() ?? this.options.error());
+
   protected signIn(body: LoginRequest): void {
     this.registering.reset();
     this.signingIn.mutate(body, { onSuccess: () => this.enter() });
@@ -84,6 +96,12 @@ export class SignIn {
   protected createAccount(body: RegisterRequest): void {
     this.signingIn.reset();
     this.registering.mutate(body, { onSuccess: () => this.enter() });
+  }
+
+  /** Asks again whatever could not be told; a session found that way opens the app. */
+  protected async retry(): Promise<void> {
+    if (this.options.isError()) void this.options.refetch();
+    if (this.account.isError() && (await this.account.refetch()).data) this.enter();
   }
 
   /** From one form to the other: a refusal of the first says nothing of the second. */

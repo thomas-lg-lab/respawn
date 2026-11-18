@@ -3,15 +3,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { MutationObserver, QueryClient, provideTanStackQuery } from '@tanstack/angular-query';
 import { ApiFailure, NETWORK_ERROR } from '../api/api';
-import type { Account, SignInOptions } from '../models/models';
+import type { SignInOptions } from '../models/models';
+import { TEST_ACCOUNT as ACCOUNT } from '../testing/fixtures';
 import { AccountQueries, accountKeys } from './account.queries';
-
-const ACCOUNT: Account = {
-  id: '0b0f6f3e-6a59-4c8c-9a55-2d7f3f0d6c11',
-  email: 'first@example.org',
-  display_name: 'First',
-  is_admin: true,
-};
 
 const OPTIONS: SignInOptions = {
   local_sign_in: true,
@@ -59,6 +53,22 @@ describe('AccountQueries', () => {
     (await request('/api/v1/me')).flush(...refuse('not_signed_in', 401));
 
     expect(await me).toBeNull();
+  });
+
+  it('takes a 401 that is not the API’s as "not signed in" too', async () => {
+    const me = client.fetchQuery(queries.me());
+    (await request('/api/v1/me')).flush('<html>Sign in</html>', { status: 401, statusText: '' });
+
+    expect(await me).toBeNull();
+  });
+
+  // The server state closes the session on that refusal, as on any other request's.
+  it('takes "not signed in" as a refusal once it knew an account: the session ended', async () => {
+    client.setQueryData(accountKeys.me, ACCOUNT);
+    const me = client.fetchQuery({ ...queries.me(), staleTime: 0 });
+    (await request('/api/v1/me')).flush(...refuse('not_signed_in', 401));
+
+    expect(await me.catch((thrown: unknown) => thrown)).toMatchObject({ code: 'not_signed_in' });
   });
 
   it('fails with the code of the API when it cannot say who is signed in', async () => {

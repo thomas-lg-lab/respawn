@@ -1,6 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { QueryClient, hashKey, mutationOptions, queryOptions } from '@tanstack/angular-query';
-import { Api, ApiFailure } from '../api/api';
+import { Api, ApiFailure, HTTP_ERROR } from '../api/api';
 import type { Account, LoginRequest, RegisterRequest, SignInOptions } from '../models/models';
 
 /** The keys of what the cache holds about the account, so each is named in one place. */
@@ -8,6 +8,32 @@ export const accountKeys = {
   me: ['account', 'me'] as const,
   signInOptions: ['account', 'sign-in-options'] as const,
 };
+
+/** The API's refusal of a request that needs a session and has none. */
+export const NOT_SIGNED_IN = 'not_signed_in';
+
+/**
+ * Whether a refusal says there is no session: the API's own words, or a 401 that is not
+ * the API's, from something in front of it that turned the request away. Wrong credentials
+ * are a 401 of the API with another code, and say nothing of a session.
+ */
+export function saysNoSession(failure: unknown): boolean {
+  return (
+    failure instanceof ApiFailure &&
+    (failure.code === NOT_SIGNED_IN || (failure.status === 401 && failure.code === HTTP_ERROR))
+  );
+}
+
+/**
+ * Nobody is signed in any more, whether they left or the session ended on its own: nothing
+ * read for the account stays behind for the next one, and the cache says "nobody".
+ */
+export function closeSession(client: QueryClient): void {
+  client.removeQueries({
+    predicate: (query) => query.queryHash !== hashKey(accountKeys.me),
+  });
+  client.setQueryData(accountKeys.me, null);
+}
 
 /** The refusals that mean the sign-in page offered what the instance no longer does. */
 const NO_LONGER_OFFERED = ['registration_closed', 'local_sign_in_disabled'];
@@ -28,7 +54,8 @@ export class AccountQueries {
 
   /**
    * The signed-in account, or `null`: "nobody is signed in" is an answer here, not a
-   * failure. Kept until a sign-in or a sign-out changes it.
+   * failure. Kept until a sign-in or a sign-out changes it, and asked again each time the
+   * window is back in front: the session may have ended meanwhile, in another tab or by age.
    */
   me() {
     return queryOptions({
@@ -37,11 +64,15 @@ export class AccountQueries {
         try {
           return await this.api.get<Account>('/me');
         } catch (failure) {
-          if (failure instanceof ApiFailure && failure.status === 401) return null;
+          // With an account in the cache, "not signed in" is news: the session ended, and
+          // the refusal goes on to the server state, which closes it like any other.
+          const known = this.client.getQueryData(accountKeys.me);
+          if (saysNoSession(failure) && !known) return null;
           throw failure;
         }
       },
       staleTime: Infinity,
+      refetchOnWindowFocus: 'always',
       retry: false,
     });
   }
@@ -75,13 +106,7 @@ export class AccountQueries {
   signOut() {
     return mutationOptions({
       mutationFn: () => this.api.post<void>('/auth/logout', {}),
-      onSuccess: () => {
-        // Nothing read for the account that left stays behind for the next one.
-        this.client.removeQueries({
-          predicate: (query) => query.queryHash !== hashKey(accountKeys.me),
-        });
-        this.client.setQueryData(accountKeys.me, null);
-      },
+      onSuccess: () => closeSession(this.client),
     });
   }
 
