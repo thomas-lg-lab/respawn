@@ -5,7 +5,15 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { Api } from '@respawn/data';
 import { QueryClient } from '@tanstack/angular-query';
 import { SignIn } from '@app/pages/sign-in/sign-in';
-import { ACCOUNT, SIGN_IN_OPTIONS, api, configureApp, field, type } from '@app/testing/app-testing';
+import {
+  ACCOUNT,
+  SIGN_IN_OPTIONS,
+  api,
+  button,
+  configureApp,
+  field,
+  type,
+} from '@app/testing/app-testing';
 import { signedInOnly, signedOutOnly } from './session.guards';
 
 /** A screen behind the session that is not the home: the app has none yet. */
@@ -81,6 +89,35 @@ describe('the return after a sign-in', () => {
     await vi.waitFor(() => expect(returnTo()).toBe('/library'));
 
     await signIn(screen, server);
+
+    await vi.waitFor(() => expect(router.url).toBe('/library'));
+  });
+
+  it('comes back there after the creation of an account too', async () => {
+    const { router, screen, server } = await visit('/library', async (server) => {
+      await server.refuse('/me', 401, 'not_signed_in');
+      await server.answer('/config', { ...SIGN_IN_OPTIONS, first_account: true });
+    });
+
+    type(field(screen, 'Nom affiché'), 'First');
+    type(field(screen, 'E-mail'), 'first@example.org');
+    type(field(screen, 'Mot de passe'), 'correct horse battery');
+    screen.querySelector('form')!.requestSubmit();
+    await server.answer('/auth/register', ACCOUNT, 201);
+
+    await vi.waitFor(() => expect(router.url).toBe('/library'));
+  });
+
+  it('comes back there when a new try finds the session the API could not read', async () => {
+    const { router, screen, server, returnTo } = await visit('/library', async (server) => {
+      await server.refuse('/me', 503, 'database_unavailable');
+      await server.refuse('/me', 503, 'database_unavailable');
+      await server.answer('/config', SIGN_IN_OPTIONS);
+    });
+    expect(returnTo()).toBe('/library');
+
+    button(screen, 'Réessayer').click();
+    await server.answer('/me', ACCOUNT);
 
     await vi.waitFor(() => expect(router.url).toBe('/library'));
   });
