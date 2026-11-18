@@ -10,6 +10,7 @@ public sealed class LibraryService(
     ISnapshotStore snapshots,
     ICatalogue catalogue,
     ILibraryStore library,
+    IEnumerable<ILibrarySource> sources,
     TimeProvider clock) : ILibraryService
 {
     /// <summary>How far ahead of this clock a source's may be. A reading dated later than that is a
@@ -174,12 +175,44 @@ public sealed class LibraryService(
 
         // The whole library is read and put in order here: a few thousand rows at most, and the order
         // is then the same on every database, whatever its collation.
-        var games = (await library.ListAsync(ownerId, ct))
-            .GroupBy(entry => entry.GameId)
-            .Select(Game)
-            .ToList();
+        var games = await GamesAsync(ownerId, ct);
         games.Sort(Order(sort));
         return new LibraryPage(games.Count, [.. games.Skip(offset).Take(limit)]);
+    }
+
+    public async Task<LibraryStats> GetStatsAsync(Guid ownerId, CancellationToken ct)
+    {
+        var games = await GamesAsync(ownerId, ct);
+        var entries = games.SelectMany(game => game.Entries).ToList();
+        var launched = games.Count(game => game.Playtime > TimeSpan.Zero || game.LastPlayedAt is not null);
+        return new LibraryStats(
+            games.Count,
+            launched,
+            games.Count - launched,
+            games.Count(game => game.Entries.All(entry => entry.MissingSince is not null)),
+            Sum(games.Select(game => game.Playtime)),
+            Sum(games.Select(game => game.RecentPlaytime)),
+            games.Count(game => game.RecentPlaytime > TimeSpan.Zero),
+            entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null);
+    }
+
+    /// <summary>An owner's library, a game once however many entries it is owned through. What a store
+    /// said was played lately is no longer recent once its window has gone by since that reading; a
+    /// store no connector reads cannot say its window, so its figure is not kept either.</summary>
+    private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var windows = sources.ToDictionary(source => source.Source, source => source.RecentWindow, StringComparer.Ordinal);
+        return
+        [
+            .. (await library.ListAsync(ownerId, ct))
+                .Select(entry => entry.RecentPlaytime is not null
+                    && !(windows.TryGetValue(entry.Source, out var window) && entry.AsOf + window > now)
+                        ? entry with { RecentPlaytime = null }
+                        : entry)
+                .GroupBy(entry => entry.GameId)
+                .Select(Game),
+        ];
     }
 
     /// <summary>A game from the entries it is owned through: its totals add up, its last session is

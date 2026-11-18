@@ -338,6 +338,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in account's library in figures
+         * @description The totals the stores give, over the same games as the library. Steam gives totals and no history: what was played in a year or a week is counted from the daily readings, from tracking_since on, and is not here.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LibraryStatsResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/linked-accounts": {
         parameters: {
             query?: never;
@@ -345,7 +393,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The store accounts linked to the signed-in account */
+        /** The store accounts linked to the signed-in account, and where the reading of each stands */
         get: {
             parameters: {
                 query?: never;
@@ -801,6 +849,24 @@ export interface components {
             limit: number;
             games: components["schemas"]["LibraryGameResponse"][];
         };
+        LibraryStatsResponse: {
+            /** Format: int32 */
+            games: number;
+            /** Format: int32 */
+            launched: number;
+            /** Format: int32 */
+            never_launched: number;
+            /** Format: int32 */
+            missing: number;
+            /** Format: int64 */
+            playtime_seconds: null | number;
+            /** Format: int64 */
+            recent_playtime_seconds: null | number;
+            /** Format: int32 */
+            recently_played: number;
+            /** Format: date-time */
+            tracking_since: null | string;
+        };
         LinkedAccountResponse: {
             /** Format: uuid */
             id: string;
@@ -810,6 +876,7 @@ export interface components {
             /** Format: date-time */
             linked_at: string;
             has_own_key: boolean;
+            sync: components["schemas"]["SyncStateResponse"];
         };
         LinkedAccountsResponse: {
             accounts: components["schemas"]["LinkedAccountResponse"][];
@@ -849,6 +916,12 @@ export interface components {
             outcome: string;
             error: null | string;
             own_key: boolean;
+        };
+        SyncStateResponse: {
+            running: boolean;
+            last: null | components["schemas"]["SyncRunResponse"];
+            /** Format: date-time */
+            last_succeeded_at: null | string;
         };
         UserResponse: {
             /** Format: uuid */

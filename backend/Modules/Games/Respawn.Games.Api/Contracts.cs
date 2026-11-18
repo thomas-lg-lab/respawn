@@ -14,7 +14,8 @@ public sealed record LibraryResponse(int Total, int Offset, int Limit, IReadOnly
 /// <param name="Name">The game's name; null while no source has named it.</param>
 /// <param name="PlaytimeSeconds">The total played, added up over its entries; null when no store ever said.</param>
 /// <param name="RecentPlaytimeSeconds">What was played lately, added up over its entries, each over the
-/// window its store counts (Steam: the last two weeks); null when no store says.</param>
+/// window its store counts (Steam: the last two weeks); null when no store says, or what each said is
+/// older than its window.</param>
 /// <param name="LastPlayedAt">Null when no store says, or the game was never launched.</param>
 /// <param name="Entries">The ways the game is owned: one per store entry and linked account, at least one.</param>
 public sealed record LibraryGameResponse(
@@ -40,7 +41,8 @@ public sealed record LibraryGameResponse(
 /// <param name="Source">The store.</param>
 /// <param name="ExternalId">The game's id in that store.</param>
 /// <param name="PlaytimeSeconds">The total played, as the store counts it; null when it never said.</param>
-/// <param name="RecentPlaytimeSeconds">What was played lately, as the store's latest answer said it; null when it did not say.</param>
+/// <param name="RecentPlaytimeSeconds">What was played lately, as the store's latest answer said it; null when it did not
+/// say, or that answer is older than the window the store counts over (Steam: two weeks).</param>
 /// <param name="LastPlayedAt">Null when the store does not say, or the game was never launched.</param>
 /// <param name="FirstSeenAt">The date of the earliest answer of the store that listed it.</param>
 /// <param name="AsOf">The date of the latest answer of the store that listed it: how fresh the rest is.</param>
@@ -83,10 +85,19 @@ public sealed record LinkedAccountsResponse(IReadOnlyList<LinkedAccountResponse>
 /// <param name="LinkedAt">When it was linked.</param>
 /// <param name="HasOwnKey">Whether its owner gave their own key of the store on it, which every sync then
 /// reads it with. The key itself is never answered.</param>
-public sealed record LinkedAccountResponse(Guid Id, string Source, string ExternalId, string? DisplayName, DateTimeOffset LinkedAt, bool HasOwnKey)
+/// <param name="Sync">Where the reading of its library stands.</param>
+public sealed record LinkedAccountResponse(
+    Guid Id, string Source, string ExternalId, string? DisplayName, DateTimeOffset LinkedAt, bool HasOwnKey, SyncStateResponse Sync)
 {
-    public static LinkedAccountResponse From(LinkedAccount account) =>
-        new(account.Id, account.Source, account.ExternalId, account.DisplayName, account.LinkedAt, account.HasCredential);
+    public static LinkedAccountResponse From(LinkedAccount account, SyncState sync) =>
+        new(
+            account.Id,
+            account.Source,
+            account.ExternalId,
+            account.DisplayName,
+            account.LinkedAt,
+            account.HasCredential,
+            SyncStateResponse.From(sync));
 }
 
 /// <param name="Key">The owner's own key of the store (Steam: a Steam Web API key, letters and digits).</param>
@@ -94,6 +105,51 @@ public sealed class OwnKeyRequest
 {
     [Required, StringLength(256)]
     public string Key { get; init; } = "";
+}
+
+/// <param name="Running">It is being read right now, every day's reading or one asked for.</param>
+/// <param name="Last">The last sync that ended, whatever its outcome; null while none did. A failed one
+/// says why in its error. A sync on its way is not one yet: while running, this is the one before.</param>
+/// <param name="LastSucceededAt">When the last sync that recorded a library ended: how fresh the
+/// library is. A sync whose outcome is nothing_visible is not one. Null while none did.</param>
+public sealed record SyncStateResponse(bool Running, SyncRunResponse? Last, DateTimeOffset? LastSucceededAt)
+{
+    public static SyncStateResponse From(SyncState state) =>
+        new(state.Running, state.Last is { } last ? SyncRunResponse.From(last) : null, state.LastSucceededAt);
+}
+
+/// <summary>Counted over the same games as the library, those flagged as missing included. What needs a
+/// history (a year, a streak) is not here.</summary>
+/// <param name="Games">The games, each once however many entries it is owned through.</param>
+/// <param name="Launched">The games a store says were played: some playtime, or a last session.</param>
+/// <param name="NeverLaunched">The others: no store says they were ever played.</param>
+/// <param name="Missing">The games every entry of which is flagged as missing.</param>
+/// <param name="PlaytimeSeconds">The total played; null while no store said.</param>
+/// <param name="RecentPlaytimeSeconds">What was played lately, each store over its own window (Steam:
+/// the last two weeks), from the readings younger than that window; null while none said.</param>
+/// <param name="RecentlyPlayed">The games with some recent playtime.</param>
+/// <param name="TrackingSince">The date of the earliest reading that listed one of the games: the
+/// library's history starts there. Null while no reading listed any.</param>
+public sealed record LibraryStatsResponse(
+    int Games,
+    int Launched,
+    int NeverLaunched,
+    int Missing,
+    long? PlaytimeSeconds,
+    long? RecentPlaytimeSeconds,
+    int RecentlyPlayed,
+    DateTimeOffset? TrackingSince)
+{
+    public static LibraryStatsResponse From(LibraryStats stats) =>
+        new(
+            stats.Games,
+            stats.Launched,
+            stats.NeverLaunched,
+            stats.Missing,
+            Seconds.Of(stats.Playtime),
+            Seconds.Of(stats.RecentPlaytime),
+            stats.RecentlyPlayed,
+            stats.TrackingSince);
 }
 
 /// <param name="Id">The sync.</param>

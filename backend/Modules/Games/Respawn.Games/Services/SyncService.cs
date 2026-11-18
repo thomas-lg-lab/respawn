@@ -49,6 +49,14 @@ public sealed class SyncService(
         }
     }
 
+    public async Task<IReadOnlyDictionary<Guid, SyncState>> GetStatesAsync(IReadOnlyCollection<LinkedAccount> accounts, CancellationToken ct)
+    {
+        var latest = await runs.FindLatestAsync([.. accounts.Select(account => account.Id)], ct);
+        return latest.ToDictionary(
+            pair => pair.Key,
+            pair => new SyncState(gate.IsRunning(pair.Key), pair.Value.Last, pair.Value.LastSucceeded?.FinishedAt));
+    }
+
     public async Task<IReadOnlyList<Guid>> GetDueAsync(CancellationToken ct)
     {
         var now = clock.GetUtcNow();

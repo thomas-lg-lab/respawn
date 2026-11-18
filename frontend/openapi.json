@@ -298,12 +298,43 @@
         }
       }
     },
+    "/api/v1/library/stats": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The signed-in account's library in figures",
+        "description": "The totals the stores give, over the same games as the library. Steam gives totals and no history: what was played in a year or a week is counted from the daily readings, from tracking_since on, and is not here.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/linked-accounts": {
       "get": {
         "tags": [
           "LinkedAccounts"
         ],
-        "summary": "The store accounts linked to the signed-in account",
+        "summary": "The store accounts linked to the signed-in account, and where the reading of each stands",
         "responses": {
           "200": {
             "description": "OK",
@@ -872,6 +903,62 @@
           }
         }
       },
+      "LibraryStatsResponse": {
+        "required": [
+          "games",
+          "launched",
+          "never_launched",
+          "missing",
+          "playtime_seconds",
+          "recent_playtime_seconds",
+          "recently_played",
+          "tracking_since"
+        ],
+        "type": "object",
+        "properties": {
+          "games": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "launched": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "never_launched": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missing": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "recent_playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "recently_played": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tracking_since": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "LinkedAccountResponse": {
         "required": [
           "id",
@@ -879,7 +966,8 @@
           "external_id",
           "display_name",
           "linked_at",
-          "has_own_key"
+          "has_own_key",
+          "sync"
         ],
         "type": "object",
         "properties": {
@@ -905,6 +993,9 @@
           },
           "has_own_key": {
             "type": "boolean"
+          },
+          "sync": {
+            "$ref": "#/components/schemas/SyncStateResponse"
           }
         }
       },
@@ -1066,6 +1157,36 @@
           },
           "own_key": {
             "type": "boolean"
+          }
+        }
+      },
+      "SyncStateResponse": {
+        "required": [
+          "running",
+          "last",
+          "last_succeeded_at"
+        ],
+        "type": "object",
+        "properties": {
+          "running": {
+            "type": "boolean"
+          },
+          "last": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SyncRunResponse"
+              }
+            ]
+          },
+          "last_succeeded_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

@@ -53,6 +53,22 @@ public sealed record SyncRun(
     Guid? SnapshotId = null,
     bool OwnCredential = false);
 
+/// <summary>Where the sync of one linked account stands, as its owner's screen tells it.</summary>
+/// <param name="Running">It is being read right now, by the schedule or at its owner's request.</param>
+/// <param name="Last">The last run that ended, whatever its outcome (the latest started first); null
+/// while none did. A run on its way is not one yet: while <paramref name="Running"/>, this is the one
+/// before.</param>
+/// <param name="LastSucceededAt">When the last run that recorded a library ended: how fresh the library
+/// is. A run that saw nothing (<see cref="SyncOutcome.NothingVisible"/>) is not one. Null while none did.</param>
+public sealed record SyncState(bool Running, SyncRun? Last, DateTimeOffset? LastSucceededAt)
+{
+    /// <summary>An account never read, and not being read.</summary>
+    public static readonly SyncState Never = new(false, null, null);
+}
+
+/// <summary>The last run of a linked account, and the last one that succeeded; null while there is none.</summary>
+public sealed record LatestRuns(SyncRun? Last, SyncRun? LastSucceeded);
+
 /// <summary>The rhythm of the sync.</summary>
 public static class SyncSchedule
 {
@@ -98,6 +114,15 @@ public sealed class SyncGate
         lock (_running)
         {
             _running.Remove(linkedAccountId);
+        }
+    }
+
+    /// <summary>Whether a sync of that account is on its way in this process.</summary>
+    public bool IsRunning(Guid linkedAccountId)
+    {
+        lock (_running)
+        {
+            return _running.Contains(linkedAccountId);
         }
     }
 

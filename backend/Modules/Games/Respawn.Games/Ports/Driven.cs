@@ -44,6 +44,10 @@ public interface ISyncRunStore
 
     /// <summary>The run of a linked account that started last, if it ever had one.</summary>
     Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct);
+
+    /// <summary>The last run and the last one that succeeded, the latest started first, of each of these
+    /// linked accounts, in one reading. An account that is not there any more is left out.</summary>
+    Task<IReadOnlyDictionary<Guid, LatestRuns>> FindLatestAsync(IReadOnlyCollection<Guid> linkedAccountIds, CancellationToken ct);
 }
 
 public interface ICatalogue
@@ -88,6 +92,11 @@ public interface ILibrarySource
 {
     /// <summary>The store it reads, as linked accounts name it (<see cref="LinkedAccount.Source"/>).</summary>
     string Source { get; }
+
+    /// <summary>The window the store counts recent playtime over (<see cref="OwnedItem.RecentPlaytime"/>;
+    /// Steam: two weeks). Once a reading is older than that, nothing of what it said was played lately
+    /// is recent any more.</summary>
+    TimeSpan RecentWindow { get; }
 
     /// <summary>Reads the library of one account of the store, by the id the store gives that account.
     /// A library the store does not show (a profile made private) is a reading that lists nothing,

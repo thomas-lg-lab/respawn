@@ -19,11 +19,16 @@ public sealed class LinkedAccountsController(ILibraryService library, ISyncServi
 {
     [HttpGet]
     [Authorize]
-    [EndpointSummary("The store accounts linked to the signed-in account")]
+    [EndpointSummary("The store accounts linked to the signed-in account, and where the reading of each stands")]
     [ProducesResponseType<LinkedAccountsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
-    public async Task<LinkedAccountsResponse> List(CancellationToken ct) =>
-        new([.. (await library.GetLinkedAccountsAsync(Caller.Id(User), ct)).Select(LinkedAccountResponse.From)]);
+    public async Task<LinkedAccountsResponse> List(CancellationToken ct)
+    {
+        var accounts = await library.GetLinkedAccountsAsync(Caller.Id(User), ct);
+        var states = await sync.GetStatesAsync(accounts, ct);
+        // Unlinked between the two reads: answered as never read, as it now is.
+        return new([.. accounts.Select(account => LinkedAccountResponse.From(account, states.GetValueOrDefault(account.Id) ?? SyncState.Never))]);
+    }
 
     [HttpDelete("{id:guid}")]
     [Authorize]

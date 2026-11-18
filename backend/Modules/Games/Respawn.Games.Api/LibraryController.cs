@@ -41,6 +41,18 @@ public sealed class LibraryController(ILibraryService library) : ControllerBase
         var page = await library.GetLibraryAsync(Caller.Id(User), Sorts.Parse(sort), offset, limit, ct);
         return new LibraryResponse(page.Total, offset, limit, [.. page.Games.Select(LibraryGameResponse.From)]);
     }
+
+    [HttpGet("library/stats")]
+    [Authorize]
+    [EndpointSummary("The signed-in account's library in figures")]
+    [EndpointDescription(
+        "The totals the stores give, over the same games as the library. Steam gives totals and no history: "
+        + "what was played in a year or a week is counted from the daily readings, from tracking_since on, "
+        + "and is not here.")]
+    [ProducesResponseType<LibraryStatsResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    public async Task<LibraryStatsResponse> Stats(CancellationToken ct) =>
+        LibraryStatsResponse.From(await library.GetStatsAsync(Caller.Id(User), ct));
 }
 
 /// <summary>The orders of a library, as the API spells them.</summary>

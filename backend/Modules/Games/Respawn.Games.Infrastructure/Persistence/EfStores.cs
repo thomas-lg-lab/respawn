@@ -118,9 +118,40 @@ internal sealed class EfSyncRunStore(GamesDbContext db) : ISyncRunStore
     public async Task<IReadOnlyList<SyncRun>> ListSinceAsync(DateTimeOffset since, CancellationToken ct) =>
         [.. (await db.SyncRuns.AsNoTracking().Where(r => r.StartedAt >= since).ToListAsync(ct)).Select(ToRun)];
 
-    public async Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) =>
-        await db.SyncRuns.AsNoTracking()
-            .Where(r => r.LinkedAccountId == linkedAccountId)
+    public Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) =>
+        LatestAsync(db.SyncRuns.Where(r => r.LinkedAccountId == linkedAccountId), ct);
+
+    public async Task<IReadOnlyDictionary<Guid, LatestRuns>> FindLatestAsync(IReadOnlyCollection<Guid> linkedAccountIds, CancellationToken ct)
+    {
+        // One query; each account's two runs come from an index, however many runs it has.
+        Guid[] ids = [.. linkedAccountIds];
+        var succeeded = SyncWords.Of(SyncOutcome.Succeeded);
+        var latest = await db.LinkedAccounts.AsNoTracking()
+            .Where(account => ids.Contains(account.Id))
+            .Select(account => new
+            {
+                account.Id,
+                Last = db.SyncRuns
+                    .Where(r => r.LinkedAccountId == account.Id)
+                    .OrderByDescending(r => r.StartedAt)
+                    .ThenByDescending(r => r.Id)
+                    .FirstOrDefault(),
+                LastSucceeded = db.SyncRuns
+                    .Where(r => r.LinkedAccountId == account.Id && r.Outcome == succeeded)
+                    .OrderByDescending(r => r.StartedAt)
+                    .ThenByDescending(r => r.Id)
+                    .FirstOrDefault(),
+            })
+            .ToListAsync(ct);
+        return latest.ToDictionary(
+            runs => runs.Id,
+            runs => new LatestRuns(
+                runs.Last is { } last ? ToRun(last) : null,
+                runs.LastSucceeded is { } success ? ToRun(success) : null));
+    }
+
+    private static async Task<SyncRun?> LatestAsync(IQueryable<SyncRunRow> runs, CancellationToken ct) =>
+        await runs.AsNoTracking()
             .OrderByDescending(r => r.StartedAt)
             .ThenByDescending(r => r.Id)
             .FirstOrDefaultAsync(ct) is { } row

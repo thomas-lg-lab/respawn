@@ -619,6 +619,76 @@ public sealed class SyncTests
         Assert.Equal(
             ["error", "finished_at", "id", "linked_account_id", "outcome", "own_key", "started_at", "trigger"],
             run.EnumerateObject().Select(property => property.Name).Order());
+
+        // Where each linked account's sync stands, with the list of them.
+        var schemas = document.GetProperty("components").GetProperty("schemas");
+        Assert.True(schemas.GetProperty("LinkedAccountResponse").GetProperty("properties").TryGetProperty("sync", out _));
+        Assert.Equal(
+            ["last", "last_succeeded_at", "running"],
+            schemas.GetProperty("SyncStateResponse").GetProperty("properties").EnumerateObject().Select(property => property.Name).Order());
+    }
+
+    [Fact]
+    public async Task A_linked_account_says_where_its_sync_stands()
+    {
+        var (steam, clock) = (new FakeSteam { Body = Library((620, "Portal 2", 90)) }, new TestClock());
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        // Never read.
+        Assert.Equal((false, null, null, null, null), await SyncStateAsync(browser));
+
+        // Being read: the schedule's reading is seen while Steam has not answered.
+        var (reached, release) = (new TaskCompletionSource(), new TaskCompletionSource());
+        steam.Before = () =>
+        {
+            reached.TrySetResult();
+            return release.Task;
+        };
+        var turn = TurnAsync(app);
+        await reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal((true, null, null, null, null), await SyncStateAsync(browser));
+        release.SetResult();
+        Assert.Equal(1, await turn);
+        steam.Before = null;
+
+        // Read: the run, and how fresh the library is.
+        var read = clock.Now;
+        Assert.Equal((false, "scheduled", "succeeded", null, read), await SyncStateAsync(browser));
+
+        // Steam away: the last run says why, and the library is as fresh as it was.
+        steam.Unreachable = true;
+        clock.Advance(TimeSpan.FromMinutes(2));
+        await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
+        Assert.Equal((false, "manual", "failed", "unavailable", read), await SyncStateAsync(browser));
+
+        // Nothing visible is not a success either.
+        steam.Unreachable = false;
+        steam.Body = Library();
+        clock.Advance(TimeSpan.FromMinutes(2));
+        await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
+        Assert.Equal((false, "manual", "nothing_visible", null, read), await SyncStateAsync(browser));
+
+        // Read again.
+        steam.Body = Library((620, "Portal 2", 150));
+        clock.Advance(TimeSpan.FromMinutes(2));
+        await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
+        Assert.Equal((false, "manual", "succeeded", null, clock.Now), await SyncStateAsync(browser));
+    }
+
+    private static async Task<(bool Running, string? Trigger, string? Outcome, string? Error, DateTimeOffset? LastSucceededAt)> SyncStateAsync(HttpClient browser)
+    {
+        var account = Assert.Single((await browser.GetAsync("/api/v1/linked-accounts").JsonAsync()).GetProperty("accounts").EnumerateArray());
+        var sync = account.GetProperty("sync");
+        string? Text(JsonElement element, string name) => element.GetProperty(name).GetString();
+        var last = sync.GetProperty("last");
+        return (
+            sync.GetProperty("running").GetBoolean(),
+            last.ValueKind == JsonValueKind.Null ? null : Text(last, "trigger"),
+            last.ValueKind == JsonValueKind.Null ? null : Text(last, "outcome"),
+            last.ValueKind == JsonValueKind.Null ? null : Text(last, "error"),
+            sync.GetProperty("last_succeeded_at") is { ValueKind: JsonValueKind.String } at ? at.GetDateTimeOffset() : null);
     }
 
     private static Task<TestApp> StartAsync(FakeSteam steam, TestClock clock, Dictionary<string, string?>? settings = null) =>
@@ -711,12 +781,17 @@ public sealed class SyncTests
             Task.FromResult<IReadOnlyList<SyncRun>>([]);
 
         public Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) => Task.FromResult<SyncRun?>(null);
+
+        public Task<IReadOnlyDictionary<Guid, LatestRuns>> FindLatestAsync(IReadOnlyCollection<Guid> linkedAccountIds, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, LatestRuns>>(linkedAccountIds.ToDictionary(id => id, _ => new LatestRuns(null, null)));
     }
 
     /// <summary>A connector to a store that is not Steam, answering what a test makes it say.</summary>
     private sealed class OtherStore : ILibrarySource
     {
         public string Source => "other";
+
+        public TimeSpan RecentWindow => TimeSpan.FromDays(14);
 
         public Func<Task<LibraryReading>> Answer { get; set; } = () => throw new InvalidOperationException("no answer was set");
 
