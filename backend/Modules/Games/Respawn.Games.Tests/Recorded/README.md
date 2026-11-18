@@ -2,9 +2,10 @@
 
 What the sources answer, played back by the tests in place of the sources: no test calls one.
 
-A file holds an answer in the source's own shape, byte for byte what a connector would receive, with the
-data made anonymous: nobody's library, account id or key. The games are a few well-known ones, and the
-figures are made up.
+A file holds an answer in the source's own shape, as a connector would receive it, with the data made
+anonymous: nobody's library, account id or key. The games are a few well-known ones, and the figures are
+made up. The files here are written by hand in that shape, not captured from the source: they prove what a
+connector makes of such an answer, not that the source still answers this way.
 
 | File | Source's call | Says |
 | --- | --- | --- |

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using Respawn.Games.Ports;
 
@@ -29,6 +30,13 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
 
     public static readonly Uri Api = new("https://api.steampowered.com/");
 
+    /// <summary>How long Steam has to answer, body included.</summary>
+    public static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
+
+    /// <summary>Steam answers in UTF-8, whatever the answer's headers say; bytes that are not UTF-8 are
+    /// refused rather than replaced.</summary>
+    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
     public string Source => "steam";
 
     public async Task<LibraryReading> ReadLibraryAsync(string externalId, CancellationToken ct)
@@ -41,6 +49,12 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
 
         var key = options().Resolve()
             ?? throw new SourceException(SourceError.NotConfigured, "the instance has no Steam Web API key");
+        if (!SteamOptions.IsKey(key))
+        {
+            // Never sent anywhere, and never quoted.
+            throw new SourceException(
+                SourceError.NotConfigured, "what the instance was given as its Steam Web API key is not one: a key is letters and digits");
+        }
 
         // Everything the account owns: the games' names, the free games it played or added to its
         // library, and the games Steam leaves out of its own lists by default.
@@ -50,29 +64,71 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
                 + "&include_free_sub=true&skip_unvetted_apps=false&format=json");
         request.Headers.Add(KeyHeader, key);
 
-        string body;
+        byte[] bytes;
         DateTimeOffset takenAt;
+        using var patience = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        patience.CancelAfter(Patience);
         try
         {
             using var client = http.CreateClient(HttpClientName);
-            using var answer = await client.SendAsync(request, ct);
+            using var answer = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, patience.Token);
             takenAt = clock.GetUtcNow();
             if (answer.StatusCode != HttpStatusCode.OK)
             {
                 throw Refusal(answer.StatusCode);
             }
 
-            body = await answer.Content.ReadAsStringAsync(ct);
+            bytes = await BodyAsync(answer, patience.Token);
         }
-        catch (Exception ex) when (ex is HttpRequestException or IOException
-            || (ex is OperationCanceledException && !ct.IsCancellationRequested))
+        catch (Exception ex) when (!ct.IsCancellationRequested
+            && ex is HttpRequestException or IOException or OperationCanceledException)
         {
-            // No connection, an answer cut short or too large, or the client's timeout.
+            // No connection, an answer cut short, or Steam taking too long. A caller that gave up is
+            // not a failure of Steam: its cancellation goes through as it is.
             throw new SourceException(SourceError.Unavailable, "Steam did not answer", ex);
+        }
+
+        string body;
+        try
+        {
+            body = Utf8.GetString(bytes);
+        }
+        catch (DecoderFallbackException ex)
+        {
+            throw new SourceException(SourceError.Unreadable, "Steam's answer is not text", ex);
         }
 
         var (items, complete) = Games(body);
         return new LibraryReading(Kind, takenAt, body, items, complete);
+    }
+
+    /// <summary>The bytes of an answer, read here rather than by the client: an answer too large is
+    /// refused as unreadable, and the charset its headers name is never trusted.</summary>
+    private static async Task<byte[]> BodyAsync(HttpResponseMessage answer, CancellationToken ct)
+    {
+        if (answer.Content.Headers.ContentLength > MaxAnswerBytes)
+        {
+            throw TooLarge();
+        }
+
+        await using var stream = await answer.Content.ReadAsStreamAsync(ct);
+        using var kept = new MemoryStream();
+        var buffer = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+        {
+            if (kept.Length + read > MaxAnswerBytes)
+            {
+                throw TooLarge();
+            }
+
+            kept.Write(buffer, 0, read);
+        }
+
+        return kept.ToArray();
+
+        static SourceException TooLarge() =>
+            new(SourceError.Unreadable, $"Steam's answer is larger than {MaxAnswerBytes / (1024 * 1024)} MB");
     }
 
     private static SourceException Refusal(HttpStatusCode status)
@@ -120,7 +176,9 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
                     Minutes(game, "playtime_2weeks")));
             }
 
-            // The whole library when Steam's own count agrees with what it listed.
+            // Steam's own count agrees with what it listed: nothing was lost on the way. That Steam
+            // itself listed everything it knows cannot be checked from here; this is the most a
+            // connector can say, and the core decides what a game left out becomes.
             var complete = response.TryGetProperty("game_count", out var count)
                 && count.TryGetInt32(out var said)
                 && said == items.Count;
@@ -133,6 +191,10 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
         }
     }
 
+    /// <summary>A playtime, when Steam gives one. A negative figure is no playtime: it is taken as not
+    /// said, so that one game Steam counts wrong does not cost the whole library.</summary>
     private static TimeSpan? Minutes(JsonElement game, string field) =>
-        game.TryGetProperty(field, out var minutes) ? TimeSpan.FromMinutes(minutes.GetInt64()) : null;
+        game.TryGetProperty(field, out var said) && said.GetInt64() is >= 0 and var minutes
+            ? TimeSpan.FromMinutes(minutes)
+            : null;
 }

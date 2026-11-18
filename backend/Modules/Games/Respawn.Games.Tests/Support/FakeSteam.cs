@@ -20,6 +20,12 @@ internal sealed class FakeSteam
     /// <summary>What Steam answers next.</summary>
     public string Body { get; set; } = Recorded("owned-games.json");
 
+    /// <summary>When set, the answer's bytes, in place of <see cref="Body"/>.</summary>
+    public byte[]? Bytes { get; set; }
+
+    /// <summary>What the answer says it is.</summary>
+    public string ContentType { get; set; } = "application/json; charset=utf-8";
+
     public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
 
     /// <summary>When set, Steam never answers in time: the client's timeout fires.</summary>
@@ -67,10 +73,9 @@ internal sealed class FakeSteam
                 throw new HttpRequestException("No such host is known.");
             }
 
-            return Task.FromResult(new HttpResponseMessage(steam.Status)
-            {
-                Content = new StringContent(steam.Body, Encoding.UTF8, "application/json"),
-            });
+            var content = new ByteArrayContent(steam.Bytes ?? Encoding.UTF8.GetBytes(steam.Body));
+            content.Headers.TryAddWithoutValidation("Content-Type", steam.ContentType);
+            return Task.FromResult(new HttpResponseMessage(steam.Status) { Content = content });
         }
     }
 }

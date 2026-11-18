@@ -121,6 +121,15 @@ public sealed class ArchitectureTests
         Allowed(Composition, ["Npgsql", "Microsoft.EntityFrameworkCore", "Sodium", "Microsoft.IdentityModel"]);
 
     [Fact]
+    public void Every_project_the_host_brings_is_one_these_rules_know()
+    {
+        // A project added to the host and not listed here would be checked by nothing: a connector
+        // that reads the database, for one.
+        string[] known = [.. Modules.SelectMany(module => module.Assemblies).Append(Kernel).Append(Persistence).Select(assembly => assembly.GetName().Name!)];
+        Assert.Empty(References(Composition).Except(known));
+    }
+
+    [Fact]
     public void The_database_connection_knows_no_module_and_not_how_it_is_served() =>
         Allowed(Persistence, [.. ModuleNames, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore", Host]);
 

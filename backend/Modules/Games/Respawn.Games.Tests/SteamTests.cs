@@ -45,8 +45,9 @@ public sealed class SteamTests
     [Fact]
     public async Task Steam_is_asked_for_the_whole_library_with_the_key_in_a_header()
     {
+        // Everything the HTTP client can log, which the app's own settings keep to warnings.
         var steam = new FakeSteam();
-        await using var app = await steam.StartAppAsync();
+        await using var app = await steam.StartAppAsync(new() { ["Logging:LogLevel:System.Net.Http.HttpClient"] = "Trace" });
 
         await Source(app).ReadLibraryAsync(SteamId, default);
 
@@ -59,7 +60,72 @@ public sealed class SteamTests
         // The key is in the header Steam reads it from, never in the address, and never in the log.
         Assert.Equal(FakeSteam.Key, key);
         Assert.DoesNotContain(FakeSteam.Key, address.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("GetOwnedGames", app.Logs.Text, StringComparison.Ordinal);
+        Assert.Contains("x-webapi-key", app.Logs.Text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(FakeSteam.Key, app.Logs.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(SteamId, app.Logs.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_answer_that_sends_elsewhere_is_not_followed()
+    {
+        // The fake stands in for this transport, so the setting is read on the real one: followed, a
+        // redirect would carry the key's header along.
+        using var transport = Steam.DependencyInjection.Transport();
+
+        Assert.False(transport.AllowAutoRedirect);
+    }
+
+    [Fact]
+    public async Task What_steam_counts_wrong_or_names_oddly_does_not_cost_the_library()
+    {
+        // A negative playtime is not said; a name keeps no control character, which the database refuses.
+        var steam = new FakeSteam
+        {
+            Body = """{"response":{"game_count":2,"games":[{"appid":620,"name":"Por\u0000tal\u0009 2","playtime_forever":-5,"playtime_2weeks":-1},{"appid":400,"name":"Portal","playtime_forever":30}]}}""",
+        };
+        await using var app = await steam.StartAppAsync();
+        using var browser = app.Browser();
+        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
+        var account = await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default));
+
+        var reading = await Source(app).ReadLibraryAsync(SteamId, default);
+        await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, default));
+
+        Assert.Equal((null, null), (reading.Items[0].Playtime, reading.Items[0].RecentPlaytime));
+        var games = (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("games");
+        Assert.Equal(["Portal", "Portal 2"], games.EnumerateArray().Select(game => game.GetProperty("name").GetString()));
+    }
+
+    [Fact]
+    public async Task The_answer_is_read_as_utf_8_whatever_it_says_it_is()
+    {
+        var steam = new FakeSteam
+        {
+            ContentType = "application/json; charset=bogus-8",
+            Body = """{"response":{"game_count":1,"games":[{"appid":620,"name":"Pokémon ポータル"}]}}""",
+        };
+        await using var app = await steam.StartAppAsync();
+
+        var reading = await Source(app).ReadLibraryAsync(SteamId, default);
+        Assert.Equal("Pokémon ポータル", Assert.Single(reading.Items).Name);
+        Assert.Equal(steam.Body, reading.Payload);
+
+        // Bytes that are not UTF-8 are refused, not replaced: the payload is kept as it came.
+        steam.Bytes = [0x7B, 0xFF, 0xFE, 0x7D];
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        Assert.Equal(SourceError.Unreadable, refusal.Error);
+    }
+
+    [Fact]
+    public async Task An_answer_too_large_is_not_worth_another_try()
+    {
+        var steam = new FakeSteam { Bytes = new byte[(16 * 1024 * 1024) + 1] };
+        await using var app = await steam.StartAppAsync();
+
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+
+        Assert.Equal(SourceError.Unreadable, refusal.Error);
     }
 
     [Fact]
@@ -123,6 +189,22 @@ public sealed class SteamTests
         Assert.Empty(steam.Requests);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\0")]
+    public async Task A_key_file_setting_that_names_no_file_is_no_key(string file)
+    {
+        // An empty line in a compose file: the instance's setting, never taken for a wrong account id.
+        var steam = new FakeSteam();
+        await using var app = await steam.StartAppAsync(new() { ["RESPAWN_STEAM_API_KEY"] = null, ["RESPAWN_STEAM_API_KEY_FILE"] = file });
+
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+
+        Assert.Equal(SourceError.NotConfigured, refusal.Error);
+        Assert.Empty(steam.Requests);
+    }
+
     [Fact]
     public async Task The_key_is_read_from_a_file_again_at_each_reading()
     {
@@ -140,10 +222,12 @@ public sealed class SteamTests
 
             Assert.Equal(["FIRSTKEY00000000000000000000000A", "SECONDKEY0000000000000000000000B"], steam.Requests.Select(request => request.Key));
 
-            // What cannot be a key is not sent anywhere.
+            // What cannot be a key is not sent anywhere, and is said without being quoted.
             await File.WriteAllTextAsync(file, "not a key\r\nx-other: header");
             var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
             Assert.Equal(SourceError.NotConfigured, refusal.Error);
+            Assert.Contains("is not one", refusal.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("x-other", refusal.ToString(), StringComparison.Ordinal);
             Assert.Equal(2, steam.Requests.Count);
         }
         finally
@@ -240,7 +324,7 @@ public sealed class SteamTests
     [Fact]
     public async Task The_app_starts_and_answers_with_no_steam_key()
     {
-        // The runtime rule: nothing is required to start, and no secret is read before it is needed.
+        // The runtime rule: nothing is required to start. The connector is there, and has asked for nothing.
         await using var app = TestApp.Offline();
         using var browser = app.Browser();
 

@@ -19,11 +19,14 @@ public static class DependencyInjection
             .AddHttpClient(SteamLibrarySource.HttpClientName, client =>
             {
                 client.BaseAddress = SteamLibrarySource.Api;
-                client.Timeout = TimeSpan.FromSeconds(30);
-                client.MaxResponseContentBufferSize = SteamLibrarySource.MaxAnswerBytes;
+                // The connector counts the time itself, the body included, and its size too.
+                client.Timeout = Timeout.InfiniteTimeSpan;
             })
-            // The key travels in a header: an answer that sends elsewhere is not followed with it.
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+            .ConfigurePrimaryHttpMessageHandler(Transport);
         return services;
     }
+
+    /// <summary>How Steam is reached. The key travels in a header: an answer that sends elsewhere is
+    /// not followed with it.</summary>
+    internal static SocketsHttpHandler Transport() => new() { AllowAutoRedirect = false };
 }
