@@ -1,5 +1,8 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -132,9 +135,9 @@ public sealed class SyncTests
 
         // Pressed again at once: Steam is not asked again.
         clock.Advance(TimeSpan.FromSeconds(30));
-        Assert.Equal(
-            (HttpStatusCode.TooManyRequests, "too_many_requests"),
-            await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).RefusalAsync());
+        var tooSoon = await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
+        Assert.Equal("60", tooSoon.Headers.RetryAfter?.ToString());
+        Assert.Equal((HttpStatusCode.TooManyRequests, "too_many_requests"), await Task.FromResult(tooSoon).RefusalAsync());
         Assert.Single(steam.Requests);
 
         // A minute later it is.
@@ -316,34 +319,181 @@ public sealed class SyncTests
     }
 
     [Fact]
-    public async Task Only_two_days_in_a_row_tell_that_a_game_is_gone()
+    public async Task A_game_steam_no_longer_lists_is_flagged_and_never_taken_out()
     {
         var (steam, clock) = (new FakeSteam { Body = Library((620, "Portal 2", 90), (400, "Portal", 30)) }, new TestClock());
         await using var app = await StartAsync(steam, clock);
         using var browser = app.Browser();
         var account = await LinkAsync(app, browser);
         Assert.Equal(1, await TurnAsync(app));
+        Assert.Null(await MissingSinceAsync(browser, "Portal"));
 
-        // Steam now answers without Portal, in an answer that agrees with itself. Asked for twice
-        // by hand: nothing leaves the library.
+        // Steam now answers without Portal, in an answer that agrees with itself: refunded, or cut
+        // short. Day after day, and asked for by hand: the game stays, flagged since the first.
         steam.Body = Library((620, "Portal 2", 90));
-        for (var press = 0; press < 2; press++)
+        clock.NextDay();
+        var first = clock.Now;
+        Assert.Equal(1, await TurnAsync(app));
+        for (var day = 0; day < 3; day++)
         {
-            clock.Advance(TimeSpan.FromMinutes(2));
-            Assert.Equal(HttpStatusCode.OK, await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).StatusAsync());
+            clock.NextDay();
+            Assert.Equal(1, await TurnAsync(app));
         }
 
+        clock.Advance(TimeSpan.FromMinutes(2));
+        Assert.Equal(HttpStatusCode.OK, await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).StatusAsync());
         Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
+        Assert.Equal(first, await MissingSinceAsync(browser, "Portal"));
+        Assert.Null(await MissingSinceAsync(browser, "Portal 2"));
 
-        // The next day's reading says the same: still there, once is not enough.
+        // Listed again: the flag goes.
+        steam.Body = Library((620, "Portal 2", 90), (400, "Portal", 30));
         clock.NextDay();
         Assert.Equal(1, await TurnAsync(app));
-        Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
+        Assert.Null(await MissingSinceAsync(browser, "Portal"));
+    }
 
-        // And the day after: gone.
-        clock.NextDay();
+    [Fact]
+    public async Task A_sync_started_goes_on_when_its_request_is_given_up()
+    {
+        var (steam, clock) = (new FakeSteam { Body = Library((620, "Portal 2", 90)) }, new TestClock());
+        // Steam is slow, and the visitor leaves the page while it is asked: the connection is cut,
+        // as the server sees it, once Steam has been reached.
+        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var answers = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cut = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        steam.Before = () =>
+        {
+            reached.TrySetResult();
+            return answers.Task;
+        };
+        await using var app = await steam.StartAppAsync(null, services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.AddSingleton<IStartupFilter>(new CutConnection(reached.Task, cut));
+        });
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        using var leaving = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/linked-accounts/{account}/sync");
+        leaving.Headers.Add(CutConnection.Header, "1");
+        var request = browser.SendAsync(leaving);
+        // The request's own cancellation fired on the server, and the reading did not stop for it.
+        Assert.True(await cut.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+
+        // The reading is still on its way: asking again does not start another.
+        Assert.Equal(
+            (HttpStatusCode.Conflict, "sync_in_progress"),
+            await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).RefusalAsync());
+
+        // Steam answers at last: the library is recorded and the run kept, with nobody waiting.
+        answers.SetResult();
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        for (var wait = 0; wait < 100 && !await db.SyncRuns.AnyAsync(); wait++)
+        {
+            await Task.Delay(50);
+        }
+
+        var run = await db.SyncRuns.AsNoTracking().SingleAsync();
+        Assert.Equal(("manual", "succeeded"), (run.Trigger, run.Outcome));
+        Assert.Equal([("Portal 2", 5400L)], await PlaytimesAsync(browser));
+
+        // And giving up is no way around the pause: Steam was asked once.
+        Assert.Equal(
+            (HttpStatusCode.TooManyRequests, "too_many_requests"),
+            await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).RefusalAsync());
+        Assert.Single(steam.Requests);
+
+        // The visitor who left got no answer.
+        await Assert.ThrowsAnyAsync<Exception>(() => request);
+    }
+
+    [Fact]
+    public async Task A_reading_whose_run_cannot_be_kept_leaves_nothing_and_is_not_made_again_at_every_turn()
+    {
+        var (steam, clock) = (new FakeSteam(), new TestClock());
+        await using var app = await steam.StartAppAsync(null, services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.AddScoped<ISyncRunStore, FailingRuns>();
+        });
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        // Steam answers, the library is recorded, and the run cannot be written: all of it is undone.
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Contains("did not end", app.Logs.Text, StringComparison.Ordinal);
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        Assert.Equal((0, 0, 0), (await db.RawSnapshots.CountAsync(), await db.Ownerships.CountAsync(), await db.Observations.CountAsync()));
+
+        // The account is still due, and Steam is not asked again at every turn for that: an hour later.
+        Assert.Equal([account], await DueAsync(app));
+        clock.Advance(TimeSpan.FromMinutes(5));
+        Assert.Equal(0, await TurnAsync(app));
+        clock.Advance(TimeSpan.FromMinutes(50));
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Single(steam.Requests);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(2, steam.Requests.Count);
+    }
+
+    [Fact]
+    public async Task An_answer_the_catalogue_refuses_is_a_failed_sync_kept_once()
+    {
+        var (store, clock) = (new OtherStore(), new TestClock());
+        await using var app = await TestApp.StartAsync(null, services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.AddSingleton<ILibrarySource>(store);
+        });
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser, "player-1", source: store.Source);
+        // A connector gone wrong: a playtime below zero.
+        store.Answer = () => Task.FromResult(new LibraryReading(
+            "library", clock.Now, "{}", [new OwnedItem("1", "A game", TimeSpan.FromMinutes(-5), null)], Complete: true));
+
         Assert.Equal(1, await TurnAsync(app));
-        Assert.Equal(["Portal 2"], await NamesAsync(browser));
+        clock.Advance(TimeSpan.FromHours(3));
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(1, store.Asked);
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        var run = await db.SyncRuns.AsNoTracking().SingleAsync();
+        Assert.Equal((account, "failed", "unreadable", null), (run.LinkedAccountId, run.Outcome, run.Error, run.SnapshotId));
+        Assert.StartsWith("the reading could not be recorded", run.Detail, StringComparison.Ordinal);
+        Assert.Equal(0, await db.RawSnapshots.CountAsync());
+    }
+
+    [Fact]
+    public async Task An_account_unlinked_while_it_is_read_keeps_nothing()
+    {
+        var (store, clock) = (new OtherStore(), new TestClock());
+        await using var app = await TestApp.StartAsync(null, services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.AddSingleton<ILibrarySource>(store);
+        });
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser, "player-1", source: store.Source);
+        store.Answer = async () =>
+        {
+            // Its owner unlinks it while the store is answering.
+            Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/linked-accounts/{account}").StatusAsync());
+            return new LibraryReading("library", clock.Now, "{}", [new OwnedItem("1", "A game", TimeSpan.FromMinutes(5), null)], Complete: true);
+        };
+
+        Assert.Equal(0, await TurnAsync(app));
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        Assert.Equal(
+            (0, 0, 0, 0),
+            (await db.SyncRuns.CountAsync(), await db.RawSnapshots.CountAsync(), await db.Ownerships.CountAsync(), await db.LinkedAccounts.CountAsync()));
+        Assert.DoesNotContain("did not end", app.Logs.Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -388,7 +538,7 @@ public sealed class SyncTests
         var document = await browser.GetAsync("/api/v1/openapi.json").JsonAsync();
 
         var sync = document.GetProperty("paths").GetProperty("/api/v1/linked-accounts/{id}/sync").GetProperty("post").GetProperty("responses");
-        Assert.Equal(["200", "401", "404", "409", "429"], sync.EnumerateObject().Select(response => response.Name).Order());
+        Assert.Equal(["200", "401", "403", "404", "409", "429"], sync.EnumerateObject().Select(response => response.Name).Order());
         var run = document.GetProperty("components").GetProperty("schemas").GetProperty("SyncRunResponse").GetProperty("properties");
         Assert.Equal(
             ["error", "finished_at", "id", "linked_account_id", "outcome", "started_at", "trigger"],
@@ -410,11 +560,12 @@ public sealed class SyncTests
         });
 
     /// <summary>An account of the instance, signed in, with a Steam account linked to it.</summary>
-    private static async Task<Guid> LinkAsync(TestApp app, HttpClient browser, string steamId = SteamId, string email = "first@example.org")
+    private static async Task<Guid> LinkAsync(
+        TestApp app, HttpClient browser, string steamId = SteamId, string email = "first@example.org", string source = "steam")
     {
         var owner = (await browser.RegisterAsync(email).JsonAsync()).GetProperty("id").GetGuid();
         await using var scope = app.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, "steam", steamId, null, default)).Id;
+        return (await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, source, steamId, null, default)).Id;
     }
 
     private static void OpenRegistration() =>
@@ -438,4 +589,67 @@ public sealed class SyncTests
 
     private static async Task<(string Name, long Seconds)[]> PlaytimesAsync(HttpClient browser) =>
         [.. (await LibraryAsync(browser)).Select(game => (game.GetProperty("name").GetString()!, game.GetProperty("playtime_seconds").GetInt64()))];
+
+    /// <summary>Since when a game's entry is flagged as missing; null when it is not.</summary>
+    private static async Task<DateTimeOffset?> MissingSinceAsync(HttpClient browser, string name)
+    {
+        var game = Assert.Single(await LibraryAsync(browser), game => game.GetProperty("name").GetString() == name);
+        return game.GetProperty("entries")[0].GetProperty("missing_since") is { ValueKind: JsonValueKind.String } since
+            ? since.GetDateTimeOffset()
+            : null;
+    }
+
+    /// <summary>Cuts the connection of a request that carries its header, once a moment has come:
+    /// what the server sees when a visitor leaves. It says whether the request's own cancellation
+    /// fired, and lets the rest of the pipeline go on.</summary>
+    private sealed class CutConnection(Task when, TaskCompletionSource<bool> cut) : IStartupFilter
+    {
+        public const string Header = "X-Test-Cut-Connection";
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => builder =>
+        {
+            builder.Use(async (context, following) =>
+            {
+                if (!context.Request.Headers.ContainsKey(Header))
+                {
+                    await following(context);
+                    return;
+                }
+
+                var rest = following(context);
+                await when;
+                context.Abort();
+                cut.TrySetResult(context.RequestAborted.IsCancellationRequested);
+                await rest;
+            });
+            next(builder);
+        };
+    }
+
+    /// <summary>The runs cannot be written, and none was ever kept.</summary>
+    private sealed class FailingRuns : ISyncRunStore
+    {
+        public Task AddAsync(SyncRun run, CancellationToken ct) => throw new InvalidOperationException("the run cannot be written");
+
+        public Task<IReadOnlyList<SyncRun>> ListSinceAsync(DateTimeOffset since, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<SyncRun>>([]);
+
+        public Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) => Task.FromResult<SyncRun?>(null);
+    }
+
+    /// <summary>A connector to a store that is not Steam, answering what a test makes it say.</summary>
+    private sealed class OtherStore : ILibrarySource
+    {
+        public string Source => "other";
+
+        public Func<Task<LibraryReading>> Answer { get; set; } = () => throw new InvalidOperationException("no answer was set");
+
+        public int Asked { get; private set; }
+
+        public Task<LibraryReading> ReadLibraryAsync(string externalId, string? credential, CancellationToken ct)
+        {
+            Asked++;
+            return Answer();
+        }
+    }
 }

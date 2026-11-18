@@ -42,6 +42,9 @@ public sealed record LibraryGameResponse(
 /// <param name="LastPlayedAt">Null when the store does not say, or the game was never launched.</param>
 /// <param name="FirstSeenAt">The date of the earliest answer of the store that listed it.</param>
 /// <param name="AsOf">The date of the latest answer of the store that listed it: how fresh the rest is.</param>
+/// <param name="MissingSince">The date of the earliest complete answer of the store that left it out, when
+/// none has listed it since: a refund, a share that ended, a free weekend over, or an answer cut short.
+/// The game stays in the library; null while the store lists it.</param>
 public sealed record LibraryEntryResponse(
     Guid StoreEntryId,
     Guid LinkedAccountId,
@@ -51,7 +54,8 @@ public sealed record LibraryEntryResponse(
     long? RecentPlaytimeSeconds,
     DateTimeOffset? LastPlayedAt,
     DateTimeOffset FirstSeenAt,
-    DateTimeOffset AsOf)
+    DateTimeOffset AsOf,
+    DateTimeOffset? MissingSince)
 {
     public static LibraryEntryResponse From(OwnedEntry entry) =>
         new(
@@ -63,7 +67,8 @@ public sealed record LibraryEntryResponse(
             Seconds.Of(entry.RecentPlaytime),
             entry.LastPlayedAt,
             entry.FirstSeenAt,
-            entry.AsOf);
+            entry.AsOf,
+            entry.MissingSince);
 }
 
 /// <param name="Accounts">The store accounts linked to the signed-in account, the earliest link first.</param>

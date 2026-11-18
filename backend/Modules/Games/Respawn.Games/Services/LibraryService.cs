@@ -58,7 +58,7 @@ public sealed class LibraryService(
             },
             ct);
 
-    public Task<Guid> RecordLibraryAsync(Guid linkedAccountId, LibraryReading reading, bool daily, CancellationToken ct)
+    public Task<Guid> RecordLibraryAsync(Guid linkedAccountId, LibraryReading reading, CancellationToken ct)
     {
         CheckLength(reading.Kind, Limits.SnapshotKind, nameof(reading));
         if (reading.Payload is null || reading.Items is null)
@@ -146,29 +146,18 @@ public sealed class LibraryService(
                     await catalogue.RenameAsync(renames, ct);
                 }
 
-                if (complete && daily)
+                if (complete)
                 {
-                    // The whole library, and these are not in it, unless something more recent already
-                    // says otherwise. Once is noted; twice, on two readings of the day, is gone.
+                    // The whole library, and these are not in it: noted, since the earliest reading
+                    // that says so, unless something more recent lists them. Nothing is concluded:
+                    // the answer may be cut short and still agree with itself, so the games stay.
                     var listed = items.Select(item => entries[item.ExternalId]).ToHashSet();
-                    foreach (var absent in before.Values
-                        .Where(absent => !listed.Contains(absent.StoreEntryId) && absent.UnlistedSince is null && absent.AsOf <= takenAt))
-                    {
-                        if (absent.MissingSince is not { } first)
-                        {
-                            owned.Add(absent with { MissingSince = takenAt });
-                        }
-                        else if (first != takenAt)
-                        {
-                            // Gone since the earlier of the two, whichever was recorded first.
-                            owned.Add(absent with
-                            {
-                                UnlistedSince = first < takenAt ? first : takenAt,
-                                MissingSince = null,
-                                RecentPlaytime = null,
-                            });
-                        }
-                    }
+                    owned.AddRange(before.Values
+                        .Where(absent => !listed.Contains(absent.StoreEntryId)
+                            && absent.UnlistedSince is null
+                            && absent.AsOf <= takenAt
+                            && (absent.MissingSince is null || absent.MissingSince > takenAt))
+                        .Select(absent => absent with { MissingSince = takenAt, RecentPlaytime = null }));
                 }
 
                 await library.RecordAsync(account.Id, snapshot.Id, said, owned, ct);
@@ -269,9 +258,9 @@ public sealed class LibraryService(
     /// may be poorer than the one before (a profile made private, a store having a bad day): what it
     /// does not say is kept, and a playtime of zero is taken as not said when one is known. A playtime
     /// that goes down without reaching zero is the store correcting itself, and is taken. Listing a
-    /// game brings it back into the library, and it is no longer missing, unless a complete reading
-    /// more recent than this one has already left it out: a reading that arrives late does not undo
-    /// what is known since.</summary>
+    /// game brings it back into the library, and it is no longer missing, unless it left the library,
+    /// or a complete reading left it out, more recently than this one: a reading that arrives late
+    /// does not undo what is known since.</summary>
     private static Ownership Updated(Ownership? current, OwnedItem item, Guid entry, DateTimeOffset takenAt, Guid snapshot)
     {
         var silent = item.Playtime is null || (item.Playtime == TimeSpan.Zero && current?.Playtime > TimeSpan.Zero);
@@ -285,7 +274,7 @@ public sealed class LibraryService(
             firstSeen,
             takenAt,
             snapshot,
-            goneSince is null ? item.RecentPlaytime : null,
+            goneSince is null && missingSince is null ? item.RecentPlaytime : null,
             goneSince,
             missingSince);
     }

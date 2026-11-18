@@ -5,7 +5,8 @@ public interface IUnitOfWork
     /// <summary>Runs the work in one transaction, committed when it returns and rolled back when it
     /// throws. Writes to the catalogue run one at a time until the transaction ends, so two libraries
     /// recorded together cannot both add the same game. The work may run again from the start when the
-    /// connection is lost on the way: it must only touch the database.</summary>
+    /// connection is lost on the way: it must only touch the database. Called from inside another
+    /// run, the work joins that transaction.</summary>
     Task<T> RunAsync<T>(Func<Task<T>> work, CancellationToken ct);
 }
 
@@ -77,7 +78,7 @@ public interface ILibraryStore
         CancellationToken ct);
 
     /// <summary>Every way the owner owns a game today, in no order: the ownerships of their linked
-    /// accounts, without those a complete reading left out since.</summary>
+    /// accounts, those noted as missing included, without those that left the library.</summary>
     Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
 }
 

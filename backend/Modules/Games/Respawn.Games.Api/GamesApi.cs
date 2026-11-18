@@ -43,6 +43,13 @@ internal sealed class GamesRefusalsAttribute : ExceptionFilterAttribute
     {
         if (context.Exception is GamesException refusal)
         {
+            if (refusal.Error == GamesError.SyncTooSoon)
+            {
+                // The longest the wait can be; a client that counts shorter is refused again.
+                context.HttpContext.Response.Headers.RetryAfter =
+                    ((int)SyncSchedule.ManualPause.TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
             context.Result = GamesApi.Refusal(refusal.Error);
             context.ExceptionHandled = true;
         }

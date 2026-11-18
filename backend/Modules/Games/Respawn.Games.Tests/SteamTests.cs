@@ -90,7 +90,7 @@ public sealed class SteamTests
         var account = await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default));
 
         var reading = await Source(app).ReadLibraryAsync(SteamId, null, default);
-        await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, daily: true, default));
+        await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, default));
 
         Assert.Equal((null, null), (reading.Items[0].Playtime, reading.Items[0].RecentPlaytime));
         var games = (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("games");
@@ -163,7 +163,7 @@ public sealed class SteamTests
         var account = await UseAsync(app, library => library.LinkAccountAsync(owner, Source(app).Source, SteamId, "player", default));
 
         var reading = await Source(app).ReadLibraryAsync(account.ExternalId, null, default);
-        await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, daily: true, default));
+        await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, default));
 
         var games = (await browser.GetAsync("/api/v1/library?sort=playtime").JsonAsync()).GetProperty("games");
         Assert.Equal(

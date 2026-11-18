@@ -10,6 +10,12 @@ internal sealed class EfUnitOfWork(GamesDbContext db) : IUnitOfWork
     private const long CatalogueLock = 7306;
 
     public Task<T> RunAsync<T>(Func<Task<T>> work, CancellationToken ct) =>
+        // Inside another run already: its transaction, its lock, and its retries.
+        db.Database.CurrentTransaction is not null
+            ? work()
+            : RunInTransactionAsync(work, ct);
+
+    private Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, CancellationToken ct) =>
         // The context retries on a lost connection (GamesDbContext.Configure), which EF only allows for a
         // transaction when the whole of it can be run again: hence the delegate.
         db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
@@ -321,6 +327,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 ownership.LastPlayedAt,
                 ownership.FirstSeenAt,
                 ownership.AsOf,
+                ownership.MissingSince,
             })
             .ToListAsync(ct);
         return [.. rows.Select(row => new OwnedEntry(
@@ -334,7 +341,8 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             Playtime(row.RecentPlaytimeSeconds),
             row.LastPlayedAt,
             row.FirstSeenAt,
-            row.AsOf))];
+            row.AsOf,
+            row.MissingSince))];
     }
 
     private static long? Seconds(TimeSpan? playtime) => playtime is { } value ? (long)value.TotalSeconds : null;

@@ -28,7 +28,8 @@ public enum SyncOutcome
     Failed,
 }
 
-/// <summary>One sync of one linked account, once it has ended.</summary>
+/// <summary>One sync of one linked account, once it has ended. Kept in the same transaction as what
+/// it recorded: a reading is never there without its run.</summary>
 /// <param name="Id">The run.</param>
 /// <param name="LinkedAccountId">The store account that was read.</param>
 /// <param name="Trigger">Why it ran.</param>
@@ -72,11 +73,14 @@ public static class SyncSchedule
     }
 }
 
-/// <summary>The syncs on their way, in this process: a linked account is read by one at a time. One
-/// for the whole app, which runs as one replica.</summary>
+/// <summary>The syncs on their way, in this process, and when the last ones started: a linked account
+/// is read by one at a time, and not again at once when a sync left no run behind (a request given up,
+/// a run that could not be kept). One for the whole app, which runs as one replica; a restart forgets
+/// it, and the runs kept in the database still say most of it.</summary>
 public sealed class SyncGate
 {
     private readonly HashSet<Guid> _running = [];
+    private readonly Dictionary<(Guid, SyncTrigger), DateTimeOffset> _started = [];
 
     public bool TryEnter(Guid linkedAccountId)
     {
@@ -91,6 +95,23 @@ public sealed class SyncGate
         lock (_running)
         {
             _running.Remove(linkedAccountId);
+        }
+    }
+
+    /// <summary>When a sync of that account last started for that reason, since the app started.</summary>
+    public DateTimeOffset? StartedAt(Guid linkedAccountId, SyncTrigger trigger)
+    {
+        lock (_running)
+        {
+            return _started.TryGetValue((linkedAccountId, trigger), out var at) ? at : null;
+        }
+    }
+
+    public void Started(Guid linkedAccountId, SyncTrigger trigger, DateTimeOffset at)
+    {
+        lock (_running)
+        {
+            _started[(linkedAccountId, trigger)] = at;
         }
     }
 }

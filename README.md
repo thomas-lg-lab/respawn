@@ -163,9 +163,9 @@ part of the API.
 | `GET /api/v1/me` | The signed-in account |
 | `GET /api/v1/linked-accounts` | The store accounts linked to the signed-in account, the earliest link first |
 | `GET /api/v1/linked-accounts/steam/link` | Links a Steam account. A navigation from the app's pages, not a call: the browser is sent to Steam, then comes back on `return_to` (a path of the app, the home by default) with the outcome in the `steam_link` parameter: `linked`, `linked_elsewhere`, `failed` or `unavailable` |
-| `POST /api/v1/linked-accounts/{id}/sync` | Reads a linked account's library from its store now, and answers with the sync once it has ended: its `outcome` (`succeeded`, `nothing_visible`, `failed`) and, when it failed, its `error` (`not_configured`, `refused`, `unavailable`, `unreadable`). A store that cannot be read is not an error of the request. Once a minute per linked account |
+| `POST /api/v1/linked-accounts/{id}/sync` | Reads a linked account's library from its store now, and answers with the sync once it has ended: its `outcome` (`succeeded`, `nothing_visible`, `failed`) and, when it failed, its `error` (`not_configured`, `refused`, `unavailable`, `unreadable`). A store that cannot be read is not an error of the request. Once a minute per linked account (429 with `Retry-After`); 409 `sync_in_progress` while that account is being read |
 | `DELETE /api/v1/linked-accounts/{id}` | Unlinks a store account and forgets everything that was read from it |
-| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through and the playtime each store counts; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
+| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 
 Errors always have the same shape, whatever answered:
 
@@ -199,10 +199,14 @@ was played, and when) is the difference between two of them: a day that was not 
   answer that cannot be read) waits for the next day, or for `POST /api/v1/linked-accounts/{id}/sync`.
 - **A profile that shows nothing** (Steam: "game details" set to private) is its own outcome,
   `nothing_visible`, not a success: the library is left as it was.
-- **A game leaves a library** only when the daily readings of two days in a row both leave it out; it is then
-  gone since the first. One answer may be cut short and still agree with itself, so one is never enough, and
-  a reading asked for by hand never counts, however many times it is asked.
-- Every sync is kept with its outcome. Unlinking an account forgets its syncs with the rest.
+- **No sync takes a game out of a library.** A game the store no longer lists (a refund, a share that
+  ended, a free weekend over, or an answer cut short that still agrees with itself: the store does not say
+  which) stays, flagged: `missing_since` on its entry in `GET /api/v1/library`, the date of the first full
+  answer that left it out. The flag goes when the store lists the game again. Taking it out is its owner's
+  decision, which no route takes yet.
+- Every sync is kept with its outcome, in the same transaction as what it recorded. Unlinking an account
+  forgets its syncs with the rest.
+- A sync asked for through the API goes on to its end when the request is given up.
 
 The schedule lives in the app's process, which is one more reason the app runs as one replica.
 

@@ -128,12 +128,12 @@ public sealed class OwnershipRow
     /// <summary>What was played lately, as that latest snapshot said it; never carried over.</summary>
     public long? RecentPlaytimeSeconds { get; set; }
 
-    /// <summary>The date of the complete snapshot that first left it out, once a second one confirmed
-    /// it; null while it is in the library. The row and its history stay.</summary>
+    /// <summary>The date from which it is out of the library, which its owner decides and no snapshot
+    /// does; null while it is in it. The row and its history stay.</summary>
     public DateTimeOffset? UnlistedSince { get; set; }
 
-    /// <summary>The date of a complete snapshot of the day that left it out, while no other has
-    /// confirmed it; the game is still in the library.</summary>
+    /// <summary>The date of the earliest complete snapshot that left it out, while none has listed it
+    /// since; the game is still in the library, flagged.</summary>
     public DateTimeOffset? MissingSince { get; set; }
 }
 

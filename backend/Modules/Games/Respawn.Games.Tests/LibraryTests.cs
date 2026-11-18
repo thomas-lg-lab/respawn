@@ -50,7 +50,7 @@ public sealed class LibraryTests
         Assert.Equal(["total", "offset", "limit", "games"], Fields("LibraryResponse"));
         Assert.Equal(["gameid", "name", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "entries"], Fields("LibraryGameResponse"));
         Assert.Equal(
-            ["storeentryid", "linkedaccountid", "source", "externalid", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "firstseenat", "asof"],
+            ["storeentryid", "linkedaccountid", "source", "externalid", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "firstseenat", "asof", "missingsince"],
             Fields("LibraryEntryResponse"));
 
         // And how to ask for a part of it, in an order.
@@ -89,7 +89,7 @@ public sealed class LibraryTests
     }
 
     [Fact]
-    public async Task A_game_a_complete_reading_leaves_out_is_gone_until_it_is_listed_again()
+    public async Task A_game_a_complete_reading_leaves_out_is_flagged_and_stays_until_its_owner_says()
     {
         await using var app = await TestApp.StartAsync();
         using var browser = app.Browser();
@@ -105,95 +105,83 @@ public sealed class LibraryTests
         var empty = await ReadAsync(app, account.Id, Day(3), complete: true);
         Assert.Equal(["Half-Life", "Portal", "Portal 2"], await NamesAsync(browser));
 
-        // A complete one without Portal: refunded, or an answer cut short that agrees with itself.
-        // Once is only noted: the game stays.
+        // A complete one without Portal: refunded, or an answer cut short that still agrees with
+        // itself. Nothing here can tell which: the game stays, flagged as missing since that reading.
         await ReadAsync(app, account.Id, Day(4), complete: true, ("620", "Portal 2", 90, null), ("70", "Half-Life", 0, null));
         Assert.Equal(["Half-Life", "Portal", "Portal 2"], await NamesAsync(browser));
-
-        // Asked for by hand a minute later, and the same answer: that is not another day's reading.
-        await AskedAsync(app, account.Id, Day(4).AddMinutes(1), ("620", "Portal 2", 90, null), ("70", "Half-Life", 0, null));
-        Assert.Equal(["Half-Life", "Portal", "Portal 2"], await NamesAsync(browser));
-
-        // The next day's reading leaves it out too. It leaves the library, gone since the first
-        // reading that said so; what was known of it stays.
-        await ReadAsync(app, account.Id, Day(5), complete: true, ("620", "Portal 2", 90, null), ("70", "Half-Life", 0, null));
-        Assert.Equal(["Half-Life", "Portal 2"], await NamesAsync(browser));
-        Assert.Equal(2, (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("total").GetInt32());
+        Assert.Equal(new DateTimeOffset?[] { null, Day(4), null }, await MissingAsync(browser));
+        Assert.Equal(3, (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("total").GetInt32());
 
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
         var portal = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).Id;
-        var gone = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
-        Assert.Equal((Day(4), 1800L, Day(1), Day(1)), (gone.UnlistedSince, gone.PlaytimeSeconds, gone.FirstSeenAt, gone.AsOf));
-        Assert.Null(gone.RecentPlaytimeSeconds);
-        Assert.Null(gone.MissingSince);
+        var missing = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
+        Assert.Equal(
+            (Day(4), null, 1800L, Day(1), Day(1)),
+            (missing.MissingSince, missing.UnlistedSince, missing.PlaytimeSeconds, missing.FirstSeenAt, missing.AsOf));
+        // What was played lately was the word of a reading that listed it: not carried over.
+        Assert.Null(missing.RecentPlaytimeSeconds);
         Assert.Equal(1, await db.Observations.CountAsync(o => o.StoreEntryId == portal));
         Assert.Equal(
-            [(Day(1), true), (Day(2), false), (Day(3), false), (Day(4), true), (Day(4).AddMinutes(1), true), (Day(5), true)],
+            [(Day(1), true), (Day(2), false), (Day(3), false), (Day(4), true)],
             (await db.RawSnapshots.AsNoTracking().OrderBy(s => s.TakenAt).ToListAsync()).Select(s => (s.TakenAt, s.Complete)).ToArray());
         Assert.Equal(Day(3), (await db.RawSnapshots.AsNoTracking().SingleAsync(s => s.Id == empty)).TakenAt);
 
-        // Still out the day after, and gone since the first reading that said so.
+        // However many readings leave it out, it stays: no reading takes a game out of a library.
+        await ReadAsync(app, account.Id, Day(5), complete: true, ("620", "Portal 2", 90, null), ("70", "Half-Life", 0, null));
         await ReadAsync(app, account.Id, Day(6), complete: true, ("620", "Portal 2", 90, null), ("70", "Half-Life", 0, null));
-        Assert.Equal(Day(4), (await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal)).UnlistedSince);
+        Assert.Equal(["Half-Life", "Portal", "Portal 2"], await NamesAsync(browser));
+        Assert.Equal(new DateTimeOffset?[] { null, Day(4), null }, await MissingAsync(browser));
 
-        // An older complete reading arriving late does not undo what is known since.
+        // An older complete reading arriving late left it out already: missing since the earliest.
         await ReadAsync(app, account.Id, Day(1).AddHours(1), complete: true, ("620", "Portal 2", 90, null));
-        Assert.Equal(["Half-Life", "Portal 2"], await NamesAsync(browser));
+        Assert.Equal(new DateTimeOffset?[] { null, Day(1).AddHours(1), null }, await MissingAsync(browser));
 
-        // Nor does a late reading from before the refund, which still listed the game: what it says is
-        // taken, the game stays out.
-        await ReadAsync(app, account.Id, Day(3).AddHours(1), complete: false, ("400", "Portal", 40, 5));
-        Assert.Equal(["Half-Life", "Portal 2"], await NamesAsync(browser));
+        // A late reading from before that, which listed it, does not undo what is known since.
+        await ReadAsync(app, account.Id, Day(1).AddMinutes(30), complete: false, ("400", "Portal", 35, 5));
         var late = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
-        Assert.Equal((Day(4), 2400L, Day(3).AddHours(1)), (late.UnlistedSince, late.PlaytimeSeconds, late.AsOf));
+        Assert.Equal((Day(1).AddHours(1), 2100L, Day(1).AddMinutes(30)), (late.MissingSince, late.PlaytimeSeconds, late.AsOf));
         Assert.Null(late.RecentPlaytimeSeconds);
 
-        // Bought again: back in the library, with its first date.
+        // Listed again: no longer missing.
         await ReadAsync(app, account.Id, Day(7), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 45, null), ("70", "Half-Life", 0, null));
-        Assert.Equal(["Half-Life", "Portal", "Portal 2"], await NamesAsync(browser));
+        Assert.Equal(new DateTimeOffset?[] { null, null, null }, await MissingAsync(browser));
         var back = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
-        Assert.Equal((null, 2700L, Day(1), Day(7)), (back.UnlistedSince, back.PlaytimeSeconds, back.FirstSeenAt, back.AsOf));
+        Assert.Equal((null, null, 2700L, Day(1), Day(7)), (back.MissingSince, back.UnlistedSince, back.PlaytimeSeconds, back.FirstSeenAt, back.AsOf));
     }
 
     [Fact]
-    public async Task A_game_is_gone_after_two_readings_of_the_day_in_a_row_and_no_other_way()
+    public async Task A_game_taken_out_of_a_library_stays_out_until_a_later_reading_lists_it()
     {
         await using var app = await TestApp.StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
-        await ReadAsync(app, account.Id, Day(1), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
-
-        // However many times its owner asks, a reading that is not the day's tells nothing.
-        await AskedAsync(app, account.Id, Day(1).AddHours(1), ("620", "Portal 2", 90, null));
-        await AskedAsync(app, account.Id, Day(2), ("620", "Portal 2", 90, null));
-        await AskedAsync(app, account.Id, Day(3), ("620", "Portal 2", 90, null));
-        Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
-
-        // Left out one day and listed the next: the first answer was cut short, and nothing of it stays.
-        await ReadAsync(app, account.Id, Day(4), complete: true, ("620", "Portal 2", 90, null));
-        await ReadAsync(app, account.Id, Day(5), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
-        await ReadAsync(app, account.Id, Day(6), complete: true, ("620", "Portal 2", 90, null));
-        Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
-
-        // A reading its owner asked for that lists it has the same effect: no longer missing.
-        await AskedAsync(app, account.Id, Day(6).AddHours(1), ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
-        await ReadAsync(app, account.Id, Day(7), complete: true, ("620", "Portal 2", 90, null));
-        Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
-
-        // A day whose reading does not vouch for being whole, or shows nothing, says nothing either
-        // way: the two that count are the complete ones around it.
-        await ReadAsync(app, account.Id, Day(8), complete: false, ("620", "Portal 2", 90, null));
-        await ReadAsync(app, account.Id, Day(9), complete: true);
-        Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
-        await ReadAsync(app, account.Id, Day(10), complete: true, ("620", "Portal 2", 90, null));
-        Assert.Equal(["Portal 2"], await NamesAsync(browser));
-
+        await ReadAsync(app, account.Id, Day(1), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, 5));
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
         var portal = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).Id;
-        var gone = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
-        Assert.Equal((Day(7), null), (gone.UnlistedSince, gone.MissingSince));
+
+        // Its owner's decision, which no route takes yet: written here as the table holds it.
+        TestDatabase.Run($"UPDATE games.ownerships SET unlisted_since = '{Day(3):O}' WHERE store_entry_id = '{portal}'");
+        Assert.Equal(["Portal 2"], await NamesAsync(browser));
+        Assert.Equal(1, (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("total").GetInt32());
+
+        // A reading from before, arriving late, does not bring it back: what it says is taken.
+        await ReadAsync(app, account.Id, Day(2), complete: false, ("400", "Portal", 40, 5));
+        Assert.Equal(["Portal 2"], await NamesAsync(browser));
+        var late = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
+        Assert.Equal((Day(3), 2400L, Day(2)), (late.UnlistedSince, late.PlaytimeSeconds, late.AsOf));
+        Assert.Null(late.RecentPlaytimeSeconds);
+
+        // A complete reading that leaves it out says nothing new of a game that is out.
+        await ReadAsync(app, account.Id, Day(4), complete: true, ("620", "Portal 2", 90, null));
+        Assert.Null((await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal)).MissingSince);
+
+        // A later one that lists it does: bought again, back with its first date.
+        await ReadAsync(app, account.Id, Day(5), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 45, null));
+        Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
+        var back = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
+        Assert.Equal((null, 2700L, Day(1), Day(5)), (back.UnlistedSince, back.PlaytimeSeconds, back.FirstSeenAt, back.AsOf));
     }
 
     [Fact]
@@ -589,34 +577,16 @@ public sealed class LibraryTests
             payload,
             [.. items.Select(item => new OwnedItem(
                 item.Id, item.Name, item.Minutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null, item.LastPlayed))]);
-        return UseAsync(app, library => library.RecordLibraryAsync(account, reading, daily: true, default));
+        return UseAsync(app, library => library.RecordLibraryAsync(account, reading, default));
     }
 
-    /// <summary>The reading of a day, which says what was played lately, and whether it is the whole
-    /// library.</summary>
+    /// <summary>A reading that says what was played lately, and whether it is the whole library.</summary>
     private static Task<Guid> ReadAsync(
         TestApp app,
         Guid account,
         DateTimeOffset takenAt,
         bool complete,
-        params (string Id, string? Name, int? Minutes, int? RecentMinutes)[] items) =>
-        ReadAsync(app, account, takenAt, complete, daily: true, items);
-
-    /// <summary>A complete reading its owner asked for: not the day's.</summary>
-    private static Task<Guid> AskedAsync(
-        TestApp app,
-        Guid account,
-        DateTimeOffset takenAt,
-        params (string Id, string? Name, int? Minutes, int? RecentMinutes)[] items) =>
-        ReadAsync(app, account, takenAt, complete: true, daily: false, items);
-
-    private static Task<Guid> ReadAsync(
-        TestApp app,
-        Guid account,
-        DateTimeOffset takenAt,
-        bool complete,
-        bool daily,
-        (string Id, string? Name, int? Minutes, int? RecentMinutes)[] items)
+        params (string Id, string? Name, int? Minutes, int? RecentMinutes)[] items)
     {
         var reading = new LibraryReading(
             "owned-games",
@@ -629,7 +599,7 @@ public sealed class LibraryTests
                 LastPlayedAt: null,
                 item.RecentMinutes is { } recent ? TimeSpan.FromMinutes(recent) : null))],
             complete);
-        return UseAsync(app, library => library.RecordLibraryAsync(account, reading, daily, default));
+        return UseAsync(app, library => library.RecordLibraryAsync(account, reading, default));
     }
 
     /// <summary>A use case, called as a connector or a scheduler will: in a scope of its own.</summary>
@@ -645,6 +615,12 @@ public sealed class LibraryTests
     /// <summary>The names in the order of the library; a game without one reads "(none)".</summary>
     private static async Task<string[]> NamesAsync(HttpClient browser) =>
         [.. (await LibraryAsync(browser)).Select(game => game.GetProperty("name").GetString() ?? "(none)")];
+
+    /// <summary>Since when each game's first entry is missing, in the order of the library.</summary>
+    private static async Task<DateTimeOffset?[]> MissingAsync(HttpClient browser) =>
+        [.. (await LibraryAsync(browser)).Select(game => game.GetProperty("entries")[0].GetProperty("missing_since") is { ValueKind: JsonValueKind.String } since
+            ? since.GetDateTimeOffset()
+            : (DateTimeOffset?)null)];
 
     /// <summary>The library as names and seconds, for the games that have both.</summary>
     private static async Task<(string Name, long Seconds)[]> PlaytimesAsync(HttpClient browser) =>

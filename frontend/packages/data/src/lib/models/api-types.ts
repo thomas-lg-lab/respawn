@@ -453,7 +453,7 @@ export interface paths {
         put?: never;
         /**
          * Read a linked account's library from its store, now
-         * @description The library is read every day without being asked; this reads it at once, and answers when it is done, which takes the time the store takes to answer. A store that cannot be read is not an error of the request: the answer is the sync with its outcome, failed, and why. What a reading asked for here leaves out is never taken as gone from the library: only the daily readings tell, two days in a row.
+         * @description The library is read every day without being asked; this reads it at once, and answers when it is done, which takes the time the store takes to answer. A store that cannot be read is not an error of the request: the answer is the sync with its outcome, failed, and why. Once started, the sync goes on to its end even when the request is given up. 409 sync_in_progress: that account is being read right now. 429 too_many_requests, with Retry-After: it was read less than a minute ago. No sync takes a game out of the library: a game the store no longer lists is flagged (missing_since on its library entry).
          */
         post: {
             parameters: {
@@ -477,6 +477,15 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -615,6 +624,8 @@ export interface components {
             first_seen_at: string;
             /** Format: date-time */
             as_of: string;
+            /** Format: date-time */
+            missing_since: null | string;
         };
         LibraryGameResponse: {
             /** Format: uuid */

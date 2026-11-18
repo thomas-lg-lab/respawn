@@ -35,29 +35,24 @@ public interface ILibraryService
     /// A reading that does not say (no playtime, no date, no name) erases nothing, and a playtime of
     /// zero does not replace a known one.
     /// A game an earlier reading listed and this one does not is left as it was, unless the reading is
-    /// the reading of the day, is complete (<see cref="LibraryReading.Complete"/>) and lists at least
-    /// one game. The first such reading only notes the game as missing; when a second one leaves it
-    /// out too, with no reading that listed it in between, the game is marked as gone since the first
-    /// and leaves the library, with what was known of it and its history kept; a later reading that
-    /// lists it brings it back. One answer may be partial and still agree with itself: it takes two,
-    /// on two days. A reading that is not the day's (its owner asked for it, twice in a minute
-    /// perhaps) never tells that a game is gone.
+    /// complete (<see cref="LibraryReading.Complete"/>) and lists at least one game: the game is then
+    /// noted as missing since that reading (<see cref="Ownership.MissingSince"/>), and stays in the
+    /// library. No reading takes a game out of a library, however many leave it out: an answer may be
+    /// cut short and still agree with itself, and a library must not empty itself on a store's bad
+    /// day. Its owner decides; a reading that lists the game again clears the note.
     /// What was played lately is the latest reading's word, or nothing: a window that moves is not
     /// carried over.
     /// A store entry takes the name its store now gives it; <see cref="ICatalogue.RenameAsync"/> says
     /// when the game follows.
     /// </summary>
-    /// <param name="linkedAccountId">The store account the library was read from.</param>
-    /// <param name="reading">What the store said.</param>
-    /// <param name="daily">True for the reading of the day, which the schedule makes once a day.</param>
-    /// <param name="ct">Gives up.</param>
     /// <exception cref="GamesException"><see cref="GamesError.UnknownLinkedAccount"/>.</exception>
     /// <exception cref="ArgumentException">The reading is dated in the future, or malformed.</exception>
     /// <remarks>Recording the same answer twice keeps it twice: totals are cumulative, so a history
     /// reads no playtime between the two.</remarks>
-    Task<Guid> RecordLibraryAsync(Guid linkedAccountId, LibraryReading reading, bool daily, CancellationToken ct);
+    Task<Guid> RecordLibraryAsync(Guid linkedAccountId, LibraryReading reading, CancellationToken ct);
 
-    /// <summary>What an owner owns today, through every store account linked to them: one item per
+    /// <summary>What an owner owns today, through every store account linked to them, the games noted
+    /// as missing included: one item per
     /// game, in the order asked, and the part of it from <paramref name="offset"/> on.</summary>
     /// <exception cref="ArgumentOutOfRangeException">A negative offset, or a limit outside 1 to
     /// <see cref="Limits.LibraryPage"/>.</exception>

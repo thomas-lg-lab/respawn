@@ -34,6 +34,10 @@ internal sealed class FakeSteam
     /// <summary>When set, Steam cannot be reached.</summary>
     public bool Unreachable { get; set; }
 
+    /// <summary>When set, awaited once a request has arrived and before it is answered: a test holds
+    /// Steam's answer back, or does something meanwhile.</summary>
+    public Func<Task>? Before { get; set; }
+
     /// <summary>The requests received, with the key each one carried in its header.</summary>
     public List<(Uri Address, string? Key)> Requests { get; } = [];
 
@@ -59,11 +63,16 @@ internal sealed class FakeSteam
 
     private sealed class Transport(FakeSteam steam) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             steam.Requests.Add((
                 request.RequestUri!,
                 request.Headers.TryGetValues(SteamLibrarySource.KeyHeader, out var keys) ? string.Join(',', keys) : null));
+
+            if (steam.Before is { } before)
+            {
+                await before().WaitAsync(cancellationToken);
+            }
 
             if (steam.TimesOut)
             {
@@ -78,7 +87,7 @@ internal sealed class FakeSteam
 
             var content = new ByteArrayContent(steam.Bytes ?? Encoding.UTF8.GetBytes(steam.Body));
             content.Headers.TryAddWithoutValidation("Content-Type", steam.ContentType);
-            return Task.FromResult(new HttpResponseMessage(steam.Status) { Content = content });
+            return new HttpResponseMessage(steam.Status) { Content = content };
         }
     }
 }

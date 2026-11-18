@@ -51,10 +51,10 @@ public sealed record StoreEntryRename(Guid Id, string Name);
 /// <param name="Payload">The answer as received.</param>
 /// <param name="Items">The games it lists.</param>
 /// <param name="Complete">True when the connector vouches that this is the whole library: the source
-/// answered in full, nothing was cut or filtered. Only such a reading can tell that a game it does not
-/// list is gone from the library, and it takes two (<see cref="Ownership"/>). A reading that lists
-/// nothing is never taken as complete, whatever this says: a profile made private answers an empty
-/// list that looks the same.</param>
+/// answered in full, nothing was cut or filtered. A game such a reading does not list is noted as
+/// missing (<see cref="Ownership"/>), and stays in the library. A reading that lists nothing is never
+/// taken as complete, whatever this says: a profile made private answers an empty list that looks the
+/// same.</param>
 public sealed record LibraryReading(
     string Kind, DateTimeOffset TakenAt, string Payload, IReadOnlyList<OwnedItem> Items, bool Complete = false);
 
@@ -91,13 +91,13 @@ public sealed record Observation(
 /// <param name="SnapshotId">That latest reading's snapshot.</param>
 /// <param name="RecentPlaytime">What was played lately, as that latest reading said it. A window that
 /// moves cannot be carried over: when the reading does not say, it is null again.</param>
-/// <param name="UnlistedSince">The date of the complete reading that first left it out (a refund, a
-/// share that ended, a free weekend over), once a second one has confirmed it; null while it is in the
-/// library. What was known of it and its history stay; a reading that lists it again brings it back.</param>
-/// <param name="MissingSince">The date of a complete reading of the day that left it out, while no
-/// other has confirmed it: the game is still in the library. One answer that agrees with itself may
-/// still be partial, so one is never enough. Null once a reading lists the game again, and once it
-/// is gone.</param>
+/// <param name="UnlistedSince">The date from which it is out of the library; null while it is in it.
+/// No reading sets it: a game leaves a library when its owner says so. What was known of it and its
+/// history stay; a later reading that lists it brings it back.</param>
+/// <param name="MissingSince">The date of the earliest complete reading that left it out, while none
+/// has listed it since (a refund, a share that ended, a free weekend over, or an answer cut short that
+/// still agrees with itself: nothing here can tell which). The game stays in the library, flagged;
+/// null once a reading lists it again.</param>
 public sealed record Ownership(
     Guid StoreEntryId,
     TimeSpan? Playtime,
@@ -122,7 +122,8 @@ public sealed record OwnedEntry(
     TimeSpan? RecentPlaytime,
     DateTimeOffset? LastPlayedAt,
     DateTimeOffset FirstSeenAt,
-    DateTimeOffset AsOf);
+    DateTimeOffset AsOf,
+    DateTimeOffset? MissingSince = null);
 
 /// <summary>A game of an owner's library, once, however many store entries it is owned through: after
 /// a merge, or with two accounts of one store, a game has several.</summary>

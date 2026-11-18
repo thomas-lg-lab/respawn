@@ -103,6 +103,11 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                 type: "uuid",
                 nullable: true);
 
+            // Written by hand: the column comes back with what it held, or the constraint below
+            // refuses every personal snapshot.
+            migrationBuilder.Sql(
+                "UPDATE games.raw_snapshots AS s SET owner_id = a.owner_id FROM games.linked_accounts AS a WHERE a.id = s.linked_account_id");
+
             migrationBuilder.AddCheckConstraint(
                 name: "ck_raw_snapshots_personal",
                 schema: "games",
