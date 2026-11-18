@@ -10,6 +10,17 @@ public interface ILibraryService
     Task<LinkedAccount> LinkAccountAsync(
         Guid ownerId, string source, string externalId, string? displayName, CancellationToken ct);
 
+    /// <summary>The store accounts linked to an owner, the earliest link first.</summary>
+    Task<IReadOnlyList<LinkedAccount>> GetLinkedAccountsAsync(Guid ownerId, CancellationToken ct);
+
+    /// <summary>Unlinks a store account from its owner, and forgets everything that was read from it:
+    /// the library it gave, its history and the source's answers. Nothing of it is kept, so nothing of
+    /// it can ever be shown to whoever links that store account next, and linking it again starts from
+    /// nothing. The games stay in the catalogue.</summary>
+    /// <exception cref="GamesException"><see cref="GamesError.UnknownLinkedAccount"/>: no such linked
+    /// account, or not this owner's; the two are not told apart.</exception>
+    Task UnlinkAccountAsync(Guid ownerId, Guid linkedAccountId, CancellationToken ct);
+
     /// <summary>
     /// Records what a store said of a linked account's library. Returns the snapshot's id.
     ///

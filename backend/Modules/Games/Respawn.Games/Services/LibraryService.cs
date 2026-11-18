@@ -40,6 +40,24 @@ public sealed class LibraryService(
             ct);
     }
 
+    public async Task<IReadOnlyList<LinkedAccount>> GetLinkedAccountsAsync(Guid ownerId, CancellationToken ct) =>
+        [.. (await linkedAccounts.ListAsync(ownerId, ct)).OrderBy(account => account.LinkedAt).ThenBy(account => account.Id)];
+
+    public Task UnlinkAccountAsync(Guid ownerId, Guid linkedAccountId, CancellationToken ct) =>
+        unitOfWork.RunAsync(
+            async () =>
+            {
+                // Under the lock a reading takes: a reading on its way ends first, or finds no account.
+                if (await linkedAccounts.FindByIdAsync(linkedAccountId, ct) is not { } account || account.OwnerId != ownerId)
+                {
+                    throw new GamesException(GamesError.UnknownLinkedAccount);
+                }
+
+                await linkedAccounts.RemoveAsync(account.Id, ct);
+                return true;
+            },
+            ct);
+
     public Task<Guid> RecordLibraryAsync(Guid linkedAccountId, LibraryReading reading, CancellationToken ct)
     {
         CheckLength(reading.Kind, Limits.SnapshotKind, nameof(reading));

@@ -18,14 +18,14 @@ Self-hosted game library: stats, backlog and next-game suggestions.
 
 **Status: early days.** Accounts and sign-in work, with the public API they need, the front's first
 screens (sign in, create an account, who am I), and the image the rest will ship in. The library has its
-tables, its rules, one route to read it and a connector that can read a Steam library; nothing links a
-Steam account or runs the connector yet, so a library stays empty and has no screen.
+tables, its rules, one route to read it and a connector that can read a Steam library, and a Steam account can be linked through the API; nothing
+runs the connector yet, so a library stays empty and has no screen.
 
 | | |
 | --- | --- |
 | Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; in the API only, sign-in through OpenID Connect providers. The front, served by the app: sign in, create an account, the account menu with its settings (language, theme, character), in French and in English |
-| In place, not in use yet | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key. Groups, the scope sharing will use: one default group every account joins |
-| Planned | Sign-in through a provider from the sign-in screen, linking a Steam account and reading its library every day, the library and stats screens, the backlog, more connectors, next-game suggestions |
+| In place, not in use yet | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key. Linking a Steam account ("Sign in through Steam", which proves the account is yours and never signs you in), the list of linked accounts, and unlinking one, which forgets everything read from it. Groups, the scope sharing will use: one default group every account joins |
+| Planned | Sign-in through a provider from the sign-in screen, reading a linked Steam library every day, the library and stats screens, the backlog, more connectors, next-game suggestions |
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
@@ -73,6 +73,7 @@ Everything is read from the environment. Nothing is required to start.
 | --- | --- | --- |
 | `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string: a URI (`postgresql://user:password@host:5432/database`) or Npgsql's `Host=...;Username=...` form |
 | `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set; its password is read again for every new connection |
+| `RESPAWN_PUBLIC_URL` | none | The address the instance is reached at, scheme and host (`https://respawn.example.org`). Set it behind a reverse proxy: linking a Steam account sends the browser to Steam, which sends it back to this address. Without it, the address of the request is used |
 | `RESPAWN_STEAM_API_KEY` | none | The instance's [Steam Web API key](https://steamcommunity.com/dev/apikey), which reads the libraries of the linked Steam accounts. Without one, no Steam library is read |
 | `RESPAWN_STEAM_API_KEY_FILE` | `/secrets/steam-api-key` | File holding the key, read when the variable is not set, and read again at each reading |
 | `RESPAWN_COOKIE_SECURE` | `true` | Session cookie sent over HTTPS only; `false` for plain HTTP on localhost |

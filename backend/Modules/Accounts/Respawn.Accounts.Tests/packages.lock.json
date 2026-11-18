@@ -40,6 +40,30 @@
         "resolved": "4.0.1",
         "contentHash": "8CoAaZkniVekR1ycJyxn+hOz+6ZQCDPcoIsIs6ujd4WyFcBMlxGNU15Qb8Uxd4iO4UmOuETb0M6vzBbwX/mfLA=="
       },
+      "AngleSharp": {
+        "type": "Transitive",
+        "resolved": "1.10.4",
+        "contentHash": "pv8cLA19oRc8UwczC1ogMeq5mTBWn8V1N12CVMfrAjykf8imNDHt82yzompriVN/Z7ededDP0Fg5ZWAtG5DB+Q=="
+      },
+      "AspNet.Security.OpenId": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "0HBhxme85NKRcN6bVGAoPffuGmXTt3ojYfZWPJvb/5i4szKbysdQYvHpFc88M2C51QwR/wEsQJ3SKzIeO1pXvg==",
+        "dependencies": {
+          "AngleSharp": "1.3.0",
+          "Microsoft.IdentityModel.Protocols": "8.14.0"
+        }
+      },
+      "AspNet.Security.OpenId.Steam": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "uZfwHLOPqerIEdnVGTzGQzZA6CSAJug2lMr3SFQWnw55mgPmywUC2/RP1QSpBbXwq4PWZGUUakaoPT+6eX8JDQ==",
+        "dependencies": {
+          "AngleSharp": "1.3.0",
+          "AspNet.Security.OpenId": "10.0.0",
+          "Microsoft.IdentityModel.Protocols": "8.14.0"
+        }
+      },
       "EFCore.NamingConventions": {
         "type": "Transitive",
         "resolved": "10.0.1",
@@ -645,6 +669,8 @@
       "respawn.games.api": {
         "type": "Project",
         "dependencies": {
+          "AngleSharp": "[1.10.4, )",
+          "AspNet.Security.OpenId.Steam": "[10.0.0, )",
           "Respawn.Games": "[1.0.0, )",
           "Respawn.SharedKernel": "[1.0.0, )"
         }

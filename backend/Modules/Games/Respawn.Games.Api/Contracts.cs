@@ -66,6 +66,20 @@ public sealed record LibraryEntryResponse(
             entry.AsOf);
 }
 
+/// <param name="Accounts">The store accounts linked to the signed-in account, the earliest link first.</param>
+public sealed record LinkedAccountsResponse(IReadOnlyList<LinkedAccountResponse> Accounts);
+
+/// <param name="Id">The link. A library entry names it as its linked_account_id.</param>
+/// <param name="Source">The store.</param>
+/// <param name="ExternalId">The account's id in that store (Steam: the SteamID).</param>
+/// <param name="DisplayName">The account's name in that store; null while the store was not asked.</param>
+/// <param name="LinkedAt">When it was linked.</param>
+public sealed record LinkedAccountResponse(Guid Id, string Source, string ExternalId, string? DisplayName, DateTimeOffset LinkedAt)
+{
+    public static LinkedAccountResponse From(LinkedAccount account) =>
+        new(account.Id, account.Source, account.ExternalId, account.DisplayName, account.LinkedAt);
+}
+
 internal static class Seconds
 {
     public static long? Of(TimeSpan? time) => time is { } said ? (long)said.TotalSeconds : null;

@@ -65,4 +65,25 @@ public sealed class HostTests
 
     private static IConfiguration Configuration(string name, string value) =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [name] = value }).Build();
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(" ", null)]
+    [InlineData("https://respawn.example.org", "https://respawn.example.org/")]
+    [InlineData("https://respawn.example.org/", "https://respawn.example.org/")]
+    [InlineData("http://localhost:8080", "http://localhost:8080/")]
+    public void The_public_address_is_a_scheme_and_a_host(string? setting, string? expected) =>
+        Assert.Equal(expected, RespawnSettings.Address(setting)?.AbsoluteUri);
+
+    [Theory]
+    [InlineData("respawn.example.org")]
+    [InlineData("ftp://respawn.example.org")]
+    [InlineData("https://respawn.example.org/app")]
+    [InlineData("https://respawn.example.org/?x=1")]
+    [InlineData("https://user:secret@respawn.example.org")]
+    public void A_public_address_with_anything_else_is_refused_without_being_quoted(string setting)
+    {
+        var refusal = Assert.Throws<FormatException>(() => RespawnSettings.Address(setting));
+        Assert.DoesNotContain("secret", refusal.Message, StringComparison.Ordinal);
+    }
 }

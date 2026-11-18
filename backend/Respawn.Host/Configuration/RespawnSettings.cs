@@ -22,6 +22,10 @@ public sealed class HttpSettings
     /// <summary>The reverse proxies whose X-Forwarded-For is trusted.</summary>
     public IReadOnlyList<IPNetwork> TrustedProxies { get; init; } = [];
 
+    /// <summary>The address the instance is reached at, scheme and host, when it is not the one the
+    /// app itself sees: behind a reverse proxy. Null when the app is reached directly.</summary>
+    public Uri? PublicUrl { get; init; }
+
     public bool IsTrustedProxy(IPAddress peer)
     {
         var address = peer.IsIPv4MappedToIPv6 ? peer.MapToIPv4() : peer;
@@ -67,7 +71,27 @@ internal static partial class RespawnSettings
             AuthPermits = permits,
             AuthWindow = window,
             TrustedProxies = Proxies(configuration["RESPAWN_TRUSTED_PROXIES"] ?? "127.0.0.1,::1"),
+            PublicUrl = Address(configuration["RESPAWN_PUBLIC_URL"]),
         };
+    }
+
+    /// <summary>RESPAWN_PUBLIC_URL: a scheme and a host, with a port when it is not the scheme's own,
+    /// and nothing after: https://respawn.example.org.</summary>
+    internal static Uri? Address(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return Uri.TryCreate(value.Trim(), UriKind.Absolute, out var address)
+            && (address.Scheme == Uri.UriSchemeHttps || address.Scheme == Uri.UriSchemeHttp)
+            && address.AbsolutePath == "/"
+            && address.Query.Length == 0
+            && address.Fragment.Length == 0
+            && address.UserInfo.Length == 0
+                ? address
+                : throw new FormatException("RESPAWN_PUBLIC_URL must be a scheme and a host, with nothing after: https://respawn.example.org");
     }
 
     /// <summary>A whole number of at least one: none of these settings means anything at zero.</summary>

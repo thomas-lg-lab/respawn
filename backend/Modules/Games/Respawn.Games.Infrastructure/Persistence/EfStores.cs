@@ -47,6 +47,21 @@ internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountSt
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<LinkedAccount>> ListAsync(Guid ownerId, CancellationToken ct) =>
+        [.. (await db.LinkedAccounts.AsNoTracking().Where(a => a.OwnerId == ownerId).ToListAsync(ct)).Select(row => ToLinkedAccount(row)!)];
+
+    public async Task RemoveAsync(Guid id, CancellationToken ct)
+    {
+        // In the order the foreign keys allow: what points to a snapshot before the snapshots, and
+        // the account last. Nothing here is deleted along with something else by the database.
+        await db.Ownerships.Where(o => o.LinkedAccountId == id).ExecuteDeleteAsync(ct);
+        await db.Observations
+            .Where(o => db.RawSnapshots.Any(s => s.Id == o.SnapshotId && s.LinkedAccountId == id))
+            .ExecuteDeleteAsync(ct);
+        await db.RawSnapshots.Where(s => s.LinkedAccountId == id).ExecuteDeleteAsync(ct);
+        await db.LinkedAccounts.Where(a => a.Id == id).ExecuteDeleteAsync(ct);
+    }
+
     private static LinkedAccount? ToLinkedAccount(LinkedAccountRow? row) =>
         row is null ? null : new LinkedAccount(row.Id, row.OwnerId, row.Source, row.ExternalId, row.DisplayName, row.LinkedAt);
 }

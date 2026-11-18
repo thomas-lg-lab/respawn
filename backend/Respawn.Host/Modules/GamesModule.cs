@@ -1,3 +1,4 @@
+using Respawn.Games.Api;
 using Respawn.Games.Infrastructure;
 using Respawn.Games.Ports;
 using Respawn.Games.Services;
@@ -14,6 +15,8 @@ internal static class GamesModule
     {
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddGamesInfrastructure();
+        services.AddSingleton(provider => new SteamLinkOptions { PublicUrl = provider.GetRequiredService<HttpSettings>().PublicUrl });
+        services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));
         return services;
     }

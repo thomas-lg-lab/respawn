@@ -14,6 +14,7 @@ namespace Respawn.Games.Api;
 [ApiController]
 [Route("api/v1")]
 [Produces("application/json")]
+[GamesRefusals]
 public sealed class LibraryController(ILibraryService library) : ControllerBase
 {
     /// <summary>The games one answer holds when the request names no limit.</summary>

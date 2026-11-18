@@ -16,6 +16,14 @@ public interface ILinkedAccountStore
     Task<LinkedAccount?> FindByIdAsync(Guid id, CancellationToken ct);
 
     Task AddAsync(LinkedAccount account, CancellationToken ct);
+
+    /// <summary>The store accounts linked to an owner, in no order.</summary>
+    Task<IReadOnlyList<LinkedAccount>> ListAsync(Guid ownerId, CancellationToken ct);
+
+    /// <summary>Removes a linked account with everything that was read from it: its ownerships, its
+    /// snapshots and what they said. The catalogue stays: a game and its store entries are the
+    /// instance's, not the owner's.</summary>
+    Task RemoveAsync(Guid id, CancellationToken ct);
 }
 
 public interface ISnapshotStore
