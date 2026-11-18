@@ -54,6 +54,13 @@ public sealed class LinkedAccountRow
     public string? DisplayName { get; set; }
 
     public DateTimeOffset LinkedAt { get; set; }
+
+    /// <summary>The owner's own access to the store (a Steam Web API key), sealed by
+    /// <see cref="Credentials.CredentialCipher"/>; null when they gave none. Never the clear text.</summary>
+    public byte[]? Credential { get; set; }
+
+    /// <summary>When the owner gave it; null when they gave none.</summary>
+    public DateTimeOffset? CredentialSetAt { get; set; }
 }
 
 /// <summary>A source's answer, untouched and dated. With a linked account when it is personal, and
@@ -164,4 +171,8 @@ public sealed class SyncRunRow
 
     /// <summary>The source's answer, when there was one.</summary>
     public Guid? SnapshotId { get; set; }
+
+    /// <summary>True when it read, or was to read, with the access the owner gave on the account
+    /// rather than the instance's.</summary>
+    public bool OwnCredential { get; set; }
 }

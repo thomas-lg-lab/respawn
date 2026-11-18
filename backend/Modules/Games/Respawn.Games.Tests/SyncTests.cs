@@ -65,7 +65,7 @@ public sealed class SyncTests
             runs.Select(run => (run.Trigger, run.Outcome, run.Error, run.SnapshotId!.Value)).ToArray());
         Assert.All(runs, run => Assert.Equal(account, run.LinkedAccountId));
 
-        // With the instance's key: nobody gives their own yet.
+        // With the instance's key: the owner gave none of their own.
         Assert.All(steam.Requests, request => Assert.Equal(FakeSteam.Key, request.Key));
     }
 
@@ -617,7 +617,7 @@ public sealed class SyncTests
         Assert.Equal(["200", "401", "403", "404", "409", "429"], sync.EnumerateObject().Select(response => response.Name).Order());
         var run = document.GetProperty("components").GetProperty("schemas").GetProperty("SyncRunResponse").GetProperty("properties");
         Assert.Equal(
-            ["error", "finished_at", "id", "linked_account_id", "outcome", "started_at", "trigger"],
+            ["error", "finished_at", "id", "linked_account_id", "outcome", "own_key", "started_at", "trigger"],
             run.EnumerateObject().Select(property => property.Name).Order());
     }
 
@@ -727,5 +727,7 @@ public sealed class SyncTests
             Asked++;
             return Answer();
         }
+
+        public bool IsCredential(string credential) => false;
     }
 }

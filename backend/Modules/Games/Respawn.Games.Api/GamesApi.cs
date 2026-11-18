@@ -7,6 +7,10 @@ namespace Respawn.Games.Api;
 
 public static class GamesApi
 {
+    /// <summary>The rate-limit policy of the routes that give or take away an owner's own key. The
+    /// host defines it.</summary>
+    public const string OwnKeyRateLimit = "games-own-key";
+
     /// <summary>What drives the Games module: its routes, the Steam link, and the schedule of the
     /// sync. The host registers <see cref="SteamLinkOptions"/>, a <see cref="TimeProvider"/> and a
     /// session other routes are authorized with, and places
@@ -30,6 +34,8 @@ public static class GamesApi
         GamesError.LinkedToAnotherAccount => Error(409, "linked_to_another_account", "This store account is linked to another account of this instance."),
         GamesError.SyncInProgress => Error(409, "sync_in_progress", "This store account is being read right now."),
         GamesError.SyncTooSoon => Error(429, "too_many_requests", "This store account was read a moment ago. Wait a minute and try again."),
+        GamesError.InvalidCredential => Error(400, "invalid_key", "This is not a key of this store."),
+        GamesError.CredentialsUnavailable => Error(503, "keys_unavailable", "This instance cannot keep a key: it has no encryption key."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };
 }

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Respawn.Games.Api;
 
 // The bodies of the public API, version 1. Property names are written in snake_case on the wire.
@@ -79,10 +81,19 @@ public sealed record LinkedAccountsResponse(IReadOnlyList<LinkedAccountResponse>
 /// <param name="ExternalId">The account's id in that store (Steam: the SteamID).</param>
 /// <param name="DisplayName">The account's name in that store; null while the store was not asked.</param>
 /// <param name="LinkedAt">When it was linked.</param>
-public sealed record LinkedAccountResponse(Guid Id, string Source, string ExternalId, string? DisplayName, DateTimeOffset LinkedAt)
+/// <param name="HasOwnKey">Whether its owner gave their own key of the store on it, which every sync then
+/// reads it with. The key itself is never answered.</param>
+public sealed record LinkedAccountResponse(Guid Id, string Source, string ExternalId, string? DisplayName, DateTimeOffset LinkedAt, bool HasOwnKey)
 {
     public static LinkedAccountResponse From(LinkedAccount account) =>
-        new(account.Id, account.Source, account.ExternalId, account.DisplayName, account.LinkedAt);
+        new(account.Id, account.Source, account.ExternalId, account.DisplayName, account.LinkedAt, account.HasCredential);
+}
+
+/// <param name="Key">The owner's own key of the store (Steam: a Steam Web API key, letters and digits).</param>
+public sealed class OwnKeyRequest
+{
+    [Required, StringLength(256)]
+    public string Key { get; init; } = "";
 }
 
 /// <param name="Id">The sync.</param>
@@ -96,6 +107,9 @@ public sealed record LinkedAccountResponse(Guid Id, string Source, string Extern
 /// <param name="Error">Why it failed, null unless it did: not_configured (the instance has no access to
 /// the store), refused (the store refused that access), unavailable (the store did not answer; trying
 /// again may work) or unreadable (the store answered something that cannot be read).</param>
+/// <param name="OwnKey">True when it read, or was to read, with the key its owner gave on the account
+/// rather than the instance's: a refused, or a not_configured (the instance can no longer read the key it
+/// kept), is then that key's. A key given is the only one tried.</param>
 public sealed record SyncRunResponse(
     Guid Id,
     Guid LinkedAccountId,
@@ -103,7 +117,8 @@ public sealed record SyncRunResponse(
     DateTimeOffset StartedAt,
     DateTimeOffset FinishedAt,
     string Outcome,
-    string? Error)
+    string? Error,
+    bool OwnKey)
 {
     public static SyncRunResponse From(SyncRun run) =>
         new(
@@ -113,7 +128,8 @@ public sealed record SyncRunResponse(
             run.StartedAt,
             run.FinishedAt,
             SyncWords.Of(run.Outcome),
-            run.Error is { } error ? SyncWords.Of(error) : null);
+            run.Error is { } error ? SyncWords.Of(error) : null,
+            run.OwnCredential);
 }
 
 /// <summary>A sync, as the API spells it.</summary>

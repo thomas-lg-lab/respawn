@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Respawn.Accounts;
+using Respawn.Games.Infrastructure.Credentials;
 using Respawn.Games.Steam;
 using Respawn.Persistence;
 
@@ -60,6 +61,12 @@ internal static partial class RespawnSettings
     {
         ApiKey = configuration["RESPAWN_STEAM_API_KEY"],
         ApiKeyFile = configuration["RESPAWN_STEAM_API_KEY_FILE"] ?? "/secrets/steam-api-key",
+    };
+
+    public static EncryptionOptions Encryption(IConfiguration configuration) => new()
+    {
+        Key = configuration["RESPAWN_ENCRYPTION_KEY"],
+        KeyFile = configuration["RESPAWN_ENCRYPTION_KEY_FILE"] ?? "/secrets/encryption-key",
     };
 
     public static HttpSettings Http(IConfiguration configuration)

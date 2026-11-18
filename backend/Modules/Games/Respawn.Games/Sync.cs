@@ -39,6 +39,8 @@ public enum SyncOutcome
 /// <param name="Error">Why it failed; null unless it did.</param>
 /// <param name="Detail">What happened, in the connector's words, when it failed. Never a secret.</param>
 /// <param name="SnapshotId">The store's answer, when there was one.</param>
+/// <param name="OwnCredential">True when the account was read, or was to be read, with the access its
+/// owner gave on it rather than the instance's: a refusal is then theirs to fix.</param>
 public sealed record SyncRun(
     Guid Id,
     Guid LinkedAccountId,
@@ -48,7 +50,8 @@ public sealed record SyncRun(
     SyncOutcome Outcome,
     SourceError? Error = null,
     string? Detail = null,
-    Guid? SnapshotId = null);
+    Guid? SnapshotId = null,
+    bool OwnCredential = false);
 
 /// <summary>The rhythm of the sync.</summary>
 public static class SyncSchedule

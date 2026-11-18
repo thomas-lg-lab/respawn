@@ -94,10 +94,14 @@ public interface ILibrarySource
     /// not a failure.</summary>
     /// <param name="externalId">The account, as the store names it.</param>
     /// <param name="credential">The owner's own access to the store (a key, a token), when they gave
-    /// one; null to read with the instance's. Nothing gives one yet: every library is read with the
-    /// instance's access.</param>
+    /// one (<see cref="ICredentialStore"/>); null to read with the instance's. One given is the only
+    /// one tried: a store that refuses it is a failure, never a reading with the instance's.</param>
     /// <param name="ct">Gives up.</param>
     /// <exception cref="SourceException">The store could not be read.</exception>
     /// <exception cref="ArgumentException">Not an account id of this store.</exception>
     Task<LibraryReading> ReadLibraryAsync(string externalId, string? credential, CancellationToken ct);
+
+    /// <summary>Whether this can be an owner's access to the store, by its shape alone: what cannot is
+    /// refused before it is kept, and never sent to the store.</summary>
+    bool IsCredential(string credential);
 }

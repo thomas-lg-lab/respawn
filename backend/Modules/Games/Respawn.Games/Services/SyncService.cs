@@ -8,6 +8,7 @@ namespace Respawn.Games.Services;
 public sealed class SyncService(
     IUnitOfWork unitOfWork,
     ILinkedAccountStore linkedAccounts,
+    ICredentialStore credentials,
     ISyncRunStore runs,
     ILibraryService library,
     IEnumerable<ILibrarySource> sources,
@@ -124,8 +125,9 @@ public sealed class SyncService(
     /// meanwhile; nothing is kept.</exception>
     private async Task<SyncRun> RunAsync(LinkedAccount account, SyncTrigger trigger, DateTimeOffset startedAt, CancellationToken ct)
     {
+        var own = false;
         SyncRun Ended(SyncOutcome outcome, SourceError? error = null, string? detail = null, Guid? snapshot = null) =>
-            new(Guid.CreateVersion7(), account.Id, trigger, startedAt, clock.GetUtcNow(), outcome, error, Cut(detail), snapshot);
+            new(Guid.CreateVersion7(), account.Id, trigger, startedAt, clock.GetUtcNow(), outcome, error, Cut(detail), snapshot, own);
 
         // The store first, outside any transaction.
         LibraryReading? reading = null;
@@ -137,8 +139,21 @@ public sealed class SyncService(
                 throw new SourceException(SourceError.NotConfigured, $"the instance has no connector for {account.Source}");
             }
 
-            // With the instance's access: nobody gives a key of their own yet.
-            reading = await source.ReadLibraryAsync(account.ExternalId, credential: null, ct);
+            // The owner's own access when they gave one, and then that one only: a refusal of it is
+            // said, never hidden behind a reading with the instance's.
+            string? credential;
+            try
+            {
+                credential = await credentials.FindAsync(account.Id, ct);
+            }
+            catch (CredentialException ex)
+            {
+                own = true;
+                throw new SourceException(SourceError.NotConfigured, "the key given on this account cannot be read: " + ex.Message, ex);
+            }
+
+            own = credential is not null;
+            reading = await source.ReadLibraryAsync(account.ExternalId, credential, ct);
         }
         catch (SourceException ex)
         {

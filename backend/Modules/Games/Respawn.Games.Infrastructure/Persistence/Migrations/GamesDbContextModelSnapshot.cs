@@ -64,6 +64,14 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<byte[]>("Credential")
+                        .HasColumnType("bytea")
+                        .HasColumnName("credential");
+
+                    b.Property<DateTimeOffset?>("CredentialSetAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("credential_set_at");
+
                     b.Property<string>("DisplayName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -324,6 +332,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("outcome");
+
+                    b.Property<bool>("OwnCredential")
+                        .HasColumnType("boolean")
+                        .HasColumnName("own_credential");
 
                     b.Property<Guid?>("SnapshotId")
                         .HasColumnType("uuid")

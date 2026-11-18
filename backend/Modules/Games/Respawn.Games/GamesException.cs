@@ -16,6 +16,12 @@ public enum GamesError
 
     /// <summary>The linked account was read a moment ago.</summary>
     SyncTooSoon,
+
+    /// <summary>What was given as a key of the store is not one, or the store takes none.</summary>
+    InvalidCredential,
+
+    /// <summary>The instance cannot keep a key: it was given no encryption key, or one it cannot use.</summary>
+    CredentialsUnavailable,
 }
 
 public sealed class GamesException(GamesError error) : Exception(error.ToString())

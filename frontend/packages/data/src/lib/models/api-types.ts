@@ -588,6 +588,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/linked-accounts/{id}/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give a linked account the owner's own key of the store
+         * @description Replaces the key the account had, if any. From then on every sync of that account reads it with this key, and only this one: a key the store refuses makes the sync fail (refused, own_key true), never a reading with the instance's key. The store is not asked here: the next sync says whether it takes the key. The key is stored encrypted and never answered. 400 invalid_key: not in the shape of the store's keys (Steam: a Steam Web API key, letters and digits). 503 keys_unavailable: this instance cannot keep a key.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["OwnKeyRequest"];
+                    "text/json": components["schemas"]["OwnKeyRequest"];
+                    "application/*+json": components["schemas"]["OwnKeyRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Take the owner's own key away from a linked account
+         * @description The account is read with the instance's key again. Removing a key that is not there changes nothing.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -656,6 +809,7 @@ export interface components {
             display_name: null | string;
             /** Format: date-time */
             linked_at: string;
+            has_own_key: boolean;
         };
         LinkedAccountsResponse: {
             accounts: components["schemas"]["LinkedAccountResponse"][];
@@ -668,6 +822,9 @@ export interface components {
             provider: string;
             id_token: string;
             nonce: string;
+        };
+        OwnKeyRequest: {
+            key: string;
         };
         ProviderResponse: {
             name: string;
@@ -691,6 +848,7 @@ export interface components {
             finished_at: string;
             outcome: string;
             error: null | string;
+            own_key: boolean;
         };
         UserResponse: {
             /** Format: uuid */

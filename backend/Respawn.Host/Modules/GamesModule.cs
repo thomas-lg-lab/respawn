@@ -1,3 +1,5 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Respawn.Games;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure;
@@ -16,12 +18,20 @@ internal static class GamesModule
     {
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ISyncService, SyncService>();
+        services.AddScoped<ICredentialService, CredentialService>();
         // The syncs on their way: one for the app, which is one replica.
         services.AddSingleton<SyncGate>();
-        services.AddGamesInfrastructure();
+        services.AddGamesInfrastructure(provider => RespawnSettings.Encryption(provider.GetRequiredService<IConfiguration>()));
         services.AddSingleton(provider => new SteamLinkOptions { PublicUrl = provider.GetRequiredService<HttpSettings>().PublicUrl });
         services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));
+
+        // Giving or taking away an owner's own key: a bucket of its own per client address, at the pace
+        // of the sign-in routes. A key is given once in a while; a client that tries many is refused.
+        services.AddOptions<RateLimiterOptions>().Configure<HttpSettings>((limiter, http) =>
+            limiter.AddPolicy(GamesApi.OwnKeyRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+                AccountsModule.ClientKey(context.Connection.RemoteIpAddress),
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = http.AuthPermits, Window = http.AuthWindow })));
         return services;
     }
 }

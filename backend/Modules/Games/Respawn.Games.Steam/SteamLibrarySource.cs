@@ -40,6 +40,8 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
 
     public string Source => "steam";
 
+    public bool IsCredential(string credential) => SteamOptions.IsKey(credential);
+
     public async Task<LibraryReading> ReadLibraryAsync(string externalId, string? credential, CancellationToken ct)
     {
         // A SteamID as Steam writes it: the 17 digits of its 64-bit form. Nothing else goes in the address.
@@ -81,7 +83,7 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
             takenAt = clock.GetUtcNow();
             if (answer.StatusCode != HttpStatusCode.OK)
             {
-                throw Refusal(answer.StatusCode);
+                throw Refusal(answer.StatusCode, own: credential is not null);
             }
 
             bytes = await BodyAsync(answer, patience.Token);
@@ -137,13 +139,15 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
             new(SourceError.Unreadable, $"Steam's answer is larger than {MaxAnswerBytes / (1024 * 1024)} MB");
     }
 
-    private static SourceException Refusal(HttpStatusCode status)
+    private static SourceException Refusal(HttpStatusCode status, bool own)
     {
         var code = (int)status;
         return status switch
         {
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
-                new SourceException(SourceError.Refused, $"Steam refused the key ({code})"),
+                new SourceException(
+                    SourceError.Refused,
+                    own ? $"Steam refused the key given on this account ({code})" : $"Steam refused the instance's key ({code})"),
             HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout or >= HttpStatusCode.InternalServerError =>
                 new SourceException(SourceError.Unavailable, $"Steam asked to come back later ({code})"),
             _ => new SourceException(SourceError.Unreadable, $"Steam answered {code}"),
