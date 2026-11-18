@@ -1,0 +1,16 @@
+@layer components {
+  /* The wait is said only once it is felt: a start that takes no time shows nothing at all,
+     rather than a word that flashes before the screen. */
+  .wait {
+    animation: wait-is-felt 0s linear 0.4s both;
+  }
+
+  @keyframes wait-is-felt {
+    from {
+      visibility: hidden;
+    }
+    to {
+      visibility: visible;
+    }
+  }
+}

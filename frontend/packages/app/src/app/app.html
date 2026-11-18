@@ -1,0 +1,10 @@
+@if (starting()) {
+  <p
+    class="wait flex min-h-dvh items-center justify-center px-4 text-muted"
+    role="status"
+    *transloco="let t"
+  >
+    {{ t('app.loading') }}
+  </p>
+}
+<router-outlet />

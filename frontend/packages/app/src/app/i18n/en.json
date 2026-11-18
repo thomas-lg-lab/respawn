@@ -1,4 +1,7 @@
 {
+  "app": {
+    "loading": "Loading…"
+  },
   "settings": {
     "language": "Language",
     "languages": {
