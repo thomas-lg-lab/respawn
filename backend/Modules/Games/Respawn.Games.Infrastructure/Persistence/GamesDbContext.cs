@@ -25,6 +25,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<OwnershipRow> Ownerships => Set<OwnershipRow>();
 
+    public DbSet<SyncRunRow> SyncRuns => Set<SyncRunRow>();
+
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
     /// migration at first connection and the design-time tools.</summary>
     public static void Configure(DbContextOptionsBuilder options, DbDataSource dataSource) =>
@@ -75,8 +77,7 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
         modelBuilder.Entity<RawSnapshotRow>(snapshot =>
         {
-            snapshot.ToTable("raw_snapshots", table => table.HasCheckConstraint(
-                "ck_raw_snapshots_personal", "(owner_id IS NULL) = (linked_account_id IS NULL)"));
+            snapshot.ToTable("raw_snapshots");
             snapshot.Property(s => s.Source).HasMaxLength(Limits.Source);
             snapshot.Property(s => s.Kind).HasMaxLength(Limits.SnapshotKind);
             snapshot.Property(s => s.Payload).HasColumnType("text");
@@ -103,6 +104,26 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             ownership.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(o => o.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
             ownership.HasOne<StoreEntryRow>().WithMany().HasForeignKey(o => o.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
             ownership.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(o => o.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SyncRunRow>(run =>
+        {
+            run.ToTable("sync_runs", table =>
+            {
+                table.HasCheckConstraint("ck_sync_runs_trigger", "trigger IN ('scheduled', 'manual')");
+                table.HasCheckConstraint("ck_sync_runs_outcome", "outcome IN ('succeeded', 'nothing_visible', 'failed')");
+                // A failure says why, and nothing else does.
+                table.HasCheckConstraint("ck_sync_runs_error", "(outcome = 'failed') = (error IS NOT NULL)");
+            });
+            run.Property(r => r.Trigger).HasMaxLength(SyncWords.MaxLength);
+            run.Property(r => r.Outcome).HasMaxLength(SyncWords.MaxLength);
+            run.Property(r => r.Error).HasMaxLength(SyncWords.MaxLength);
+            run.Property(r => r.Detail).HasMaxLength(Limits.SyncDetail);
+            // The runs of the day, of every account; and the last run of one.
+            run.HasIndex(r => r.StartedAt);
+            run.HasIndex(r => new { r.LinkedAccountId, r.StartedAt });
+            run.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(r => r.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
+            run.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(r => r.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

@@ -10,6 +10,12 @@ internal sealed class EfUnitOfWork(GamesDbContext db) : IUnitOfWork
     private const long CatalogueLock = 7306;
 
     public Task<T> RunAsync<T>(Func<Task<T>> work, CancellationToken ct) =>
+        // Inside another run already: its transaction, its lock, and its retries.
+        db.Database.CurrentTransaction is not null
+            ? work()
+            : RunInTransactionAsync(work, ct);
+
+    private Task<T> RunInTransactionAsync<T>(Func<Task<T>> work, CancellationToken ct) =>
         // The context retries on a lost connection (GamesDbContext.Configure), which EF only allows for a
         // transaction when the whole of it can be run again: hence the delegate.
         db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
@@ -50,10 +56,14 @@ internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountSt
     public async Task<IReadOnlyList<LinkedAccount>> ListAsync(Guid ownerId, CancellationToken ct) =>
         [.. (await db.LinkedAccounts.AsNoTracking().Where(a => a.OwnerId == ownerId).ToListAsync(ct)).Select(row => ToLinkedAccount(row)!)];
 
+    public async Task<IReadOnlyList<LinkedAccount>> ListAllAsync(CancellationToken ct) =>
+        [.. (await db.LinkedAccounts.AsNoTracking().ToListAsync(ct)).Select(row => ToLinkedAccount(row)!)];
+
     public async Task RemoveAsync(Guid id, CancellationToken ct)
     {
         // In the order the foreign keys allow: what points to a snapshot before the snapshots, and
         // the account last. Nothing here is deleted along with something else by the database.
+        await db.SyncRuns.Where(r => r.LinkedAccountId == id).ExecuteDeleteAsync(ct);
         await db.Ownerships.Where(o => o.LinkedAccountId == id).ExecuteDeleteAsync(ct);
         await db.Observations
             .Where(o => db.RawSnapshots.Any(s => s.Id == o.SnapshotId && s.LinkedAccountId == id))
@@ -77,13 +87,110 @@ internal sealed class EfSnapshotStore(GamesDbContext db) : ISnapshotStore
             Kind = snapshot.Kind,
             TakenAt = snapshot.TakenAt,
             RecordedAt = snapshot.RecordedAt,
-            OwnerId = snapshot.OwnerId,
             LinkedAccountId = snapshot.LinkedAccountId,
             Complete = snapshot.Complete,
             Payload = snapshot.Payload,
         });
         await db.SaveChangesAsync(ct);
     }
+}
+
+internal sealed class EfSyncRunStore(GamesDbContext db) : ISyncRunStore
+{
+    public async Task AddAsync(SyncRun run, CancellationToken ct)
+    {
+        db.SyncRuns.Add(new SyncRunRow
+        {
+            Id = run.Id,
+            LinkedAccountId = run.LinkedAccountId,
+            Trigger = SyncWords.Of(run.Trigger),
+            StartedAt = run.StartedAt,
+            FinishedAt = run.FinishedAt,
+            Outcome = SyncWords.Of(run.Outcome),
+            Error = run.Error is { } error ? SyncWords.Of(error) : null,
+            Detail = run.Detail,
+            SnapshotId = run.SnapshotId,
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<SyncRun>> ListSinceAsync(DateTimeOffset since, CancellationToken ct) =>
+        [.. (await db.SyncRuns.AsNoTracking().Where(r => r.StartedAt >= since).ToListAsync(ct)).Select(ToRun)];
+
+    public async Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) =>
+        await db.SyncRuns.AsNoTracking()
+            .Where(r => r.LinkedAccountId == linkedAccountId)
+            .OrderByDescending(r => r.StartedAt)
+            .ThenByDescending(r => r.Id)
+            .FirstOrDefaultAsync(ct) is { } row
+            ? ToRun(row)
+            : null;
+
+    private static SyncRun ToRun(SyncRunRow row) =>
+        new(
+            row.Id,
+            row.LinkedAccountId,
+            SyncWords.Trigger(row.Trigger),
+            row.StartedAt,
+            row.FinishedAt,
+            SyncWords.Outcome(row.Outcome),
+            row.Error is { } error ? SyncWords.Error(error) : null,
+            row.Detail,
+            row.SnapshotId);
+}
+
+/// <summary>The words a sync run is stored in: the table's own, which a renamed enum must not change.</summary>
+internal static class SyncWords
+{
+    public const int MaxLength = 32;
+
+    public static string Of(SyncTrigger trigger) => trigger switch
+    {
+        SyncTrigger.Scheduled => "scheduled",
+        SyncTrigger.Manual => "manual",
+        _ => throw new ArgumentOutOfRangeException(nameof(trigger), trigger, null),
+    };
+
+    public static string Of(SyncOutcome outcome) => outcome switch
+    {
+        SyncOutcome.Succeeded => "succeeded",
+        SyncOutcome.NothingVisible => "nothing_visible",
+        SyncOutcome.Failed => "failed",
+        _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null),
+    };
+
+    public static string Of(SourceError error) => error switch
+    {
+        SourceError.NotConfigured => "not_configured",
+        SourceError.Refused => "refused",
+        SourceError.Unavailable => "unavailable",
+        SourceError.Unreadable => "unreadable",
+        _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
+    };
+
+    public static SyncTrigger Trigger(string word) => word switch
+    {
+        "scheduled" => SyncTrigger.Scheduled,
+        "manual" => SyncTrigger.Manual,
+        _ => throw new InvalidOperationException($"not a sync trigger: {word}"),
+    };
+
+    public static SyncOutcome Outcome(string word) => word switch
+    {
+        "succeeded" => SyncOutcome.Succeeded,
+        "nothing_visible" => SyncOutcome.NothingVisible,
+        "failed" => SyncOutcome.Failed,
+        _ => throw new InvalidOperationException($"not a sync outcome: {word}"),
+    };
+
+    public static SourceError Error(string word) => word switch
+    {
+        "not_configured" => SourceError.NotConfigured,
+        "refused" => SourceError.Refused,
+        "unavailable" => SourceError.Unavailable,
+        "unreadable" => SourceError.Unreadable,
+        _ => throw new InvalidOperationException($"not a sync error: {word}"),
+    };
 }
 
 internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
@@ -153,7 +260,8 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 row.AsOf,
                 row.SnapshotId,
                 Playtime(row.RecentPlaytimeSeconds),
-                row.UnlistedSince));
+                row.UnlistedSince,
+                row.MissingSince));
     }
 
     public async Task RecordAsync(
@@ -192,6 +300,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             row.SnapshotId = ownership.SnapshotId;
             row.RecentPlaytimeSeconds = Seconds(ownership.RecentPlaytime);
             row.UnlistedSince = ownership.UnlistedSince;
+            row.MissingSince = ownership.MissingSince;
         }
 
         await db.SaveChangesAsync(ct);
@@ -218,6 +327,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 ownership.LastPlayedAt,
                 ownership.FirstSeenAt,
                 ownership.AsOf,
+                ownership.MissingSince,
             })
             .ToListAsync(ct);
         return [.. rows.Select(row => new OwnedEntry(
@@ -231,7 +341,8 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             Playtime(row.RecentPlaytimeSeconds),
             row.LastPlayedAt,
             row.FirstSeenAt,
-            row.AsOf))];
+            row.AsOf,
+            row.MissingSince))];
     }
 
     private static long? Seconds(TimeSpan? playtime) => playtime is { } value ? (long)value.TotalSeconds : null;

@@ -8,7 +8,8 @@ namespace Respawn.Games.Steam;
 
 /// <summary>
 /// A Steam library, read through the official Steam Web API (<c>IPlayerService/GetOwnedGames</c>) with
-/// the instance's key. Read-only: nothing is ever written to Steam.
+/// a Steam Web API key: the one handed over with the request, or the instance's. Read-only: nothing is
+/// ever written to Steam.
 ///
 /// The answer is handed over untouched, beside what it says of each game. Steam counts playtime in
 /// minutes and dates in seconds since 1970; a field it leaves out is not said, and stays null.
@@ -39,7 +40,7 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
 
     public string Source => "steam";
 
-    public async Task<LibraryReading> ReadLibraryAsync(string externalId, CancellationToken ct)
+    public async Task<LibraryReading> ReadLibraryAsync(string externalId, string? credential, CancellationToken ct)
     {
         // A SteamID as Steam writes it: the 17 digits of its 64-bit form. Nothing else goes in the address.
         if (externalId is not { Length: 17 } || !externalId.All(char.IsAsciiDigit))
@@ -47,13 +48,18 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
             throw new ArgumentException("a Steam account is named by its 17-digit SteamID", nameof(externalId));
         }
 
-        var key = options().Resolve()
+        // The owner's own key when one is handed over, the instance's otherwise.
+        var key = credential?.Trim()
+            ?? options().Resolve()
             ?? throw new SourceException(SourceError.NotConfigured, "the instance has no Steam Web API key");
         if (!SteamOptions.IsKey(key))
         {
             // Never sent anywhere, and never quoted.
             throw new SourceException(
-                SourceError.NotConfigured, "what the instance was given as its Steam Web API key is not one: a key is letters and digits");
+                SourceError.NotConfigured,
+                credential is null
+                    ? "what the instance was given as its Steam Web API key is not one: a key is letters and digits"
+                    : "what was given as a Steam Web API key is not one: a key is letters and digits");
         }
 
         // Everything the account owns: the games' names, the free games it played or added to its
@@ -137,7 +143,7 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
         return status switch
         {
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
-                new SourceException(SourceError.Refused, $"Steam refused the instance's key ({code})"),
+                new SourceException(SourceError.Refused, $"Steam refused the key ({code})"),
             HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout or >= HttpStatusCode.InternalServerError =>
                 new SourceException(SourceError.Unavailable, $"Steam asked to come back later ({code})"),
             _ => new SourceException(SourceError.Unreadable, $"Steam answered {code}"),

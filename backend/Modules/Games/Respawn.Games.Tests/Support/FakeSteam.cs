@@ -34,6 +34,10 @@ internal sealed class FakeSteam
     /// <summary>When set, Steam cannot be reached.</summary>
     public bool Unreachable { get; set; }
 
+    /// <summary>When set, awaited once a request has arrived and before it is answered: a test holds
+    /// Steam's answer back, or does something meanwhile.</summary>
+    public Func<Task>? Before { get; set; }
+
     /// <summary>The requests received, with the key each one carried in its header.</summary>
     public List<(Uri Address, string? Key)> Requests { get; } = [];
 
@@ -42,7 +46,7 @@ internal sealed class FakeSteam
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Recorded", "steam", file));
 
     /// <summary>The app with its database, given a key and reaching this Steam in memory.</summary>
-    public Task<TestApp> StartAppAsync(Dictionary<string, string?>? settings = null)
+    public Task<TestApp> StartAppAsync(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null)
     {
         var all = new Dictionary<string, string?> { ["RESPAWN_STEAM_API_KEY"] = Key };
         foreach (var (key, value) in settings ?? [])
@@ -50,17 +54,25 @@ internal sealed class FakeSteam
             all[key] = value;
         }
 
-        return TestApp.StartAsync(all, services =>
-            services.AddHttpClient(SteamLibrarySource.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new Transport(this)));
+        return TestApp.StartAsync(all, collection =>
+        {
+            collection.AddHttpClient(SteamLibrarySource.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new Transport(this));
+            services?.Invoke(collection);
+        });
     }
 
     private sealed class Transport(FakeSteam steam) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             steam.Requests.Add((
                 request.RequestUri!,
                 request.Headers.TryGetValues(SteamLibrarySource.KeyHeader, out var keys) ? string.Join(',', keys) : null));
+
+            if (steam.Before is { } before)
+            {
+                await before().WaitAsync(cancellationToken);
+            }
 
             if (steam.TimesOut)
             {
@@ -75,7 +87,7 @@ internal sealed class FakeSteam
 
             var content = new ByteArrayContent(steam.Bytes ?? Encoding.UTF8.GetBytes(steam.Body));
             content.Headers.TryAddWithoutValidation("Content-Type", steam.ContentType);
-            return Task.FromResult(new HttpResponseMessage(steam.Status) { Content = content });
+            return new HttpResponseMessage(steam.Status) { Content = content };
         }
     }
 }

@@ -3,18 +3,19 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Respawn.Games.Ports;
 using Respawn.SharedKernel;
 
 namespace Respawn.Games.Api;
 
-/// <summary>The store accounts linked to the signed-in account: which they are, linking one, and
-/// unlinking one.</summary>
+/// <summary>The store accounts linked to the signed-in account: which they are, linking one, reading
+/// one's library now, and unlinking one.</summary>
 [ApiController]
 [Route("api/v1/linked-accounts")]
 [Produces("application/json")]
 [GamesRefusals]
-public sealed class LinkedAccountsController(ILibraryService library) : ControllerBase
+public sealed class LinkedAccountsController(ILibraryService library, ISyncService sync, IHostApplicationLifetime app) : ControllerBase
 {
     [HttpGet]
     [Authorize]
@@ -37,6 +38,39 @@ public sealed class LinkedAccountsController(ILibraryService library) : Controll
     {
         await library.UnlinkAccountAsync(Caller.Id(User), id, ct);
         return NoContent();
+    }
+
+    [HttpPost("{id:guid}/sync")]
+    [Authorize]
+    [EndpointSummary("Read a linked account's library from its store, now")]
+    [EndpointDescription(
+        "The library is read every day without being asked; this reads it at once, and answers when it is "
+        + "done, which takes the time the store takes to answer. A store that cannot be read is not an error "
+        + "of the request: the answer is the sync with its outcome, failed, and why. Once started, the sync "
+        + "goes on to its end even when the request is given up. 409 sync_in_progress: that account is being "
+        + "read right now. 429 too_many_requests, with Retry-After: it was read less than a minute ago. No "
+        + "sync takes a game out of the library: a game the store no longer lists is flagged (missing_since "
+        + "on its library entry).")]
+    [ProducesResponseType<SyncRunResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<SyncRunResponse>> Sync(Guid id)
+    {
+        try
+        {
+            // Not the request's token: a visitor who leaves the page does not stop a reading on its
+            // way, and its run is kept. The app stopping does.
+            return SyncRunResponse.From(await sync.SyncNowAsync(Caller.Id(User), id, app.ApplicationStopping));
+        }
+        catch (OperationCanceledException) when (app.ApplicationStopping.IsCancellationRequested)
+        {
+            // Nothing went wrong and nothing was kept: the connection ends with the app.
+            HttpContext.Abort();
+            return new EmptyResult();
+        }
     }
 
     /// <summary>Where Steam sends the browser back. The exchange's handler answers there before any

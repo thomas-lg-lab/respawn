@@ -20,7 +20,7 @@ public sealed class SteamTests
         await using var app = await steam.StartAppAsync();
         var before = DateTimeOffset.UtcNow;
 
-        var reading = await Source(app).ReadLibraryAsync(SteamId, default);
+        var reading = await Source(app).ReadLibraryAsync(SteamId, null, default);
 
         Assert.Equal("owned-games", reading.Kind);
         Assert.InRange(reading.TakenAt, before, DateTimeOffset.UtcNow);
@@ -49,7 +49,7 @@ public sealed class SteamTests
         var steam = new FakeSteam();
         await using var app = await steam.StartAppAsync(new() { ["Logging:LogLevel:System.Net.Http.HttpClient"] = "Trace" });
 
-        await Source(app).ReadLibraryAsync(SteamId, default);
+        await Source(app).ReadLibraryAsync(SteamId, null, default);
 
         var (address, key) = Assert.Single(steam.Requests);
         Assert.Equal("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/", address.GetLeftPart(UriPartial.Path));
@@ -89,7 +89,7 @@ public sealed class SteamTests
         var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
         var account = await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default));
 
-        var reading = await Source(app).ReadLibraryAsync(SteamId, default);
+        var reading = await Source(app).ReadLibraryAsync(SteamId, null, default);
         await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, default));
 
         Assert.Equal((null, null), (reading.Items[0].Playtime, reading.Items[0].RecentPlaytime));
@@ -107,13 +107,13 @@ public sealed class SteamTests
         };
         await using var app = await steam.StartAppAsync();
 
-        var reading = await Source(app).ReadLibraryAsync(SteamId, default);
+        var reading = await Source(app).ReadLibraryAsync(SteamId, null, default);
         Assert.Equal("Pokémon ポータル", Assert.Single(reading.Items).Name);
         Assert.Equal(steam.Body, reading.Payload);
 
         // Bytes that are not UTF-8 are refused, not replaced: the payload is kept as it came.
         steam.Bytes = [0x7B, 0xFF, 0xFE, 0x7D];
-        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
         Assert.Equal(SourceError.Unreadable, refusal.Error);
     }
 
@@ -123,7 +123,7 @@ public sealed class SteamTests
         var steam = new FakeSteam { Bytes = new byte[(16 * 1024 * 1024) + 1] };
         await using var app = await steam.StartAppAsync();
 
-        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
 
         Assert.Equal(SourceError.Unreadable, refusal.Error);
     }
@@ -134,7 +134,7 @@ public sealed class SteamTests
         var steam = new FakeSteam { Body = FakeSteam.Recorded("owned-games-private.json") };
         await using var app = await steam.StartAppAsync();
 
-        var reading = await Source(app).ReadLibraryAsync(SteamId, default);
+        var reading = await Source(app).ReadLibraryAsync(SteamId, null, default);
 
         Assert.Empty(reading.Items);
         Assert.False(reading.Complete);
@@ -147,7 +147,7 @@ public sealed class SteamTests
         var steam = new FakeSteam { Body = """{"response":{"game_count":3,"games":[{"appid":620,"playtime_forever":10}]}}""" };
         await using var app = await steam.StartAppAsync();
 
-        var reading = await Source(app).ReadLibraryAsync(SteamId, default);
+        var reading = await Source(app).ReadLibraryAsync(SteamId, null, default);
 
         Assert.Equal("620", Assert.Single(reading.Items).ExternalId);
         Assert.False(reading.Complete);
@@ -162,7 +162,7 @@ public sealed class SteamTests
         var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
         var account = await UseAsync(app, library => library.LinkAccountAsync(owner, Source(app).Source, SteamId, "player", default));
 
-        var reading = await Source(app).ReadLibraryAsync(account.ExternalId, default);
+        var reading = await Source(app).ReadLibraryAsync(account.ExternalId, null, default);
         await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, default));
 
         var games = (await browser.GetAsync("/api/v1/library?sort=playtime").JsonAsync()).GetProperty("games");
@@ -177,13 +177,37 @@ public sealed class SteamTests
     }
 
     [Fact]
+    public async Task A_key_handed_over_with_the_request_is_used_in_place_of_the_instances()
+    {
+        // Nothing hands one over yet: the port has room for an owner's own key.
+        const string Own = "FEDCBA9876543210FEDCBA9876543210";
+        var steam = new FakeSteam();
+        var nowhere = Path.Combine(Path.GetTempPath(), $"respawn-no-steam-key-{Guid.NewGuid():N}");
+        await using var app = await steam.StartAppAsync();
+        await using var keyless = await steam.StartAppAsync(new() { ["RESPAWN_STEAM_API_KEY"] = null, ["RESPAWN_STEAM_API_KEY_FILE"] = nowhere });
+
+        await Source(app).ReadLibraryAsync(SteamId, null, default);
+        await Source(app).ReadLibraryAsync(SteamId, Own, default);
+        // An instance without a key of its own reads with the one it is handed.
+        await Source(keyless).ReadLibraryAsync(SteamId, Own + "\n", default);
+
+        Assert.Equal([FakeSteam.Key, Own, Own], steam.Requests.Select(request => request.Key));
+
+        // What cannot be a key is not sent anywhere, and the instance's is not used in its place.
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, "not a key\r\nx-other: header", default));
+        Assert.Equal(SourceError.NotConfigured, refusal.Error);
+        Assert.DoesNotContain("x-other", refusal.ToString(), StringComparison.Ordinal);
+        Assert.Equal(3, steam.Requests.Count);
+    }
+
+    [Fact]
     public async Task Without_a_key_steam_is_not_asked()
     {
         var steam = new FakeSteam();
         var nowhere = Path.Combine(Path.GetTempPath(), $"respawn-no-steam-key-{Guid.NewGuid():N}");
         await using var app = await steam.StartAppAsync(new() { ["RESPAWN_STEAM_API_KEY"] = null, ["RESPAWN_STEAM_API_KEY_FILE"] = nowhere });
 
-        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
 
         Assert.Equal(SourceError.NotConfigured, refusal.Error);
         Assert.Empty(steam.Requests);
@@ -199,7 +223,7 @@ public sealed class SteamTests
         var steam = new FakeSteam();
         await using var app = await steam.StartAppAsync(new() { ["RESPAWN_STEAM_API_KEY"] = null, ["RESPAWN_STEAM_API_KEY_FILE"] = file });
 
-        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
 
         Assert.Equal(SourceError.NotConfigured, refusal.Error);
         Assert.Empty(steam.Requests);
@@ -216,15 +240,15 @@ public sealed class SteamTests
 
             // The file appears after the app has started, with the line break an editor leaves.
             await File.WriteAllTextAsync(file, "FIRSTKEY00000000000000000000000A\n");
-            await Source(app).ReadLibraryAsync(SteamId, default);
+            await Source(app).ReadLibraryAsync(SteamId, null, default);
             await File.WriteAllTextAsync(file, "SECONDKEY0000000000000000000000B\n");
-            await Source(app).ReadLibraryAsync(SteamId, default);
+            await Source(app).ReadLibraryAsync(SteamId, null, default);
 
             Assert.Equal(["FIRSTKEY00000000000000000000000A", "SECONDKEY0000000000000000000000B"], steam.Requests.Select(request => request.Key));
 
             // What cannot be a key is not sent anywhere, and is said without being quoted.
             await File.WriteAllTextAsync(file, "not a key\r\nx-other: header");
-            var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+            var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
             Assert.Equal(SourceError.NotConfigured, refusal.Error);
             Assert.Contains("is not one", refusal.Message, StringComparison.Ordinal);
             Assert.DoesNotContain("x-other", refusal.ToString(), StringComparison.Ordinal);
@@ -250,7 +274,7 @@ public sealed class SteamTests
         var steam = new FakeSteam { Status = status, Body = "<html><body><h1>Refused</h1></body></html>" };
         await using var app = await steam.StartAppAsync();
 
-        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
 
         Assert.Equal(expected, refusal.Error);
         Assert.DoesNotContain(FakeSteam.Key, refusal.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -264,7 +288,7 @@ public sealed class SteamTests
         var steam = new FakeSteam { TimesOut = timesOut, Unreachable = unreachable };
         await using var app = await steam.StartAppAsync();
 
-        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
 
         Assert.Equal(SourceError.Unavailable, refusal.Error);
         Assert.DoesNotContain(FakeSteam.Key, refusal.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -278,7 +302,7 @@ public sealed class SteamTests
         using var givenUp = new CancellationTokenSource();
         await givenUp.CancelAsync();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Source(app).ReadLibraryAsync(SteamId, givenUp.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Source(app).ReadLibraryAsync(SteamId, null, givenUp.Token));
     }
 
     [Theory]
@@ -298,7 +322,7 @@ public sealed class SteamTests
         var steam = new FakeSteam { Body = body };
         await using var app = await steam.StartAppAsync();
 
-        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, default));
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadLibraryAsync(SteamId, null, default));
 
         Assert.Equal(SourceError.Unreadable, refusal.Error);
     }
@@ -316,7 +340,7 @@ public sealed class SteamTests
         var steam = new FakeSteam();
         await using var app = await steam.StartAppAsync();
 
-        await Assert.ThrowsAsync<ArgumentException>(() => Source(app).ReadLibraryAsync(id, default));
+        await Assert.ThrowsAsync<ArgumentException>(() => Source(app).ReadLibraryAsync(id, null, default));
 
         Assert.Empty(steam.Requests);
     }

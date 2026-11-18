@@ -162,6 +162,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_played_at");
 
+                    b.Property<DateTimeOffset?>("MissingSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("missing_since");
+
                     b.Property<long?>("PlaytimeSeconds")
                         .HasColumnType("bigint")
                         .HasColumnName("playtime_seconds");
@@ -214,10 +218,6 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("linked_account_id");
 
-                    b.Property<Guid?>("OwnerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("owner_id");
-
                     b.Property<string>("Payload")
                         .IsRequired()
                         .HasColumnType("text")
@@ -246,10 +246,7 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     b.HasIndex("Source", "Kind", "TakenAt")
                         .HasDatabaseName("ix_raw_snapshots_source_kind_taken_at");
 
-                    b.ToTable("raw_snapshots", "games", t =>
-                        {
-                            t.HasCheckConstraint("ck_raw_snapshots_personal", "(owner_id IS NULL) = (linked_account_id IS NULL)");
-                        });
+                    b.ToTable("raw_snapshots", "games");
                 });
 
             modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.StoreEntryRow", b =>
@@ -295,6 +292,73 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_store_entries_source_external_id");
 
                     b.ToTable("store_entries", "games");
+                });
+
+            modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.SyncRunRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("detail");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<Guid>("LinkedAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("linked_account_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid?>("SnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("snapshot_id");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("trigger");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sync_runs");
+
+                    b.HasIndex("SnapshotId")
+                        .HasDatabaseName("ix_sync_runs_snapshot_id");
+
+                    b.HasIndex("StartedAt")
+                        .HasDatabaseName("ix_sync_runs_started_at");
+
+                    b.HasIndex("LinkedAccountId", "StartedAt")
+                        .HasDatabaseName("ix_sync_runs_linked_account_id_started_at");
+
+                    b.ToTable("sync_runs", "games", t =>
+                        {
+                            t.HasCheckConstraint("ck_sync_runs_error", "(outcome = 'failed') = (error IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_sync_runs_outcome", "outcome IN ('succeeded', 'nothing_visible', 'failed')");
+
+                            t.HasCheckConstraint("ck_sync_runs_trigger", "trigger IN ('scheduled', 'manual')");
+                        });
                 });
 
             modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.ObservationRow", b =>
@@ -355,6 +419,22 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_store_entries_games_game_id");
+                });
+
+            modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.SyncRunRow", b =>
+                {
+                    b.HasOne("Respawn.Games.Infrastructure.Persistence.LinkedAccountRow", null)
+                        .WithMany()
+                        .HasForeignKey("LinkedAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sync_runs_linked_accounts_linked_account_id");
+
+                    b.HasOne("Respawn.Games.Infrastructure.Persistence.RawSnapshotRow", null)
+                        .WithMany()
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sync_runs_raw_snapshots_snapshot_id");
                 });
 #pragma warning restore 612, 618
         }

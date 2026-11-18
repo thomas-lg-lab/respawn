@@ -1,0 +1,127 @@
+namespace Respawn.Games;
+
+// The words of the sync: a linked account's library read from its store and recorded, once a day by
+// the schedule, or when its owner asks.
+
+/// <summary>Why a library was read.</summary>
+public enum SyncTrigger
+{
+    /// <summary>The reading of the day, made by the schedule.</summary>
+    Scheduled,
+
+    /// <summary>Its owner asked for it.</summary>
+    Manual,
+}
+
+/// <summary>How a sync ended.</summary>
+public enum SyncOutcome
+{
+    /// <summary>The store answered a library, and it was recorded.</summary>
+    Succeeded,
+
+    /// <summary>The store answered, and showed no game: a profile made private looks like this, and so
+    /// does an account that owns nothing. The answer is kept and the library is left as it was. Not a
+    /// success: nothing was learnt, and the last good reading keeps ageing.</summary>
+    NothingVisible,
+
+    /// <summary>The store could not be read, or its answer could not be recorded.</summary>
+    Failed,
+}
+
+/// <summary>One sync of one linked account, once it has ended. Kept in the same transaction as what
+/// it recorded: a reading is never there without its run.</summary>
+/// <param name="Id">The run.</param>
+/// <param name="LinkedAccountId">The store account that was read.</param>
+/// <param name="Trigger">Why it ran.</param>
+/// <param name="StartedAt">When it started.</param>
+/// <param name="FinishedAt">When it ended.</param>
+/// <param name="Outcome">How it ended.</param>
+/// <param name="Error">Why it failed; null unless it did.</param>
+/// <param name="Detail">What happened, in the connector's words, when it failed. Never a secret.</param>
+/// <param name="SnapshotId">The store's answer, when there was one.</param>
+public sealed record SyncRun(
+    Guid Id,
+    Guid LinkedAccountId,
+    SyncTrigger Trigger,
+    DateTimeOffset StartedAt,
+    DateTimeOffset FinishedAt,
+    SyncOutcome Outcome,
+    SourceError? Error = null,
+    string? Detail = null,
+    Guid? SnapshotId = null);
+
+/// <summary>The rhythm of the sync.</summary>
+public static class SyncSchedule
+{
+    /// <summary>When a day of the sync starts, in UTC: the small hours in Europe, so that a day's
+    /// reading holds the evening before it.</summary>
+    public static readonly TimeSpan DayStartsAt = TimeSpan.FromHours(4);
+
+    /// <summary>How long after a store did not answer the day's reading is tried again. Any other
+    /// failure (no key, a key refused, an answer that cannot be read) waits for the next day, or for
+    /// its owner to ask: trying again would say the same.</summary>
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromHours(1);
+
+    /// <summary>The least time between a sync and the next one its owner asks for.</summary>
+    public static readonly TimeSpan ManualPause = TimeSpan.FromMinutes(1);
+
+    /// <summary>The start of the sync's day a moment belongs to.</summary>
+    public static DateTimeOffset DayOf(DateTimeOffset moment)
+    {
+        var shifted = moment.ToUniversalTime() - DayStartsAt;
+        return new DateTimeOffset(shifted.Year, shifted.Month, shifted.Day, 0, 0, 0, TimeSpan.Zero) + DayStartsAt;
+    }
+}
+
+/// <summary>The syncs on their way, in this process, and when the last ones started: a linked account
+/// is read by one at a time, and not again at once when a sync left no run behind (a request given up,
+/// a run that could not be kept). One for the whole app, which runs as one replica; a restart forgets
+/// it, and the runs kept in the database still say most of it.</summary>
+public sealed class SyncGate
+{
+    private readonly HashSet<Guid> _running = [];
+    private readonly Dictionary<(Guid, SyncTrigger), DateTimeOffset> _started = [];
+
+    public bool TryEnter(Guid linkedAccountId)
+    {
+        lock (_running)
+        {
+            return _running.Add(linkedAccountId);
+        }
+    }
+
+    public void Leave(Guid linkedAccountId)
+    {
+        lock (_running)
+        {
+            _running.Remove(linkedAccountId);
+        }
+    }
+
+    /// <summary>When a sync of that account last started for that reason, since the app started.</summary>
+    public DateTimeOffset? StartedAt(Guid linkedAccountId, SyncTrigger trigger)
+    {
+        lock (_running)
+        {
+            return _started.TryGetValue((linkedAccountId, trigger), out var at) ? at : null;
+        }
+    }
+
+    public void Started(Guid linkedAccountId, SyncTrigger trigger, DateTimeOffset at)
+    {
+        lock (_running)
+        {
+            _started[(linkedAccountId, trigger)] = at;
+        }
+    }
+
+    /// <summary>Forgets when the last sync of that account started for that reason: its run is kept,
+    /// and says it from now on.</summary>
+    public void Forget(Guid linkedAccountId, SyncTrigger trigger)
+    {
+        lock (_running)
+        {
+            _started.Remove((linkedAccountId, trigger));
+        }
+    }
+}

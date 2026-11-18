@@ -5,7 +5,8 @@ public interface IUnitOfWork
     /// <summary>Runs the work in one transaction, committed when it returns and rolled back when it
     /// throws. Writes to the catalogue run one at a time until the transaction ends, so two libraries
     /// recorded together cannot both add the same game. The work may run again from the start when the
-    /// connection is lost on the way: it must only touch the database.</summary>
+    /// connection is lost on the way: it must only touch the database. Called from inside another
+    /// run, the work joins that transaction.</summary>
     Task<T> RunAsync<T>(Func<Task<T>> work, CancellationToken ct);
 }
 
@@ -20,8 +21,11 @@ public interface ILinkedAccountStore
     /// <summary>The store accounts linked to an owner, in no order.</summary>
     Task<IReadOnlyList<LinkedAccount>> ListAsync(Guid ownerId, CancellationToken ct);
 
+    /// <summary>Every linked account of the instance, in no order.</summary>
+    Task<IReadOnlyList<LinkedAccount>> ListAllAsync(CancellationToken ct);
+
     /// <summary>Removes a linked account with everything that was read from it: its ownerships, its
-    /// snapshots and what they said. The catalogue stays: a game and its store entries are the
+    /// snapshots and what they said, and its syncs. The catalogue stays: a game and its store entries are the
     /// instance's, not the owner's.</summary>
     Task RemoveAsync(Guid id, CancellationToken ct);
 }
@@ -29,6 +33,17 @@ public interface ILinkedAccountStore
 public interface ISnapshotStore
 {
     Task AddAsync(RawSnapshot snapshot, CancellationToken ct);
+}
+
+public interface ISyncRunStore
+{
+    Task AddAsync(SyncRun run, CancellationToken ct);
+
+    /// <summary>The runs started at that moment or later, of every linked account, in no order.</summary>
+    Task<IReadOnlyList<SyncRun>> ListSinceAsync(DateTimeOffset since, CancellationToken ct);
+
+    /// <summary>The run of a linked account that started last, if it ever had one.</summary>
+    Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct);
 }
 
 public interface ICatalogue
@@ -63,7 +78,7 @@ public interface ILibraryStore
         CancellationToken ct);
 
     /// <summary>Every way the owner owns a game today, in no order: the ownerships of their linked
-    /// accounts, without those a complete reading left out since.</summary>
+    /// accounts, those noted as missing included, without those that left the library.</summary>
     Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
 }
 
@@ -77,7 +92,12 @@ public interface ILibrarySource
     /// <summary>Reads the library of one account of the store, by the id the store gives that account.
     /// A library the store does not show (a profile made private) is a reading that lists nothing,
     /// not a failure.</summary>
+    /// <param name="externalId">The account, as the store names it.</param>
+    /// <param name="credential">The owner's own access to the store (a key, a token), when they gave
+    /// one; null to read with the instance's. Nothing gives one yet: every library is read with the
+    /// instance's access.</param>
+    /// <param name="ct">Gives up.</param>
     /// <exception cref="SourceException">The store could not be read.</exception>
     /// <exception cref="ArgumentException">Not an account id of this store.</exception>
-    Task<LibraryReading> ReadLibraryAsync(string externalId, CancellationToken ct);
+    Task<LibraryReading> ReadLibraryAsync(string externalId, string? credential, CancellationToken ct);
 }

@@ -18,14 +18,14 @@ Self-hosted game library: stats, backlog and next-game suggestions.
 
 **Status: early days.** Accounts and sign-in work, with the public API they need, the front's first
 screens (sign in, create an account, who am I), and the image the rest will ship in. The library has its
-tables, its rules, one route to read it and a connector that can read a Steam library, and a Steam account can be linked through the API; nothing
-runs the connector yet, so a library stays empty and has no screen.
+tables, its rules and one route to read it; a Steam account can be linked through the API, and its library is
+then read every day. It has no screen yet.
 
 | | |
 | --- | --- |
 | Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; in the API only, sign-in through OpenID Connect providers. The front, served by the app: sign in, create an account, the account menu with its settings (language, theme, character), in French and in English |
-| In place, not in use yet | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key. Linking a Steam account ("Sign in through Steam", which proves the account is yours and never signs you in), the list of linked accounts, and unlinking one, which forgets everything read from it. Groups, the scope sharing will use: one default group every account joins |
-| Planned | Sign-in through a provider from the sign-in screen, reading a linked Steam library every day, the library and stats screens, the backlog, more connectors, next-game suggestions |
+| In place, in the API only | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key. Linking a Steam account ("Sign in through Steam", which proves the account is yours and never signs you in), the list of linked accounts, and unlinking one, which forgets everything read from it. The sync: every linked library read once a day, and at once when its owner asks. Groups, the scope sharing will use: one default group every account joins |
+| Planned | Sign-in through a provider from the sign-in screen, the library and stats screens, the backlog, more connectors, next-game suggestions |
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
@@ -163,8 +163,9 @@ part of the API.
 | `GET /api/v1/me` | The signed-in account |
 | `GET /api/v1/linked-accounts` | The store accounts linked to the signed-in account, the earliest link first |
 | `GET /api/v1/linked-accounts/steam/link` | Links a Steam account. A navigation from the app's pages, not a call: the browser is sent to Steam, then comes back on `return_to` (a path of the app, the home by default) with the outcome in the `steam_link` parameter: `linked`, `linked_elsewhere`, `failed` or `unavailable` |
+| `POST /api/v1/linked-accounts/{id}/sync` | Reads a linked account's library from its store now, and answers with the sync once it has ended: its `outcome` (`succeeded`, `nothing_visible`, `failed`) and, when it failed, its `error` (`not_configured`, `refused`, `unavailable`, `unreadable`). A store that cannot be read is not an error of the request. Once a minute per linked account (429 with `Retry-After`); 409 `sync_in_progress` while that account is being read |
 | `DELETE /api/v1/linked-accounts/{id}` | Unlinks a store account and forgets everything that was read from it |
-| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through and the playtime each store counts; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
+| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 
 Errors always have the same shape, whatever answered:
 
@@ -177,7 +178,7 @@ Errors always have the same shape, whatever answered:
 | 401 | `not_signed_in`, `invalid_credentials`, `invalid_token` |
 | 403 | `registration_closed`, `local_sign_in_disabled`, `cross_site_request`, `forbidden` |
 | 404 | `unknown_provider`, `unknown_linked_account`, `http_error` |
-| 409 | `account_exists` |
+| 409 | `account_exists`, `sync_in_progress` |
 | 422 | `invalid_request`, `invalid_email`, `weak_password` |
 | 429 | `too_many_requests` |
 | 500 | `internal_error` |
@@ -185,6 +186,29 @@ Errors always have the same shape, whatever answered:
 
 `http_error` is the code of any status answered without a body of its own: an unknown route (404), and also a
 method a route does not allow (405).
+
+### The sync
+
+The library of every linked account is read from its store once a day, by the app itself: no cron job, no
+other container. A day of the sync starts at 04:00 UTC; a few minutes later each library is read, one after
+the other, and an account linked during the day is read within minutes. An app that was stopped reads once
+when it is back. Each reading keeps the store's answer as it came, dated, and the history of a library (what
+was played, and when) is the difference between two of them: a day that was not read is not recovered.
+
+- **A store that does not answer** is asked again an hour later. Any other failure (no key, a key refused, an
+  answer that cannot be read) waits for the next day, or for `POST /api/v1/linked-accounts/{id}/sync`.
+- **A profile that shows nothing** (Steam: "game details" set to private) is its own outcome,
+  `nothing_visible`, not a success: the library is left as it was.
+- **No sync takes a game out of a library.** A game the store no longer lists (a refund, a share that
+  ended, a free weekend over, or an answer cut short that still agrees with itself: the store does not say
+  which) stays, flagged: `missing_since` on its entry in `GET /api/v1/library`, the date of the first full
+  answer that left it out. The flag goes when the store lists the game again. Taking it out is its owner's
+  decision, which no route takes yet.
+- Every sync is kept with its outcome, in the same transaction as what it recorded. Unlinking an account
+  forgets its syncs with the rest.
+- A sync asked for through the API goes on to its end when the request is given up.
+
+The schedule lives in the app's process, which is one more reason the app runs as one replica.
 
 A breaking change to these routes means a new version beside `/api/v1`, not a change to it.
 
@@ -200,7 +224,7 @@ adapters around it.
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
 | `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
-| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, and who owns and played what |
+| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, and the sync that reads each library once a day |
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 | [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API's types) |
