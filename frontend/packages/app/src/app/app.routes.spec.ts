@@ -61,8 +61,8 @@ describe('routes', () => {
 
   it('sends to the sign-in a visitor the API cannot identify, where the reason is said', async () => {
     const { router, screen } = await visit('/', async (server) => {
-      await server.refuse('/me', 503, 'database_unavailable');
-      // A failure is not kept as an answer: the sign-in asks again before it shows.
+      // Asked once: the sign-in does not make the visitor wait a second time for the same
+      // failure. `verify` below fails on a request nobody answered.
       await server.refuse('/me', 503, 'database_unavailable');
       await server.refuse('/config', 503, 'database_unavailable');
     });
@@ -73,9 +73,22 @@ describe('routes', () => {
     );
   });
 
+  // Reached by its own address, the sign-in still asks who is there: nobody asked on the way.
+  it('asks who is there when the sign-in is opened by its address', async () => {
+    const { router, screen } = await visit('/sign-in', async (server) => {
+      await server.refuse('/me', 503, 'database_unavailable');
+      await server.answer('/config', SIGN_IN_OPTIONS);
+    });
+
+    expect(router.url).toBe('/sign-in');
+    expect(screen.querySelector('form')).toBeNull();
+    expect(screen.querySelector('[role="alert"]')?.textContent).toContain(
+      'La base de données ne répond pas.',
+    );
+  });
+
   it('lets back in, on a new try, a visitor whose session the API could not read', async () => {
     const { harness, server, router, screen } = await visit('/', async (server) => {
-      await server.refuse('/me', 503, 'database_unavailable');
       await server.refuse('/me', 503, 'database_unavailable');
       // The instance says what it offers, but still not who is there: no form is shown.
       await server.answer('/config', SIGN_IN_OPTIONS);
