@@ -558,14 +558,18 @@ public sealed class SyncTests
             return Task.Delay(Timeout.Infinite);
         };
 
+        // Taken while the app runs: once stopped, it hands out nothing.
+        var gate = app.Services.GetRequiredService<SyncGate>();
+        var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
         var request = browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
         await reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        app.Services.GetRequiredService<IHostApplicationLifetime>().StopApplication();
+        lifetime.StopApplication();
 
-        // Whoever was waiting gets no answer, the log no error, and nothing is kept.
+        // Whoever was waiting gets no answer, the log no error, and the account is free again.
         await Assert.ThrowsAnyAsync<Exception>(() => request);
         Assert.DoesNotContain("unhandled error", app.Logs.Text, StringComparison.Ordinal);
-        Assert.True(app.Services.GetRequiredService<SyncGate>().TryEnter(account));
+        Assert.True(gate.TryEnter(account));
     }
 
     [Fact]
