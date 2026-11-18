@@ -42,8 +42,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
     {
         modelBuilder.HasDefaultSchema(Schema);
 
-        // Nothing is deleted along with something else: no use case deletes yet, and the one that
-        // will says what goes with what.
+        // Nothing is deleted along with something else: the one use case that deletes,
+        // unlinking an account, says itself what goes with what.
         modelBuilder.Entity<GameRow>(game =>
         {
             game.ToTable("games");

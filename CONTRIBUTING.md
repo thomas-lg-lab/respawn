@@ -36,12 +36,12 @@ docker run --rm -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
   npm test'
 ```
 
-The dev server, on http://localhost:4200. It hands `/api` to the app, started beside it
+The dev server, on http://localhost:4200. It hands `/api` and `/healthz` to the app, started beside it
 (`docker compose up --build`, on port 8080); `RESPAWN_API` says where that is when the dev server runs in a
 container:
 
 ```bash
-docker run --rm -it -p 4200:4200 -e RESPAWN_API=http://host.docker.internal:8080   -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
+docker run --rm -it -p 4200:4200 -e RESPAWN_API=http://host.docker.internal:8080 -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
   npm ci && npm start -- --host 0.0.0.0'
 ```
 
@@ -70,7 +70,7 @@ and adapters around it.
 | `Respawn.Host` | composition only: `Program.cs`, the HTTP pipeline, one `Add<Module>()` per module, the front's files | everything, but no database driver; nothing references it |
 | `Respawn.Persistence` | the database connection: opened on first use, every module's schema migrated then, a rotated password followed | the shared kernel; no module |
 | `Respawn.SharedKernel` | what modules and the host agree on: the error format, the database contracts | nothing, not even a package |
-| `Modules/Accounts/Respawn.Accounts` | the core: use cases and the ports they need | the shared kernel; no package |
+| `Modules/Accounts/Respawn.Accounts` | the core: use cases and the ports they need | nothing; no package |
 | `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, ID token validation, sessions | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
@@ -87,6 +87,8 @@ The rules, checked by `ArchitectureTests`:
 - A module never references another module's infrastructure or tables, only its public contract. No module
   has one yet, so today a module references no other module at all, and no table points into another schema:
   another module's row is known by its id (an account, in `Games`).
+- A core references no framework and none of its adapters: no ASP.NET Core, EF Core, `Microsoft.Extensions`,
+  IdentityModel, Npgsql or Sodium, and no other project of the app.
 - An inbound adapter never references its module's infrastructure: the host puts them together.
 - Each module owns one PostgreSQL schema, one `DbContext` and its migrations (`accounts` for Accounts, `games`
   for Games).
@@ -104,8 +106,8 @@ an adapter that lives in its own project (a connector to an outside source) only
 
 A connector is tested against recorded answers, never against its source: the answers are files under
 `Recorded/` in the module's tests, in the source's own shape and made anonymous (nobody's library, account
-or key), and a fake of the source plays them back in memory. A secret a connector needs is read when it is
-first needed, from the environment or a file under `/secrets`, sent in a header rather than in an address
+or key), and a fake of the source plays them back in memory. A secret a connector needs is read each time it
+is needed and never at start, from the environment or a file under `/secrets`, sent in a header rather than in an address
 when the source allows it, and never written in a log or in an error.
 
 ## Dependencies

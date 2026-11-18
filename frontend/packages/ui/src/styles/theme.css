@@ -75,8 +75,8 @@
 }
 
 /*
- * The one layout breakpoint: 640px of the app's own width, not of the window. The shell is
- * the container (`app-container`); `wide:` applies from 640px up, so the narrow layout is
+ * The one layout breakpoint: 640px of the app's own width, not of the window. The root
+ * component is the container (`app-container`); `wide:` applies from 640px up, so the narrow layout is
  * the one written first. A query cannot read a variable: this one value is compiled.
  */
 @utility app-container {

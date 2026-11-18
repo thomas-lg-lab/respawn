@@ -27,6 +27,7 @@ The image builds this front and the API process serves it; the router decides th
 | `/`            | who is signed in, under the header and its account menu           | a session  |
 | `/foundations` | the type styles and the base components                           | nothing    |
 | `/docs`        | the API's description, drawn by Swagger UI; not an Angular screen | nothing    |
+| anything else  | says that there is no such screen                                 | nothing    |
 
 A screen is where the API, the router and the settings are injected (`pages/x/x.ts`, and `layout/shell.ts` for
 the header). What it draws is made of components that only take inputs and emit outputs: its own in
@@ -114,7 +115,7 @@ written for the narrow layout first, and `wide:` applies from 640px up.
 
 Inter, Bricolage Grotesque and Pixelify Sans, each under the SIL Open Font License 1.1, are served by the app
 itself from the `@fontsource-variable` packages: no request leaves for a font host. A browser fetches only the
-subsets a page uses, about 138 kB for the three Latin files.
+subsets a page uses, about 137 kB for the three Latin files.
 
 ## Translations
 
