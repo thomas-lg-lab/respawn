@@ -160,6 +160,29 @@ public enum LibrarySort
 /// <summary>A part of a library, and how many games the whole of it has.</summary>
 public sealed record LibraryPage(int Total, IReadOnlyList<OwnedGame> Games);
 
+/// <summary>A library in figures, as the stores' totals give them: what needs a history (a year, a
+/// streak) is not here. Counted over the same games as <see cref="LibraryPage"/>, those flagged as
+/// missing included.</summary>
+/// <param name="Games">The games, each once however many entries it is owned through.</param>
+/// <param name="Launched">The games a store says were played: some playtime, or a last session.</param>
+/// <param name="NeverLaunched">The others: no store says they were ever played.</param>
+/// <param name="Missing">The games every entry of which is flagged as missing.</param>
+/// <param name="Playtime">The total played over the library; null while no store said.</param>
+/// <param name="RecentPlaytime">What was played lately over the library, each store over its own
+/// window (Steam: the last two weeks); null while no store said.</param>
+/// <param name="RecentlyPlayed">The games with some recent playtime.</param>
+/// <param name="TrackingSince">The date of the earliest reading that listed one of its games: its
+/// history starts there. Null while no reading listed any.</param>
+public sealed record LibraryStats(
+    int Games,
+    int Launched,
+    int NeverLaunched,
+    int Missing,
+    TimeSpan? Playtime,
+    TimeSpan? RecentPlaytime,
+    int RecentlyPlayed,
+    DateTimeOffset? TrackingSince);
+
 /// <summary>The sizes the catalogue accepts.</summary>
 public static class Limits
 {

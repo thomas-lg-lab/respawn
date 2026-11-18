@@ -14,6 +14,9 @@ public interface ISyncService
     /// <see cref="SyncSchedule.ManualPause"/> ago.</exception>
     Task<SyncRun> SyncNowAsync(Guid ownerId, Guid linkedAccountId, CancellationToken ct);
 
+    /// <summary>Where the sync of each of an owner's linked accounts stands, by linked account.</summary>
+    Task<IReadOnlyDictionary<Guid, SyncState>> GetStatesAsync(Guid ownerId, CancellationToken ct);
+
     /// <summary>The linked accounts whose reading of the day is due, the earliest link first: those a
     /// connector can read, with no scheduled run that reached the store since the day started
     /// (<see cref="SyncSchedule.DayOf"/>), and not waiting after a failure

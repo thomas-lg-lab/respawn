@@ -182,6 +182,22 @@ public sealed class LibraryService(
         return new LibraryPage(games.Count, [.. games.Skip(offset).Take(limit)]);
     }
 
+    public async Task<LibraryStats> GetStatsAsync(Guid ownerId, CancellationToken ct)
+    {
+        var entries = await library.ListAsync(ownerId, ct);
+        var games = entries.GroupBy(entry => entry.GameId).Select(Game).ToList();
+        var launched = games.Count(game => game.Playtime > TimeSpan.Zero || game.LastPlayedAt is not null);
+        return new LibraryStats(
+            games.Count,
+            launched,
+            games.Count - launched,
+            games.Count(game => game.Entries.All(entry => entry.MissingSince is not null)),
+            Sum(games.Select(game => game.Playtime)),
+            Sum(games.Select(game => game.RecentPlaytime)),
+            games.Count(game => game.RecentPlaytime > TimeSpan.Zero),
+            entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null);
+    }
+
     /// <summary>A game from the entries it is owned through: its totals add up, its last session is
     /// the latest, and its entries come in an order that does not change.</summary>
     private static OwnedGame Game(IGrouping<Guid, OwnedEntry> owned)

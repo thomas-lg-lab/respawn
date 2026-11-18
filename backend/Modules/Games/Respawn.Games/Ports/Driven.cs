@@ -44,6 +44,9 @@ public interface ISyncRunStore
 
     /// <summary>The run of a linked account that started last, if it ever had one.</summary>
     Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct);
+
+    /// <summary>The run of a linked account that started last among those with that outcome.</summary>
+    Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, SyncOutcome outcome, CancellationToken ct);
 }
 
 public interface ICatalogue

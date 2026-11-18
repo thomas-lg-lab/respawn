@@ -118,9 +118,17 @@ internal sealed class EfSyncRunStore(GamesDbContext db) : ISyncRunStore
     public async Task<IReadOnlyList<SyncRun>> ListSinceAsync(DateTimeOffset since, CancellationToken ct) =>
         [.. (await db.SyncRuns.AsNoTracking().Where(r => r.StartedAt >= since).ToListAsync(ct)).Select(ToRun)];
 
-    public async Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) =>
-        await db.SyncRuns.AsNoTracking()
-            .Where(r => r.LinkedAccountId == linkedAccountId)
+    public Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) =>
+        LatestAsync(db.SyncRuns.Where(r => r.LinkedAccountId == linkedAccountId), ct);
+
+    public Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, SyncOutcome outcome, CancellationToken ct)
+    {
+        var word = SyncWords.Of(outcome);
+        return LatestAsync(db.SyncRuns.Where(r => r.LinkedAccountId == linkedAccountId && r.Outcome == word), ct);
+    }
+
+    private static async Task<SyncRun?> LatestAsync(IQueryable<SyncRunRow> runs, CancellationToken ct) =>
+        await runs.AsNoTracking()
             .OrderByDescending(r => r.StartedAt)
             .ThenByDescending(r => r.Id)
             .FirstOrDefaultAsync(ct) is { } row

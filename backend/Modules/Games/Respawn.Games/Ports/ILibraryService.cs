@@ -57,4 +57,7 @@ public interface ILibraryService
     /// <exception cref="ArgumentOutOfRangeException">A negative offset, or a limit outside 1 to
     /// <see cref="Limits.LibraryPage"/>.</exception>
     Task<LibraryPage> GetLibraryAsync(Guid ownerId, LibrarySort sort, int offset, int limit, CancellationToken ct);
+
+    /// <summary>An owner's library in figures, over the same games as <see cref="GetLibraryAsync"/>.</summary>
+    Task<LibraryStats> GetStatsAsync(Guid ownerId, CancellationToken ct);
 }

@@ -556,7 +556,72 @@ public sealed class LibraryTests
     }
 
     /// <summary>A day of the past, at the hour a daily reading would be taken.</summary>
+    [Fact]
+    public async Task The_library_in_figures()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await browser.GetAsync("/api/v1/library/stats").RefusalAsync());
+        var owner = await OwnerAsync(browser);
+
+        // Nothing read yet: nothing counted, and no store said any time.
+        Assert.Equal((0, 0, 0, 0, null, null, 0, null), await StatsAsync(browser));
+
+        // Two accounts of one store, the same game on both: one game, its times added up.
+        var first = await LinkAsync(app, owner, "76561190000000001");
+        var second = await LinkAsync(app, owner, "76561190000000002");
+        await ReadAsync(app, first.Id, Day(2), complete: true, ("620", "Portal 2", 90, 45), ("400", "Portal", 30, null), ("70", "Half-Life", 0, null));
+        await ReadAsync(app, second.Id, Day(1), complete: true, ("620", "Portal 2", 10, 5), ("220", "Half-Life 2", 0, null));
+        Assert.Equal((4, 2, 2, 0, 130 * 60L, 50 * 60L, 1, Day(1)), await StatsAsync(browser));
+        Assert.Equal(4, (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("total").GetInt32());
+
+        // A game the store leaves out stays, flagged, and is counted as missing. Missing from one
+        // account only, a game is still owned through the other.
+        await ReadAsync(app, first.Id, Day(3), complete: true, ("620", "Portal 2", 90, null), ("70", "Half-Life", 0, null));
+        await ReadAsync(app, second.Id, Day(3), complete: true, ("220", "Half-Life 2", 0, null));
+        Assert.Equal((4, 2, 2, 1, 130 * 60L, null, 0, Day(1)), await StatsAsync(browser));
+
+        // Someone else's library counts for nothing here.
+        OpenRegistration();
+        using var other = app.Browser();
+        await OwnerAsync(other, "second@example.org");
+        Assert.Equal((0, 0, 0, 0, null, null, 0, null), await StatsAsync(other));
+    }
+
+    [Fact]
+    public async Task The_description_says_what_the_figures_are()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        var document = await browser.GetAsync("/api/v1/openapi.json").JsonAsync();
+
+        var responses = document.GetProperty("paths").GetProperty("/api/v1/library/stats").GetProperty("get").GetProperty("responses");
+        Assert.Equal(["200", "401"], responses.EnumerateObject().Select(response => response.Name).Order());
+        var stats = document.GetProperty("components").GetProperty("schemas").GetProperty("LibraryStatsResponse").GetProperty("properties");
+        Assert.Equal(
+            ["games", "launched", "missing", "never_launched", "playtime_seconds", "recent_playtime_seconds", "recently_played", "tracking_since"],
+            stats.EnumerateObject().Select(property => property.Name).Order());
+    }
+
     private static DateTimeOffset Day(int day) => new(2026, 11, day, 6, 0, 0, TimeSpan.Zero);
+
+    private static void OpenRegistration() =>
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+
+    private static async Task<(int Games, int Launched, int NeverLaunched, int Missing, long? Playtime, long? Recent, int RecentlyPlayed, DateTimeOffset? Since)> StatsAsync(HttpClient browser)
+    {
+        var stats = await browser.GetAsync("/api/v1/library/stats").JsonAsync();
+        long? Long(string name) => stats.GetProperty(name) is { ValueKind: JsonValueKind.Number } value ? value.GetInt64() : null;
+        return (
+            stats.GetProperty("games").GetInt32(),
+            stats.GetProperty("launched").GetInt32(),
+            stats.GetProperty("never_launched").GetInt32(),
+            stats.GetProperty("missing").GetInt32(),
+            Long("playtime_seconds"),
+            Long("recent_playtime_seconds"),
+            stats.GetProperty("recently_played").GetInt32(),
+            stats.GetProperty("tracking_since") is { ValueKind: JsonValueKind.String } since ? since.GetDateTimeOffset() : null);
+    }
 
     private static async Task<Guid> OwnerAsync(HttpClient browser, string email = "first@example.org") =>
         (await browser.RegisterAsync(email).JsonAsync()).GetProperty("id").GetGuid();
