@@ -50,7 +50,8 @@
   outside `/tmp`; logs go to stdout. Keep it that way: the image is tested like this in CI. What runs in the
   background (the sync's schedule) never stops the app, and says a trouble that lasts once, not at every turn.
 - **Sign-in code.** Accounts, password checks and lockout go through ASP.NET Core Identity; cryptography comes
-  from libraries (libsodium through Sodium.Core for Argon2id, Microsoft.IdentityModel for ID tokens); never write
+  from libraries (libsodium through Sodium.Core for Argon2id and for sealing the store keys users give,
+  Microsoft.IdentityModel for ID tokens); never write
   a hash or a signature check by hand. A request header such as `Remote-User` never identifies anyone.
   "Sign in through Steam" links a library and never opens a session; its exchange is a library's too
   (AspNet.Security.OpenId.Steam), and what it proves is still checked to be a SteamID.
