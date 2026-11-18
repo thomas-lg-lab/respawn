@@ -40,6 +40,9 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
 
     public string Source => "steam";
 
+    /// <summary>Steam's <c>playtime_2weeks</c>: the last two weeks.</summary>
+    public TimeSpan RecentWindow => TimeSpan.FromDays(14);
+
     public bool IsCredential(string credential) => SteamOptions.IsKey(credential);
 
     public async Task<LibraryReading> ReadLibraryAsync(string externalId, string? credential, CancellationToken ct)

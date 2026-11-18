@@ -119,9 +119,13 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             run.Property(r => r.Outcome).HasMaxLength(SyncWords.MaxLength);
             run.Property(r => r.Error).HasMaxLength(SyncWords.MaxLength);
             run.Property(r => r.Detail).HasMaxLength(Limits.SyncDetail);
-            // The runs of the day, of every account; and the last run of one.
+            // The runs of the day, of every account; the last run of one; and the last that succeeded,
+            // however many did not since.
             run.HasIndex(r => r.StartedAt);
             run.HasIndex(r => new { r.LinkedAccountId, r.StartedAt });
+            run.HasIndex(r => new { r.LinkedAccountId, r.StartedAt }, "ix_sync_runs_linked_account_id_started_at_succeeded")
+                .HasDatabaseName("ix_sync_runs_linked_account_id_started_at_succeeded")
+                .HasFilter("outcome = 'succeeded'");
             run.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(r => r.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
             run.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(r => r.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         });

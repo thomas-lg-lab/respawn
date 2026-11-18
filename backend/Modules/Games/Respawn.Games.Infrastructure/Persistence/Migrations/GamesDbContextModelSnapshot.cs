@@ -363,6 +363,10 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     b.HasIndex("LinkedAccountId", "StartedAt")
                         .HasDatabaseName("ix_sync_runs_linked_account_id_started_at");
 
+                    b.HasIndex(new[] { "LinkedAccountId", "StartedAt" }, "ix_sync_runs_linked_account_id_started_at_succeeded")
+                        .HasDatabaseName("ix_sync_runs_linked_account_id_started_at_succeeded")
+                        .HasFilter("outcome = 'succeeded'");
+
                     b.ToTable("sync_runs", "games", t =>
                         {
                             t.HasCheckConstraint("ck_sync_runs_error", "(outcome = 'failed') = (error IS NOT NULL)");

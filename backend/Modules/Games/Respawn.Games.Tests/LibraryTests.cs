@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task The_library_needs_a_session()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await browser.GetAsync("/api/v1/library").RefusalAsync());
 
@@ -35,7 +36,7 @@ public sealed class LibraryTests
     {
         // The front's types are generated from the description: a route that declares its refusal
         // must still describe its answer.
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var document = await browser.GetAsync("/api/v1/openapi.json").JsonAsync();
         var responses = document.GetProperty("paths").GetProperty("/api/v1/library").GetProperty("get").GetProperty("responses");
@@ -62,7 +63,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task What_was_played_lately_is_the_latest_readings_word()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
 
@@ -91,7 +92,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_game_a_complete_reading_leaves_out_is_flagged_and_stays_until_its_owner_says()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
         await ReadAsync(app, account.Id, Day(1), complete: true, ("620", "Portal 2", 90, 10), ("400", "Portal", 30, 5), ("70", "Half-Life", 0, null));
@@ -153,7 +154,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_game_taken_out_of_a_library_stays_out_until_a_later_reading_lists_it()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
         await ReadAsync(app, account.Id, Day(1), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, 5));
@@ -187,7 +188,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task The_library_is_one_item_per_game_read_in_parts_and_in_an_order()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var owner = await OwnerAsync(browser);
         var account = await LinkAsync(app, owner, "76561190000000001");
@@ -242,7 +243,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_reading_becomes_a_snapshot_the_catalogue_and_a_library()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var owner = await OwnerAsync(browser);
         var account = await LinkAsync(app, owner, "76561190000000001");
@@ -256,7 +257,7 @@ public sealed class LibraryTests
         Assert.Equal(Payload, stored.Payload);
         Assert.Equal((snapshot, Store, "owned-games", Day(1)), (stored.Id, stored.Source, stored.Kind, stored.TakenAt));
         Assert.Equal(account.Id, stored.LinkedAccountId);
-        Assert.InRange(stored.RecordedAt, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow);
+        Assert.InRange(stored.RecordedAt, Today, Today.AddMinutes(1));
 
         // One canonical record per new store entry, and each entry points to its own.
         var entries = await db.StoreEntries.OrderBy(e => e.ExternalId).ToListAsync();
@@ -295,7 +296,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task Two_readings_give_two_snapshots_and_a_playtime_difference()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
         var first = await RecordAsync(app, account.Id, Day(1), "{\"day\":1}", ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
@@ -339,7 +340,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_reading_is_dated_when_the_source_answered()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
 
@@ -355,7 +356,7 @@ public sealed class LibraryTests
         var snapshots = await db.RawSnapshots.ToDictionaryAsync(s => s.Id);
         Assert.Equal((answered, TimeSpan.Zero), (snapshots[late].TakenAt, snapshots[late].TakenAt.Offset));
         Assert.Equal(Day(1), snapshots[older].TakenAt);
-        Assert.All(snapshots.Values, snapshot => Assert.InRange(snapshot.RecordedAt, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow));
+        Assert.All(snapshots.Values, snapshot => Assert.InRange(snapshot.RecordedAt, Today, Today.AddMinutes(1)));
 
         // Both are history, each at its date.
         Assert.Equal(3, await db.Observations.CountAsync());
@@ -366,14 +367,14 @@ public sealed class LibraryTests
         Assert.Equal([("Portal", 1800L), ("Portal 2", 9000L)], await PlaytimesAsync(browser));
 
         // A reading from the future is a mistake, and would make every later one look old.
-        await Assert.ThrowsAsync<ArgumentException>(() => RecordAsync(app, account.Id, DateTimeOffset.UtcNow.AddHours(1), "{}", ("620", "Portal 2", 151, null)));
+        await Assert.ThrowsAsync<ArgumentException>(() => RecordAsync(app, account.Id, Today.AddHours(1), "{}", ("620", "Portal 2", 151, null)));
         Assert.Equal(2, await db.RawSnapshots.CountAsync());
     }
 
     [Fact]
     public async Task A_poorer_reading_erases_nothing()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
         await RecordAsync(app, account.Id, Day(1), "{}", ("620", "Portal 2", 90, LastPlayed), ("400", "Portal", 0, null), ("70", null, null, null));
@@ -418,7 +419,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_store_entry_follows_its_store_and_a_game_keeps_a_name_given_otherwise()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
         await RecordAsync(app, account.Id, Day(1), "{}", ("620", null, 10, null), ("400", "Portal", 10, null), ("70", "Half-Life", 10, null));
@@ -455,7 +456,7 @@ public sealed class LibraryTests
     public async Task A_merged_game_follows_the_entry_that_named_it_even_when_both_bore_the_same_name()
     {
         // The usual duplicate: one game, known to two entries under the same name.
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
         await RecordAsync(app, account.Id, Day(1), "{}", ("620", "Portal 2", 10, null), ("621", "Portal 2", 10, null));
@@ -478,7 +479,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task Two_owners_of_a_game_share_its_record_and_nothing_else()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var first = app.Browser();
         var one = await LinkAsync(app, await OwnerAsync(first), "76561190000000001");
         TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
@@ -502,7 +503,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_store_account_has_one_owner()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var owner = await OwnerAsync(browser);
         var linked = await LinkAsync(app, owner, "76561190000000001", "  Player One ");
@@ -524,7 +525,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_reading_that_cannot_be_recorded_leaves_nothing()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
 
@@ -546,7 +547,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task A_game_listed_twice_is_recorded_once_and_long_names_are_cut()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
 
@@ -555,11 +556,11 @@ public sealed class LibraryTests
         Assert.Equal([(new string('x', 500), 1200L)], await PlaytimesAsync(browser));
     }
 
-    /// <summary>A day of the past, at the hour a daily reading would be taken.</summary>
     [Fact]
     public async Task The_library_in_figures()
     {
-        await using var app = await TestApp.StartAsync();
+        var clock = new LibraryClock();
+        await using var app = await StartAsync(clock);
         using var browser = app.Browser();
         Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await browser.GetAsync("/api/v1/library/stats").RefusalAsync());
         var owner = await OwnerAsync(browser);
@@ -574,6 +575,21 @@ public sealed class LibraryTests
         await ReadAsync(app, second.Id, Day(1), complete: true, ("620", "Portal 2", 10, 5), ("220", "Half-Life 2", 0, null));
         Assert.Equal((4, 2, 2, 0, 130 * 60L, 50 * 60L, 1, Day(1)), await StatsAsync(browser));
         Assert.Equal(4, (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("total").GetInt32());
+
+        // Two weeks after a reading, what it said was played lately is not recent any more, in the
+        // figures as in the library; a younger reading still counts.
+        clock.Set(Day(15).AddHours(1));
+        Assert.Equal((4, 2, 2, 0, 130 * 60L, 45 * 60L, 1, Day(1)), await StatsAsync(browser));
+        var portal2 = (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("games").EnumerateArray()
+            .Single(game => game.GetProperty("name").GetString() == "Portal 2");
+        Assert.Equal(45 * 60L, portal2.GetProperty("recent_playtime_seconds").GetInt64());
+        Assert.Equal(
+            [45 * 60L, null],
+            portal2.GetProperty("entries").EnumerateArray()
+                .Select(entry => entry.GetProperty("recent_playtime_seconds") is { ValueKind: JsonValueKind.Number } recent ? recent.GetInt64() : (long?)null)
+                .OrderDescending());
+        clock.Set(Day(16).AddHours(1));
+        Assert.Equal((4, 2, 2, 0, 130 * 60L, null, 0, Day(1)), await StatsAsync(browser));
 
         // A game the store leaves out stays, flagged, and is counted as missing. Missing from one
         // account only, a game is still owned through the other.
@@ -591,7 +607,7 @@ public sealed class LibraryTests
     [Fact]
     public async Task The_description_says_what_the_figures_are()
     {
-        await using var app = await TestApp.StartAsync();
+        await using var app = await StartAsync();
         using var browser = app.Browser();
         var document = await browser.GetAsync("/api/v1/openapi.json").JsonAsync();
 
@@ -603,7 +619,32 @@ public sealed class LibraryTests
             stats.EnumerateObject().Select(property => property.Name).Order());
     }
 
+    /// <summary>A day of the past, at the hour a daily reading would be taken.</summary>
     private static DateTimeOffset Day(int day) => new(2026, 11, day, 6, 0, 0, TimeSpan.Zero);
+
+    /// <summary>When the app's clock starts: after every reading of the tests.</summary>
+    private static readonly DateTimeOffset Today = Day(8);
+
+    /// <summary>The app, its clock set after the readings of <see cref="Day"/>: what they said was played
+    /// lately is still recent, whatever the date the tests run.</summary>
+    private static Task<TestApp> StartAsync(LibraryClock? clock = null) =>
+        TestApp.StartAsync(services: services => services.AddSingleton<TimeProvider>(clock ?? new LibraryClock()));
+
+    /// <summary>A clock that starts on a day of the tests' and goes on: two links made one after the other
+    /// are not made at the same moment.</summary>
+    private sealed class LibraryClock : TimeProvider
+    {
+        private readonly Stopwatch _since = Stopwatch.StartNew();
+        private DateTimeOffset _start = Today;
+
+        public override DateTimeOffset GetUtcNow() => _start + _since.Elapsed;
+
+        public void Set(DateTimeOffset now)
+        {
+            _start = now;
+            _since.Restart();
+        }
+    }
 
     private static void OpenRegistration() =>
         TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");

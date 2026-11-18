@@ -782,14 +782,16 @@ public sealed class SyncTests
 
         public Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, CancellationToken ct) => Task.FromResult<SyncRun?>(null);
 
-        public Task<SyncRun?> FindLatestAsync(Guid linkedAccountId, SyncOutcome outcome, CancellationToken ct) =>
-            Task.FromResult<SyncRun?>(null);
+        public Task<IReadOnlyDictionary<Guid, LatestRuns>> FindLatestAsync(IReadOnlyCollection<Guid> linkedAccountIds, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, LatestRuns>>(linkedAccountIds.ToDictionary(id => id, _ => new LatestRuns(null, null)));
     }
 
     /// <summary>A connector to a store that is not Steam, answering what a test makes it say.</summary>
     private sealed class OtherStore : ILibrarySource
     {
         public string Source => "other";
+
+        public TimeSpan RecentWindow => TimeSpan.FromDays(14);
 
         public Func<Task<LibraryReading>> Answer { get; set; } = () => throw new InvalidOperationException("no answer was set");
 

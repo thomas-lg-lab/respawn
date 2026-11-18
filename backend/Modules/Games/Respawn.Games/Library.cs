@@ -132,7 +132,8 @@ public sealed record OwnedEntry(
 /// <param name="GameId">The canonical record.</param>
 /// <param name="Name">Null while no source has named the game.</param>
 /// <param name="Playtime">The sum over its entries; null while none said.</param>
-/// <param name="RecentPlaytime">The sum over its entries; null while none said.</param>
+/// <param name="RecentPlaytime">The sum over its entries whose reading is younger than its store's
+/// window; null while none said.</param>
 /// <param name="LastPlayedAt">The latest over its entries.</param>
 /// <param name="Entries">The ways it is owned, at least one.</param>
 public sealed record OwnedGame(
@@ -169,7 +170,8 @@ public sealed record LibraryPage(int Total, IReadOnlyList<OwnedGame> Games);
 /// <param name="Missing">The games every entry of which is flagged as missing.</param>
 /// <param name="Playtime">The total played over the library; null while no store said.</param>
 /// <param name="RecentPlaytime">What was played lately over the library, each store over its own
-/// window (Steam: the last two weeks); null while no store said.</param>
+/// window (Steam: the last two weeks), from the readings younger than that window; null while none
+/// said.</param>
 /// <param name="RecentlyPlayed">The games with some recent playtime.</param>
 /// <param name="TrackingSince">The date of the earliest reading that listed one of its games: its
 /// history starts there. Null while no reading listed any.</param>

@@ -49,20 +49,12 @@ public sealed class SyncService(
         }
     }
 
-    public async Task<IReadOnlyDictionary<Guid, SyncState>> GetStatesAsync(Guid ownerId, CancellationToken ct)
+    public async Task<IReadOnlyDictionary<Guid, SyncState>> GetStatesAsync(IReadOnlyCollection<LinkedAccount> accounts, CancellationToken ct)
     {
-        // An owner links one or two store accounts: two short reads each.
-        var states = new Dictionary<Guid, SyncState>();
-        foreach (var account in await linkedAccounts.ListAsync(ownerId, ct))
-        {
-            var last = await runs.FindLatestAsync(account.Id, ct);
-            var succeeded = last?.Outcome == SyncOutcome.Succeeded
-                ? last
-                : await runs.FindLatestAsync(account.Id, SyncOutcome.Succeeded, ct);
-            states[account.Id] = new SyncState(gate.IsRunning(account.Id), last, succeeded?.FinishedAt);
-        }
-
-        return states;
+        var latest = await runs.FindLatestAsync([.. accounts.Select(account => account.Id)], ct);
+        return latest.ToDictionary(
+            pair => pair.Key,
+            pair => new SyncState(gate.IsRunning(pair.Key), pair.Value.Last, pair.Value.LastSucceeded?.FinishedAt));
     }
 
     public async Task<IReadOnlyList<Guid>> GetDueAsync(CancellationToken ct)

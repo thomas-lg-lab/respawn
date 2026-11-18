@@ -24,10 +24,9 @@ public sealed class LinkedAccountsController(ILibraryService library, ISyncServi
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<LinkedAccountsResponse> List(CancellationToken ct)
     {
-        var owner = Caller.Id(User);
-        var accounts = await library.GetLinkedAccountsAsync(owner, ct);
-        var states = await sync.GetStatesAsync(owner, ct);
-        // Linked between the two reads: not read yet.
+        var accounts = await library.GetLinkedAccountsAsync(Caller.Id(User), ct);
+        var states = await sync.GetStatesAsync(accounts, ct);
+        // Unlinked between the two reads: answered as never read, as it now is.
         return new([.. accounts.Select(account => LinkedAccountResponse.From(account, states.GetValueOrDefault(account.Id) ?? SyncState.Never))]);
     }
 

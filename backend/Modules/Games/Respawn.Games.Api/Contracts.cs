@@ -14,7 +14,8 @@ public sealed record LibraryResponse(int Total, int Offset, int Limit, IReadOnly
 /// <param name="Name">The game's name; null while no source has named it.</param>
 /// <param name="PlaytimeSeconds">The total played, added up over its entries; null when no store ever said.</param>
 /// <param name="RecentPlaytimeSeconds">What was played lately, added up over its entries, each over the
-/// window its store counts (Steam: the last two weeks); null when no store says.</param>
+/// window its store counts (Steam: the last two weeks); null when no store says, or what each said is
+/// older than its window.</param>
 /// <param name="LastPlayedAt">Null when no store says, or the game was never launched.</param>
 /// <param name="Entries">The ways the game is owned: one per store entry and linked account, at least one.</param>
 public sealed record LibraryGameResponse(
@@ -40,7 +41,8 @@ public sealed record LibraryGameResponse(
 /// <param name="Source">The store.</param>
 /// <param name="ExternalId">The game's id in that store.</param>
 /// <param name="PlaytimeSeconds">The total played, as the store counts it; null when it never said.</param>
-/// <param name="RecentPlaytimeSeconds">What was played lately, as the store's latest answer said it; null when it did not say.</param>
+/// <param name="RecentPlaytimeSeconds">What was played lately, as the store's latest answer said it; null when it did not
+/// say, or that answer is older than the window the store counts over (Steam: two weeks).</param>
 /// <param name="LastPlayedAt">Null when the store does not say, or the game was never launched.</param>
 /// <param name="FirstSeenAt">The date of the earliest answer of the store that listed it.</param>
 /// <param name="AsOf">The date of the latest answer of the store that listed it: how fresh the rest is.</param>
@@ -106,8 +108,8 @@ public sealed class OwnKeyRequest
 }
 
 /// <param name="Running">It is being read right now, every day's reading or one asked for.</param>
-/// <param name="Last">The sync that started last, whatever its outcome; null while none ended. A failed
-/// one says why in its error.</param>
+/// <param name="Last">The last sync that ended, whatever its outcome; null while none did. A failed one
+/// says why in its error. A sync on its way is not one yet: while running, this is the one before.</param>
 /// <param name="LastSucceededAt">When the last sync that recorded a library ended: how fresh the
 /// library is. A sync whose outcome is nothing_visible is not one. Null while none did.</param>
 public sealed record SyncStateResponse(bool Running, SyncRunResponse? Last, DateTimeOffset? LastSucceededAt)
@@ -124,7 +126,7 @@ public sealed record SyncStateResponse(bool Running, SyncRunResponse? Last, Date
 /// <param name="Missing">The games every entry of which is flagged as missing.</param>
 /// <param name="PlaytimeSeconds">The total played; null while no store said.</param>
 /// <param name="RecentPlaytimeSeconds">What was played lately, each store over its own window (Steam:
-/// the last two weeks); null while no store said.</param>
+/// the last two weeks), from the readings younger than that window; null while none said.</param>
 /// <param name="RecentlyPlayed">The games with some recent playtime.</param>
 /// <param name="TrackingSince">The date of the earliest reading that listed one of the games: the
 /// library's history starts there. Null while no reading listed any.</param>
