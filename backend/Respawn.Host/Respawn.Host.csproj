@@ -23,6 +23,7 @@
     <ProjectReference Include="..\Modules\Games\Respawn.Games\Respawn.Games.csproj" />
     <ProjectReference Include="..\Modules\Games\Respawn.Games.Api\Respawn.Games.Api.csproj" />
     <ProjectReference Include="..\Modules\Games\Respawn.Games.Infrastructure\Respawn.Games.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Games\Respawn.Games.Steam\Respawn.Games.Steam.csproj" />
   </ItemGroup>
 
   <ItemGroup>

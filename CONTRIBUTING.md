@@ -76,6 +76,7 @@ and adapters around it.
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, and the ports they need | nothing; no package |
 | `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` | its core only |
 | `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1` | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Respawn.Tests` | the tests of the host and of the solution as a whole: the runtime contract, the database connection, the architecture rules | everything |
@@ -90,6 +91,9 @@ The rules, checked by `ArchitectureTests`:
 - Each module owns one PostgreSQL schema, one `DbContext` and its migrations (`accounts` for Accounts, `games`
   for Games).
 - The host holds no database driver: the connection is `Respawn.Persistence`'s, which knows no module.
+- A connector to an outside source is a project of its own in its module (`Respawn.<Module>.<Source>`). It
+  references the module's core and nothing else of the app: not the database, not the shared kernel, not
+  another connector.
 - No empty project: a module or a layer is created when it has something to hold.
 
 A new module adds its three projects and its test project under `backend/Modules/<Name>/`, an `Add<Name>()`
@@ -97,6 +101,12 @@ in `Respawn.Host/Modules/`, its assemblies and its schema to `ArchitectureTests`
 `Respawn.Testing` empties before each test. A module's tests live in the module;
 what only they need (a fake of an outside service) stays there, not in `Respawn.Testing`. A port belongs to the module that uses it;
 an adapter that lives in its own project (a connector to an outside source) only references that module's core.
+
+A connector is tested against recorded answers, never against its source: the answers are files under
+`Recorded/` in the module's tests, in the source's own shape and made anonymous (nobody's library, account
+or key), and a fake of the source plays them back in memory. A secret a connector needs is read when it is
+first needed, from the environment or a file under `/secrets`, sent in a header rather than in an address
+when the source allows it, and never written in a log or in an error.
 
 ## Dependencies
 

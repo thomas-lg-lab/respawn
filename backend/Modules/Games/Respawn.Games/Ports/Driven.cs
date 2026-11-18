@@ -58,3 +58,18 @@ public interface ILibraryStore
     /// accounts, without those a complete reading left out since.</summary>
     Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
 }
+
+/// <summary>A store's libraries, read by a connector: an outbound adapter in a project of its own,
+/// which knows the store and nothing of the catalogue.</summary>
+public interface ILibrarySource
+{
+    /// <summary>The store it reads, as linked accounts name it (<see cref="LinkedAccount.Source"/>).</summary>
+    string Source { get; }
+
+    /// <summary>Reads the library of one account of the store, by the id the store gives that account.
+    /// A library the store does not show (a profile made private) is a reading that lists nothing,
+    /// not a failure.</summary>
+    /// <exception cref="SourceException">The store could not be read.</exception>
+    /// <exception cref="ArgumentException">Not an account id of this store.</exception>
+    Task<LibraryReading> ReadLibraryAsync(string externalId, CancellationToken ct);
+}

@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Respawn.Accounts;
+using Respawn.Games.Steam;
 using Respawn.Persistence;
 
 namespace Respawn.Host.Configuration;
@@ -49,6 +50,12 @@ internal static partial class RespawnSettings
     {
         Url = configuration["RESPAWN_DATABASE_URL"],
         UrlFile = configuration["RESPAWN_DATABASE_URL_FILE"] ?? "/secrets/database-url",
+    };
+
+    public static SteamOptions Steam(IConfiguration configuration) => new()
+    {
+        ApiKey = configuration["RESPAWN_STEAM_API_KEY"],
+        ApiKeyFile = configuration["RESPAWN_STEAM_API_KEY_FILE"] ?? "/secrets/steam-api-key",
     };
 
     public static HttpSettings Http(IConfiguration configuration)

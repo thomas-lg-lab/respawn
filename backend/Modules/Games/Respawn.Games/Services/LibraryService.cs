@@ -294,9 +294,16 @@ public sealed class LibraryService(
         }
     }
 
-    /// <summary>A name as it is kept: trimmed, cut to the size of its column, and null when blank.</summary>
+    /// <summary>A name as it is kept: without the control characters a source may let through (the
+    /// database refuses some of them, and none is part of a name), trimmed, cut to the size of its
+    /// column, and null when blank.</summary>
     private static string? Clean(string? name, int max)
     {
+        if (name is not null && name.Any(char.IsControl))
+        {
+            name = string.Concat(name.Where(c => !char.IsControl(c)));
+        }
+
         if (string.IsNullOrWhiteSpace(name))
         {
             return null;
