@@ -18,13 +18,13 @@ Self-hosted game library: stats, backlog and next-game suggestions.
 
 **Status: early days.** Accounts and sign-in work, with the public API they need, the front's first
 screens (sign in, create an account, who am I), and the image the rest will ship in. The library has its
-tables, its rules and one route to read it; a Steam account can be linked through the API, and its library is
-then read every day. It has no screen yet.
+tables, its rules, and routes to read it and its figures; a Steam account can be linked through the API, and
+its library is then read every day, with the instance's key or one the user gives. It has no screen yet.
 
 | | |
 | --- | --- |
 | Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; in the API only, sign-in through OpenID Connect providers. The front, served by the app: sign in, create an account, the account menu with its settings (language, theme, character), in French and in English |
-| In place, in the API only | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, and `GET /api/v1/library`. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key. Linking a Steam account ("Sign in through Steam", which proves the account is yours and never signs you in), the list of linked accounts, and unlinking one, which forgets everything read from it. The sync: every linked library read once a day, and at once when its owner asks. Groups, the scope sharing will use: one default group every account joins |
+| In place, in the API only | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, `GET /api/v1/library` and its figures. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key, or with a user's own key, kept encrypted. Linking a Steam account ("Sign in through Steam", which proves the account is yours and never signs you in), the list of linked accounts, and unlinking one, which forgets everything read from it. The sync: every linked library read once a day, and at once when its owner asks. Groups, the scope sharing will use: one default group every account joins |
 | Planned | Sign-in through a provider from the sign-in screen, the library and stats screens, the backlog, more connectors, next-game suggestions |
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
@@ -163,11 +163,14 @@ part of the API.
 | `POST /api/v1/auth/oidc` | Signs in with an ID token of a configured provider; links it to the account already signed in |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
 | `GET /api/v1/me` | The signed-in account |
-| `GET /api/v1/linked-accounts` | The store accounts linked to the signed-in account, the earliest link first |
+| `GET /api/v1/linked-accounts` | The store accounts linked to the signed-in account, the earliest link first: whether a key of the user's own was given (`has_own_key`, never the key), and where its sync stands (`sync`: `running`, the `last` sync that ended, and `last_succeeded_at`, when a sync last recorded a library) |
 | `GET /api/v1/linked-accounts/steam/link` | Links a Steam account. A navigation from the app's pages, not a call: the browser is sent to Steam, then comes back on `return_to` (a path of the app, the home by default) with the outcome in the `steam_link` parameter: `linked`, `linked_elsewhere`, `failed` or `unavailable` |
 | `POST /api/v1/linked-accounts/{id}/sync` | Reads a linked account's library from its store now, and answers with the sync once it has ended: its `outcome` (`succeeded`, `nothing_visible`, `failed`) and, when it failed, its `error` (`not_configured`, `refused`, `unavailable`, `unreadable`). A store that cannot be read is not an error of the request. Once a minute per linked account (429 with `Retry-After`); 409 `sync_in_progress` while that account is being read |
 | `DELETE /api/v1/linked-accounts/{id}` | Unlinks a store account and forgets everything that was read from it |
+| `PUT /api/v1/linked-accounts/{id}/key` | Gives the user's own key for that store (`{"key": "..."}`): from then on the only key that reads the account, with no fallback to the instance's; stored encrypted, never answered. 400 `invalid_key` when it is not in the shape of the store's keys, 503 `keys_unavailable` when the instance has no encryption key. Rate-limited with `DELETE` in a bucket of their own |
+| `DELETE /api/v1/linked-accounts/{id}/key` | Takes the user's own key away: the instance's key reads the account again |
 | `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
+| `GET /api/v1/library/stats` | The same library in figures: games, launched and never launched, missing (flagged on every entry), total and recent playtime, games played lately, and `tracking_since`, the earliest reading that listed one of them. What a store said was played lately stops counting once the store's window has passed since that reading (Steam: two weeks), here and in the library |
 
 Errors always have the same shape, whatever answered:
 
@@ -177,6 +180,7 @@ Errors always have the same shape, whatever answered:
 
 | Status | Codes |
 | --- | --- |
+| 400 | `invalid_key` |
 | 401 | `not_signed_in`, `invalid_credentials`, `invalid_token` |
 | 403 | `registration_closed`, `local_sign_in_disabled`, `cross_site_request`, `forbidden` |
 | 404 | `unknown_provider`, `unknown_linked_account`, `http_error` |
@@ -184,7 +188,7 @@ Errors always have the same shape, whatever answered:
 | 422 | `invalid_request`, `invalid_email`, `weak_password` |
 | 429 | `too_many_requests` |
 | 500 | `internal_error` |
-| 503 | `database_unavailable`, `provider_unavailable` |
+| 503 | `database_unavailable`, `provider_unavailable`, `keys_unavailable` |
 
 `http_error` is the code of any status answered without a body of its own: an unknown route (404), and also a
 method a route does not allow (405).
@@ -209,6 +213,8 @@ was played, and when) is the difference between two of them: a day that was not 
 - Every sync is kept with its outcome, in the same transaction as what it recorded. Unlinking an account
   forgets its syncs with the rest.
 - A sync asked for through the API goes on to its end when the request is given up.
+- `GET /api/v1/linked-accounts` says where each account's sync stands. A profile that shows nothing does not
+  move `last_succeeded_at`, so an old date there is the sign that something stopped working.
 
 The schedule lives in the app's process, which is one more reason the app runs as one replica.
 
