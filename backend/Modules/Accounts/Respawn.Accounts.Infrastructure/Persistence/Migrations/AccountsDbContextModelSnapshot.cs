@@ -141,6 +141,21 @@ namespace Respawn.Accounts.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_confirmed");
 
+                    b.Property<string>("InterfaceCharacter")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("interface_character");
+
+                    b.Property<string>("InterfaceLanguage")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("interface_language");
+
+                    b.Property<string>("InterfaceTheme")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("interface_theme");
+
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean")
                         .HasColumnName("is_admin");
@@ -199,7 +214,16 @@ namespace Respawn.Accounts.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
-                    b.ToTable("users", "accounts");
+                    b.ToTable("users", "accounts", t =>
+                        {
+                            t.HasCheckConstraint("ck_users_interface_character", "interface_character IN ('pixel', 'plain')");
+
+                            t.HasCheckConstraint("ck_users_interface_language", "interface_language IN ('fr', 'en')");
+
+                            t.HasCheckConstraint("ck_users_interface_settings_together", "(interface_language IS NULL) = (interface_theme IS NULL) AND (interface_theme IS NULL) = (interface_character IS NULL)");
+
+                            t.HasCheckConstraint("ck_users_interface_theme", "interface_theme IN ('system', 'dark', 'light')");
+                        });
                 });
 
             modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.ExchangedToken", b =>

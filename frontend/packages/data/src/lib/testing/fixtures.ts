@@ -6,4 +6,5 @@ export const TEST_ACCOUNT: Account = {
   email: 'first@example.org',
   display_name: 'First',
   is_admin: true,
+  settings: null,
 };

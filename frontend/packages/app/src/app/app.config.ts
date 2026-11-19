@@ -11,6 +11,7 @@ import { DisplaySettings } from '@respawn/util';
 import { routes } from './app.routes';
 import { FALLBACK_LANGUAGE, LANGUAGES, LanguageSetting, initialLanguage } from './i18n/language';
 import { TranslationLoader } from './i18n/translation-loader';
+import { provideAccountSettings } from './session/account-settings';
 import { provideServerState } from './session/session.providers';
 
 export const appConfig: ApplicationConfig = {
@@ -20,6 +21,8 @@ export const appConfig: ApplicationConfig = {
     // Server state: what the API answered, kept and shared between screens. Each feature
     // says how in its `<feature>.queries.ts`.
     provideServerState(),
+    // The settings of the interface follow the account the server state says is signed in.
+    provideAccountSettings(),
     provideTransloco({
       config: {
         availableLangs: [...LANGUAGES],

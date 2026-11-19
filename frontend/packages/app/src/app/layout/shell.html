@@ -9,9 +9,9 @@
         [theme]="display.theme()"
         [character]="display.character()"
         [signingOut]="signingOut.isPending()"
-        (languagePicked)="language.use($event)"
-        (themePicked)="display.setTheme($event)"
-        (characterPicked)="display.setCharacter($event)"
+        (languagePicked)="pickLanguage($event)"
+        (themePicked)="pickTheme($event)"
+        (characterPicked)="pickCharacter($event)"
         (signOut)="signOut()"
       />
     }
@@ -23,6 +23,12 @@
   @if (signingOut.error(); as refusal) {
     <rs-banner class="mb-6" tone="warn" role="alert" *transloco="let t">{{
       t(failureKey(refusal))
+    }}</rs-banner>
+  }
+  <!-- A choice the account could not keep: it holds here, and the next visit elsewhere will not have it. -->
+  @if (savingSettings.isError()) {
+    <rs-banner class="mb-6" tone="warn" role="alert" *transloco="let t">{{
+      t('account.settingsNotKept')
     }}</rs-banner>
   }
   <router-outlet />

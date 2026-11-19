@@ -100,11 +100,23 @@ internal sealed class EfSessionStore(AccountsDbContext db, TimeProvider clock) :
     {
         var hash = Tokens.Digest(token);
         var now = clock.GetUtcNow();
-        return await (
+        // Only the columns an account is made of: not the password hash nor the rest of Identity's row,
+        // on a lookup every signed-in request makes.
+        var user = await (
             from session in db.Sessions
             where session.TokenHash == hash && session.ExpiresAt > now
-            join user in db.Users on session.UserId equals user.Id
-            select new Account(user.Id, user.Email, user.DisplayName, user.IsAdmin)).FirstOrDefaultAsync(ct);
+            join account in db.Users on session.UserId equals account.Id
+            select new AppUser
+            {
+                Id = account.Id,
+                Email = account.Email,
+                DisplayName = account.DisplayName,
+                IsAdmin = account.IsAdmin,
+                InterfaceLanguage = account.InterfaceLanguage,
+                InterfaceTheme = account.InterfaceTheme,
+                InterfaceCharacter = account.InterfaceCharacter,
+            }).FirstOrDefaultAsync(ct);
+        return user?.ToAccount();
     }
 
     public async Task CloseAsync(string token, CancellationToken ct)

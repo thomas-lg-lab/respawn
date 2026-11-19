@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Respawn.Accounts;
 
 namespace Respawn.Accounts.Infrastructure.Persistence;
 
@@ -12,6 +13,24 @@ public sealed class AppUser : IdentityUser<Guid>
     public bool IsAdmin { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    // The settings of the interface: the three together, or none (a check of the table says so).
+
+    public Language? InterfaceLanguage { get; set; }
+
+    public Theme? InterfaceTheme { get; set; }
+
+    public Character? InterfaceCharacter { get; set; }
+
+    /// <summary>The account as the use cases see it.</summary>
+    public Account ToAccount() => new(
+        Id,
+        Email,
+        DisplayName,
+        IsAdmin,
+        InterfaceLanguage is { } language && InterfaceTheme is { } theme && InterfaceCharacter is { } character
+            ? new InterfaceSettings(language, theme, character)
+            : null);
 }
 
 /// <summary>A sharing scope. The default group holds every account; the database allows one only.</summary>

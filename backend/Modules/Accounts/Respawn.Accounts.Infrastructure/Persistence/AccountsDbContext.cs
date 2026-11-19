@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql;
+using Respawn.Accounts;
 using Respawn.SharedKernel;
 
 namespace Respawn.Accounts.Infrastructure.Persistence;
@@ -44,8 +46,31 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
 
         builder.Entity<AppUser>(user =>
         {
-            user.ToTable("users");
+            user.ToTable("users", table =>
+            {
+                // The settings are chosen together: all three or none.
+                table.HasCheckConstraint(
+                    "ck_users_interface_settings_together",
+                    "(interface_language IS NULL) = (interface_theme IS NULL) AND (interface_theme IS NULL) = (interface_character IS NULL)");
+                // Each one is one of its words: the ones the converters below write.
+                table.HasCheckConstraint(
+                    "ck_users_interface_language",
+                    OneOf("interface_language", Enum.GetValues<Language>().Select(v => SettingWords.Of(v))));
+                table.HasCheckConstraint(
+                    "ck_users_interface_theme",
+                    OneOf("interface_theme", Enum.GetValues<Theme>().Select(v => SettingWords.Of(v))));
+                table.HasCheckConstraint(
+                    "ck_users_interface_character",
+                    OneOf("interface_character", Enum.GetValues<Character>().Select(v => SettingWords.Of(v))));
+            });
             user.Property(u => u.DisplayName).HasMaxLength(100);
+            // Stored as the words the API uses, so that a row reads as what the account chose.
+            user.Property(u => u.InterfaceLanguage).HasMaxLength(8).HasConversion(
+                new ValueConverter<Language, string>(v => SettingWords.Of(v), v => SettingWords.ToLanguage(v)));
+            user.Property(u => u.InterfaceTheme).HasMaxLength(8).HasConversion(
+                new ValueConverter<Theme, string>(v => SettingWords.Of(v), v => SettingWords.ToTheme(v)));
+            user.Property(u => u.InterfaceCharacter).HasMaxLength(8).HasConversion(
+                new ValueConverter<Character, string>(v => SettingWords.Of(v), v => SettingWords.ToCharacter(v)));
             user.Property(u => u.Email).HasMaxLength(320);
             user.Property(u => u.NormalizedEmail).HasMaxLength(320);
             // One account per e-mail; accounts without one are not concerned (NULL is never equal to NULL).
@@ -104,6 +129,10 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
             setting.Property(s => s.Key).HasMaxLength(64);
         });
     }
+
+    /// <summary>The SQL of a check that a column holds one of these words (or nothing).</summary>
+    private static string OneOf(string column, IEnumerable<string> words) =>
+        $"{column} IN ({string.Join(", ", words.Select(word => $"'{word}'"))})";
 }
 
 internal sealed class AccountsSchemaMigrator : ISchemaMigrator

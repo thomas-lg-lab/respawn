@@ -186,12 +186,19 @@ describe('routes', () => {
     expect(title(screen)).toBe('Bonjour, First');
   });
 
-  it('keeps the settings of the menu in the browser', async () => {
-    const { harness, screen } = await visit('/', signedIn);
+  it('keeps the settings of the menu in the browser, and on the account', async () => {
+    const { harness, screen, server } = await visit('/', signedIn);
     const root = document.documentElement;
+    // Each pick is saved on the account too (its own spec says how): answered as the API would.
+    const saved = async () => {
+      const sent = await server.request('/me/settings');
+      sent.flush({ ...ACCOUNT, settings: sent.request.body as object });
+    };
 
     screen.querySelector<HTMLButtonElement>('[data-theme-choice="light"]')!.click();
+    await saved();
     screen.querySelector<HTMLButtonElement>('[data-character-choice="plain"]')!.click();
+    await saved();
     await harness.fixture.whenStable();
 
     expect(root.getAttribute('data-theme')).toBe('light');
@@ -200,6 +207,7 @@ describe('routes', () => {
     expect(localStorage.getItem('respawn.character')).toBe('plain');
 
     screen.querySelector<HTMLButtonElement>('[data-language-choice="en"]')!.click();
+    await saved();
     await vi.waitFor(() => expect(title(screen)).toBe('Hello, First'));
     expect(localStorage.getItem('respawn.language')).toBe('en');
 

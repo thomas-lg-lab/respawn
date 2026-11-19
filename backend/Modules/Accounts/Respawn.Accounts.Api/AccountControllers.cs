@@ -84,12 +84,30 @@ public sealed class AuthController(IAccountService accounts, AccountOptions opti
 [ApiController]
 [Route("api/v1")]
 [Produces("application/json")]
-public sealed class MeController : ControllerBase
+public sealed class MeController(IAccountService accounts) : ControllerBase
 {
     [HttpGet("me")]
     [Authorize]
     [EndpointSummary("The signed-in account")]
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
-    public UserResponse Get() => UserResponse.From(HttpContext.Features.GetRequiredFeature<Account>());
+    public UserResponse Get() => UserResponse.From(SignedIn);
+
+    [HttpPut("me/settings")]
+    [Authorize]
+    [EndpointSummary("Keep the settings of the interface on the signed-in account")]
+    [EndpointDescription(
+        "The language, the theme and the character, the three together, in place of the ones the account had: "
+        + "the front applies them after each sign-in, whatever the browser. The answer is the account as it now is. "
+        + "422 invalid_request: a setting is missing or not one of its words.")]
+    [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<UserResponse>> SaveSettings(SettingsRequest body, CancellationToken ct) =>
+        await accounts.SaveSettingsAsync(SignedIn.Id, body.ToSettings(), ct) is { } account
+            ? UserResponse.From(account)
+            // The account went away during the request: its session goes with it.
+            : AccountsApi.Error(StatusCodes.Status401Unauthorized, "not_signed_in", "Sign in to continue.");
+
+    private Account SignedIn => HttpContext.Features.GetRequiredFeature<Account>();
 }

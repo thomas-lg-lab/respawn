@@ -1,8 +1,35 @@
 namespace Respawn.Accounts;
 
 /// <summary>An account as the use cases see it. The e-mail is empty for an account created from a
-/// provider that sends none.</summary>
-public sealed record Account(Guid Id, string? Email, string DisplayName, bool IsAdmin);
+/// provider that sends none; the settings, for an account that never chose any.</summary>
+public sealed record Account(Guid Id, string? Email, string DisplayName, bool IsAdmin, InterfaceSettings? Settings);
+
+/// <summary>The languages the interface is written in.</summary>
+public enum Language
+{
+    French,
+    English,
+}
+
+/// <summary>The colours of the interface. <see cref="System"/> follows the device's preference.</summary>
+public enum Theme
+{
+    System,
+    Dark,
+    Light,
+}
+
+/// <summary>What the labels of the interface look like.</summary>
+public enum Character
+{
+    Pixel,
+    Plain,
+}
+
+/// <summary>How the interface looks to an account, kept on it so that it follows its owner from one
+/// browser to the next. The three are chosen together: an account has all of them or none, and with none
+/// the browser's own choices apply.</summary>
+public sealed record InterfaceSettings(Language Language, Theme Theme, Character Character);
 
 /// <summary>A sign-in through a provider, known by its issuer and subject, never by its e-mail.</summary>
 public sealed record ExternalIdentity(
