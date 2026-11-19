@@ -103,8 +103,11 @@ public sealed class MeController(IAccountService accounts) : ControllerBase
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<UserResponse> SaveSettings(SettingsRequest body, CancellationToken ct) =>
-        UserResponse.From(await accounts.SaveSettingsAsync(SignedIn.Id, body.ToSettings(), ct));
+    public async Task<ActionResult<UserResponse>> SaveSettings(SettingsRequest body, CancellationToken ct) =>
+        await accounts.SaveSettingsAsync(SignedIn.Id, body.ToSettings(), ct) is { } account
+            ? UserResponse.From(account)
+            // The account went away during the request: its session goes with it.
+            : AccountsApi.Error(StatusCodes.Status401Unauthorized, "not_signed_in", "Sign in to continue.");
 
     private Account SignedIn => HttpContext.Features.GetRequiredFeature<Account>();
 }

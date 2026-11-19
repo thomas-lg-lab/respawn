@@ -7,7 +7,7 @@ import {
 import { type Account, accountKeys } from '@respawn/data';
 import { CHARACTERS, DisplaySettings, THEMES } from '@respawn/util';
 import { QueryClient, hashKey } from '@tanstack/angular-query';
-import { LANGUAGES, LanguageSetting } from '@app/i18n/language';
+import { LANGUAGES, type Language, LanguageSetting } from '@app/i18n/language';
 
 /**
  * The settings of the interface follow the account. Whenever the server state learns an
@@ -57,7 +57,17 @@ export class AccountSettingsFollower {
     const character = CHARACTERS.find((each) => each === settings.character);
     if (theme) this.display.setTheme(theme);
     if (character) this.display.setCharacter(character);
-    if (language) void this.language.use(language);
+    if (language) void this.retakeIfUnavailable(language, seen);
+  }
+
+  /**
+   * A language whose file could not be fetched was not taken: the next answer that brings
+   * the same settings tries again. One the user picked meanwhile is left as it is.
+   */
+  private async retakeIfUnavailable(language: Language, seen: string | null): Promise<void> {
+    if ((await this.language.use(language)) === 'unavailable' && this.taken === seen) {
+      this.taken = null;
+    }
   }
 }
 

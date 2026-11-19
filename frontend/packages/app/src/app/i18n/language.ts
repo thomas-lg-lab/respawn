@@ -30,6 +30,9 @@ export function initialLanguage(): Language {
   return readChoice(LANGUAGE_KEY, LANGUAGES) ?? browserLanguage(navigator.languages);
 }
 
+/** What came of asking for a language: see {@link LanguageSetting.use}. */
+export type LanguageSwitch = 'shown' | 'unavailable' | 'superseded';
+
 /**
  * The language of the interface. Before sign-in it is the browser's, or the one chosen
  * here, which this browser keeps; after it, the account's, when the account chose one.
@@ -40,6 +43,17 @@ export class LanguageSetting {
   private readonly root = inject(DOCUMENT).documentElement;
 
   readonly current = signal<Language>(initialLanguage());
+
+  /** The language last asked for while its translations are on their way. */
+  private wanted: Language | null = null;
+
+  /**
+   * The language the interface is going to: the one asked for last, still loading, or else the
+   * one shown. What is kept elsewhere follows this one, not one about to be replaced.
+   */
+  chosen(): Language {
+    return this.wanted ?? this.current();
+  }
 
   /**
    * Loads the starting language before the first screen is drawn: no flash of keys. It never
@@ -58,13 +72,19 @@ export class LanguageSetting {
 
   /**
    * Switches to a language once its translations are there, and only then remembers it.
-   * Answers whether it switched: when the file cannot be fetched, nothing changes.
+   * Answers what came of it: `shown`; `unavailable` when the file cannot be fetched, and
+   * nothing changes; `superseded` when another language was asked for meanwhile, which wins
+   * whichever file arrives first.
    */
-  async use(language: Language): Promise<boolean> {
-    if (!(await this.load(language))) return false;
+  async use(language: Language): Promise<LanguageSwitch> {
+    this.wanted = language;
+    const loaded = await this.load(language);
+    if (this.wanted !== language) return 'superseded';
+    this.wanted = null;
+    if (!loaded) return 'unavailable';
     writeChoice(LANGUAGE_KEY, language);
     this.show(language);
-    return true;
+    return 'shown';
   }
 
   /** Whether the language's own translations are loaded. */

@@ -9,16 +9,26 @@ import en from './en.json';
 import fr from './fr.json';
 import { type Language, LanguageSetting, initialLanguage } from './language';
 
-/** Stands in for the build's chunks: a language on `gone` cannot be fetched. */
+/**
+ * Stands in for the build's chunks: a language on `gone` cannot be fetched, one on `slow`
+ * arrives only when `arrive` is called.
+ */
 class Chunks implements TranslocoLoader {
   static gone: Language[] = [];
+  static slow: Language[] = [];
   static asked: string[] = [];
+  static arrive: () => void = () => undefined;
 
   getTranslation(language: string): Promise<Translation> {
     Chunks.asked.push(language);
-    return Chunks.gone.includes(language as Language)
-      ? Promise.reject(new Error(`Failed to fetch the chunk of ${language}`))
-      : Promise.resolve(language === 'fr' ? fr : en);
+    const translation = language === 'fr' ? fr : en;
+    if (Chunks.gone.includes(language as Language)) {
+      return Promise.reject(new Error(`Failed to fetch the chunk of ${language}`));
+    }
+    if (Chunks.slow.includes(language as Language)) {
+      return new Promise((resolve) => (Chunks.arrive = () => resolve(translation)));
+    }
+    return Promise.resolve(translation);
   }
 }
 
@@ -27,6 +37,7 @@ describe('LanguageSetting', () => {
 
   function create(gone: Language[] = []) {
     Chunks.gone = gone;
+    Chunks.slow = [];
     Chunks.asked = [];
     TestBed.configureTestingModule({
       providers: [
@@ -90,7 +101,7 @@ describe('LanguageSetting', () => {
 
     const switched: unknown = await setting.use('fr');
 
-    expect(switched).toBe(false);
+    expect(switched).toBe('unavailable');
     expect(setting.current()).toBe('en');
     expect(root.lang).toBe('en');
     expect(transloco.getActiveLang()).toBe('en');
@@ -106,9 +117,27 @@ describe('LanguageSetting', () => {
     Chunks.gone = [];
     const switched: unknown = await setting.use('fr');
 
-    expect(switched).toBe(true);
+    expect(switched).toBe('shown');
     expect(setting.current()).toBe('fr');
     expect(transloco.translate('foundations.label')).toBe('Fondations');
+    expect(localStorage.getItem('respawn.language')).toBe('fr');
+  });
+
+  it('shows the language asked for last, whichever file arrives first', async () => {
+    localStorage.setItem('respawn.language', 'fr');
+    const { setting } = create();
+    await setting.start();
+    Chunks.slow = ['en'];
+
+    const toEnglish = setting.use('en');
+    expect(setting.chosen()).toBe('en');
+    const toFrench = await setting.use('fr');
+    Chunks.arrive();
+
+    expect(toFrench).toBe('shown');
+    expect(await toEnglish).toBe('superseded');
+    expect(setting.current()).toBe('fr');
+    expect(setting.chosen()).toBe('fr');
     expect(localStorage.getItem('respawn.language')).toBe('fr');
   });
 });

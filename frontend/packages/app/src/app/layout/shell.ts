@@ -1,5 +1,7 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { AccountQueries } from '@respawn/data';
 import { Banner, Logo } from '@respawn/ui';
@@ -31,9 +33,19 @@ export class Shell {
   protected readonly signingOut = injectMutation(() => this.queries.signOut());
   protected readonly savingSettings = injectMutation(() => this.queries.saveSettings());
 
+  constructor() {
+    // A warning about a pick speaks of the screen it was made on: the next one starts clear.
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.savingSettings.reset());
+  }
+
   /** A language is kept only once its translations are there, and shown. */
   protected async pickLanguage(language: Language): Promise<void> {
-    if (await this.language.use(language)) this.saveSettings();
+    if ((await this.language.use(language)) === 'shown') this.saveSettings();
   }
 
   protected pickTheme(theme: Theme): void {
@@ -52,10 +64,13 @@ export class Shell {
     });
   }
 
-  /** The three as the interface shows them: the account holds all of them or none. */
+  /**
+   * The three as the interface shows them, or is about to for a language still loading: the
+   * account holds all of them or none.
+   */
   private saveSettings(): void {
     this.savingSettings.mutate({
-      language: this.language.current(),
+      language: this.language.chosen(),
       theme: this.display.theme(),
       character: this.display.character(),
     });

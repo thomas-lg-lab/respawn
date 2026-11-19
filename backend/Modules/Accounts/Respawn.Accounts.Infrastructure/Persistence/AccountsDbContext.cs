@@ -52,9 +52,16 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
                 table.HasCheckConstraint(
                     "ck_users_interface_settings_together",
                     "(interface_language IS NULL) = (interface_theme IS NULL) AND (interface_theme IS NULL) = (interface_character IS NULL)");
-                table.HasCheckConstraint("ck_users_interface_language", "interface_language IN ('fr', 'en')");
-                table.HasCheckConstraint("ck_users_interface_theme", "interface_theme IN ('system', 'dark', 'light')");
-                table.HasCheckConstraint("ck_users_interface_character", "interface_character IN ('pixel', 'plain')");
+                // Each one is one of its words: the ones the converters below write.
+                table.HasCheckConstraint(
+                    "ck_users_interface_language",
+                    OneOf("interface_language", Enum.GetValues<Language>().Select(v => SettingWords.Of(v))));
+                table.HasCheckConstraint(
+                    "ck_users_interface_theme",
+                    OneOf("interface_theme", Enum.GetValues<Theme>().Select(v => SettingWords.Of(v))));
+                table.HasCheckConstraint(
+                    "ck_users_interface_character",
+                    OneOf("interface_character", Enum.GetValues<Character>().Select(v => SettingWords.Of(v))));
             });
             user.Property(u => u.DisplayName).HasMaxLength(100);
             // Stored as the words the API uses, so that a row reads as what the account chose.
@@ -122,6 +129,10 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
             setting.Property(s => s.Key).HasMaxLength(64);
         });
     }
+
+    /// <summary>The SQL of a check that a column holds one of these words (or nothing).</summary>
+    private static string OneOf(string column, IEnumerable<string> words) =>
+        $"{column} IN ({string.Join(", ", words.Select(word => $"'{word}'"))})";
 }
 
 internal sealed class AccountsSchemaMigrator : ISchemaMigrator

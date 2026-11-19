@@ -125,6 +125,9 @@ export class AccountQueries {
   saveSettings() {
     return mutationOptions({
       mutationKey: accountKeys.saveSettings,
+      // One save at a time, in the order of the picks: the account ends on the last one, and
+      // so does the server state.
+      scope: { id: 'account-save-settings' },
       mutationFn: (body: SettingsRequest) => this.api.put<Account>('/me/settings', body),
       onSuccess: (account) => this.client.setQueryData(accountKeys.me, account),
     });

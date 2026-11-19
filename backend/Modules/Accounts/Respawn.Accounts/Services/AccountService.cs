@@ -116,7 +116,7 @@ public sealed partial class AccountService(
     public async Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct) =>
         string.IsNullOrEmpty(sessionToken) ? null : await sessions.FindAccountAsync(sessionToken, ct);
 
-    public Task<Account> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct) =>
+    public Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct) =>
         users.SaveSettingsAsync(accountId, settings, ct);
 
     public async Task LogoutAsync(string? sessionToken, CancellationToken ct)

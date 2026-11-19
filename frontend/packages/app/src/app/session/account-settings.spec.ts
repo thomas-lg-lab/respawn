@@ -106,26 +106,33 @@ describe('the settings on the account', () => {
     expect(screen.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('is not undone by the late answer to an earlier pick', async () => {
+  it('keeps the picks one at a time, in order, and is not undone by an earlier one’s answer', async () => {
     const { harness, server, screen } = await visit('/', (server) => server.answer('/me', ACCOUNT));
 
     await pickTheme(harness, screen, 'dark');
     const first = await server.request('/me/settings');
     await pickTheme(harness, screen, 'light');
-    const second = await server.request('/me/settings');
+    // The second save waits for the first: the account cannot apply them out of order. (Not
+    // `whenStable`: a save in flight keeps the app busy until it is answered.)
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(server.http.match((each) => each.url.endsWith('/me/settings'))).toHaveLength(0);
+
     first.flush(withSettings(first.request.body as AccountSettings));
+    const second = await server.request('/me/settings');
+    expect(second.request.body).toMatchObject({ theme: 'light' });
     // The first answer is in the server state: the interface did not take it back.
-    await vi.waitFor(() =>
-      expect(TestBed.inject(QueryClient).getQueryData(accountKeys.me)).toMatchObject({
-        settings: { theme: 'dark' },
-      }),
-    );
+    expect(TestBed.inject(QueryClient).getQueryData(accountKeys.me)).toMatchObject({
+      settings: { theme: 'dark' },
+    });
     expect(theme()).toBe('light');
 
     second.flush(withSettings(second.request.body as AccountSettings));
     await harness.fixture.whenStable();
     expect(theme()).toBe('light');
     expect(root.getAttribute('data-theme')).toBe('light');
+    expect(TestBed.inject(QueryClient).getQueryData(accountKeys.me)).toMatchObject({
+      settings: { theme: 'light' },
+    });
   });
 
   it('says when the account could not keep a pick, which still holds here', async () => {
@@ -139,5 +146,18 @@ describe('the settings on the account', () => {
     expect(screen.querySelector('[role="alert"]')?.textContent).toContain(
       'Votre compte n’a pas pu garder ce réglage',
     );
+  });
+
+  it('leaves the warning behind on the next screen', async () => {
+    const { harness, server, screen } = await visit('/', (server) => server.answer('/me', ACCOUNT));
+    await pickTheme(harness, screen, 'dark');
+    await server.refuse('/me/settings', 503, 'database_unavailable');
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[role="alert"]')).not.toBeNull();
+
+    await harness.navigateByUrl('/?again');
+    await harness.fixture.whenStable();
+
+    expect(screen.querySelector('[role="alert"]')).toBeNull();
   });
 });

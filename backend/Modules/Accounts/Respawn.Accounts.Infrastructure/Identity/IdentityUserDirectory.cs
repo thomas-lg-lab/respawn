@@ -110,15 +110,24 @@ internal sealed class IdentityUserDirectory(
         }
     }
 
-    public async Task<Account> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct)
+    public async Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == accountId, ct)
-            ?? throw new InvalidOperationException("the account to save settings on no longer exists");
-        user.InterfaceLanguage = settings.Language;
-        user.InterfaceTheme = settings.Theme;
-        user.InterfaceCharacter = settings.Character;
-        await db.SaveChangesAsync(ct);
-        return user.ToAccount();
+        // One UPDATE of the three columns: Identity's concurrency stamp guards what Identity changes
+        // (the password, the lockout), not these, so a sign-in counted at the same time never refuses it.
+        var updated = await db.Users
+            .Where(u => u.Id == accountId)
+            .ExecuteUpdateAsync(
+                set => set
+                    .SetProperty(u => u.InterfaceLanguage, settings.Language)
+                    .SetProperty(u => u.InterfaceTheme, settings.Theme)
+                    .SetProperty(u => u.InterfaceCharacter, settings.Character),
+                ct);
+        if (updated == 0)
+        {
+            return null;
+        }
+
+        return (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == accountId, ct))?.ToAccount();
     }
 
     private static Account? ToAccount(AppUser? user) => user?.ToAccount();

@@ -47,62 +47,6 @@ public sealed class SettingsRequest
         SettingWords.ToLanguage(Language), SettingWords.ToTheme(Theme), SettingWords.ToCharacter(Character));
 }
 
-/// <summary>The words of the settings on the wire.</summary>
-internal static class SettingWords
-{
-    public const string French = "fr";
-    public const string English = "en";
-    public const string System = "system";
-    public const string Dark = "dark";
-    public const string Light = "light";
-    public const string Pixel = "pixel";
-    public const string Plain = "plain";
-
-    public static string Of(Language language) => language switch
-    {
-        Language.French => French,
-        Language.English => English,
-        _ => throw new ArgumentOutOfRangeException(nameof(language), language, null),
-    };
-
-    public static string Of(Theme theme) => theme switch
-    {
-        Theme.System => System,
-        Theme.Dark => Dark,
-        Theme.Light => Light,
-        _ => throw new ArgumentOutOfRangeException(nameof(theme), theme, null),
-    };
-
-    public static string Of(Character character) => character switch
-    {
-        Character.Pixel => Pixel,
-        Character.Plain => Plain,
-        _ => throw new ArgumentOutOfRangeException(nameof(character), character, null),
-    };
-
-    public static Language ToLanguage(string word) => word switch
-    {
-        French => Language.French,
-        English => Language.English,
-        _ => throw new ArgumentOutOfRangeException(nameof(word), word, null),
-    };
-
-    public static Theme ToTheme(string word) => word switch
-    {
-        System => Theme.System,
-        Dark => Theme.Dark,
-        Light => Theme.Light,
-        _ => throw new ArgumentOutOfRangeException(nameof(word), word, null),
-    };
-
-    public static Character ToCharacter(string word) => word switch
-    {
-        Pixel => Character.Pixel,
-        Plain => Character.Plain,
-        _ => throw new ArgumentOutOfRangeException(nameof(word), word, null),
-    };
-}
-
 public sealed record ProviderResponse(string Name, string Issuer, string ClientId);
 
 /// <summary>What the sign-in page may offer. <c>FirstAccount</c>: no account exists yet, so the one created
