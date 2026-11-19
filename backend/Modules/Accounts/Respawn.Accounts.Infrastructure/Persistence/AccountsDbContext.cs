@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql;
+using Respawn.Accounts;
 using Respawn.SharedKernel;
 
 namespace Respawn.Accounts.Infrastructure.Persistence;
@@ -44,8 +46,24 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
 
         builder.Entity<AppUser>(user =>
         {
-            user.ToTable("users");
+            user.ToTable("users", table =>
+            {
+                // The settings are chosen together: all three or none.
+                table.HasCheckConstraint(
+                    "ck_users_interface_settings_together",
+                    "(interface_language IS NULL) = (interface_theme IS NULL) AND (interface_theme IS NULL) = (interface_character IS NULL)");
+                table.HasCheckConstraint("ck_users_interface_language", "interface_language IN ('fr', 'en')");
+                table.HasCheckConstraint("ck_users_interface_theme", "interface_theme IN ('system', 'dark', 'light')");
+                table.HasCheckConstraint("ck_users_interface_character", "interface_character IN ('pixel', 'plain')");
+            });
             user.Property(u => u.DisplayName).HasMaxLength(100);
+            // Stored as the words the API uses, so that a row reads as what the account chose.
+            user.Property(u => u.InterfaceLanguage).HasMaxLength(8).HasConversion(
+                new ValueConverter<Language, string>(v => SettingWords.Of(v), v => SettingWords.ToLanguage(v)));
+            user.Property(u => u.InterfaceTheme).HasMaxLength(8).HasConversion(
+                new ValueConverter<Theme, string>(v => SettingWords.Of(v), v => SettingWords.ToTheme(v)));
+            user.Property(u => u.InterfaceCharacter).HasMaxLength(8).HasConversion(
+                new ValueConverter<Character, string>(v => SettingWords.Of(v), v => SettingWords.ToCharacter(v)));
             user.Property(u => u.Email).HasMaxLength(320);
             user.Property(u => u.NormalizedEmail).HasMaxLength(320);
             // One account per e-mail; accounts without one are not concerned (NULL is never equal to NULL).

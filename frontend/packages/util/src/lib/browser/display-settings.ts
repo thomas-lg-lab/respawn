@@ -15,7 +15,8 @@ const CHARACTER_KEY = 'respawn.character';
 /**
  * The two display settings. Each is one attribute on the root element, which is all the
  * styles read: `data-theme` (absent for `system`, so the style sheet alone follows the
- * device) and `data-character`. Kept in the browser until an account can hold them.
+ * device) and `data-character`. Kept in this browser, which shows them from the first
+ * frame; the app keeps them on the account too, and takes the account's after a sign-in.
  */
 @Service()
 export class DisplaySettings {

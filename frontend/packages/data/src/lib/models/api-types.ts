@@ -274,6 +274,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Keep the settings of the interface on the signed-in account
+         * @description The language, the theme and the character, the three together, in place of the ones the account had: the front applies them after each sign-in, whatever the browser. The answer is the account as it now is. 422 invalid_request: a setting is missing or not one of its words.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SettingsRequest"];
+                    "text/json": components["schemas"]["SettingsRequest"];
+                    "application/*+json": components["schemas"]["SettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library": {
         parameters: {
             query?: never;
@@ -903,6 +966,16 @@ export interface components {
             display_name: string;
             password: string;
         };
+        SettingsRequest: {
+            language: string;
+            theme: string;
+            character: string;
+        };
+        SettingsResponse: {
+            language: string;
+            theme: string;
+            character: string;
+        };
         SyncRunResponse: {
             /** Format: uuid */
             id: string;
@@ -929,6 +1002,7 @@ export interface components {
             email: null | string;
             display_name: string;
             is_admin: boolean;
+            settings: null | components["schemas"]["SettingsResponse"];
         };
     };
     responses: never;

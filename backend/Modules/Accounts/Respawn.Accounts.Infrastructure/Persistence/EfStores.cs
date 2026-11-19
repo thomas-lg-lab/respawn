@@ -100,11 +100,12 @@ internal sealed class EfSessionStore(AccountsDbContext db, TimeProvider clock) :
     {
         var hash = Tokens.Digest(token);
         var now = clock.GetUtcNow();
-        return await (
+        var user = await (
             from session in db.Sessions
             where session.TokenHash == hash && session.ExpiresAt > now
-            join user in db.Users on session.UserId equals user.Id
-            select new Account(user.Id, user.Email, user.DisplayName, user.IsAdmin)).FirstOrDefaultAsync(ct);
+            join account in db.Users.AsNoTracking() on session.UserId equals account.Id
+            select account).FirstOrDefaultAsync(ct);
+        return user?.ToAccount();
     }
 
     public async Task CloseAsync(string token, CancellationToken ct)

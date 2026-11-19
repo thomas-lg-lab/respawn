@@ -19,5 +19,8 @@ public interface IAccountService
 
     Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct);
 
+    /// <summary>Keeps the settings of the interface on the account, in place of the ones it had.</summary>
+    Task<Account> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct);
+
     Task LogoutAsync(string? sessionToken, CancellationToken ct);
 }

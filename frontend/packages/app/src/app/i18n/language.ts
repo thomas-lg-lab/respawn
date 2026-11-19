@@ -32,7 +32,7 @@ export function initialLanguage(): Language {
 
 /**
  * The language of the interface. Before sign-in it is the browser's, or the one chosen
- * here, which this browser keeps; an account will carry it later.
+ * here, which this browser keeps; after it, the account's, when the account chose one.
  */
 @Service()
 export class LanguageSetting {

@@ -110,6 +110,16 @@ internal sealed class IdentityUserDirectory(
         }
     }
 
-    private static Account? ToAccount(AppUser? user) =>
-        user is null ? null : new Account(user.Id, user.Email, user.DisplayName, user.IsAdmin);
+    public async Task<Account> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == accountId, ct)
+            ?? throw new InvalidOperationException("the account to save settings on no longer exists");
+        user.InterfaceLanguage = settings.Language;
+        user.InterfaceTheme = settings.Theme;
+        user.InterfaceCharacter = settings.Character;
+        await db.SaveChangesAsync(ct);
+        return user.ToAccount();
+    }
+
+    private static Account? ToAccount(AppUser? user) => user?.ToAccount();
 }

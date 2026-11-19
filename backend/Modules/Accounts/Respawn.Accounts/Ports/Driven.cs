@@ -33,6 +33,9 @@ public interface IUserDirectory
     Task<Account?> AuthenticateAsync(string email, string password, CancellationToken ct);
 
     Task LinkExternalIdentityAsync(Guid accountId, string issuer, string subject, CancellationToken ct);
+
+    /// <summary>Replaces the account's settings and answers the account as it now is.</summary>
+    Task<Account> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct);
 }
 
 /// <summary>Groups are sharing scopes: what an account makes visible, it shares with a group, never with

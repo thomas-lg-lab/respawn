@@ -23,7 +23,7 @@ its library is then read every day, with the instance's key or one the user give
 
 | | |
 | --- | --- |
-| Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; in the API only, sign-in through OpenID Connect providers. The front, served by the app: sign in, create an account, the account menu with its settings (language, theme, character), in French and in English |
+| Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; in the API only, sign-in through OpenID Connect providers. The front, served by the app: sign in, create an account, the account menu with its settings (language, theme, character), kept on the account, in French and in English |
 | In place, in the API only | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, `GET /api/v1/library` and its figures. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key, or with a user's own key, kept encrypted. Linking a Steam account ("Sign in through Steam", which proves the account is yours and never signs you in), the list of linked accounts, and unlinking one, which forgets everything read from it. The sync: every linked library read once a day, and at once when its owner asks. Groups, the scope sharing will use: one default group every account joins |
 | Planned | Sign-in through a provider from the sign-in screen, the library and stats screens, the backlog, more connectors, next-game suggestions |
 
@@ -162,7 +162,8 @@ part of the API.
 | `POST /api/v1/auth/login` | Signs in with a local account |
 | `POST /api/v1/auth/oidc` | Signs in with an ID token of a configured provider; links it to the account already signed in |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
-| `GET /api/v1/me` | The signed-in account |
+| `GET /api/v1/me` | The signed-in account, with the settings of its interface (`settings`: `language`, `theme`, `character`; null while it never chose) |
+| `PUT /api/v1/me/settings` | Keeps the three settings of the interface on the signed-in account, together, in place of the ones it had |
 | `GET /api/v1/linked-accounts` | The store accounts linked to the signed-in account, the earliest link first: whether a key of the user's own was given (`has_own_key`, never the key), and where its sync stands (`sync`: `running`, the `last` sync that ended, and `last_succeeded_at`, when a sync last recorded a library) |
 | `GET /api/v1/linked-accounts/steam/link` | Links a Steam account. A navigation from the app's pages, not a call: the browser is sent to Steam, then comes back on `return_to` (a path of the app, the home by default) with the outcome in the `steam_link` parameter: `linked`, `linked_elsewhere`, `failed` or `unavailable` |
 | `POST /api/v1/linked-accounts/{id}/sync` | Reads a linked account's library from its store now, and answers with the sync once it has ended: its `outcome` (`succeeded`, `nothing_visible`, `failed`) and, when it failed, its `error` (`not_configured`, `refused`, `unavailable`, `unreadable`). A store that cannot be read is not an error of the request. Once a minute per linked account (429 with `Retry-After`); 409 `sync_in_progress` while that account is being read |
@@ -241,7 +242,7 @@ The image builds the front and the app serves it: its files at the root, and its
 that is neither a file nor under `/api`, `/healthz` or `/docs`, so the front routes its own screens and a reload lands
 on the same one. The document is written with a nonce of its own at each answer, which the content
 security policy needs to let the front's component styles through and nothing else. Its settings (the theme: the system's, dark or light; the character of the labels; the
-language) are kept in the browser for now. Its types come from `frontend/openapi.json`, a copy of the
+language) are kept on the account, and in the browser, which shows them from the first frame; a sign-in brings the account's. Its types come from `frontend/openapi.json`, a copy of the
 description the API serves, which the CI compares with the build. `/foundations` shows the type styles and
 the base components, with no session.
 

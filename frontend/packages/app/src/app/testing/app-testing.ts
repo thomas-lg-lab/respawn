@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { type Routes, provideRouter } from '@angular/router';
 import type { SignInOptions } from '@respawn/data';
 import { routes } from '@app/app.routes';
+import { provideAccountSettings } from '@app/session/account-settings';
 import { provideServerState } from '@app/session/session.providers';
 import type { Language } from '@app/i18n/language';
 import { testTranslations } from './translations';
@@ -39,6 +40,7 @@ export function configureApp(
       provideHttpClient(),
       provideHttpClientTesting(),
       provideServerState(),
+      provideAccountSettings(),
       ...extra,
     ],
   });

@@ -221,6 +221,67 @@
         }
       }
     },
+    "/api/v1/me/settings": {
+      "put": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Keep the settings of the interface on the signed-in account",
+        "description": "The language, the theme and the character, the three together, in place of the ones the account had: the front applies them after each sign-in, whatever the browser. The answer is the account as it now is. 422 invalid_request: a setting is missing or not one of its words.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library": {
       "get": {
         "tags": [
@@ -1114,6 +1175,44 @@
           }
         }
       },
+      "SettingsRequest": {
+        "required": [
+          "language",
+          "theme",
+          "character"
+        ],
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "theme": {
+            "type": "string"
+          },
+          "character": {
+            "type": "string"
+          }
+        }
+      },
+      "SettingsResponse": {
+        "required": [
+          "language",
+          "theme",
+          "character"
+        ],
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "theme": {
+            "type": "string"
+          },
+          "character": {
+            "type": "string"
+          }
+        }
+      },
       "SyncRunResponse": {
         "required": [
           "id",
@@ -1195,7 +1294,8 @@
           "id",
           "email",
           "display_name",
-          "is_admin"
+          "is_admin",
+          "settings"
         ],
         "type": "object",
         "properties": {
@@ -1214,6 +1314,16 @@
           },
           "is_admin": {
             "type": "boolean"
+          },
+          "settings": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SettingsResponse"
+              }
+            ]
           }
         }
       }

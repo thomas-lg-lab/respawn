@@ -71,6 +71,10 @@ export class Api {
     return this.send(this.http.post<T>(BASE + path, body));
   }
 
+  put<T>(path: string, body: unknown): Promise<T> {
+    return this.send(this.http.put<T>(BASE + path, body));
+  }
+
   private async send<T>(request: Observable<T>): Promise<T> {
     try {
       return await firstValueFrom(request);

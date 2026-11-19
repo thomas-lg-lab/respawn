@@ -175,4 +175,19 @@ describe('AccountQueries', () => {
     expect(await done).toMatchObject({ code: 'database_unavailable' });
     expect(client.getQueryData(accountKeys.me)).toEqual(ACCOUNT);
   });
+
+  it('keeps the three settings on the account, and the account as it answered', async () => {
+    client.setQueryData(accountKeys.me, ACCOUNT);
+    const save = new MutationObserver(client, queries.saveSettings());
+    const settings = { language: 'fr', theme: 'dark', character: 'plain' };
+
+    const done = save.mutate(settings);
+    const sent = await request('/api/v1/me/settings');
+    expect(sent.request.method).toBe('PUT');
+    expect(sent.request.body).toEqual(settings);
+    sent.flush({ ...ACCOUNT, settings });
+    await done;
+
+    expect(client.getQueryData(accountKeys.me)).toEqual({ ...ACCOUNT, settings });
+  });
 });

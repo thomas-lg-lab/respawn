@@ -7,7 +7,7 @@ import { LANGUAGES, type Language } from '@app/i18n/language';
 /**
  * The three settings of the interface, each as a group of pills: the language, the theme,
  * the character. It shows the values it is given and says which one was picked; where they
- * are kept (this browser today, the account later) is not its business.
+ * are kept (this browser, the account) is not its business.
  */
 @Component({
   selector: 'rs-settings-choices',

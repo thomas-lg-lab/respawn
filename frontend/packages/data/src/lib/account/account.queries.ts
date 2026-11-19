@@ -1,12 +1,20 @@
 import { Service, inject } from '@angular/core';
 import { QueryClient, hashKey, mutationOptions, queryOptions } from '@tanstack/angular-query';
 import { Api, ApiFailure, HTTP_ERROR } from '../api/api';
-import type { Account, LoginRequest, RegisterRequest, SignInOptions } from '../models/models';
+import type {
+  Account,
+  LoginRequest,
+  RegisterRequest,
+  SettingsRequest,
+  SignInOptions,
+} from '../models/models';
 
 /** The keys of what the cache holds about the account, so each is named in one place. */
 export const accountKeys = {
   me: ['account', 'me'] as const,
   signInOptions: ['account', 'sign-in-options'] as const,
+  /** The mutation that keeps the settings: whoever follows them can tell its answers apart. */
+  saveSettings: ['account', 'save-settings'] as const,
 };
 
 /** The API's refusal of a request that needs a session and has none. */
@@ -107,6 +115,18 @@ export class AccountQueries {
     return mutationOptions({
       mutationFn: () => this.api.post<void>('/auth/logout', {}),
       onSuccess: () => closeSession(this.client),
+    });
+  }
+
+  /**
+   * Keeps the three settings of the interface on the account, which answers as it now is.
+   * The interface already shows them: this only makes them follow the account elsewhere.
+   */
+  saveSettings() {
+    return mutationOptions({
+      mutationKey: accountKeys.saveSettings,
+      mutationFn: (body: SettingsRequest) => this.api.put<Account>('/me/settings', body),
+      onSuccess: (account) => this.client.setQueryData(accountKeys.me, account),
     });
   }
 

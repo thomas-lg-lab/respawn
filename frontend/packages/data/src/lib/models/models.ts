@@ -13,6 +13,15 @@ type Schemas = components['schemas'];
 /** The signed-in account (`GET /api/v1/me`, and the answer to a sign-in). */
 export type Account = Schemas['UserResponse'];
 
+/**
+ * The settings of the interface kept on the account: `null` on an account that never chose,
+ * where the browser's own choices apply.
+ */
+export type AccountSettings = Schemas['SettingsResponse'];
+
+/** The three settings together, in place of the account's (`PUT /api/v1/me/settings`). */
+export type SettingsRequest = Schemas['SettingsRequest'];
+
 /** What the sign-in page may offer (`GET /api/v1/config`). */
 export type SignInOptions = Schemas['ConfigResponse'];
 
