@@ -86,9 +86,10 @@ services.AddOptions<RateLimiterOptions>().Configure(limiter =>
         if (http.GetEndpoint()?.Metadata.GetMetadata<NavigationAttribute>() is { } navigation)
         {
             http.Response.Headers.CacheControl = "no-store";
-            http.Response.Redirect(Navigation.WithOutcome(
-                Navigation.ReturnPath(http.Request.Query[Navigation.ReturnParameter]), navigation.OutcomeParameter, Navigation.Failed));
-            return ValueTask.CompletedTask;
+            // A path of this app (Navigation.ReturnPath), which LocalRedirect checks once more.
+            return new ValueTask(Results.LocalRedirect(Navigation.WithOutcome(
+                Navigation.ReturnPath(http.Request.Query[Navigation.ReturnParameter]), navigation.OutcomeParameter, Navigation.Failed))
+                .ExecuteAsync(http));
         }
 
         return new ValueTask(ApiErrors.WriteAsync(http, 429, "too_many_requests", "Too many attempts. Wait a moment and try again."));
