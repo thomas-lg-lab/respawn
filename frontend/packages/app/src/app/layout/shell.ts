@@ -40,10 +40,10 @@ export class Shell {
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly signingOut = injectMutation(() => this.queries.signOut());
   protected readonly savingSettings = injectMutation(() => this.queries.saveSettings());
-  /** The providers come with what the instance offers, asked once the menu that shows them is opened. */
+  /** The providers, and which ones the account is linked to, asked once the menu that shows them is opened. */
   protected readonly menuOpened = signal(false);
-  protected readonly options = injectQuery(() => ({
-    ...this.queries.signInOptions(),
+  protected readonly accountProviders = injectQuery(() => ({
+    ...this.queries.providers(),
     enabled: this.menuOpened(),
   }));
 
@@ -58,14 +58,17 @@ export class Shell {
     providerOutcome(this.router.parseUrl(this.address()).queryParamMap.get(PROVIDER_OUTCOME)),
   );
 
-  /** The providers to link, each coming back to this screen, without the word of a previous link. */
+  /**
+   * The providers: the ones linked already, and the others to link, each coming back to this
+   * screen, without the word of a previous link.
+   */
   protected readonly providers = computed<LinkableProvider[]>(() => {
     const here = this.router.parseUrl(this.address());
     here.queryParams = Object.fromEntries(
       Object.entries(here.queryParams).filter(([key]) => key !== PROVIDER_OUTCOME),
     );
     const back = this.router.serializeUrl(here);
-    return (this.options.data()?.oidc_providers ?? []).map((provider) => ({
+    return (this.accountProviders.data() ?? []).map((provider) => ({
       ...provider,
       address: providerSignInAddress(provider.name, back, true),
     }));

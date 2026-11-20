@@ -46,6 +46,10 @@ public sealed record ExternalIdentity(
 /// even while registration is closed; the provider's own policy then says who may come in.</summary>
 public sealed record OidcProvider(string Name, string Label, string Issuer, string ClientId, bool CreatesAccounts = false);
 
+/// <summary>A provider of the instance as one account sees it: <c>Linked</c> when an identity it proves
+/// already signs in to that account.</summary>
+public sealed record AccountProvider(OidcProvider Provider, bool Linked);
+
 /// <summary>What the sign-in page may offer.</summary>
 public sealed record SignInOptions(
     bool LocalSignIn,

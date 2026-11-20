@@ -21,6 +21,10 @@ public interface IAccountService
     /// <exception cref="AccountException"><see cref="AccountError.ProviderLinkedElsewhere"/>.</exception>
     Task LinkProviderAsync(Guid accountId, ExternalIdentity identity, CancellationToken ct);
 
+    /// <summary>The instance's providers, in the order of the settings, each saying whether the account is
+    /// linked to it.</summary>
+    Task<IReadOnlyList<AccountProvider>> GetProvidersAsync(Guid accountId, CancellationToken ct);
+
     Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct);
 
     /// <summary>Keeps the settings of the interface on the account, in place of the ones it had; null

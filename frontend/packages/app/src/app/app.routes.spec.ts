@@ -157,8 +157,8 @@ describe('routes', () => {
     const { harness, server, router, screen } = await visit('/', signedIn);
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
-    // The menu asks what the instance offers, for its providers.
-    await server.answer('/config', SIGN_IN_OPTIONS);
+    // The menu asks for the providers, and which ones the account is linked to.
+    await server.answer('/me/providers', []);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
     await server.answer('/auth/logout', null, 204);
@@ -177,7 +177,7 @@ describe('routes', () => {
     const { harness, server, router, screen } = await visit('/', signedIn);
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
-    await server.answer('/config', SIGN_IN_OPTIONS);
+    await server.answer('/me/providers', []);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
     await server.refuse('/auth/logout', 503, 'database_unavailable');
@@ -227,16 +227,21 @@ describe('routes', () => {
     );
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
-    await server.answer('/config', {
-      ...SIGN_IN_OPTIONS,
-      oidc_providers: [{ name: 'sso', label: 'Mon SSO' }],
-    });
+    await server.answer('/me/providers', [
+      { name: 'sso', label: 'Mon SSO', linked: true },
+      { name: 'other', label: 'Autre', linked: false },
+    ]);
     await harness.fixture.whenStable();
 
-    const link = screen.querySelector<HTMLAnchorElement>('a[data-link-provider="sso"]')!;
-    expect(link.textContent.trim()).toBe('Lier Mon SSO');
+    // The one linked already is said, and is no link.
+    expect(screen.querySelector('a[data-link-provider="sso"]')).toBeNull();
+    expect(screen.querySelector('[data-linked-provider="sso"]')?.textContent.trim()).toBe(
+      'Mon SSO est lié à ce compte',
+    );
+    const link = screen.querySelector<HTMLAnchorElement>('a[data-link-provider="other"]')!;
+    expect(link.textContent.trim()).toBe('Lier Autre');
     // It comes back to this screen, without the word of the previous link.
-    expect(link.getAttribute('href')).toBe('/api/v1/auth/oidc/sso/link?return_to=%2F');
+    expect(link.getAttribute('href')).toBe('/api/v1/auth/oidc/other/link?return_to=%2F');
   });
 
   it('says what came of a link once: the word leaves the address, not the screen', async () => {

@@ -110,6 +110,13 @@ internal sealed class IdentityUserDirectory(
         }
     }
 
+    public async Task<IReadOnlyList<string>> LinkedIssuersAsync(Guid accountId, CancellationToken ct) =>
+        await db.UserLogins
+            .Where(login => login.UserId == accountId)
+            .Select(login => login.LoginProvider)
+            .Distinct()
+            .ToListAsync(ct);
+
     public async Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct)
     {
         // One UPDATE of the three columns: Identity's concurrency stamp guards what Identity changes

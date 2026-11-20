@@ -181,6 +181,38 @@ public sealed class OidcTests
     }
 
     [Fact]
+    public async Task The_account_says_which_providers_it_is_linked_to()
+    {
+        var issuer = new FakeIssuer();
+        var providers = $$"""
+            [{"name": "test", "label": "Test SSO", "issuer": "{{FakeIssuer.Issuer}}/", "client_id": "{{FakeIssuer.ClientId}}"},
+             {"name": "other", "issuer": "https://other.test", "client_id": "respawn-test"}]
+            """;
+        await using var app = await issuer.StartAppAsync(new() { ["RESPAWN_OIDC_PROVIDERS"] = providers });
+        using var browser = app.Browser();
+        Assert.Equal(HttpStatusCode.Unauthorized, await browser.GetAsync("/api/v1/me/providers").StatusAsync());
+
+        await browser.RegisterAsync();
+        Assert.Equal(
+            """[{"name":"test","label":"Test SSO","linked":false},{"name":"other","label":"other","linked":false}]""",
+            (await browser.GetAsync("/api/v1/me/providers").JsonAsync()).GetRawText());
+
+        // Linked under the issuer as configured, trailing slash or not.
+        await browser.LinkAsync(issuer);
+        Assert.Equal(
+            """[{"name":"test","label":"Test SSO","linked":true},{"name":"other","label":"other","linked":false}]""",
+            (await browser.GetAsync("/api/v1/me/providers").JsonAsync()).GetRawText());
+
+        // Another account of the instance is not.
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        using var someone = app.Browser();
+        await someone.RegisterAsync("someone@example.org");
+        Assert.All(
+            (await someone.GetAsync("/api/v1/me/providers").JsonAsync()).EnumerateArray(),
+            provider => Assert.False(provider.GetProperty("linked").GetBoolean()));
+    }
+
+    [Fact]
     public async Task A_link_needs_a_session()
     {
         // A navigation: nobody signed in (the session ended in a tab left open) goes back to the app, not

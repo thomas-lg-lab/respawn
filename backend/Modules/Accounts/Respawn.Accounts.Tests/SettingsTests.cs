@@ -142,6 +142,9 @@ public sealed class SettingsTests
         public Task LinkProviderAsync(Guid accountId, ExternalIdentity identity, CancellationToken ct) =>
             inner.LinkProviderAsync(accountId, identity, ct);
 
+        public Task<IReadOnlyList<AccountProvider>> GetProvidersAsync(Guid accountId, CancellationToken ct) =>
+            inner.GetProvidersAsync(accountId, ct);
+
         public Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct) =>
             inner.FindSignedInAsync(sessionToken, ct);
 

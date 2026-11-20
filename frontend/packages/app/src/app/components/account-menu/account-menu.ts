@@ -1,16 +1,20 @@
 import { Component, input, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { LucideLogOut, LucideUserRound } from '@lucide/angular';
+import { LucideCheck, LucideLogOut, LucideUserRound } from '@lucide/angular';
 import type { Account } from '@respawn/data';
 import { Avatar, Button, Disclosure, DisclosurePanel, DisclosureTrigger } from '@respawn/ui';
 import type { Character, Theme } from '@respawn/util';
 import { SettingsChoices } from '@app/components/settings-choices/settings-choices';
 import type { Language } from '@app/i18n/language';
 
-/** A provider the account may sign in with too: its label, and the address that links it. */
+/**
+ * A provider of the instance: its label, whether the account signs in with it already, and
+ * the address that links it when it does not.
+ */
 export interface LinkableProvider {
   readonly name: string;
   readonly label: string;
+  readonly linked: boolean;
   readonly address: string;
 }
 
@@ -32,6 +36,7 @@ export interface LinkableProvider {
     DisclosurePanel,
     DisclosureTrigger,
     SettingsChoices,
+    LucideCheck,
     LucideLogOut,
     LucideUserRound,
   ],
@@ -42,7 +47,10 @@ export class AccountMenu {
   readonly language = input.required<Language>();
   readonly theme = input.required<Theme>();
   readonly character = input.required<Character>();
-  /** The instance's providers: following one links it to the account (a navigation, not a call). */
+  /**
+   * The instance's providers: one linked already is said, following another links it to the
+   * account (a navigation, not a call).
+   */
   readonly providers = input<readonly LinkableProvider[]>([]);
   /** While the sign-out is on its way: its button waits. */
   readonly signingOut = input(false);

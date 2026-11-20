@@ -121,6 +121,18 @@ public sealed partial class AccountService(
             },
             ct);
 
+    public async Task<IReadOnlyList<AccountProvider>> GetProvidersAsync(Guid accountId, CancellationToken ct)
+    {
+        if (options.OidcProviders.Count == 0)
+        {
+            return [];
+        }
+
+        // An identity is kept under the configured issuer (see ExternalIdentity), so the two compare as written.
+        var linked = await users.LinkedIssuersAsync(accountId, ct);
+        return [.. options.OidcProviders.Select(provider => new AccountProvider(provider, linked.Contains(provider.Issuer)))];
+    }
+
     public async Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct) =>
         string.IsNullOrEmpty(sessionToken) ? null : await sessions.FindAccountAsync(sessionToken, ct);
 

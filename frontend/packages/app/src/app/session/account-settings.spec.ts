@@ -36,8 +36,8 @@ describe('the settings on the account', () => {
     const trigger = screen.querySelector<HTMLButtonElement>('button[aria-expanded]')!;
     if (trigger.getAttribute('aria-expanded') !== 'true') {
       trigger.click();
-      // The menu asks what the instance offers, for its providers, the first time it opens.
-      await api().answer('/config', SIGN_IN_OPTIONS);
+      // The menu asks for the providers the first time it opens.
+      await api().answer('/me/providers', []);
       await harness.fixture.whenStable();
     }
     screen.querySelector<HTMLButtonElement>(`[data-theme-choice="${theme}"]`)!.click();

@@ -169,6 +169,7 @@ part of the API.
 | `GET /api/v1/auth/oidc/{provider}/link` | Links a configured provider to the signed-in account, the same navigation; the account must still be signed in when the browser comes back. The outcome: `linked`, `linked_elsewhere`, `denied`, `failed` (also when nobody is signed in) or `unavailable` |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
 | `GET /api/v1/me` | The signed-in account, with the settings of its interface (`settings`: `language`, `theme`, `character`; null while it never chose) |
+| `GET /api/v1/me/providers` | The providers of `/api/v1/config`, in the same order, each with `linked`: whether the signed-in account already signs in with it |
 | `PUT /api/v1/me/settings` | Keeps the three settings of the interface on the signed-in account, together, in place of the ones it had |
 | `GET /api/v1/linked-accounts` | The store accounts linked to the signed-in account, the earliest link first: whether a key of the user's own was given (`has_own_key`, never the key), and where its sync stands (`sync`: `running`, the `last` sync that ended, and `last_succeeded_at`, when a sync last recorded a library) |
 | `GET /api/v1/linked-accounts/steam/link` | Links a Steam account. A navigation from the app's pages, not a call: the browser is sent to Steam, then comes back on `return_to` (a path of the app, the home by default) with the outcome in the `steam_link` parameter: `linked`, `linked_elsewhere`, `failed` or `unavailable` |
