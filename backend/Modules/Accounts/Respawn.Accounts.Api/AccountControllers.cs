@@ -121,10 +121,9 @@ public sealed class AuthController(
             return AccountsApi.Error(StatusCodes.Status403Forbidden, "cross_site_request", "This request comes from another site.");
         }
 
-        if (!options.OidcProviders.Any(configured => configured.Name == provider))
-        {
-            throw new AccountException(AccountError.UnknownProvider);
-        }
+        // From here on, the provider as the settings name it, never the word of the address.
+        var configured = options.OidcProviders.FirstOrDefault(each => each.Name == provider)
+            ?? throw new AccountException(AccountError.UnknownProvider);
 
         var properties = new AuthenticationProperties { RedirectUri = Navigation.ReturnPath(returnTo) };
         if (linkTo is { } owner)
@@ -136,7 +135,7 @@ public sealed class AuthController(
         try
         {
             // The provider's discovery document is read here, the first time and once a day after.
-            await HttpContext.ChallengeAsync(ProviderSignIn.Scheme(provider), properties);
+            await HttpContext.ChallengeAsync(ProviderSignIn.Scheme(configured.Name), properties);
         }
         catch (Exception ex) when (!HttpContext.RequestAborted.IsCancellationRequested)
         {
@@ -144,8 +143,9 @@ public sealed class AuthController(
             // whether the provider did not answer or answered something that is not a discovery document.
             var unavailable = ProviderSignIn.NotAnswering(ex);
             logger.LogWarning(
-                "the provider {Provider} could not be asked to start a sign-in: {Reason}", provider, ProviderSignIn.Cause(ex));
-            return Redirect(Navigation.WithOutcome(
+                "the provider {Provider} could not be asked to start a sign-in: {Reason}", configured.Name, ProviderSignIn.Cause(ex));
+            // A path of this app (Navigation.ReturnPath), which LocalRedirect checks once more.
+            return LocalRedirect(Navigation.WithOutcome(
                 properties.RedirectUri!, ProviderSignIn.OutcomeParameter, unavailable ? "unavailable" : "failed"));
         }
 
