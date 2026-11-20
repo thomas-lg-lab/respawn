@@ -42,14 +42,29 @@
       <div class="flex flex-col gap-2">
         <p class="type-caption text-muted">{{ t('providers') }}</p>
         @for (provider of providers(); track provider.name) {
-          <a
-            rsButton
-            shape="field"
-            [href]="provider.address"
-            [attr.data-link-provider]="provider.name"
-          >
-            {{ t('linkProvider', { provider: provider.label }) }}
-          </a>
+          @if (provider.linked) {
+            <p
+              class="flex items-center gap-2 px-1 py-2"
+              [attr.data-linked-provider]="provider.name"
+            >
+              <svg
+                lucideCheck
+                class="size-icon text-muted"
+                [strokeWidth]="2"
+                aria-hidden="true"
+              ></svg>
+              {{ t('providerLinked', { provider: provider.label }) }}
+            </p>
+          } @else {
+            <a
+              rsButton
+              shape="field"
+              [href]="provider.address"
+              [attr.data-link-provider]="provider.name"
+            >
+              {{ t('linkProvider', { provider: provider.label }) }}
+            </a>
+          }
         }
       </div>
     }

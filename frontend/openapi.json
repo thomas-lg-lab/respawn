@@ -241,6 +241,40 @@
         }
       }
     },
+    "/api/v1/me/providers": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "The instance's providers, and which ones the signed-in account is linked to",
+        "description": "The providers of /config, in the same order, each with linked: true when an identity it proves already signs in to this account. An empty list when the instance has none.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountProviderResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/settings": {
       "put": {
         "tags": [
@@ -784,6 +818,25 @@
   },
   "components": {
     "schemas": {
+      "AccountProviderResponse": {
+        "required": [
+          "name",
+          "label",
+          "linked"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "linked": {
+            "type": "boolean"
+          }
+        }
+      },
       "ConfigResponse": {
         "required": [
           "local_sign_in",

@@ -28,6 +28,9 @@ export type SignInOptions = Schemas['ConfigResponse'];
 /** An OpenID Connect provider to sign in with. */
 export type SignInProvider = Schemas['ProviderResponse'];
 
+/** A provider as the signed-in account sees it: linked to it or not (`GET /api/v1/me/providers`). */
+export type AccountProvider = Schemas['AccountProviderResponse'];
+
 export type LoginRequest = Schemas['LoginRequest'];
 export type RegisterRequest = Schemas['RegisterRequest'];
 

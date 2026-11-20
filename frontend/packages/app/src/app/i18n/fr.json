@@ -87,7 +87,8 @@
     "settingsNotKept": "Votre compte n’a pas pu garder ce réglage : il ne vaut que dans ce navigateur pour l’instant.",
     "signOut": "Se déconnecter",
     "providers": "Fournisseurs de connexion",
-    "linkProvider": "Lier {{ provider }}"
+    "linkProvider": "Lier {{ provider }}",
+    "providerLinked": "{{ provider }} est lié à ce compte"
   },
   "home": {
     "label": "Compte",

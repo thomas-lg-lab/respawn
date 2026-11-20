@@ -203,6 +203,18 @@ public sealed class MeController(IAccountService accounts) : ControllerBase
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public UserResponse Get() => UserResponse.From(SignedIn);
 
+    [HttpGet("me/providers")]
+    [Authorize]
+    [EndpointSummary("The instance's providers, and which ones the signed-in account is linked to")]
+    [EndpointDescription(
+        "The providers of /config, in the same order, each with linked: true when an identity it proves already "
+        + "signs in to this account. An empty list when the instance has none.")]
+    [ProducesResponseType<IReadOnlyList<AccountProviderResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    public async Task<IReadOnlyList<AccountProviderResponse>> Providers(CancellationToken ct) =>
+        [.. (await accounts.GetProvidersAsync(SignedIn.Id, ct))
+            .Select(each => new AccountProviderResponse(each.Provider.Name, each.Provider.Label, each.Linked))];
+
     [HttpPut("me/settings")]
     [Authorize]
     [EndpointSummary("Keep the settings of the interface on the signed-in account")]

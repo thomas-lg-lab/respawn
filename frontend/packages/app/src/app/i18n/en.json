@@ -87,7 +87,8 @@
     "settingsNotKept": "Your account could not keep this setting: for now it holds in this browser only.",
     "signOut": "Sign out",
     "providers": "Sign-in providers",
-    "linkProvider": "Link {{ provider }}"
+    "linkProvider": "Link {{ provider }}",
+    "providerLinked": "{{ provider }} is linked to this account"
   },
   "home": {
     "label": "Account",

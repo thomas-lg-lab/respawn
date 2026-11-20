@@ -51,6 +51,10 @@ public sealed class SettingsRequest
 /// through it (<c>/api/v1/auth/oidc/{name}</c>), <c>Label</c> is what the page shows.</summary>
 public sealed record ProviderResponse(string Name, string Label);
 
+/// <summary>A provider of the instance as the signed-in account sees it: <c>Linked</c> when the account
+/// already signs in with it, otherwise it may be linked (<c>/api/v1/auth/oidc/{name}/link</c>).</summary>
+public sealed record AccountProviderResponse(string Name, string Label, bool Linked);
+
 /// <summary>What the sign-in page may offer. <c>FirstAccount</c>: no account exists yet, so the one created
 /// now becomes the administrator. <c>PasswordMinLength</c>: the one rule a new local password must meet.</summary>
 public sealed record ConfigResponse(

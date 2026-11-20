@@ -3,6 +3,7 @@ import { QueryClient, hashKey, mutationOptions, queryOptions } from '@tanstack/a
 import { Api, ApiFailure, HTTP_ERROR } from '../api/api';
 import type {
   Account,
+  AccountProvider,
   LoginRequest,
   RegisterRequest,
   SettingsRequest,
@@ -13,6 +14,7 @@ import type {
 export const accountKeys = {
   me: ['account', 'me'] as const,
   signInOptions: ['account', 'sign-in-options'] as const,
+  providers: ['account', 'providers'] as const,
   /** The mutation that keeps the settings: whoever follows them can tell its answers apart. */
   saveSettings: ['account', 'save-settings'] as const,
 };
@@ -90,6 +92,19 @@ export class AccountQueries {
     return queryOptions({
       queryKey: accountKeys.signInOptions,
       queryFn: () => this.api.get<SignInOptions>('/config'),
+      retry: false,
+    });
+  }
+
+  /**
+   * The instance's providers, each saying whether the signed-in account is linked to it. A
+   * link comes back through a navigation, which loads the app again: what is kept here never
+   * outlives it.
+   */
+  providers() {
+    return queryOptions({
+      queryKey: accountKeys.providers,
+      queryFn: () => this.api.get<AccountProvider[]>('/me/providers'),
       retry: false,
     });
   }

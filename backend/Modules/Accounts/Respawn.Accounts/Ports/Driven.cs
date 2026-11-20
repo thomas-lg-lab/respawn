@@ -34,6 +34,9 @@ public interface IUserDirectory
 
     Task LinkExternalIdentityAsync(Guid accountId, string issuer, string subject, CancellationToken ct);
 
+    /// <summary>The issuers of the identities linked to the account, each once.</summary>
+    Task<IReadOnlyList<string>> LinkedIssuersAsync(Guid accountId, CancellationToken ct);
+
     /// <summary>Replaces the account's settings and answers the account as it now is; null when the
     /// account no longer exists.</summary>
     Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct);
