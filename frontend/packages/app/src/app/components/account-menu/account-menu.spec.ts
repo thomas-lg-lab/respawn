@@ -36,8 +36,10 @@ describe('AccountMenu', () => {
     };
   }
 
-  const detail = (element: HTMLElement) =>
-    element.querySelector('[data-account-detail]')?.textContent.trim();
+  const email = (element: HTMLElement) =>
+    element.querySelector('[data-account-email]')?.textContent.trim();
+  const role = (element: HTMLElement) =>
+    element.querySelector('[data-account-role]')?.textContent.trim();
 
   it('is a named button that says whether its panel is open', async () => {
     const { fixture, trigger, panel } = await create();
@@ -57,16 +59,23 @@ describe('AccountMenu', () => {
     const { element } = await create();
 
     expect(element.querySelector('[data-account-name]')?.textContent).toBe('First');
-    expect(detail(element)).toBe('first@example.org · administrateur');
+    // On lines of their own: a long address is cut, never the role.
+    expect(email(element)).toBe('first@example.org');
+    expect(element.querySelector('[data-account-email]')?.getAttribute('title')).toBe(
+      'first@example.org',
+    );
+    expect(role(element)).toBe('Administrateur');
   });
 
   it('shows what it knows of an account without an address or without the role', async () => {
     const member = await create({ ...ACCOUNT, is_admin: false });
-    expect(detail(member.element)).toBe('first@example.org');
+    expect(email(member.element)).toBe('first@example.org');
+    expect(role(member.element)).toBeUndefined();
 
     TestBed.resetTestingModule();
     const fromProvider = await create({ ...ACCOUNT, email: null });
-    expect(detail(fromProvider.element)).toBe('administrateur');
+    expect(email(fromProvider.element)).toBeUndefined();
+    expect(role(fromProvider.element)).toBe('Administrateur');
   });
 
   it('says which setting was picked and that the way out was asked, and does neither itself', async () => {

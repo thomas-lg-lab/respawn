@@ -81,8 +81,7 @@
   },
   "account": {
     "menu": "Compte et réglages",
-    "administrator": "administrateur",
-    "emailAndAdministrator": "{{ email }} · administrateur",
+    "administrator": "Administrateur",
     "settingsKept": "Ces réglages sont gardés sur votre compte.",
     "settingsNotKept": "Votre compte n’a pas pu garder ce réglage : il ne vaut que dans ce navigateur pour l’instant.",
     "signOut": "Se déconnecter",
