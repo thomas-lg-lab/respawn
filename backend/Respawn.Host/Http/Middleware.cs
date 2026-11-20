@@ -85,3 +85,24 @@ internal sealed class SiteGuardMiddleware(RequestDelegate next)
             && string.Equals(uri.Authority, request.Host.Value, StringComparison.OrdinalIgnoreCase);
     }
 }
+
+/// <summary>
+/// Behind a reverse proxy, the routes that send the browser through another site see the address the
+/// instance is reached at (RESPAWN_PUBLIC_URL): the address the other site is told to send the browser
+/// back to is built from the request. Only these routes, so nothing else of the app depends on the
+/// setting. Placed ahead of what reads a request's address.
+/// </summary>
+internal sealed class PublicAddressMiddleware(RequestDelegate next, HttpSettings settings, IReadOnlyList<string> paths)
+{
+    public Task InvokeAsync(HttpContext context)
+    {
+        if (settings.PublicUrl is { } address
+            && paths.Any(path => context.Request.Path.StartsWithSegments(path, StringComparison.OrdinalIgnoreCase)))
+        {
+            context.Request.Scheme = address.Scheme;
+            context.Request.Host = address.IsDefaultPort ? new HostString(address.Host) : new HostString(address.Host, address.Port);
+        }
+
+        return next(context);
+    }
+}

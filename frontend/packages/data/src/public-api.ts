@@ -5,6 +5,7 @@
  */
 
 export * from './lib/account/account.queries';
+export * from './lib/account/provider-sign-in';
 export * from './lib/api/api';
 export * from './lib/models/models';
 export * from './lib/server-state';

@@ -8,6 +8,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Sign-in through an OpenID Connect provider: the authorization code flow with PKCE, the state and
+         the nonce, and the validation of the ID token are this library's, not written by hand. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.15" />
+    <!-- The protocol and token libraries that handler builds on, named here so that Renovate keeps them at
+         their latest rather than at the handler's minimum. -->
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Respawn.Accounts\Respawn.Accounts.csproj" />
     <ProjectReference Include="..\..\..\Respawn.SharedKernel\Respawn.SharedKernel.csproj" />
   </ItemGroup>

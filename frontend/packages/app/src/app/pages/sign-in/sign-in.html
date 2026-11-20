@@ -16,7 +16,13 @@
         }
         @case ('local-disabled') {
           <h1 class="type-page-title">{{ t('signIn.title') }}</h1>
+          @if (cameBack; as outcome) {
+            <rs-banner tone="warn" role="alert">{{ t('providerSignIn.' + outcome) }}</rs-banner>
+          }
           <rs-banner role="status">{{ t('signIn.localDisabled') }}</rs-banner>
+          @if (providers().length) {
+            <rs-provider-choices [providers]="providers()" />
+          }
         }
         @default {
           <div class="flex flex-col gap-1.5">
@@ -41,6 +47,8 @@
 
           @if (failure(); as refusal) {
             <rs-banner tone="warn" role="alert">{{ t(failureKey(refusal)) }}</rs-banner>
+          } @else if (cameBack; as outcome) {
+            <rs-banner tone="warn" role="alert">{{ t('providerSignIn.' + outcome) }}</rs-banner>
           }
 
           @if (creating()) {
@@ -51,6 +59,10 @@
             />
           } @else {
             <rs-sign-in-form [pending]="signingIn.isPending()" (submitted)="signIn($event)" />
+          }
+
+          @if (providers().length) {
+            <rs-provider-choices [providers]="providers()" [separated]="true" />
           }
 
           @if (view() !== 'first-account' && options.data()?.registration_open) {

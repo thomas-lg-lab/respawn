@@ -156,6 +156,8 @@ describe('routes', () => {
     const { harness, server, router, screen } = await visit('/', signedIn);
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    // The menu asks what the instance offers, for its providers.
+    await server.answer('/config', SIGN_IN_OPTIONS);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
     await server.answer('/auth/logout', null, 204);
@@ -174,6 +176,7 @@ describe('routes', () => {
     const { harness, server, router, screen } = await visit('/', signedIn);
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    await server.answer('/config', SIGN_IN_OPTIONS);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
     await server.refuse('/auth/logout', 503, 'database_unavailable');
@@ -213,6 +216,34 @@ describe('routes', () => {
 
     root.removeAttribute('data-theme');
     root.removeAttribute('data-character');
+  });
+
+  it('offers to link the providers from the account menu, and says what came of it', async () => {
+    const { harness, server, screen } = await visit('/?provider_sign_in=linked', signedIn);
+
+    expect(screen.querySelector('[role="status"]')?.textContent.trim()).toBe(
+      'Le fournisseur est lié : vous pouvez aussi vous connecter avec lui.',
+    );
+
+    screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    await server.answer('/config', {
+      ...SIGN_IN_OPTIONS,
+      oidc_providers: [{ name: 'sso', label: 'Mon SSO' }],
+    });
+    await harness.fixture.whenStable();
+
+    const link = screen.querySelector<HTMLAnchorElement>('a[data-link-provider="sso"]')!;
+    expect(link.textContent.trim()).toBe('Lier Mon SSO');
+    // It comes back to this screen, without the word of the previous link.
+    expect(link.getAttribute('href')).toBe('/api/v1/auth/oidc/sso?return_to=%2F');
+  });
+
+  it('says that a link through a provider failed', async () => {
+    const { screen } = await visit('/?provider_sign_in=linked_elsewhere', signedIn);
+
+    expect(screen.querySelector('[role="alert"]')?.textContent.trim()).toBe(
+      'Cette identité est déjà liée à un autre compte.',
+    );
   });
 
   it('shows the foundations to anyone, without asking who they are', async () => {

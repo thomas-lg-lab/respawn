@@ -1,13 +1,21 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { AccountQueries, type LoginRequest, type RegisterRequest } from '@respawn/data';
+import {
+  AccountQueries,
+  type LoginRequest,
+  PROVIDER_OUTCOME,
+  type RegisterRequest,
+  providerOutcome,
+  providerSignInAddress,
+} from '@respawn/data';
 import { Banner, Button, Label, Pill, PillGroup } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { LANGUAGES, LanguageSetting } from '@app/i18n/language';
-import { RETURN_TO, returnAddress } from '@app/session/return-address';
+import { RETURN_TO, returnAddress, signInFrom } from '@app/session/return-address';
 import { AccountForm } from './components/account-form';
+import { type ProviderChoice, ProviderChoices } from './components/provider-choices';
 import { SignInArt } from './components/sign-in-art';
 import { SignInForm } from './components/sign-in-form';
 
@@ -23,12 +31,13 @@ type View =
   'loading' | 'unavailable' | 'local-disabled' | 'first-account' | 'sign-in' | 'create-account';
 
 /**
- * The way in: sign in with a local account, or create one where the instance allows it.
- * This is where the forms meet the API: it asks what the instance offers, sends what a form
- * hands over, says why it was refused, and opens the app once signed in.
+ * The way in: sign in with a local account, or create one where the instance allows it, or
+ * through one of the instance's providers. This is where the forms meet the API: it asks what
+ * the instance offers, sends what a form hands over, says why it was refused, and opens the
+ * app once signed in.
  *
- * The providers of the instance are not offered yet: signing in through one needs its own
- * flow in the browser, which this screen does not have.
+ * A provider is a navigation: the API sends the browser there and back to this screen, which
+ * opens the app when a session came of it (its guard does) and says why otherwise.
  */
 @Component({
   selector: 'rs-sign-in',
@@ -40,6 +49,7 @@ type View =
     Pill,
     PillGroup,
     AccountForm,
+    ProviderChoices,
     SignInArt,
     SignInForm,
   ],
@@ -89,6 +99,25 @@ export class SignIn {
 
   /** Why the instance could not say who is there, or what it offers. */
   protected readonly unavailable = computed(() => this.account.error() ?? this.options.error());
+
+  /** The providers of the instance, each with the address that starts a sign-in through it. */
+  protected readonly providers = computed<ProviderChoice[]>(() => {
+    const back = this.router.serializeUrl(
+      signInFrom(this.router, this.route.snapshot.queryParamMap.get(RETURN_TO) ?? '/'),
+    );
+    return (this.options.data()?.oidc_providers ?? []).map((provider) => ({
+      ...provider,
+      address: providerSignInAddress(provider.name, back),
+    }));
+  });
+
+  /**
+   * What came of a sign-in through a provider that did not open a session, as the API wrote it
+   * on the address it sent the browser back to. Said until the visitor tries again.
+   */
+  protected readonly cameBack = providerOutcome(
+    this.route.snapshot.queryParamMap.get(PROVIDER_OUTCOME),
+  );
 
   protected signIn(body: LoginRequest): void {
     this.registering.reset();

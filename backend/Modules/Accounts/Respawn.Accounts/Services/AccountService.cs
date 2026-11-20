@@ -5,15 +5,13 @@ using Respawn.Accounts.Ports;
 namespace Respawn.Accounts.Services;
 
 /// <summary>Account rules: who may register, how a sign-in becomes a session. Thin on purpose: hashing,
-/// lockout and token validation belong to the adapters and their libraries.</summary>
+/// lockout and the OpenID Connect exchange belong to the adapters and their libraries.</summary>
 public sealed partial class AccountService(
     IUnitOfWork unitOfWork,
     IUserDirectory users,
     IGroupDirectory groups,
     IInstanceSettings settings,
     ISessionStore sessions,
-    IExchangedTokens exchangedTokens,
-    IExternalTokenValidator tokens,
     AccountOptions options,
     TimeProvider clock) : IAccountService
 {
@@ -84,34 +82,41 @@ public sealed partial class AccountService(
         return signedIn ?? throw new AccountException(AccountError.InvalidCredentials);
     }
 
-    public async Task<SignedIn> SignInWithProviderAsync(
-        string providerName, string idToken, string nonce, string? sessionToken, CancellationToken ct)
-    {
-        var provider = options.OidcProviders.FirstOrDefault(p => p.Name == providerName)
-            ?? throw new AccountException(AccountError.UnknownProvider);
-        var identity = await tokens.ValidateAsync(provider, idToken, nonce, ct);
-
-        return await unitOfWork.RunAsync(
+    public Task<SignedIn> SignInWithProviderAsync(OidcProvider provider, ExternalIdentity identity, CancellationToken ct) =>
+        unitOfWork.RunAsync(
             serialiseRegistrations: true,
             async () =>
             {
-                if (!await exchangedTokens.ExchangeOnceAsync(idToken, identity.ExpiresAt, ct))
-                {
-                    throw new AccountException(AccountError.InvalidToken);
-                }
-
                 var account = await users.FindByExternalIdentityAsync(identity.Issuer, identity.Subject, ct);
                 if (account is null)
                 {
-                    // An account already signed in links the provider to itself.
-                    account = await FindSignedInAsync(sessionToken, ct) ?? await CreateFromProviderAsync(identity, ct);
+                    account = await CreateFromProviderAsync(provider, identity, ct);
                     await users.LinkExternalIdentityAsync(account.Id, identity.Issuer, identity.Subject, ct);
                 }
 
                 return await OpenSessionAsync(account, ct);
             },
             ct);
-    }
+
+    public Task LinkProviderAsync(Guid accountId, ExternalIdentity identity, CancellationToken ct) =>
+        unitOfWork.RunAsync(
+            serialiseRegistrations: true,
+            async () =>
+            {
+                var linked = await users.FindByExternalIdentityAsync(identity.Issuer, identity.Subject, ct);
+                if (linked is null)
+                {
+                    await users.LinkExternalIdentityAsync(accountId, identity.Issuer, identity.Subject, ct);
+                }
+                else if (linked.Id != accountId)
+                {
+                    // One identity, one account: moving it would take a way in away from its owner.
+                    throw new AccountException(AccountError.ProviderLinkedElsewhere);
+                }
+
+                return true;
+            },
+            ct);
 
     public async Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct) =>
         string.IsNullOrEmpty(sessionToken) ? null : await sessions.FindAccountAsync(sessionToken, ct);
@@ -127,9 +132,10 @@ public sealed partial class AccountService(
         }
     }
 
-    private async Task<Account> CreateFromProviderAsync(ExternalIdentity identity, CancellationToken ct)
+    private async Task<Account> CreateFromProviderAsync(OidcProvider provider, ExternalIdentity identity, CancellationToken ct)
     {
-        if (!await RegistrationAllowedAsync(ct))
+        // A provider that creates accounts lets in whomever its own policy lets in, registration closed or not.
+        if (!provider.CreatesAccounts && !await RegistrationAllowedAsync(ct))
         {
             throw new AccountException(AccountError.RegistrationClosed);
         }

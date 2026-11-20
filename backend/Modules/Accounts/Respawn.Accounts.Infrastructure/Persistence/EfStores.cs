@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Respawn.Accounts;
 using Respawn.Accounts.Ports;
 using Respawn.Accounts.Infrastructure.Identity;
-using Respawn.Accounts.Infrastructure.Oidc;
 
 namespace Respawn.Accounts.Infrastructure.Persistence;
 
@@ -123,25 +122,5 @@ internal sealed class EfSessionStore(AccountsDbContext db, TimeProvider clock) :
     {
         var hash = Tokens.Digest(token);
         await db.Sessions.Where(s => s.TokenHash == hash).ExecuteDeleteAsync(ct);
-    }
-}
-
-internal sealed class EfExchangedTokens(AccountsDbContext db, OidcValidationSettings settings, TimeProvider clock) : IExchangedTokens
-{
-    public async Task<bool> ExchangeOnceAsync(string idToken, DateTimeOffset expiresAt, CancellationToken ct)
-    {
-        // A token is still accepted for the leeway after it expires, so its record is kept that long too.
-        var forgotten = clock.GetUtcNow() - settings.Leeway;
-        await db.ExchangedTokens.Where(t => t.ExpiresAt < forgotten).ExecuteDeleteAsync(ct);
-
-        var hash = Tokens.Digest(idToken);
-        if (await db.ExchangedTokens.AnyAsync(t => t.TokenHash == hash, ct))
-        {
-            return false;
-        }
-
-        db.ExchangedTokens.Add(new ExchangedToken { TokenHash = hash, ExpiresAt = expiresAt });
-        await db.SaveChangesAsync(ct);
-        return true;
     }
 }

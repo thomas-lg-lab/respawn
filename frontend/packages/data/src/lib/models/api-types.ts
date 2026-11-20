@@ -142,42 +142,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/oidc": {
+    "/api/v1/auth/oidc/{provider}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Sign in with an ID token from a configured provider */
-        post: {
+        /**
+         * Sign in through a configured provider, or link it: sends the browser to the provider
+         * @description A navigation from the app's own pages, not a call: the browser is sent to the provider, which sends it back to the API once the visitor has signed in there. Without a session, the API opens one for the account the provider's identity is linked to, or creates the account where registration allows it, and the browser lands on return_to. With a session, the identity is linked to the signed-in account instead, and the browser lands on return_to with provider_sign_in=linked. Anything else lands on return_to with provider_sign_in set to registration_closed, link_provider_first (the provider's verified e-mail is an account's: sign in to it, then link the provider), linked_elsewhere (the identity is linked to another account), denied (the provider turned the visitor away), failed (nothing was proven) or unavailable (the provider could not be asked; trying again may work).
+         */
+        get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description The path of the app to come back to, at most 512 characters; the home when it is not one. */
+                    return_to?: string;
+                };
                 header?: never;
-                path?: never;
+                path: {
+                    provider: string;
+                };
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["OidcRequest"];
-                    "text/json": components["schemas"]["OidcRequest"];
-                    "application/*+json": components["schemas"]["OidcRequest"];
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description OK */
-                200: {
+                /** @description Found */
+                302: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["UserResponse"];
+                        "application/json": unknown;
                     };
                 };
-                /** @description Unauthorized */
-                401: {
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -187,6 +196,8 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -948,18 +959,12 @@ export interface components {
             email: string;
             password: string;
         };
-        OidcRequest: {
-            provider: string;
-            id_token: string;
-            nonce: string;
-        };
         OwnKeyRequest: {
             key: string;
         };
         ProviderResponse: {
             name: string;
-            issuer: string;
-            client_id: string;
+            label: string;
         };
         RegisterRequest: {
             email: string;

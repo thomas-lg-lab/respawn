@@ -1,8 +1,11 @@
+using System.ComponentModel;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Logging;
 using Respawn.Accounts.Ports;
 using Respawn.SharedKernel;
 
@@ -26,7 +29,7 @@ public sealed class ConfigController(IAccountService accounts) : ControllerBase
             options.RegistrationOpen,
             options.FirstAccount,
             options.PasswordMinLength,
-            [.. options.Providers.Select(p => new ProviderResponse(p.Name, p.Issuer, p.ClientId))]);
+            [.. options.Providers.Select(p => new ProviderResponse(p.Name, p.Label))]);
     }
 }
 
@@ -34,7 +37,8 @@ public sealed class ConfigController(IAccountService accounts) : ControllerBase
 [Route("api/v1/auth")]
 [Produces("application/json")]
 [AccountRefusals]
-public sealed class AuthController(IAccountService accounts, AccountOptions options, SessionCookieOptions cookie) : ControllerBase
+public sealed class AuthController(
+    IAccountService accounts, AccountOptions options, SessionCookieOptions cookie, ILogger<AuthController> logger) : ControllerBase
 {
     [HttpPost("register")]
     [EnableRateLimiting(AccountsApi.SignInRateLimit)]
@@ -55,14 +59,70 @@ public sealed class AuthController(IAccountService accounts, AccountOptions opti
     public async Task<UserResponse> Login(LoginRequest body, CancellationToken ct) =>
         SignIn(await accounts.LoginAsync(body.Email, body.Password, ct));
 
-    [HttpPost("oidc")]
+    [HttpGet("oidc/{provider}")]
     [EnableRateLimiting(AccountsApi.SignInRateLimit)]
-    [EndpointSummary("Sign in with an ID token from a configured provider")]
-    [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
-    public async Task<UserResponse> Oidc(OidcRequest body, CancellationToken ct) =>
-        SignIn(await accounts.SignInWithProviderAsync(
-            body.Provider, body.IdToken, body.Nonce, Request.Cookies[SessionCookie.Name], ct));
+    [EndpointSummary("Sign in through a configured provider, or link it: sends the browser to the provider")]
+    [EndpointDescription(
+        "A navigation from the app's own pages, not a call: the browser is sent to the provider, which sends it "
+        + "back to the API once the visitor has signed in there. Without a session, the API opens one for the "
+        + "account the provider's identity is linked to, or creates the account where registration allows it, "
+        + "and the browser lands on return_to. With a session, the identity is linked to the signed-in account "
+        + "instead, and the browser lands on return_to with provider_sign_in=linked. Anything else lands on "
+        + "return_to with provider_sign_in set to registration_closed, link_provider_first (the provider's "
+        + "verified e-mail is an account's: sign in to it, then link the provider), linked_elsewhere (the "
+        + "identity is linked to another account), denied (the provider turned the visitor away), failed "
+        + "(nothing was proven) or unavailable (the provider could not be asked; trying again may work).")]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> StartWithProvider(
+        string provider,
+        [FromQuery(Name = "return_to"), Description("The path of the app to come back to, at most 512 characters; the home when it is not one.")]
+        string? returnTo = null)
+    {
+        // Another site's page must not send a visitor to a provider in the app's name. The browser says
+        // where a navigation comes from; one typed or bookmarked says "none".
+        if (Request.Headers["Sec-Fetch-Site"].ToString() is { Length: > 0 } from && from is not ("same-origin" or "none"))
+        {
+            return AccountsApi.Error(StatusCodes.Status403Forbidden, "cross_site_request", "This request comes from another site.");
+        }
+
+        if (!options.OidcProviders.Any(configured => configured.Name == provider))
+        {
+            throw new AccountException(AccountError.UnknownProvider);
+        }
+
+        var properties = new AuthenticationProperties { RedirectUri = Navigation.ReturnPath(returnTo) };
+        if (await accounts.FindSignedInAsync(Request.Cookies[SessionCookie.Name], HttpContext.RequestAborted) is { } signedIn)
+        {
+            properties.Items[ProviderSignIn.LinkItem] = signedIn.Id.ToString();
+        }
+
+        Response.Headers.CacheControl = "no-store";
+        try
+        {
+            // The provider's discovery document is read here, the first time and once a day after.
+            await HttpContext.ChallengeAsync(ProviderSignIn.Scheme(provider), properties);
+        }
+        catch (Exception ex) when (ProviderSignIn.NotAnswering(ex) && !HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // A navigation: the browser goes back to the app with a word it can show, not an error page.
+            logger.LogWarning(
+                "the provider {Provider} could not be asked to start a sign-in: {Reason}", provider, ProviderSignIn.Cause(ex));
+            return Redirect(Navigation.WithOutcome(properties.RedirectUri!, ProviderSignIn.OutcomeParameter, "unavailable"));
+        }
+
+        return new EmptyResult();
+    }
+
+    /// <summary>Where the provider sends the browser back. The provider's handler answers there before any
+    /// route does; this route only gives the return the sign-in's rate limit, and answers the rare request
+    /// the handler lets through. Not part of the contract: nothing but the provider's redirect comes here.</summary>
+    [HttpGet("oidc/{provider}/callback")]
+    [EnableRateLimiting(AccountsApi.SignInRateLimit)]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public IActionResult BackFromProvider(string provider) =>
+        Redirect(Navigation.WithOutcome("/", ProviderSignIn.OutcomeParameter, "failed"));
 
     [HttpPost("logout")]
     [EndpointSummary("Sign out of this browser")]

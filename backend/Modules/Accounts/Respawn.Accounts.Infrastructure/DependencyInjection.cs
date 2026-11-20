@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Accounts.Infrastructure.Identity;
-using Respawn.Accounts.Infrastructure.Oidc;
 using Respawn.Accounts.Infrastructure.Persistence;
 using Respawn.Accounts.Ports;
 using Respawn.SharedKernel;
@@ -45,12 +44,6 @@ public static class DependencyInjection
         services.AddScoped<IGroupDirectory, EfGroupDirectory>();
         services.AddScoped<IInstanceSettings, EfInstanceSettings>();
         services.AddScoped<ISessionStore, EfSessionStore>();
-        services.AddScoped<IExchangedTokens, EfExchangedTokens>();
-
-        // Sign-in through a provider.
-        services.AddSingleton<OidcValidationSettings>();
-        services.AddHttpClient(OidcTokenValidator.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
-        services.AddSingleton<IExternalTokenValidator, OidcTokenValidator>();
 
         return services;
     }

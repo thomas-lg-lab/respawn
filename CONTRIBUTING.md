@@ -71,7 +71,7 @@ and adapters around it.
 | `Respawn.Persistence` | the database connection: opened on first use, every module's schema migrated then, a rotated password followed | the shared kernel; no module |
 | `Respawn.SharedKernel` | what modules and the host agree on: the error format, the database contracts | nothing, not even a package |
 | `Modules/Accounts/Respawn.Accounts` | the core: use cases and the ports they need | nothing; no package |
-| `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, ID token validation, sessions | its core, the shared kernel |
+| `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, sessions | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, and the ports they need | nothing; no package |

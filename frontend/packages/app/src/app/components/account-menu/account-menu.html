@@ -1,4 +1,9 @@
-<div class="relative" rsDisclosure *transloco="let t; prefix: 'account'">
+<div
+  class="relative"
+  rsDisclosure
+  (openChange)="$event && opened.emit()"
+  *transloco="let t; prefix: 'account'"
+>
   <button rsButton rsDisclosureTrigger variant="icon" [aria-label]="t('menu')">
     <svg lucideUserRound class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
   </button>
@@ -32,6 +37,22 @@
     />
 
     <p class="type-caption text-muted">{{ t('settingsKept') }}</p>
+
+    @if (providers().length) {
+      <div class="flex flex-col gap-2">
+        <p class="type-caption text-muted">{{ t('providers') }}</p>
+        @for (provider of providers(); track provider.name) {
+          <a
+            rsButton
+            shape="field"
+            [href]="provider.address"
+            [attr.data-link-provider]="provider.name"
+          >
+            {{ t('linkProvider', { provider: provider.label }) }}
+          </a>
+        }
+      </div>
+    }
 
     <button
       rsButton

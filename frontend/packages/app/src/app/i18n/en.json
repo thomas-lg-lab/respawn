@@ -31,7 +31,18 @@
     "create": "Create an account",
     "loading": "Loading…",
     "retry": "Try again",
-    "localDisabled": "Sign-in with a local account is disabled on this instance."
+    "localDisabled": "Sign-in with a local account is disabled on this instance.",
+    "or": "or",
+    "withProvider": "Continue with {{ provider }}"
+  },
+  "providerSignIn": {
+    "linked": "The provider is linked: you can now sign in with it too.",
+    "registration_closed": "This identity has no account here, and registration is closed on this instance.",
+    "link_provider_first": "An account already uses this e-mail address. Sign in to it, then link the provider from the account menu.",
+    "linked_elsewhere": "This identity is already linked to another account.",
+    "denied": "The provider did not let you in.",
+    "failed": "The sign-in through the provider did not go through. Try again.",
+    "unavailable": "The provider is not answering. Try again in a moment."
   },
   "createAccount": {
     "label": "New game",
@@ -74,7 +85,9 @@
     "emailAndAdministrator": "{{ email }} · administrator",
     "settingsKept": "These settings are kept on your account.",
     "settingsNotKept": "Your account could not keep this setting: for now it holds in this browser only.",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "providers": "Sign-in providers",
+    "linkProvider": "Link {{ provider }}"
   },
   "home": {
     "label": "Account",

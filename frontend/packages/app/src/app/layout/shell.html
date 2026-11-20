@@ -8,11 +8,13 @@
         [language]="language.current()"
         [theme]="display.theme()"
         [character]="display.character()"
+        [providers]="providers()"
         [signingOut]="signingOut.isPending()"
         (languagePicked)="pickLanguage($event)"
         (themePicked)="pickTheme($event)"
         (characterPicked)="pickCharacter($event)"
         (signOut)="signOut()"
+        (opened)="menuOpened.set(true)"
       />
     }
   </div>
@@ -24,6 +26,18 @@
     <rs-banner class="mb-6" tone="warn" role="alert" *transloco="let t">{{
       t(failureKey(refusal))
     }}</rs-banner>
+  }
+  <!-- What came of linking a provider: the API sent the browser back here with its word. -->
+  @if (cameBack(); as outcome) {
+    @if (outcome === 'linked') {
+      <rs-banner class="mb-6" role="status" *transloco="let t">{{
+        t('providerSignIn.linked')
+      }}</rs-banner>
+    } @else {
+      <rs-banner class="mb-6" tone="warn" role="alert" *transloco="let t">{{
+        t('providerSignIn.' + outcome)
+      }}</rs-banner>
+    }
   }
   <!-- A choice the account could not keep: it holds here, and the next visit elsewhere will not have it. -->
   @if (savingSettings.isError()) {

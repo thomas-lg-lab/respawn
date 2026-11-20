@@ -31,7 +31,18 @@
     "create": "Créer un compte",
     "loading": "Chargement…",
     "retry": "Réessayer",
-    "localDisabled": "La connexion par compte local est désactivée sur cette instance."
+    "localDisabled": "La connexion par compte local est désactivée sur cette instance.",
+    "or": "ou",
+    "withProvider": "Continuer avec {{ provider }}"
+  },
+  "providerSignIn": {
+    "linked": "Le fournisseur est lié : vous pouvez aussi vous connecter avec lui.",
+    "registration_closed": "Cette identité n’a pas de compte ici, et les inscriptions sont fermées sur cette instance.",
+    "link_provider_first": "Un compte utilise déjà cette adresse e-mail. Connectez-vous à ce compte, puis liez le fournisseur depuis le menu du compte.",
+    "linked_elsewhere": "Cette identité est déjà liée à un autre compte.",
+    "denied": "Le fournisseur ne vous a pas laissé entrer.",
+    "failed": "La connexion par le fournisseur n’a pas abouti. Réessayez.",
+    "unavailable": "Le fournisseur ne répond pas. Réessayez dans un instant."
   },
   "createAccount": {
     "label": "Nouvelle partie",
@@ -74,7 +85,9 @@
     "emailAndAdministrator": "{{ email }} · administrateur",
     "settingsKept": "Ces réglages sont gardés sur votre compte.",
     "settingsNotKept": "Votre compte n’a pas pu garder ce réglage : il ne vaut que dans ce navigateur pour l’instant.",
-    "signOut": "Se déconnecter"
+    "signOut": "Se déconnecter",
+    "providers": "Fournisseurs de connexion",
+    "linkProvider": "Lier {{ provider }}"
   },
   "home": {
     "label": "Compte",

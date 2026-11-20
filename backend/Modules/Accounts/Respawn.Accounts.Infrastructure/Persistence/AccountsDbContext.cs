@@ -22,8 +22,6 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
 
     public DbSet<Session> Sessions => Set<Session>();
 
-    public DbSet<ExchangedToken> ExchangedTokens => Set<ExchangedToken>();
-
     public DbSet<Setting> Settings => Set<Setting>();
 
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
@@ -113,13 +111,6 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
             session.Property(s => s.TokenHash).HasMaxLength(64);
             session.HasIndex(s => s.TokenHash).IsUnique();
             session.HasOne<AppUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<ExchangedToken>(token =>
-        {
-            token.ToTable("exchanged_tokens");
-            token.HasKey(t => t.TokenHash);
-            token.Property(t => t.TokenHash).HasMaxLength(64);
         });
 
         builder.Entity<Setting>(setting =>

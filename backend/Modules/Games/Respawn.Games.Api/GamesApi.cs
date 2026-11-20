@@ -11,10 +11,14 @@ public static class GamesApi
     /// host defines it.</summary>
     public const string OwnKeyRateLimit = "games-own-key";
 
+    /// <summary>Where the Steam link starts, and under it where Steam sends the browser back. Behind a
+    /// reverse proxy the host gives these routes the address the instance is reached at, which the
+    /// address Steam is told to come back to is built from.</summary>
+    public const string SteamLinkPath = "/api/v1/linked-accounts/steam/link";
+
     /// <summary>What drives the Games module: its routes, the Steam link, and the schedule of the
-    /// sync. The host registers <see cref="SteamLinkOptions"/>, a <see cref="TimeProvider"/> and a
-    /// session other routes are authorized with, and places
-    /// <see cref="SteamLinkPipeline.UseSteamLinkAddress"/> in its pipeline.</summary>
+    /// sync. The host registers a <see cref="TimeProvider"/> and a session other routes are
+    /// authorized with, and gives <see cref="SteamLinkPath"/> the instance's public address.</summary>
     public static IServiceCollection AddGamesApi(this IServiceCollection services)
     {
         // A scheme of its own, that opens no session: it only answers on the link's routes.

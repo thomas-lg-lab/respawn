@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Respawn.Accounts.Api;
 using Respawn.Games.Api;
 using Respawn.Host.Configuration;
 using Respawn.Host.Errors;
@@ -37,9 +38,10 @@ services.AddDatabase(provider => RespawnSettings.Database(provider.GetRequiredSe
 
 // The modules. AddAuthentication, which Accounts calls, brings ASP.NET Core Data Protection along.
 // A session does not use it (it is a row of the database, not an encrypted cookie); the Steam link
-// does, for the state Steam hands back during the minute a link takes. Its keys stay in memory, so a
-// link started before a restart is started again, and its start-up warnings about keys that are not
-// persisted are silenced in appsettings.json: nothing lasting depends on them.
+// and the sign-in through a provider do, for the state the other site hands back during the minute
+// they take. Its keys stay in memory, so one started before a restart is started again, and its
+// start-up warnings about keys that are not persisted are silenced in appsettings.json: nothing
+// lasting depends on them.
 services.AddAccounts();
 services.AddGames();
 
@@ -93,7 +95,7 @@ var app = builder.Build();
 
 app.UseMiddleware<ProxyWarningMiddleware>();
 app.UseForwardedHeaders();
-app.UseSteamLinkAddress();
+app.UseMiddleware<PublicAddressMiddleware>((IReadOnlyList<string>)[GamesApi.SteamLinkPath, AccountsApi.ProviderSignInPath]);
 app.UseMiddleware<SiteGuardMiddleware>();
 app.UseExceptionHandler(_ => { });
 // A status without a body (an unknown route, a method that is not allowed) still answers in the one
@@ -106,6 +108,7 @@ app.UseStatusCodePages(context => ApiErrors.WriteAsync(
 app.UseFront();
 app.UseRouting();
 app.UseRateLimiter();
+app.UseProviderSchemes();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -73,7 +73,7 @@ Everything is read from the environment. Nothing is required to start.
 | --- | --- | --- |
 | `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string: a URI (`postgresql://user:password@host:5432/database`) or Npgsql's `Host=...;Username=...` form |
 | `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set; its password is read again for every new connection |
-| `RESPAWN_PUBLIC_URL` | none | The address the instance is reached at, scheme and host (`https://respawn.example.org`). Set it behind a reverse proxy: linking a Steam account sends the browser to Steam, which sends it back to this address. Without it, the address of the request is used |
+| `RESPAWN_PUBLIC_URL` | none | The address the instance is reached at, scheme and host (`https://respawn.example.org`). Set it behind a reverse proxy: linking a Steam account and signing in through a provider send the browser to Steam or the provider, which send it back to this address. Without it, the address of the request is used |
 | `RESPAWN_STEAM_API_KEY` | none | The instance's [Steam Web API key](https://steamcommunity.com/dev/apikey), which reads the libraries of the linked Steam accounts. A user may give their own key on their linked account, which is then the only one that reads it. Without either, no Steam library is read |
 | `RESPAWN_STEAM_API_KEY_FILE` | `/secrets/steam-api-key` | File holding the key, read when the variable is not set, and read again at each reading |
 | `RESPAWN_ENCRYPTION_KEY` | none | 32 random bytes in base64 (`openssl rand -base64 32`; a placeholder such as all zeros is refused), which encrypt the Steam Web API keys users give on their own linked accounts. Without it, nobody can give one. Changed or lost, the keys already given can no longer be read: their syncs fail until each user gives their key again |
@@ -83,7 +83,7 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
 | `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
 | `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes, and apart on the routes that give or take away a user's own Steam key (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
-| `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`: OpenID Connect providers to sign in with. An issuer is an `https` URL |
+| `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`, with an optional `"label"` (what the sign-in page shows, 40 characters at most) and `"create_accounts": true` (someone the provider proves gets a member account even while registration is closed): OpenID Connect providers to sign in with, the instance being a public client of each (no secret). A name is lower case letters, digits and dashes, once per list; an issuer is an `https` URL. Each provider sends the browser back to `<public address>/api/v1/auth/oidc/<name>/callback`, the address to register with it |
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
 
 Numbers are whole numbers of 1 or more. `RESPAWN_COOKIE_SECURE` is `true` or `false` (`1`, `yes`, `on` and
@@ -118,8 +118,9 @@ Three things depend on where the app stands behind the proxy, and none is guesse
   it is judged on its `Origin`, compared with the `Host` header: for those, the proxy must pass the original
   `Host` on (nginx: `proxy_set_header Host $host`; Traefik and Caddy do it by default), or their sign-in is
   refused as `cross_site_request`. `X-Forwarded-Host` is not read.
-- **The address Steam sends the browser back to** when a Steam account is linked: set `RESPAWN_PUBLIC_URL` to
-  the address visitors use. Without it Steam is told the address the app itself sees. A link only completes
+- **The address Steam or a provider sends the browser back to** when a Steam account is linked or someone
+  signs in through a provider: set `RESPAWN_PUBLIC_URL` to the address visitors use. Without it they are told
+  the address the app itself sees. A link or a sign-in only completes
   through that address: started from another one (the proxy bypassed on the local network), it fails. A
   link in progress does not survive a restart of the app, and is simply started again; for the same reason
   the app runs as one replica.
@@ -135,13 +136,15 @@ administrator, and registration is closed after it. Passwords are stored as Argo
 `RESPAWN_LOCKOUT_THRESHOLD` failed sign-ins an account is locked for `RESPAWN_LOCKOUT_MINUTES`; a locked
 account, a wrong password and an unknown e-mail get the same answer.
 
-**OpenID Connect.** Optional, and in the API only for now: the sign-in screen does not offer the providers
-yet. With a provider configured, a client obtains an ID token (public client, PKCE) and posts it to
-`POST /api/v1/auth/oidc`; any provider with a discovery document works. The token's signature,
-issuer, audience, lifetime and nonce are checked, and a token is exchanged once. An external identity is its
-issuer and subject, never its e-mail: an account is not attached to a provider because the addresses match, its
-owner signs in first and then links the provider. An account created from a provider takes the e-mail of the
-token only when the provider says it is verified (`email_verified`).
+**OpenID Connect.** Optional: each configured provider is a button of the sign-in screen, and a link in the
+account menu. The API runs the exchange itself, with ASP.NET Core's OpenID Connect handler: the browser goes to
+the provider and comes back to the API (the authorization code flow with PKCE, a state and a nonce), which
+redeems the code, checks the ID token (signature, issuer, audience, lifetime, nonce) and opens the session; no
+token of the provider reaches the browser. Any provider with a discovery document works. An external identity
+is its issuer and subject, never its e-mail: an account is not attached to a provider because the addresses
+match, its owner signs in first and then links the provider from the account menu. A new identity gets an
+account where registration is open, or where its provider has `create_accounts`; that account takes the
+e-mail of the token only when the provider says it is verified (`email_verified`).
 
 **Sessions.** A sign-in is an opaque token in an `HttpOnly`, `SameSite=Lax` cookie, valid for
 `RESPAWN_SESSION_DAYS`; only its SHA-256 is stored, and signing out deletes it.
@@ -160,7 +163,7 @@ part of the API.
 | `GET /api/v1/config` | What the sign-in page may offer: local sign-in, open registration, whether the account created now is the first one, the minimum length of a password, the providers |
 | `POST /api/v1/auth/register` | Creates a local account and signs in |
 | `POST /api/v1/auth/login` | Signs in with a local account |
-| `POST /api/v1/auth/oidc` | Signs in with an ID token of a configured provider; links it to the account already signed in |
+| `GET /api/v1/auth/oidc/{provider}` | Signs in through a configured provider, or links it to the account already signed in. A navigation from the app's pages, not a call: the browser is sent to the provider, then comes back on `return_to` (a path of the app, the home by default), with the outcome in the `provider_sign_in` parameter unless a session was opened: `linked`, `registration_closed`, `link_provider_first`, `linked_elsewhere`, `denied`, `failed` or `unavailable` |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
 | `GET /api/v1/me` | The signed-in account, with the settings of its interface (`settings`: `language`, `theme`, `character`; null while it never chose) |
 | `PUT /api/v1/me/settings` | Keeps the three settings of the interface on the signed-in account, together, in place of the ones it had |
@@ -182,14 +185,14 @@ Errors always have the same shape, whatever answered:
 | Status | Codes |
 | --- | --- |
 | 400 | `invalid_key` |
-| 401 | `not_signed_in`, `invalid_credentials`, `invalid_token` |
+| 401 | `not_signed_in`, `invalid_credentials` |
 | 403 | `registration_closed`, `local_sign_in_disabled`, `cross_site_request`, `forbidden` |
 | 404 | `unknown_provider`, `unknown_linked_account`, `http_error` |
 | 409 | `account_exists`, `sync_in_progress` |
 | 422 | `invalid_request`, `invalid_email`, `weak_password` |
 | 429 | `too_many_requests` |
 | 500 | `internal_error` |
-| 503 | `database_unavailable`, `provider_unavailable`, `keys_unavailable` |
+| 503 | `database_unavailable`, `keys_unavailable` |
 
 `http_error` is the code of any status answered without a body of its own: an unknown route (404), and also a
 method a route does not allow (405).
@@ -232,7 +235,7 @@ adapters around it.
 | `Respawn.Host` | Composition only: the HTTP pipeline, one registration per module, the front's files |
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
-| `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity, ID token validation) and its API |
+| `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity) and its API, which runs the sign-in through a provider |
 | `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, and the sync that reads each library once a day |
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |

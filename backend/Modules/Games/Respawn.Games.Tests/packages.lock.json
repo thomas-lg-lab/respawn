@@ -79,6 +79,14 @@
         "resolved": "1.0.22",
         "contentHash": "KPD9SloJFclrsjnhABu7dzWrcyYkwPbvx5l1gRSPAX/0n+OBtSiVCKtGFv4n+ecWUHU0tCG9LSSwoZZx673zBQ=="
       },
+      "Microsoft.AspNetCore.Authentication.OpenIdConnect": {
+        "type": "Transitive",
+        "resolved": "10.0.15",
+        "contentHash": "e+YnssZ13Vs9wMi4Jvw+nA46oh+0I3bZKASmASHX4x2IQh4Ns9ilcNw30YC1lnyMLF6mIF4Fe7U0Mn0WJbr3Hg==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.19.2"
+        }
+      },
       "Microsoft.AspNetCore.Cryptography.Internal": {
         "type": "Transitive",
         "resolved": "10.0.15",
@@ -646,6 +654,8 @@
       "respawn.accounts.api": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[10.0.15, )",
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.23.0, )",
           "Respawn.Accounts": "[1.0.0, )",
           "Respawn.SharedKernel": "[1.0.0, )"
         }
@@ -655,8 +665,6 @@
         "dependencies": {
           "EFCore.NamingConventions": "[10.0.1, )",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.15, )",
-          "Microsoft.Extensions.Http": "[10.0.15, )",
-          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.23.0, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "Respawn.Accounts": "[1.0.0, )",
           "Respawn.SharedKernel": "[1.0.0, )",

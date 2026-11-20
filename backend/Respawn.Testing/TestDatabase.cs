@@ -102,7 +102,7 @@ internal static class TestDatabase
         Execute(
             connection,
             "TRUNCATE accounts.users, accounts.groups, accounts.group_memberships, accounts.sessions, accounts.external_identities, "
-            + "accounts.exchanged_tokens, accounts.settings, accounts.user_claims, accounts.user_tokens, "
+            + "accounts.settings, accounts.user_claims, accounts.user_tokens, "
             + "games.games, games.store_entries, games.linked_accounts, games.raw_snapshots, games.observations, games.ownerships, games.sync_runs CASCADE");
     }
 
