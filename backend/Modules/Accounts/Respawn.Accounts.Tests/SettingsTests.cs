@@ -136,9 +136,11 @@ public sealed class SettingsTests
         public Task<SignedIn> LoginAsync(string email, string password, CancellationToken ct) =>
             inner.LoginAsync(email, password, ct);
 
-        public Task<SignedIn> SignInWithProviderAsync(
-            string providerName, string idToken, string nonce, string? sessionToken, CancellationToken ct) =>
-            inner.SignInWithProviderAsync(providerName, idToken, nonce, sessionToken, ct);
+        public Task<SignedIn> SignInWithProviderAsync(OidcProvider provider, ExternalIdentity identity, CancellationToken ct) =>
+            inner.SignInWithProviderAsync(provider, identity, ct);
+
+        public Task LinkProviderAsync(Guid accountId, ExternalIdentity identity, CancellationToken ct) =>
+            inner.LinkProviderAsync(accountId, identity, ct);
 
         public Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct) =>
             inner.FindSignedInAsync(sessionToken, ct);

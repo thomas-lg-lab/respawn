@@ -12,9 +12,9 @@ public enum AccountError
     LinkProviderFirst,
     LocalSignInDisabled,
     InvalidCredentials,
-    UnknownProvider,
-    InvalidToken,
-    ProviderUnavailable,
+
+    /// <summary>The identity a provider proved is already linked to another account of the instance.</summary>
+    ProviderLinkedElsewhere,
 }
 
 public sealed class AccountException(AccountError error) : Exception(error.ToString())

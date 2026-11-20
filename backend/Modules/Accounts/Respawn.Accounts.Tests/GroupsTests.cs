@@ -52,9 +52,8 @@ public sealed class GroupsTests
         var issuer = new FakeIssuer();
         await using var app = await issuer.StartAppAsync();
         using var browser = app.Browser();
-        var response = await browser.ExchangeAsync(issuer.Token());
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var account = (await response.JsonAsync()).GetProperty("id").GetGuid();
+        Assert.Equal("/", (await browser.SignInAsync(issuer)).Landing());
+        var account = (await browser.GetAsync("/api/v1/me").JsonAsync()).GetProperty("id").GetGuid();
 
         var group = Assert.Single(await GroupsAsync(app));
         Assert.Equal(account, group.OwnerId);

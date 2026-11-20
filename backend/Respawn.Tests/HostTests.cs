@@ -20,6 +20,11 @@ public sealed class HostTests
     [InlineData("RESPAWN_OIDC_PROVIDERS", """[{"name": "test", "client_id": "respawn"}]""")]
     [InlineData("RESPAWN_OIDC_PROVIDERS", """[{"name": "test", "issuer": "http://issuer.example.org", "client_id": "respawn"}]""")]
     [InlineData("RESPAWN_OIDC_PROVIDERS", "[null]")]
+    [InlineData("RESPAWN_OIDC_PROVIDERS", """[{"name": "Test", "issuer": "https://issuer.example.org", "client_id": "respawn"}]""")]
+    [InlineData("RESPAWN_OIDC_PROVIDERS", """[{"name": "a/b", "issuer": "https://issuer.example.org", "client_id": "respawn"}]""")]
+    [InlineData("RESPAWN_OIDC_PROVIDERS", """[{"name": "sso", "issuer": "https://a.example.org", "client_id": "x"}, {"name": "sso", "issuer": "https://b.example.org", "client_id": "y"}]""")]
+    [InlineData("RESPAWN_OIDC_PROVIDERS", """[{"name": "sso", "label": " ", "issuer": "https://issuer.example.org", "client_id": "respawn"}]""")]
+    [InlineData("RESPAWN_OIDC_PROVIDERS", """[{"name": "sso", "issuer": "issuer.example.org", "client_id": "respawn"}]""")]
     public void An_account_setting_that_means_nothing_is_refused_by_name(string name, string value)
     {
         var error = Assert.Throws<FormatException>(() => RespawnSettings.Accounts(Configuration(name, value)));

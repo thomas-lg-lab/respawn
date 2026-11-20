@@ -142,51 +142,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/oidc": {
+    "/api/v1/auth/oidc/{provider}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Sign in with an ID token from a configured provider */
-        post: {
+        /**
+         * Sign in through a configured provider: sends the browser to the provider
+         * @description A navigation from the app's own pages, not a call: the browser is sent to the provider, which sends it back to the API once the visitor has signed in there. The API opens a session for the account the provider's identity is linked to, or creates the account where registration allows it (or the provider creates accounts), and the browser lands on return_to. It never links: a session the browser already has is closed and replaced. Anything else lands on return_to with provider_sign_in set to registration_closed, link_provider_first (the provider's verified e-mail is an account's: sign in to it, then link the provider), denied (the provider turned the visitor away), failed (nothing was proven, or the sign-in was not started: the navigation did not come from the app's own pages, the provider is not configured, or there were too many attempts) or unavailable (the provider could not be asked; trying again may work). The answer is always a redirect, never an error.
+         */
+        get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description The path of the app to come back to, at most 512 characters; the home when it is not one. */
+                    return_to?: string;
+                };
                 header?: never;
-                path?: never;
+                path: {
+                    provider: string;
+                };
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["OidcRequest"];
-                    "text/json": components["schemas"]["OidcRequest"];
-                    "application/*+json": components["schemas"]["OidcRequest"];
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description OK */
-                200: {
+                /** @description Found */
+                302: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["UserResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": unknown;
                     };
                 };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oidc/{provider}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Link a configured provider to the signed-in account: sends the browser to the provider
+         * @description A navigation from the app's own pages, not a call, and only on purpose (the account menu): the browser is sent to the provider, and the identity it proves is linked to the account signed in when the link started, which must still be signed in when the browser comes back. The browser lands on return_to with provider_sign_in set to linked, linked_elsewhere (the identity is linked to another account), denied, failed (as for a sign-in, and when nobody is signed in) or unavailable. No session is opened. The answer is always a redirect, never an error.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The path of the app to come back to, at most 512 characters; the home when it is not one. */
+                    return_to?: string;
+                };
+                header?: never;
+                path: {
+                    provider: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Found */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -948,18 +985,12 @@ export interface components {
             email: string;
             password: string;
         };
-        OidcRequest: {
-            provider: string;
-            id_token: string;
-            nonce: string;
-        };
         OwnKeyRequest: {
             key: string;
         };
         ProviderResponse: {
             name: string;
-            issuer: string;
-            client_id: string;
+            label: string;
         };
         RegisterRequest: {
             email: string;

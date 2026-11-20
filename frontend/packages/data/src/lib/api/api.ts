@@ -4,7 +4,7 @@ import { type Observable, firstValueFrom } from 'rxjs';
 import type { ApiError } from '../models/models';
 
 /** Every route of the public API lives under this prefix; the front uses no other. */
-const BASE = '/api/v1';
+export const API_BASE = '/api/v1';
 
 /** The code of a failure that is not an answer of the API: the request never got one. */
 export const NETWORK_ERROR = 'network_error';
@@ -64,15 +64,15 @@ export class Api {
   private readonly http = inject(HttpClient);
 
   get<T>(path: string): Promise<T> {
-    return this.send(this.http.get<T>(BASE + path));
+    return this.send(this.http.get<T>(API_BASE + path));
   }
 
   post<T>(path: string, body: unknown): Promise<T> {
-    return this.send(this.http.post<T>(BASE + path, body));
+    return this.send(this.http.post<T>(API_BASE + path, body));
   }
 
   put<T>(path: string, body: unknown): Promise<T> {
-    return this.send(this.http.put<T>(BASE + path, body));
+    return this.send(this.http.put<T>(API_BASE + path, body));
   }
 
   private async send<T>(request: Observable<T>): Promise<T> {

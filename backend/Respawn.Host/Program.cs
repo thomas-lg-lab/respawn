@@ -5,12 +5,14 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Respawn.Accounts.Api;
 using Respawn.Games.Api;
 using Respawn.Host.Configuration;
 using Respawn.Host.Errors;
 using Respawn.Host.Http;
 using Respawn.Host.Modules;
 using Respawn.Persistence;
+using Respawn.SharedKernel;
 
 // The host: /healthz, the front, the HTTP pipeline, the database, and the modules that
 // provide the public API under /api/v1. Composition only: no business rule lives here.
@@ -37,9 +39,10 @@ services.AddDatabase(provider => RespawnSettings.Database(provider.GetRequiredSe
 
 // The modules. AddAuthentication, which Accounts calls, brings ASP.NET Core Data Protection along.
 // A session does not use it (it is a row of the database, not an encrypted cookie); the Steam link
-// does, for the state Steam hands back during the minute a link takes. Its keys stay in memory, so a
-// link started before a restart is started again, and its start-up warnings about keys that are not
-// persisted are silenced in appsettings.json: nothing lasting depends on them.
+// and the sign-in through a provider do, for the state the other site hands back during the minute
+// they take. Its keys stay in memory, so one started before a restart is started again, and its
+// start-up warnings about keys that are not persisted are silenced in appsettings.json: nothing
+// lasting depends on them.
 services.AddAccounts();
 services.AddGames();
 
@@ -74,9 +77,23 @@ services.AddExceptionHandler<ApiExceptionHandler>();
 
 // Each module names its rate-limit policies; the answer to a request over the limit is the host's.
 services.AddRateLimiter(_ => { });
+// A navigation is the exception: an error would be a page of JSON in the visitor's browser, so it goes
+// back to the app with its outcome.
 services.AddOptions<RateLimiterOptions>().Configure(limiter =>
-    limiter.OnRejected = (rejected, _) => new ValueTask(ApiErrors.WriteAsync(
-        rejected.HttpContext, 429, "too_many_requests", "Too many attempts. Wait a moment and try again.")));
+    limiter.OnRejected = (rejected, _) =>
+    {
+        var http = rejected.HttpContext;
+        if (http.GetEndpoint()?.Metadata.GetMetadata<NavigationAttribute>() is { } navigation)
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            // A path of this app (Navigation.ReturnPath), which LocalRedirect checks once more.
+            return new ValueTask(Results.LocalRedirect(Navigation.WithOutcome(
+                Navigation.ReturnPath(http.Request.Query[Navigation.ReturnParameter]), navigation.OutcomeParameter, Navigation.Failed))
+                .ExecuteAsync(http));
+        }
+
+        return new ValueTask(ApiErrors.WriteAsync(http, 429, "too_many_requests", "Too many attempts. Wait a moment and try again."));
+    });
 services.AddOptions<ForwardedHeadersOptions>().Configure<HttpSettings>((forwarded, http) =>
 {
     forwarded.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
@@ -93,7 +110,7 @@ var app = builder.Build();
 
 app.UseMiddleware<ProxyWarningMiddleware>();
 app.UseForwardedHeaders();
-app.UseSteamLinkAddress();
+app.UseMiddleware<PublicAddressMiddleware>((IReadOnlyList<string>)[GamesApi.SteamLinkPath, AccountsApi.ProviderSignInPath]);
 app.UseMiddleware<SiteGuardMiddleware>();
 app.UseExceptionHandler(_ => { });
 // A status without a body (an unknown route, a method that is not allowed) still answers in the one
@@ -106,6 +123,7 @@ app.UseStatusCodePages(context => ApiErrors.WriteAsync(
 app.UseFront();
 app.UseRouting();
 app.UseRateLimiter();
+app.UseProviderSchemes();
 app.UseAuthentication();
 app.UseAuthorization();
 

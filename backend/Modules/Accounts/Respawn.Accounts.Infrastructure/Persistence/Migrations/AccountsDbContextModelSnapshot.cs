@@ -226,23 +226,6 @@ namespace Respawn.Accounts.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.ExchangedToken", b =>
-                {
-                    b.Property<string>("TokenHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("token_hash");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.HasKey("TokenHash")
-                        .HasName("pk_exchanged_tokens");
-
-                    b.ToTable("exchanged_tokens", "accounts");
-                });
-
             modelBuilder.Entity("Respawn.Accounts.Infrastructure.Persistence.GroupMembership", b =>
                 {
                     b.Property<Guid>("GroupId")

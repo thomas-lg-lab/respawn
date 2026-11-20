@@ -5,22 +5,13 @@ using AspNet.Security.OpenId.Steam;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Respawn.Games.Ports;
+using Respawn.SharedKernel;
 
 namespace Respawn.Games.Api;
-
-/// <summary>What the link needs to know about where the app runs.</summary>
-public sealed class SteamLinkOptions
-{
-    /// <summary>The address the instance is reached at, scheme and host, when a reverse proxy stands
-    /// in front: Steam sends the browser back there. Null when the app is reached directly.</summary>
-    public Uri? PublicUrl { get; init; }
-}
 
 /// <summary>
 /// "Sign in through Steam", used to link a library and never to sign in: it proves that a Steam
@@ -40,7 +31,7 @@ internal static partial class SteamLink
     public const string Source = "steam";
 
     /// <summary>Where the link starts, and under it where Steam sends the browser back.</summary>
-    public const string StartPath = "/api/v1/linked-accounts/steam/link";
+    public const string StartPath = GamesApi.SteamLinkPath;
 
     public const string CallbackPath = StartPath + "/callback";
 
@@ -54,10 +45,6 @@ internal static partial class SteamLink
 
     /// <summary>The account that asked for the link, kept in the state Steam hands back.</summary>
     public const string OwnerItem = "respawn.owner";
-
-    /// <summary>The longest address to come back to: it travels twice in the address Steam sends the
-    /// browser back to, which servers and proxies cap at a few thousand characters.</summary>
-    private const int MaxReturnPath = 512;
 
     /// <summary>What Steam's signature must cover for its answer to prove an account.</summary>
     private static readonly string[] Signed = ["claimed_id", "identity", "return_to"];
@@ -84,38 +71,11 @@ internal static partial class SteamLink
         steam.Events.OnRemoteFailure = OnFailure;
     }
 
-    /// <summary>An address of the app to send the browser back to: a path of this origin, in the
-    /// characters an address is written in, and never the API's. Anything else gives the home, so
-    /// the parameter cannot send elsewhere, nor break the answer that carries it.</summary>
-    public static string ReturnPath(string? asked) =>
-        asked is { Length: > 0 and <= MaxReturnPath }
-        && asked[0] == '/'
-        && (asked.Length == 1 || asked[1] is not ('/' or '\\'))
-        && asked.All(c => c is > ' ' and <= '~' and not '\\')
-        && !asked.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
-            ? asked
-            : "/";
+    /// <summary>An address of the app to send the browser back to (<see cref="Navigation.ReturnPath"/>).</summary>
+    public static string ReturnPath(string? asked) => Navigation.ReturnPath(asked);
 
-    /// <summary>The address with the outcome on it, once: an outcome the address already carried is
-    /// dropped, so nobody writes one in advance.</summary>
-    public static string WithOutcome(string path, string outcome)
-    {
-        var fragmentAt = path.IndexOf('#', StringComparison.Ordinal);
-        var fragment = fragmentAt < 0 ? "" : path[fragmentAt..];
-        var address = fragmentAt < 0 ? path : path[..fragmentAt];
-        var queryAt = address.IndexOf('?', StringComparison.Ordinal);
-        if (queryAt >= 0)
-        {
-            var kept = address[(queryAt + 1)..]
-                .Split('&', StringSplitOptions.RemoveEmptyEntries)
-                .Where(pair => !string.Equals(
-                    Uri.UnescapeDataString(pair.Split('=')[0].Replace('+', ' ')), OutcomeParameter, StringComparison.OrdinalIgnoreCase));
-            var query = string.Join('&', kept);
-            address = query.Length == 0 ? address[..queryAt] : address[..queryAt] + "?" + query;
-        }
-
-        return QueryHelpers.AddQueryString(address, OutcomeParameter, outcome) + fragment;
-    }
+    /// <summary>The address with the link's outcome on it, once.</summary>
+    public static string WithOutcome(string path, string outcome) => Navigation.WithOutcome(path, OutcomeParameter, outcome);
 
     /// <summary>The SteamID of a claimed identifier, when it is one of Steam's: the library checks
     /// the answer with Steam, not the shape of the identifier it proves. Steam has written it with
@@ -236,24 +196,4 @@ internal static partial class SteamLink
 
     [GeneratedRegex(@"^https?://steamcommunity\.com/openid/id/([0-9]{17})\z", RegexOptions.CultureInvariant)]
     private static partial Regex ClaimedId();
-}
-
-public static class SteamLinkPipeline
-{
-    /// <summary>Behind a reverse proxy, the link's routes see the address the instance is reached at:
-    /// the address Steam is given to come back to is built from the request. Only these routes, so
-    /// nothing else of the app depends on the setting. Placed by the host ahead of what reads a
-    /// request's address.</summary>
-    public static IApplicationBuilder UseSteamLinkAddress(this IApplicationBuilder app) =>
-        app.Use((context, following) =>
-        {
-            if (context.Request.Path.StartsWithSegments(SteamLink.StartPath, StringComparison.OrdinalIgnoreCase)
-                && context.RequestServices.GetRequiredService<SteamLinkOptions>().PublicUrl is { } address)
-            {
-                context.Request.Scheme = address.Scheme;
-                context.Request.Host = address.IsDefaultPort ? new HostString(address.Host) : new HostString(address.Host, address.Port);
-            }
-
-            return following(context);
-        });
 }

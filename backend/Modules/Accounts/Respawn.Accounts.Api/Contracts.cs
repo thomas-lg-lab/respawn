@@ -47,7 +47,9 @@ public sealed class SettingsRequest
         SettingWords.ToLanguage(Language), SettingWords.ToTheme(Theme), SettingWords.ToCharacter(Character));
 }
 
-public sealed record ProviderResponse(string Name, string Issuer, string ClientId);
+/// <summary>A provider the sign-in page may offer: <c>Name</c> goes in the address that starts a sign-in
+/// through it (<c>/api/v1/auth/oidc/{name}</c>), <c>Label</c> is what the page shows.</summary>
+public sealed record ProviderResponse(string Name, string Label);
 
 /// <summary>What the sign-in page may offer. <c>FirstAccount</c>: no account exists yet, so the one created
 /// now becomes the administrator. <c>PasswordMinLength</c>: the one rule a new local password must meet.</summary>
@@ -77,16 +79,4 @@ public sealed class LoginRequest
 
     [Required, StringLength(256)]
     public string Password { get; init; } = "";
-}
-
-public sealed class OidcRequest
-{
-    [Required, StringLength(64)]
-    public string Provider { get; init; } = "";
-
-    [Required, StringLength(16384)]
-    public string IdToken { get; init; } = "";
-
-    [Required, StringLength(256, MinimumLength = 8)]
-    public string Nonce { get; init; } = "";
 }

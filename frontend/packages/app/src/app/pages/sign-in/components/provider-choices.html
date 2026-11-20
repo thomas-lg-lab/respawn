@@ -1,0 +1,19 @@
+<div class="flex flex-col gap-3" *transloco="let t">
+  @if (separated()) {
+    <p class="flex items-center gap-3 type-caption text-muted" aria-hidden="true">
+      <span class="h-px flex-1 bg-line"></span>{{ t('signIn.or')
+      }}<span class="h-px flex-1 bg-line"></span>
+    </p>
+  }
+  @for (provider of providers(); track provider.name) {
+    <a
+      rsButton
+      shape="field"
+      class="font-semibold"
+      [href]="provider.address"
+      [attr.data-provider]="provider.name"
+    >
+      {{ t('signIn.withProvider', { provider: provider.label }) }}
+    </a>
+  }
+</div>

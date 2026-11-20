@@ -31,18 +31,20 @@ public enum Character
 /// the browser's own choices apply.</summary>
 public sealed record InterfaceSettings(Language Language, Theme Theme, Character Character);
 
-/// <summary>A sign-in through a provider, known by its issuer and subject, never by its e-mail.</summary>
+/// <summary>Someone a provider has proven, known by its issuer and subject, never by its e-mail.</summary>
 public sealed record ExternalIdentity(
     string Issuer,
     string Subject,
     string? Email,
     bool EmailVerified,
-    string? DisplayName,
-    DateTimeOffset ExpiresAt);
+    string? DisplayName);
 
-/// <summary>An OpenID Connect provider the front may sign in with. Public values only: no client
-/// secret. The issuer is kept without its trailing slash.</summary>
-public sealed record OidcProvider(string Name, string Issuer, string ClientId);
+/// <summary>An OpenID Connect provider the instance signs in with. <c>Name</c> is its short name in the
+/// addresses of the API, <c>Label</c> what the sign-in page shows. Public values only: the instance is a
+/// public client of the provider, with no client secret. The issuer is kept without its trailing slash.
+/// <c>CreatesAccounts</c>: someone the provider proves, and who has no account yet, gets a member account
+/// even while registration is closed; the provider's own policy then says who may come in.</summary>
+public sealed record OidcProvider(string Name, string Label, string Issuer, string ClientId, bool CreatesAccounts = false);
 
 /// <summary>What the sign-in page may offer.</summary>
 public sealed record SignInOptions(

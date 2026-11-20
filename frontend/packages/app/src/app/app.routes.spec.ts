@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -156,6 +157,8 @@ describe('routes', () => {
     const { harness, server, router, screen } = await visit('/', signedIn);
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    // The menu asks what the instance offers, for its providers.
+    await server.answer('/config', SIGN_IN_OPTIONS);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
     await server.answer('/auth/logout', null, 204);
@@ -174,6 +177,7 @@ describe('routes', () => {
     const { harness, server, router, screen } = await visit('/', signedIn);
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    await server.answer('/config', SIGN_IN_OPTIONS);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
     await server.refuse('/auth/logout', 503, 'database_unavailable');
@@ -213,6 +217,57 @@ describe('routes', () => {
 
     root.removeAttribute('data-theme');
     root.removeAttribute('data-character');
+  });
+
+  it('offers to link the providers from the account menu, and says what came of it', async () => {
+    const { harness, server, screen } = await visit('/?provider_sign_in=linked', signedIn);
+
+    expect(screen.querySelector('[role="status"]')?.textContent.trim()).toBe(
+      'Le fournisseur est lié : vous pouvez aussi vous connecter avec lui.',
+    );
+
+    screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    await server.answer('/config', {
+      ...SIGN_IN_OPTIONS,
+      oidc_providers: [{ name: 'sso', label: 'Mon SSO' }],
+    });
+    await harness.fixture.whenStable();
+
+    const link = screen.querySelector<HTMLAnchorElement>('a[data-link-provider="sso"]')!;
+    expect(link.textContent.trim()).toBe('Lier Mon SSO');
+    // It comes back to this screen, without the word of the previous link.
+    expect(link.getAttribute('href')).toBe('/api/v1/auth/oidc/sso/link?return_to=%2F');
+  });
+
+  it('says what came of a link once: the word leaves the address, not the screen', async () => {
+    const { screen } = await visit('/?tab=all&provider_sign_in=linked', signedIn);
+
+    // A reload or a bookmark of this address says nothing.
+    expect(TestBed.inject(Location).path()).toMatch(/^\/?\?tab=all$/);
+    expect(screen.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it('says why a sign-in through a provider opened no session, once', async () => {
+    const { screen } = await visit(
+      '/sign-in?returnTo=%2Flibrary&provider_sign_in=denied',
+      async (server) => {
+        await server.refuse('/me', 401, 'not_signed_in');
+        await server.answer('/config', SIGN_IN_OPTIONS);
+      },
+    );
+
+    expect(screen.querySelector('[role="alert"]')?.textContent.trim()).toBe(
+      'Le fournisseur ne vous a pas laissé entrer.',
+    );
+    expect(TestBed.inject(Location).path()).toBe('/sign-in?returnTo=%2Flibrary');
+  });
+
+  it('says that a link through a provider failed', async () => {
+    const { screen } = await visit('/?provider_sign_in=linked_elsewhere', signedIn);
+
+    expect(screen.querySelector('[role="alert"]')?.textContent.trim()).toBe(
+      'Cette identité est déjà liée à un autre compte.',
+    );
   });
 
   it('shows the foundations to anyone, without asking who they are', async () => {

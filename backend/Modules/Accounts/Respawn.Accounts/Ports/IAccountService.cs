@@ -11,11 +11,15 @@ public interface IAccountService
 
     Task<SignedIn> LoginAsync(string email, string password, CancellationToken ct);
 
-    /// <summary>Signs in with an ID token of a configured provider. With <paramref name="sessionToken"/>
-    /// naming a current session, a provider that is not known yet is linked to that account instead of
-    /// creating one.</summary>
-    Task<SignedIn> SignInWithProviderAsync(
-        string providerName, string idToken, string nonce, string? sessionToken, CancellationToken ct);
+    /// <summary>Signs in as someone a provider has proven: the account their identity is linked to, or a
+    /// new one where registration allows it or the provider creates accounts. Proving them is the caller's
+    /// work (the OpenID Connect exchange is an inbound adapter's, done by a library).</summary>
+    Task<SignedIn> SignInWithProviderAsync(OidcProvider provider, ExternalIdentity identity, CancellationToken ct);
+
+    /// <summary>Links an identity a provider has proven to an account, which then signs in with that
+    /// provider too. Linking it again to the same account changes nothing.</summary>
+    /// <exception cref="AccountException"><see cref="AccountError.ProviderLinkedElsewhere"/>.</exception>
+    Task LinkProviderAsync(Guid accountId, ExternalIdentity identity, CancellationToken ct);
 
     Task<Account?> FindSignedInAsync(string? sessionToken, CancellationToken ct);
 

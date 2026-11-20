@@ -64,17 +64,3 @@ public interface ISessionStore
 
     Task CloseAsync(string token, CancellationToken ct);
 }
-
-public interface IExchangedTokens
-{
-    /// <summary>Records an ID token as used. False when it was already exchanged for a session.</summary>
-    Task<bool> ExchangeOnceAsync(string idToken, DateTimeOffset expiresAt, CancellationToken ct);
-}
-
-public interface IExternalTokenValidator
-{
-    /// <exception cref="AccountException"><see cref="AccountError.InvalidToken"/> when the token is not
-    /// one this provider issued for this app, now; <see cref="AccountError.ProviderUnavailable"/> when
-    /// the provider's keys could not be fetched, so nothing can be said about the token.</exception>
-    Task<ExternalIdentity> ValidateAsync(OidcProvider provider, string idToken, string nonce, CancellationToken ct);
-}

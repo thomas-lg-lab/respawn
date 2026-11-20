@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import type { SignInOptions } from '@respawn/data';
 import type { Language } from '@app/i18n/language';
 import {
@@ -15,8 +15,14 @@ import { SignIn } from './sign-in';
 
 describe('SignIn', () => {
   /** The screen, once the instance said what it offers. */
-  async function open(options: Partial<SignInOptions> = {}, language: Language = 'fr') {
-    configureApp(language);
+  async function open(
+    options: Partial<SignInOptions> = {},
+    language: Language = 'fr',
+    address: Record<string, string> = {},
+  ) {
+    // The parameters of the address the screen was opened at.
+    const route = { snapshot: { queryParamMap: convertToParamMap(address) } };
+    configureApp(language, [{ provide: ActivatedRoute, useValue: route }]);
     const fixture = TestBed.createComponent(SignIn);
     const server = api();
     await server.answer('/config', { ...SIGN_IN_OPTIONS, ...options });
@@ -261,5 +267,54 @@ describe('SignIn', () => {
     await vi.waitFor(() => expect(title(screen)).toBe('Créer le premier compte'));
     await fixture.whenStable();
     expect(localStorage.getItem('respawn.language')).toBe('fr');
+  });
+
+  describe('through a provider', () => {
+    const SSO = { oidc_providers: [{ name: 'sso', label: 'Mon SSO' }] };
+    const link = (screen: HTMLElement) =>
+      screen.querySelector<HTMLAnchorElement>('a[data-provider="sso"]');
+
+    it('offers the providers under the form, as links that come back to this screen', async () => {
+      const { screen } = await open(SSO);
+
+      expect(link(screen)?.textContent.trim()).toBe('Continuer avec Mon SSO');
+      expect(link(screen)?.getAttribute('href')).toBe('/api/v1/auth/oidc/sso?return_to=%2Fsign-in');
+      expect(screen.querySelector('form')).not.toBeNull();
+    });
+
+    it('keeps where the visitor was headed, through the provider and back', async () => {
+      const { screen } = await open(SSO, 'fr', { returnTo: '/library' });
+
+      expect(link(screen)?.getAttribute('href')).toBe(
+        '/api/v1/auth/oidc/sso?return_to=%2Fsign-in%3FreturnTo%3D%252Flibrary',
+      );
+    });
+
+    it('offers no provider where the instance has none', async () => {
+      const { screen } = await open();
+
+      expect(screen.querySelector('rs-provider-choices')).toBeNull();
+    });
+
+    it('offers the providers alone where local sign-in is disabled', async () => {
+      const { screen } = await open({ ...SSO, local_sign_in: false });
+
+      expect(link(screen)).not.toBeNull();
+      expect(screen.querySelector('form')).toBeNull();
+    });
+
+    it('says why a sign-in through a provider opened no session', async () => {
+      const { screen } = await open(SSO, 'en', { provider_sign_in: 'registration_closed' });
+
+      expect(alert(screen)).toBe(
+        'This identity has no account here, and registration is closed on this instance.',
+      );
+    });
+
+    it('reads an outcome it does not know as a failure', async () => {
+      const { screen } = await open(SSO, 'fr', { provider_sign_in: 'something-new' });
+
+      expect(alert(screen)).toBe('La connexion par le fournisseur n’a pas abouti. Réessayez.');
+    });
   });
 });

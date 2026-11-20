@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Respawn.SharedKernel;
 
 namespace Respawn.Accounts.Api;
@@ -20,13 +23,35 @@ public static class AccountsApi
     /// <summary>The rate-limiter policy of the sign-in routes; the host says how many requests it allows.</summary>
     public const string SignInRateLimit = "accounts-sign-in";
 
+    /// <summary>The rate-limiter policy of the returns from a provider, apart from the sign-in routes'
+    /// so that neither uses up the other; the host says how many requests it allows.</summary>
+    public const string ProviderReturnRateLimit = "accounts-provider-return";
+
+    /// <summary>Where a sign-in through a provider starts (<c>/{provider}</c>) and comes back
+    /// (<c>/{provider}/callback</c>). Behind a reverse proxy the host gives these routes the address the
+    /// instance is reached at, which the address the provider is told to come back to is built from.</summary>
+    public const string ProviderSignInPath = "/api/v1/auth/oidc";
+
     /// <summary>The routes of the Accounts module and the session they open. The host registers
-    /// <see cref="AccountOptions"/> and <see cref="SessionCookieOptions"/>.</summary>
+    /// <see cref="AccountOptions"/> and <see cref="SessionCookieOptions"/>, places
+    /// <see cref="ProviderSignInPipeline.UseProviderSchemes"/> ahead of its authentication, and gives
+    /// <see cref="ProviderSignInPath"/> the instance's public address.</summary>
     public static IServiceCollection AddAccountsApi(this IServiceCollection services)
     {
         // Who is asking, for every module: a route marked [Authorize] wants a session of this module.
         services.AddAuthentication()
             .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(SessionAuthenticationHandler.SchemeName, null);
+
+        // Sign-in through a provider: one OpenID Connect scheme per provider, added when first needed.
+        // A scheme keeps its client for as long as the app runs, so the factory never gives it a new
+        // handler: its connections are closed after a few minutes instead, and the next one looks the
+        // provider's address up again.
+        services.AddHttpClient(ProviderSignIn.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) })
+            .AddHttpMessageHandler(() => new ProviderServerErrors());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<OpenIdConnectOptions>, ProviderSchemeOptions>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
+
         services.AddAuthorizationBuilder()
             .SetDefaultPolicy(new AuthorizationPolicyBuilder(SessionAuthenticationHandler.SchemeName).RequireAuthenticatedUser().Build());
         return services;
@@ -35,19 +60,17 @@ public static class AccountsApi
     internal static ObjectResult Error(int status, string code, string message) =>
         new(new ErrorResponse(code, message)) { StatusCode = status };
 
-    /// <summary>The status, code and message of each account refusal.</summary>
+    /// <summary>The status, code and message of each account refusal a route answers. The refusals of a
+    /// sign-in through a provider are not here: they are outcomes on the address the browser comes back to
+    /// (<see cref="ProviderSignIn"/>).</summary>
     internal static ObjectResult Refusal(AccountError error, AccountOptions options) => error switch
     {
         AccountError.InvalidEmail => Error(422, "invalid_email", "Enter a valid e-mail address."),
         AccountError.WeakPassword => Error(422, "weak_password", $"The password needs at least {options.PasswordMinLength} characters."),
         AccountError.RegistrationClosed => Error(403, "registration_closed", "Registration is closed on this instance."),
         AccountError.AccountExists => Error(409, "account_exists", "An account already uses this e-mail address."),
-        AccountError.LinkProviderFirst => Error(409, "account_exists", "Sign in to your account first, then link this provider."),
         AccountError.LocalSignInDisabled => Error(403, "local_sign_in_disabled", "Local sign-in is disabled on this instance."),
         AccountError.InvalidCredentials => Error(401, "invalid_credentials", "Wrong e-mail or password, or the account is locked for a while."),
-        AccountError.UnknownProvider => Error(404, "unknown_provider", "This provider is not configured."),
-        AccountError.InvalidToken => Error(401, "invalid_token", "The provider's token was refused."),
-        AccountError.ProviderUnavailable => Error(503, "provider_unavailable", "The provider does not answer. Try again in a moment."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };
 }

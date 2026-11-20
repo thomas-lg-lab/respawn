@@ -30,7 +30,7 @@
   migrated on first use), `Respawn.SharedKernel` (the error format,
   the database contracts; no package), and one hexagonal module per responsibility under `Modules/`. Today
   `Modules/Accounts`: `Respawn.Accounts` (the core: use cases and ports, no package), `.Infrastructure` (EF Core
-  and its migrations, ASP.NET Core Identity, ID token validation), `.Api` (the controllers, the session cookie);
+  and its migrations, ASP.NET Core Identity), `.Api` (the controllers, the session cookie, the sign-in through a provider);
   and `Modules/Games`, the same three projects: the catalogue (a game as one record whatever the store), the
   linked store accounts, the sources' answers kept untouched, ownership and playtime, and the sync (what is
   due and what a run becomes are the core's, `SyncService`; the timer that asks every few minutes is an
@@ -51,7 +51,7 @@
   background (the sync's schedule) never stops the app, and says a trouble that lasts once, not at every turn.
 - **Sign-in code.** Accounts, password checks and lockout go through ASP.NET Core Identity; cryptography comes
   from libraries (libsodium through Sodium.Core for Argon2id and for sealing the store keys users give,
-  Microsoft.IdentityModel for ID tokens); never write
+  ASP.NET Core's OpenID Connect handler for a sign-in through a provider, which the API runs itself); never write
   a hash or a signature check by hand. A request header such as `Remote-User` never identifies anyone.
   "Sign in through Steam" links a library and never opens a session; its exchange is a library's too
   (AspNet.Security.OpenId.Steam), and what it proves is still checked to be a SteamID.

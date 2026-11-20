@@ -106,7 +106,7 @@ public sealed class LinkedAccountsController(ILibraryService library, ISyncServi
     {
         // Another site's page must not send a signed-in visitor to Steam in the app's name. The
         // browser says where a navigation comes from; one typed or bookmarked says "none".
-        if (Request.Headers["Sec-Fetch-Site"].ToString() is { Length: > 0 } from && from is not ("same-origin" or "none"))
+        if (Request.Headers["Sec-Fetch-Site"].ToString() is { Length: > 0 } from && !Navigation.OwnPage(from))
         {
             throw new GamesException(GamesError.CrossSiteLink);
         }

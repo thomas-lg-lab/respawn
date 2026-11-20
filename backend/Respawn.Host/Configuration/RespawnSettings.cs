@@ -131,7 +131,10 @@ internal static partial class RespawnSettings
         };
     }
 
-    /// <summary>RESPAWN_OIDC_PROVIDERS is a JSON list of {"name", "issuer", "client_id"}.</summary>
+    /// <summary>RESPAWN_OIDC_PROVIDERS is a JSON list of {"name", "issuer", "client_id"}, an optional "label",
+    /// what the sign-in page shows (the name when there is none), and an optional "create_accounts": true when
+    /// someone the provider proves gets a member account even while registration is closed. The name is a word of the API's
+    /// addresses, once per list.</summary>
     internal static IReadOnlyList<OidcProvider> Providers(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -149,16 +152,26 @@ internal static partial class RespawnSettings
             throw new FormatException(ProvidersShape);
         }
 
-        return [.. entries.Select(entry =>
+        var providers = entries.Select(entry =>
         {
             if (entry is not { Name.Length: > 0, Issuer.Length: > 0, ClientId.Length: > 0 }
-                || !entry.Issuer.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                || !ProviderName().IsMatch(entry.Name)
+                || !Uri.TryCreate(entry.Issuer, UriKind.Absolute, out var issuer)
+                || issuer.Scheme != Uri.UriSchemeHttps
+                || (entry.Label is { } label && (label.Trim().Length is 0 or > 40 || label.Any(char.IsControl))))
             {
                 throw new FormatException(ProvidersShape);
             }
 
-            return new OidcProvider(entry.Name, entry.Issuer.TrimEnd('/'), entry.ClientId);
-        })];
+            return new OidcProvider(
+                entry.Name, entry.Label?.Trim() ?? entry.Name, entry.Issuer.TrimEnd('/'), entry.ClientId, entry.CreateAccounts ?? false);
+        }).ToList();
+        if (providers.DistinctBy(provider => provider.Name).Count() != providers.Count)
+        {
+            throw new FormatException(ProvidersShape);
+        }
+
+        return providers;
     }
 
     /// <summary>"10/minute": a count, then second, minute or hour.</summary>
@@ -212,7 +225,11 @@ internal static partial class RespawnSettings
     private static partial Regex RateLimitShape();
 
     private const string ProvidersShape =
-        "RESPAWN_OIDC_PROVIDERS must be a JSON list of {\"name\", \"issuer\", \"client_id\"}, each issuer an https URL";
+        "RESPAWN_OIDC_PROVIDERS must be a JSON list of {\"name\", \"issuer\", \"client_id\"} with an optional \"label\" of 40 "
+        + "characters at most: each name once, in lower case letters, digits and dashes (32 at most), each issuer an https URL";
 
-    private sealed record ProviderEntry(string? Name, string? Issuer, string? ClientId);
+    [GeneratedRegex(@"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?\z", RegexOptions.CultureInvariant)]
+    private static partial Regex ProviderName();
+
+    private sealed record ProviderEntry(string? Name, string? Label, string? Issuer, string? ClientId, bool? CreateAccounts);
 }

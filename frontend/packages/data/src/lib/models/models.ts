@@ -30,7 +30,6 @@ export type SignInProvider = Schemas['ProviderResponse'];
 
 export type LoginRequest = Schemas['LoginRequest'];
 export type RegisterRequest = Schemas['RegisterRequest'];
-export type ProviderSignInRequest = Schemas['OidcRequest'];
 
 /** The one error format: `{"error": {"code", "message"}}`. */
 export type ApiError = Schemas['ErrorResponse'];

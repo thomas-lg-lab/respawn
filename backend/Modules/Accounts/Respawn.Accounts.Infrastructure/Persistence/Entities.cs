@@ -71,15 +71,6 @@ public sealed class Session
     public DateTimeOffset ExpiresAt { get; set; }
 }
 
-/// <summary>An ID token already exchanged for a session, so none is accepted twice. Kept until the
-/// token is no longer accepted: its expiry plus the validation leeway.</summary>
-public sealed class ExchangedToken
-{
-    public string TokenHash { get; set; } = "";
-
-    public DateTimeOffset ExpiresAt { get; set; }
-}
-
 /// <summary>An instance setting an administrator changes at run time.</summary>
 public sealed class Setting
 {
