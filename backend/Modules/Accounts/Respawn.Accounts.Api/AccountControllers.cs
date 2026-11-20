@@ -67,21 +67,21 @@ public sealed class AuthController(
         + "back to the API once the visitor has signed in there. The API opens a session for the account the "
         + "provider's identity is linked to, or creates the account where registration allows it (or the provider "
         + "creates accounts), and the browser lands on return_to. It never links: a session the browser already "
-        + "has is replaced. Anything else lands on return_to with provider_sign_in set to registration_closed, "
-        + "link_provider_first (the provider's verified e-mail is an account's: sign in to it, then link the "
-        + "provider), denied (the provider turned the visitor away), failed (nothing was proven) or unavailable "
-        + "(the provider could not be asked; trying again may work).")]
+        + "has is closed and replaced. Anything else lands on return_to with provider_sign_in set to "
+        + "registration_closed, link_provider_first (the provider's verified e-mail is an account's: sign in to "
+        + "it, then link the provider), denied (the provider turned the visitor away), failed (nothing was "
+        + "proven, or the sign-in was not started: the navigation did not come from the app's own pages, the "
+        + "provider is not configured, or there were too many attempts) or unavailable (the provider could not "
+        + "be asked; trying again may work). The answer is always a redirect, never an error.")]
     [ProducesResponseType(StatusCodes.Status302Found)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [Navigation(ProviderSignIn.OutcomeParameter)]
     public Task<IActionResult> SignInWithProvider(
         string provider,
         [FromQuery(Name = "return_to"), Description("The path of the app to come back to, at most 512 characters; the home when it is not one.")]
         string? returnTo = null) =>
-        StartAsync(provider, returnTo, linkTo: null);
+        StartAsync(provider, returnTo, link: false);
 
     [HttpGet("oidc/{provider}/link")]
-    [Authorize]
     [EnableRateLimiting(AccountsApi.SignInRateLimit)]
     [EndpointSummary("Link a configured provider to the signed-in account: sends the browser to the provider")]
     [EndpointDescription(
@@ -89,49 +89,67 @@ public sealed class AuthController(
         + "is sent to the provider, and the identity it proves is linked to the account signed in when the link "
         + "started, which must still be signed in when the browser comes back. The browser lands on return_to "
         + "with provider_sign_in set to linked, linked_elsewhere (the identity is linked to another account), "
-        + "denied, failed or unavailable. No session is opened.")]
+        + "denied, failed (as for a sign-in, and when nobody is signed in) or unavailable. No session is "
+        + "opened. The answer is always a redirect, never an error.")]
     [ProducesResponseType(StatusCodes.Status302Found)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [Navigation(ProviderSignIn.OutcomeParameter)]
     public Task<IActionResult> LinkProvider(
         string provider,
         [FromQuery(Name = "return_to"), Description("The path of the app to come back to, at most 512 characters; the home when it is not one.")]
         string? returnTo = null) =>
-        StartAsync(provider, returnTo, linkTo: HttpContext.Features.GetRequiredFeature<Account>().Id);
+        StartAsync(provider, returnTo, link: true);
 
     /// <summary>Where the provider sends the browser back. The provider's handler answers there before any
-    /// route does; this route only answers the rare request the handler lets through. It has no rate limit
-    /// of its own: a return needs the correlation cookie of a start, which has one. Not part of the contract:
-    /// nothing but the provider's redirect comes here.</summary>
+    /// route does; this route says how many returns a client may make (a return costs a question to the
+    /// provider and a line of the log, and anyone can write one), in a bucket apart from the sign-in
+    /// routes', and answers the rare request the handler lets through. Not part of the contract: nothing but
+    /// the provider's redirect comes here.</summary>
     [HttpGet("oidc/{provider}/callback")]
+    [EnableRateLimiting(AccountsApi.ProviderReturnRateLimit)]
+    [Navigation(ProviderSignIn.OutcomeParameter)]
     [ApiExplorerSettings(IgnoreApi = true)]
     public IActionResult BackFromProvider(string provider) =>
-        Redirect(Navigation.WithOutcome("/", ProviderSignIn.OutcomeParameter, "failed"));
+        Redirect(Navigation.WithOutcome("/", ProviderSignIn.OutcomeParameter, Navigation.Failed));
 
-    /// <summary>Sends the browser to the provider: a sign-in, or, with <paramref name="linkTo"/>, a link to
-    /// that account. Which of the two is said by the route the visitor chose, never by a session the browser
-    /// happens to carry: a session planted in it must not turn a sign-in into a link.</summary>
-    private async Task<IActionResult> StartAsync(string provider, string? returnTo, Guid? linkTo)
+    /// <summary>Sends the browser to the provider: a sign-in, or, with <paramref name="link"/>, a link to
+    /// the account signed in. Which of the two is said by the route the visitor chose, never by a session
+    /// the browser happens to carry: a session planted in it must not turn a sign-in into a link.
+    ///
+    /// A navigation: whatever stops it, the browser goes back to the app with a word it can show, never to
+    /// an error, which the visitor would see as a page of JSON.</summary>
+    private async Task<IActionResult> StartAsync(string provider, string? returnTo, bool link)
     {
+        var back = Navigation.ReturnPath(returnTo);
+        Response.Headers.CacheControl = "no-store";
+
         // Another site's page must not send a visitor to a provider in the app's name. The browser says
-        // where a navigation comes from; one typed or bookmarked says "none".
-        if (Request.Headers["Sec-Fetch-Site"].ToString() is { Length: > 0 } from && from is not ("same-origin" or "none"))
+        // where a navigation comes from; one typed or bookmarked says "none". One that went through another
+        // site on its way (a reverse proxy's own sign-in) is not sent on either: back in the app, the
+        // visitor asks again, from its own page this time.
+        if (Request.Headers["Sec-Fetch-Site"].ToString() is { Length: > 0 } from && !Navigation.OwnPage(from))
         {
-            return AccountsApi.Error(StatusCodes.Status403Forbidden, "cross_site_request", "This request comes from another site.");
+            return NotStarted(back);
         }
 
         // From here on, the provider as the settings name it, never the word of the address.
-        var configured = options.OidcProviders.FirstOrDefault(each => each.Name == provider)
-            ?? throw new AccountException(AccountError.UnknownProvider);
-
-        var properties = new AuthenticationProperties { RedirectUri = Navigation.ReturnPath(returnTo) };
-        if (linkTo is { } owner)
+        if (options.OidcProviders.FirstOrDefault(each => each.Name == provider) is not { } configured)
         {
-            properties.Items[ProviderSignIn.LinkItem] = owner.ToString();
+            return NotStarted(back);
         }
 
-        Response.Headers.CacheControl = "no-store";
+        var properties = new AuthenticationProperties { RedirectUri = back };
+        if (link)
+        {
+            // The route asks for no session of the pipeline, whose refusal would be an error: it looks
+            // the session up itself.
+            if (await accounts.FindSignedInAsync(Request.Cookies[SessionCookie.Name], HttpContext.RequestAborted) is not { } owner)
+            {
+                return NotStarted(back);
+            }
+
+            properties.Items[ProviderSignIn.LinkItem] = owner.Id.ToString();
+        }
+
         try
         {
             // The provider's discovery document is read here, the first time and once a day after.
@@ -144,13 +162,17 @@ public sealed class AuthController(
             var unavailable = ProviderSignIn.NotAnswering(ex);
             logger.LogWarning(
                 "the provider {Provider} could not be asked to start a sign-in: {Reason}", configured.Name, ProviderSignIn.Cause(ex));
-            // A path of this app (Navigation.ReturnPath), which LocalRedirect checks once more.
-            return LocalRedirect(Navigation.WithOutcome(
-                properties.RedirectUri!, ProviderSignIn.OutcomeParameter, unavailable ? "unavailable" : "failed"));
+            return unavailable
+                ? LocalRedirect(Navigation.WithOutcome(back, ProviderSignIn.OutcomeParameter, "unavailable"))
+                : NotStarted(back);
         }
 
         return new EmptyResult();
     }
+
+    /// <summary>Back to the app, a path of it (Navigation.ReturnPath) which LocalRedirect checks once more.</summary>
+    private LocalRedirectResult NotStarted(string back) =>
+        LocalRedirect(Navigation.WithOutcome(back, ProviderSignIn.OutcomeParameter, Navigation.Failed));
 
     [HttpPost("logout")]
     [EndpointSummary("Sign out of this browser")]

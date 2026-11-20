@@ -12,7 +12,6 @@ public enum AccountError
     LinkProviderFirst,
     LocalSignInDisabled,
     InvalidCredentials,
-    UnknownProvider,
 
     /// <summary>The identity a provider proved is already linked to another account of the instance.</summary>
     ProviderLinkedElsewhere,

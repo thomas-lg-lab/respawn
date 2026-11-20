@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -236,6 +237,29 @@ describe('routes', () => {
     expect(link.textContent.trim()).toBe('Lier Mon SSO');
     // It comes back to this screen, without the word of the previous link.
     expect(link.getAttribute('href')).toBe('/api/v1/auth/oidc/sso/link?return_to=%2F');
+  });
+
+  it('says what came of a link once: the word leaves the address, not the screen', async () => {
+    const { screen } = await visit('/?tab=all&provider_sign_in=linked', signedIn);
+
+    // A reload or a bookmark of this address says nothing.
+    expect(TestBed.inject(Location).path()).toMatch(/^\/?\?tab=all$/);
+    expect(screen.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it('says why a sign-in through a provider opened no session, once', async () => {
+    const { screen } = await visit(
+      '/sign-in?returnTo=%2Flibrary&provider_sign_in=denied',
+      async (server) => {
+        await server.refuse('/me', 401, 'not_signed_in');
+        await server.answer('/config', SIGN_IN_OPTIONS);
+      },
+    );
+
+    expect(screen.querySelector('[role="alert"]')?.textContent.trim()).toBe(
+      'Le fournisseur ne vous a pas laissé entrer.',
+    );
+    expect(TestBed.inject(Location).path()).toBe('/sign-in?returnTo=%2Flibrary');
   });
 
   it('says that a link through a provider failed', async () => {

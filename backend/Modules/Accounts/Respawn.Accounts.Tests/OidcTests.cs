@@ -183,11 +183,85 @@ public sealed class OidcTests
     [Fact]
     public async Task A_link_needs_a_session()
     {
+        // A navigation: nobody signed in (the session ended in a tab left open) goes back to the app, not
+        // to an error.
         var issuer = new FakeIssuer();
         await using var app = await issuer.StartAppAsync();
         using var browser = app.Browser();
-        Assert.Equal(HttpStatusCode.Unauthorized, await browser.StartAsync(link: true).StatusAsync());
+        Assert.Equal("/library?provider_sign_in=failed", (await browser.StartAsync("/library", link: true)).Landing());
         Assert.Equal(0, issuer.Requests);
+    }
+
+    [Fact]
+    public async Task A_sign_in_closes_the_session_the_browser_carried()
+    {
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync();
+        using var browser = app.Browser();
+        var registered = await browser.RegisterAsync();
+        var carried = registered.Headers.GetValues("Set-Cookie").Single(cookie => cookie.StartsWith("respawn_session=", StringComparison.Ordinal)).Split(';')[0];
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+
+        // Someone else signs in through the provider in the same browser: the cookie now names their session.
+        Assert.Equal("/", (await browser.SignInAsync(issuer, "/", ("email", "other@example.org"))).Landing());
+        Assert.Equal("other@example.org", (await browser.GetAsync("/api/v1/me").JsonAsync()).GetProperty("email").GetString());
+
+        // The session it replaced is closed, not left good until it expires.
+        using var elsewhere = app.Browser();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/me");
+        request.Headers.Add("Cookie", carried);
+        Assert.Equal(HttpStatusCode.Unauthorized, await elsewhere.SendAsync(request).StatusAsync());
+    }
+
+    [Theory]
+    [InlineData("not-an-address")]
+    [InlineData("two words@example.org")]
+    [InlineData("long")]
+    public async Task A_verified_e_mail_that_is_not_an_address_is_not_the_account_s(string claimed)
+    {
+        // Whatever the provider says of it: the account is created, without an address.
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync();
+        using var browser = app.Browser();
+        var email = claimed == "long" ? new string('a', 320) + "@example.org" : claimed;
+        Assert.Equal("/", (await browser.SignInAsync(issuer, "/", ("email", email))).Landing());
+        var account = await browser.GetAsync("/api/v1/me").JsonAsync();
+        Assert.Equal(JsonValueKind.Null, account.GetProperty("email").ValueKind);
+        Assert.Equal("Player One", account.GetProperty("display_name").GetString());
+        Assert.Equal(0, app.Logs.Count("unhandled error"));
+    }
+
+    [Fact]
+    public async Task Too_many_starts_or_returns_go_back_to_the_app_and_each_has_its_own_count()
+    {
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync(new() { ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute" });
+        using var browser = app.Browser();
+        var first = await browser.StartAsync("/sign-in");
+        var second = await browser.StartAsync("/sign-in");
+        Assert.Equal(HttpStatusCode.Found, second.StatusCode);
+
+        // A third start in the minute: a navigation, so the app with a word, never a page of JSON.
+        var third = await browser.StartAsync("/sign-in?returnTo=%2Flibrary");
+        Assert.Equal("/sign-in?returnTo=%2Flibrary&provider_sign_in=failed", third.Landing());
+        Assert.Equal("no-store", third.Headers.CacheControl?.ToString());
+
+        // The returns are counted apart: the starts did not use them up.
+        Assert.Equal("/sign-in", (await browser.GetAsync(new Uri(issuer.Authorize(first.Headers.Location!, [])).PathAndQuery)).Landing());
+        var asked = issuer.Requests;
+
+        // Returns nobody started, written by hand: two are answered, the next ones are not even read, so
+        // they cost neither a question to the provider nor a line of the log.
+        using var other = app.Browser();
+        Assert.Equal("/?provider_sign_in=failed", (await other.GetAsync(ProviderCalls.Start + "/callback?error=x&error_description=y&state=z")).Landing());
+        var said = app.Logs.Count("did not complete");
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.Equal("/?provider_sign_in=failed", (await other.GetAsync(ProviderCalls.Start + "/callback?error=x&error_description=y&state=z")).Landing());
+        }
+
+        Assert.Equal(said, app.Logs.Count("did not complete"));
+        Assert.Equal(asked, issuer.Requests);
     }
 
     [Fact]
@@ -425,17 +499,21 @@ public sealed class OidcTests
         Assert.Equal("/?provider_sign_in=linked", (await browser.LinkAsync(issuer, "/?provider_sign_in=linked_elsewhere")).Landing());
     }
 
-    [Fact]
-    public async Task An_unknown_provider_and_a_start_from_another_site_are_refused()
+    [Theory]
+    [InlineData("cross-site")]
+    [InlineData("same-site")]
+    public async Task An_unknown_provider_and_a_start_from_another_site_go_nowhere_but_back_to_the_app(string from)
     {
         var issuer = new FakeIssuer();
         await using var app = await issuer.StartAppAsync();
         using var browser = app.Browser();
-        Assert.Equal((HttpStatusCode.NotFound, "unknown_provider"), await browser.StartAsync("/", provider: "nope").RefusalAsync());
+        Assert.Equal("/sign-in?provider_sign_in=failed", (await browser.StartAsync("/sign-in", provider: "nope")).Landing());
 
-        var request = new HttpRequestMessage(HttpMethod.Get, ProviderCalls.Start);
-        request.Headers.Add("Sec-Fetch-Site", "cross-site");
-        Assert.Equal((HttpStatusCode.Forbidden, "cross_site_request"), await browser.SendAsync(request).RefusalAsync());
+        // Another site's page, or a navigation that went through another site on its way (a reverse proxy's
+        // own sign-in): not sent to the provider, and back in the app, where the visitor asks again.
+        var request = new HttpRequestMessage(HttpMethod.Get, ProviderCalls.Start + "?return_to=%2Fsign-in");
+        request.Headers.Add("Sec-Fetch-Site", from);
+        Assert.Equal("/sign-in?provider_sign_in=failed", (await browser.SendAsync(request)).Landing());
         Assert.Equal(0, issuer.Requests);
     }
 
@@ -445,7 +523,7 @@ public sealed class OidcTests
         await using var app = await TestApp.StartAsync();
         using var browser = app.Browser();
         Assert.Empty((await browser.GetAsync("/api/v1/config").JsonAsync()).GetProperty("oidc_providers").EnumerateArray());
-        Assert.Equal((HttpStatusCode.NotFound, "unknown_provider"), await browser.StartAsync().RefusalAsync());
+        Assert.Equal("/?provider_sign_in=failed", (await browser.StartAsync()).Landing());
     }
 
     [Fact]

@@ -10,6 +10,18 @@ public static class Navigation
     /// browser back to, which servers and proxies cap at a few thousand characters.</summary>
     public const int MaxReturnPath = 512;
 
+    /// <summary>The parameter a navigation names the address to come back to with.</summary>
+    public const string ReturnParameter = "return_to";
+
+    /// <summary>The outcome of a navigation that was not let through, whatever the reason.</summary>
+    public const string Failed = "failed";
+
+    /// <summary>Whether a request comes from this site's own pages, by what the browser says in
+    /// Sec-Fetch-Site, a header a page cannot set: "none" is a request the user made directly, and
+    /// "same-site" would let a sibling subdomain in. A request that went through another site on its
+    /// way (a proxy's own sign-in, say) is not one, though the visitor started it here.</summary>
+    public static bool OwnPage(string fetchSite) => fetchSite is "same-origin" or "none";
+
     /// <summary>An address of the app to send the browser back to: a path of this origin, in the
     /// characters an address is written in, and never the API's. Anything else gives the home, so
     /// the parameter cannot send elsewhere, nor break the answer that carries it.</summary>

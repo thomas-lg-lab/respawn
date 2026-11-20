@@ -151,7 +151,7 @@ export interface paths {
         };
         /**
          * Sign in through a configured provider: sends the browser to the provider
-         * @description A navigation from the app's own pages, not a call: the browser is sent to the provider, which sends it back to the API once the visitor has signed in there. The API opens a session for the account the provider's identity is linked to, or creates the account where registration allows it (or the provider creates accounts), and the browser lands on return_to. It never links: a session the browser already has is replaced. Anything else lands on return_to with provider_sign_in set to registration_closed, link_provider_first (the provider's verified e-mail is an account's: sign in to it, then link the provider), denied (the provider turned the visitor away), failed (nothing was proven) or unavailable (the provider could not be asked; trying again may work).
+         * @description A navigation from the app's own pages, not a call: the browser is sent to the provider, which sends it back to the API once the visitor has signed in there. The API opens a session for the account the provider's identity is linked to, or creates the account where registration allows it (or the provider creates accounts), and the browser lands on return_to. It never links: a session the browser already has is closed and replaced. Anything else lands on return_to with provider_sign_in set to registration_closed, link_provider_first (the provider's verified e-mail is an account's: sign in to it, then link the provider), denied (the provider turned the visitor away), failed (nothing was proven, or the sign-in was not started: the navigation did not come from the app's own pages, the provider is not configured, or there were too many attempts) or unavailable (the provider could not be asked; trying again may work). The answer is always a redirect, never an error.
          */
         get: {
             parameters: {
@@ -174,24 +174,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": unknown;
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -213,7 +195,7 @@ export interface paths {
         };
         /**
          * Link a configured provider to the signed-in account: sends the browser to the provider
-         * @description A navigation from the app's own pages, not a call, and only on purpose (the account menu): the browser is sent to the provider, and the identity it proves is linked to the account signed in when the link started, which must still be signed in when the browser comes back. The browser lands on return_to with provider_sign_in set to linked, linked_elsewhere (the identity is linked to another account), denied, failed or unavailable. No session is opened.
+         * @description A navigation from the app's own pages, not a call, and only on purpose (the account menu): the browser is sent to the provider, and the identity it proves is linked to the account signed in when the link started, which must still be signed in when the browser comes back. The browser lands on return_to with provider_sign_in set to linked, linked_elsewhere (the identity is linked to another account), denied, failed (as for a sign-in, and when nobody is signed in) or unavailable. No session is opened. The answer is always a redirect, never an error.
          */
         get: {
             parameters: {
@@ -236,33 +218,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": unknown;
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };

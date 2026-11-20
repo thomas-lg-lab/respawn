@@ -1,5 +1,6 @@
 using Respawn.Host.Configuration;
 using Respawn.Host.Errors;
+using Respawn.SharedKernel;
 
 namespace Respawn.Host.Http;
 
@@ -71,8 +72,7 @@ internal sealed class SiteGuardMiddleware(RequestDelegate next)
         var fetchSite = request.Headers["Sec-Fetch-Site"].ToString();
         if (fetchSite.Length > 0)
         {
-            // "none" is a request the user made directly; "same-site" would let a sibling subdomain in.
-            return fetchSite is "same-origin" or "none";
+            return Navigation.OwnPage(fetchSite);
         }
 
         var origin = request.Headers.Origin.ToString();

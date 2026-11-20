@@ -82,7 +82,7 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_SESSION_DAYS` | `30` | Lifetime of a sign-in |
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
 | `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
-| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes, and apart on the routes that give or take away a user's own Steam key (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
+| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes, and apart on the returns from a sign-in provider and on the routes that give or take away a user's own Steam key (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`, with an optional `"label"` (what the sign-in page shows, 40 characters at most) and `"create_accounts": true` (someone the provider proves gets a member account even while registration is closed): OpenID Connect providers to sign in with, the instance being a public client of each (no secret). A name is lower case letters, digits and dashes, once per list; an issuer is an `https` URL. Each provider sends the browser back to `<public address>/api/v1/auth/oidc/<name>/callback`, the address to register with it |
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
 
@@ -145,7 +145,8 @@ is its issuer and subject, never its e-mail: an account is not attached to a pro
 match, its owner signs in first and then links the provider from the account menu, a route of its own: a
 sign-in never links, whatever session the browser carries. A new identity gets an account where registration
 is open, or where its provider has `create_accounts`; that account takes the e-mail of the token only when the
-provider says it is verified (`email_verified`).
+provider says it is verified (`email_verified`) and it is an address. A session the browser carried when
+someone signs in through a provider is closed, not only replaced.
 
 **Sessions.** A sign-in is an opaque token in an `HttpOnly`, `SameSite=Lax` cookie, valid for
 `RESPAWN_SESSION_DAYS`; only its SHA-256 is stored, and signing out deletes it.
@@ -164,8 +165,8 @@ part of the API.
 | `GET /api/v1/config` | What the sign-in page may offer: local sign-in, open registration, whether the account created now is the first one, the minimum length of a password, the providers |
 | `POST /api/v1/auth/register` | Creates a local account and signs in |
 | `POST /api/v1/auth/login` | Signs in with a local account |
-| `GET /api/v1/auth/oidc/{provider}` | Signs in through a configured provider, never links (a session the browser carries is replaced). A navigation from the app's pages, not a call: the browser is sent to the provider, then comes back on `return_to` (a path of the app, the home by default), with the outcome in the `provider_sign_in` parameter unless a session was opened: `registration_closed`, `link_provider_first`, `denied`, `failed` or `unavailable` |
-| `GET /api/v1/auth/oidc/{provider}/link` | Links a configured provider to the signed-in account, the same navigation; the account must still be signed in when the browser comes back. The outcome: `linked`, `linked_elsewhere`, `denied`, `failed` or `unavailable` |
+| `GET /api/v1/auth/oidc/{provider}` | Signs in through a configured provider, never links (a session the browser carries is closed and replaced). A navigation from the app's pages, not a call: the browser is sent to the provider, then comes back on `return_to` (a path of the app, the home by default), with the outcome in the `provider_sign_in` parameter unless a session was opened: `registration_closed`, `link_provider_first`, `denied`, `failed` or `unavailable`. It always answers a redirect, never an error: a start from another site's page, an unknown provider or too many attempts come back as `failed` |
+| `GET /api/v1/auth/oidc/{provider}/link` | Links a configured provider to the signed-in account, the same navigation; the account must still be signed in when the browser comes back. The outcome: `linked`, `linked_elsewhere`, `denied`, `failed` (also when nobody is signed in) or `unavailable` |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
 | `GET /api/v1/me` | The signed-in account, with the settings of its interface (`settings`: `language`, `theme`, `character`; null while it never chose) |
 | `PUT /api/v1/me/settings` | Keeps the three settings of the interface on the signed-in account, together, in place of the ones it had |
@@ -189,7 +190,7 @@ Errors always have the same shape, whatever answered:
 | 400 | `invalid_key` |
 | 401 | `not_signed_in`, `invalid_credentials` |
 | 403 | `registration_closed`, `local_sign_in_disabled`, `cross_site_request`, `forbidden` |
-| 404 | `unknown_provider`, `unknown_linked_account`, `http_error` |
+| 404 | `unknown_linked_account`, `http_error` |
 | 409 | `account_exists`, `sync_in_progress` |
 | 422 | `invalid_request`, `invalid_email`, `weak_password` |
 | 429 | `too_many_requests` |

@@ -186,6 +186,9 @@ internal static class ProviderSignIn
         var session = await accounts.SignInWithProviderAsync(provider, identity, http.RequestAborted);
         SessionCookie.Set(
             http.Response, session.SessionToken, options, http.RequestServices.GetRequiredService<SessionCookieOptions>());
+        // The session this browser carried is replaced: closed too, or it would stay good until it
+        // expires with no sign-out left to close it.
+        await accounts.LogoutAsync(http.Request.Cookies[SessionCookie.Name], http.RequestAborted);
         return null;
     }
 

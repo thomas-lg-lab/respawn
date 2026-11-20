@@ -12,6 +12,7 @@ using Respawn.Host.Errors;
 using Respawn.Host.Http;
 using Respawn.Host.Modules;
 using Respawn.Persistence;
+using Respawn.SharedKernel;
 
 // The host: /healthz, the front, the HTTP pipeline, the database, and the modules that
 // provide the public API under /api/v1. Composition only: no business rule lives here.
@@ -76,9 +77,22 @@ services.AddExceptionHandler<ApiExceptionHandler>();
 
 // Each module names its rate-limit policies; the answer to a request over the limit is the host's.
 services.AddRateLimiter(_ => { });
+// A navigation is the exception: an error would be a page of JSON in the visitor's browser, so it goes
+// back to the app with its outcome.
 services.AddOptions<RateLimiterOptions>().Configure(limiter =>
-    limiter.OnRejected = (rejected, _) => new ValueTask(ApiErrors.WriteAsync(
-        rejected.HttpContext, 429, "too_many_requests", "Too many attempts. Wait a moment and try again.")));
+    limiter.OnRejected = (rejected, _) =>
+    {
+        var http = rejected.HttpContext;
+        if (http.GetEndpoint()?.Metadata.GetMetadata<NavigationAttribute>() is { } navigation)
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            http.Response.Redirect(Navigation.WithOutcome(
+                Navigation.ReturnPath(http.Request.Query[Navigation.ReturnParameter]), navigation.OutcomeParameter, Navigation.Failed));
+            return ValueTask.CompletedTask;
+        }
+
+        return new ValueTask(ApiErrors.WriteAsync(http, 429, "too_many_requests", "Too many attempts. Wait a moment and try again."));
+    });
 services.AddOptions<ForwardedHeadersOptions>().Configure<HttpSettings>((forwarded, http) =>
 {
     forwarded.ForwardedHeaders = ForwardedHeaders.XForwardedFor;

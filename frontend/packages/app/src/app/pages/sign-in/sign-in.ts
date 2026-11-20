@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -14,6 +15,7 @@ import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { LANGUAGES, LanguageSetting } from '@app/i18n/language';
 import { RETURN_TO, returnAddress, signInFrom } from '@app/session/return-address';
+import { saidOnce } from '@app/session/said-once';
 import { AccountForm } from './components/account-form';
 import { type ProviderChoice, ProviderChoices } from './components/provider-choices';
 import { SignInArt } from './components/sign-in-art';
@@ -113,11 +115,16 @@ export class SignIn {
 
   /**
    * What came of a sign-in through a provider that did not open a session, as the API wrote it
-   * on the address it sent the browser back to. Said until the visitor tries again.
+   * on the address it sent the browser back to. Said until the visitor tries again, and once:
+   * the word is taken off the browser's address.
    */
   protected readonly cameBack = providerOutcome(
     this.route.snapshot.queryParamMap.get(PROVIDER_OUTCOME),
   );
+
+  constructor() {
+    saidOnce(inject(Location), this.router, PROVIDER_OUTCOME);
+  }
 
   protected signIn(body: LoginRequest): void {
     this.registering.reset();

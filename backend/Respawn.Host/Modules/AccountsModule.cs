@@ -25,11 +25,17 @@ internal static class AccountsModule
 
         // One bucket per client address on the sign-in routes. The address is the peer's, or the one a
         // listed reverse proxy reports; the header of an unlisted peer is ignored, so a client cannot
-        // pick its bucket. The account lockout is the second layer.
+        // pick its bucket. The account lockout is the second layer. The returns from a provider have a
+        // bucket of their own, of the same size: wrong passwords never use up the return of a sign-in.
         services.AddOptions<RateLimiterOptions>().Configure<HttpSettings>((limiter, http) =>
-            limiter.AddPolicy(AccountsApi.SignInRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
-                ClientKey(context.Connection.RemoteIpAddress),
-                _ => new FixedWindowRateLimiterOptions { PermitLimit = http.AuthPermits, Window = http.AuthWindow })));
+        {
+            foreach (var policy in new[] { AccountsApi.SignInRateLimit, AccountsApi.ProviderReturnRateLimit })
+            {
+                limiter.AddPolicy(policy, context => RateLimitPartition.GetFixedWindowLimiter(
+                    ClientKey(context.Connection.RemoteIpAddress),
+                    _ => new FixedWindowRateLimiterOptions { PermitLimit = http.AuthPermits, Window = http.AuthWindow }));
+            }
+        });
 
         return services;
     }

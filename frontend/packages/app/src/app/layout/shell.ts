@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -15,6 +16,7 @@ import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { AccountMenu, type LinkableProvider } from '@app/components/account-menu/account-menu';
 import { failureKey } from '@app/errors/failure-message';
 import { type Language, LanguageSetting } from '@app/i18n/language';
+import { saidOnce } from '@app/session/said-once';
 
 /**
  * The frame of the signed-in screens: the header, with the account menu, and the screen
@@ -48,7 +50,10 @@ export class Shell {
   /** The address of the screen, as the last navigation left it. */
   private readonly address = signal(this.router.url);
 
-  /** What came of a link through a provider, as the API wrote it on the address it came back to. */
+  /**
+   * What came of a link through a provider, as the API wrote it on the address it came back to.
+   * Said until the visitor moves on, and once: the word is taken off the browser's address.
+   */
   protected readonly cameBack = computed(() =>
     providerOutcome(this.router.parseUrl(this.address()).queryParamMap.get(PROVIDER_OUTCOME)),
   );
@@ -67,6 +72,8 @@ export class Shell {
   });
 
   constructor() {
+    saidOnce(inject(Location), this.router, PROVIDER_OUTCOME);
+
     // A warning about a pick speaks of the screen it was made on: the next one starts clear.
     this.router.events
       .pipe(

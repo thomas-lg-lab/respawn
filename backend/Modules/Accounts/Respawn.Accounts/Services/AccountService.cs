@@ -17,6 +17,9 @@ public sealed partial class AccountService(
 {
     private const int DisplayNameMaxLength = 100;
 
+    /// <summary>The longest e-mail address there is: 64 characters, an @, 255 more.</summary>
+    private const int EmailMaxLength = 320;
+
     private const string DefaultGroupName = "Everyone";
 
     public async Task<SignInOptions> GetSignInOptionsAsync(CancellationToken ct)
@@ -140,8 +143,13 @@ public sealed partial class AccountService(
             throw new AccountException(AccountError.RegistrationClosed);
         }
 
-        // An address the provider did not verify is not the account's: anyone could claim another's.
-        var email = identity.EmailVerified ? identity.Email : null;
+        // An address the provider did not verify is not the account's: anyone could claim another's. Nor
+        // is one that is not an address, whatever the provider says of it: the account goes without.
+        var email = identity is { EmailVerified: true, Email: { } claimed }
+            && NormaliseEmail(claimed) is { Length: <= EmailMaxLength } address
+            && EmailShape().IsMatch(address)
+                ? address
+                : null;
         if (email is not null && await users.FindByEmailAsync(email, ct) is not null)
         {
             // Never attached by e-mail alone: the owner signs in first, then links the provider.
