@@ -81,8 +81,7 @@
   },
   "account": {
     "menu": "Account and settings",
-    "administrator": "administrator",
-    "emailAndAdministrator": "{{ email }} · administrator",
+    "administrator": "Administrator",
     "settingsKept": "These settings are kept on your account.",
     "settingsNotKept": "Your account could not keep this setting: for now it holds in this browser only.",
     "signOut": "Sign out",

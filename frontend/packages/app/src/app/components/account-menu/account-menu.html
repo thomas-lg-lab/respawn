@@ -17,13 +17,15 @@
       <rs-avatar [name]="account().display_name" />
       <div class="flex min-w-0 flex-col">
         <span class="truncate font-semibold" data-account-name>{{ account().display_name }}</span>
-        <span class="truncate type-caption text-muted" data-account-detail>
-          @if (account().email; as email) {
-            {{ account().is_admin ? t('emailAndAdministrator', { email }) : email }}
-          } @else if (account().is_admin) {
-            {{ t('administrator') }}
-          }
-        </span>
+        <!-- One line each: a long address is cut, never the role. -->
+        @if (account().email; as email) {
+          <span class="truncate type-caption text-muted" data-account-email [title]="email">{{
+            email
+          }}</span>
+        }
+        @if (account().is_admin) {
+          <span class="type-caption text-muted" data-account-role>{{ t('administrator') }}</span>
+        }
       </div>
     </div>
 
@@ -40,7 +42,8 @@
 
     @if (providers().length) {
       <div class="flex flex-col gap-2">
-        <p class="type-caption text-muted">{{ t('providers') }}</p>
+        <!-- Titled like the settings above it. -->
+        <p class="type-label text-muted">{{ t('providers') }}</p>
         @for (provider of providers(); track provider.name) {
           @if (provider.linked) {
             <p
