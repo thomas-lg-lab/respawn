@@ -86,6 +86,8 @@ internal static class ProviderSignIn
         oidc.SaveTokens = false;
         oidc.GetClaimsFromUserInfoEndpoint = false;
         oidc.MapInboundClaims = false;
+        // The handler also accepts the issuer the discovery document names, which a provider gives as its
+        // own; whichever was used, the identity is kept under the configured issuer (Identity below).
         oidc.TokenValidationParameters.ValidIssuers = [provider.Issuer, provider.Issuer + "/"];
         oidc.TokenValidationParameters.ValidAlgorithms = Algorithms;
         oidc.TokenValidationParameters.ClockSkew = TimeSpan.FromMinutes(1);
@@ -308,6 +310,15 @@ public static class ProviderSignInPipeline
         {
             if (context.Request.Path.StartsWithSegments(AccountsApi.ProviderSignInPath, StringComparison.OrdinalIgnoreCase))
             {
+                // The provider sends the browser back by a plain navigation (response_mode=query). The handler
+                // would take a posted form too, which nothing of this app sends: refused before it reads one.
+                if (!HttpMethods.IsGet(context.Request.Method)
+                    && context.Request.Path.Value!.EndsWith("/callback", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                    return;
+                }
+
                 var schemes = context.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
                 foreach (var provider in context.RequestServices.GetRequiredService<AccountOptions>().OidcProviders)
                 {
@@ -321,4 +332,22 @@ public static class ProviderSignInPipeline
 
             await following(context);
         });
+}
+
+/// <summary>A provider answering a server error has not answered: the sign-in may work when tried again. The
+/// handler would otherwise take a 5xx of the token endpoint for a refusal of the code.</summary>
+internal sealed class ProviderServerErrors : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var response = await base.SendAsync(request, cancellationToken);
+        if ((int)response.StatusCode < 500)
+        {
+            return response;
+        }
+
+        var status = response.StatusCode;
+        response.Dispose();
+        throw new HttpRequestException($"the provider answered {(int)status}", null, status);
+    }
 }

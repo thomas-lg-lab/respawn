@@ -45,6 +45,12 @@ internal sealed class FakeIssuer
     /// <summary>When set, the provider never answers in time: the client's timeout fires.</summary>
     public bool TimesOut { get; set; }
 
+    /// <summary>When set, the token endpoint alone answers this status.</summary>
+    public HttpStatusCode? TokenEndpointDown { get; set; }
+
+    /// <summary>When set, the discovery document is this text, answered with 200: not a document at all.</summary>
+    public string? DiscoveryBody { get; set; }
+
     public HttpMessageHandler Handler => new Transport(this);
 
     /// <summary>RESPAWN_OIDC_PROVIDERS naming this provider, under the issuer given.</summary>
@@ -203,8 +209,15 @@ internal sealed class FakeIssuer
                 return new HttpResponseMessage(status);
             }
 
+            if (request.RequestUri!.AbsolutePath == "/token" && issuer.TokenEndpointDown is { } tokenStatus)
+            {
+                return new HttpResponseMessage(tokenStatus);
+            }
+
             return request.RequestUri!.AbsolutePath switch
             {
+                "/.well-known/openid-configuration" when issuer.DiscoveryBody is { } body =>
+                    new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) },
                 "/.well-known/openid-configuration" => issuer.Discovery(),
                 "/jwks" => issuer.Keys(),
                 "/token" when request.Method == HttpMethod.Post => issuer.Redeem(
@@ -220,10 +233,13 @@ internal static class ProviderCalls
 {
     public const string Start = "/api/v1/auth/oidc/test";
 
-    /// <summary>The navigation that starts a sign-in through the provider, from the app's own page.</summary>
-    public static Task<HttpResponseMessage> StartAsync(this HttpClient browser, string? returnTo = "/", string provider = "test")
+    /// <summary>The navigation that starts a sign-in through the provider, or with <paramref name="link"/> a
+    /// link to the signed-in account, from the app's own page.</summary>
+    public static Task<HttpResponseMessage> StartAsync(
+        this HttpClient browser, string? returnTo = "/", string provider = "test", bool link = false)
     {
-        var address = $"/api/v1/auth/oidc/{provider}" + (returnTo is null ? "" : "?return_to=" + Uri.EscapeDataString(returnTo));
+        var address = $"/api/v1/auth/oidc/{provider}" + (link ? "/link" : "")
+            + (returnTo is null ? "" : "?return_to=" + Uri.EscapeDataString(returnTo));
         var request = new HttpRequestMessage(HttpMethod.Get, address);
         request.Headers.Add("Sec-Fetch-Site", "same-origin");
         return browser.SendAsync(request);
@@ -231,10 +247,19 @@ internal static class ProviderCalls
 
     /// <summary>Starts, signs in at the provider with these claims, and comes back: the app's answer to the
     /// return, which sends the browser on to the app.</summary>
-    public static async Task<HttpResponseMessage> SignInAsync(
-        this HttpClient browser, FakeIssuer issuer, string returnTo = "/", params (string Claim, object? Value)[] claims)
+    public static Task<HttpResponseMessage> SignInAsync(
+        this HttpClient browser, FakeIssuer issuer, string returnTo = "/", params (string Claim, object? Value)[] claims) =>
+        browser.ThroughProviderAsync(issuer, returnTo, link: false, claims);
+
+    /// <summary>The same, as a link of the provider to the signed-in account.</summary>
+    public static Task<HttpResponseMessage> LinkAsync(
+        this HttpClient browser, FakeIssuer issuer, string returnTo = "/", params (string Claim, object? Value)[] claims) =>
+        browser.ThroughProviderAsync(issuer, returnTo, link: true, claims);
+
+    private static async Task<HttpResponseMessage> ThroughProviderAsync(
+        this HttpClient browser, FakeIssuer issuer, string returnTo, bool link, (string Claim, object? Value)[] claims)
     {
-        var start = await browser.StartAsync(returnTo);
+        var start = await browser.StartAsync(returnTo, link: link);
         Assert.Equal(HttpStatusCode.Found, start.StatusCode);
         return await browser.GetAsync(new Uri(issuer.Authorize(start.Headers.Location!, claims)).PathAndQuery);
     }

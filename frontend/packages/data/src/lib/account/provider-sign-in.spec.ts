@@ -6,6 +6,9 @@ describe('sign-in through a provider', () => {
       '/api/v1/auth/oidc/sso?return_to=%2Fsign-in%3FreturnTo%3D%252Flibrary',
     );
     expect(providerSignInAddress('a/b', '/')).toBe('/api/v1/auth/oidc/a%2Fb?return_to=%2F');
+    expect(providerSignInAddress('sso', '/library', true)).toBe(
+      '/api/v1/auth/oidc/sso/link?return_to=%2Flibrary',
+    );
   });
 
   it('reads the outcome the API wrote, and a word it does not know as a failure', () => {

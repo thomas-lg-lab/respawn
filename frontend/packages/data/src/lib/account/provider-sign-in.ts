@@ -3,8 +3,8 @@ import { API_BASE } from '../api/api';
 /**
  * Signing in through a provider is not a call but a navigation: the browser goes to the API,
  * which sends it to the provider and, once the visitor signed in there, back to the address
- * the front gave. Without a session that opens one; with a session, the provider is linked
- * to the signed-in account instead. No token of the provider ever reaches the front.
+ * the front gave: a session is opened, or, from the link route, the provider is linked to
+ * the signed-in account. No token of the provider ever reaches the front.
  */
 
 /** The parameter the API writes on the address it sends the browser back to, with the outcome. */
@@ -23,9 +23,14 @@ export const PROVIDER_OUTCOMES = [
 
 export type ProviderOutcome = (typeof PROVIDER_OUTCOMES)[number];
 
-/** The address that starts a sign-in through `provider` and comes back to `returnTo`, a path of the app. */
-export function providerSignInAddress(provider: string, returnTo: string): string {
-  return `${API_BASE}/auth/oidc/${encodeURIComponent(provider)}?return_to=${encodeURIComponent(returnTo)}`;
+/**
+ * The address that starts a sign-in through `provider` and comes back to `returnTo`, a path of
+ * the app. With `link`, it links the provider to the signed-in account instead: a route of its
+ * own, so that a sign-in is never taken for a link.
+ */
+export function providerSignInAddress(provider: string, returnTo: string, link = false): string {
+  const route = `${API_BASE}/auth/oidc/${encodeURIComponent(provider)}${link ? '/link' : ''}`;
+  return `${route}?return_to=${encodeURIComponent(returnTo)}`;
 }
 
 /**

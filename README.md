@@ -142,9 +142,10 @@ the provider and comes back to the API (the authorization code flow with PKCE, a
 redeems the code, checks the ID token (signature, issuer, audience, lifetime, nonce) and opens the session; no
 token of the provider reaches the browser. Any provider with a discovery document works. An external identity
 is its issuer and subject, never its e-mail: an account is not attached to a provider because the addresses
-match, its owner signs in first and then links the provider from the account menu. A new identity gets an
-account where registration is open, or where its provider has `create_accounts`; that account takes the
-e-mail of the token only when the provider says it is verified (`email_verified`).
+match, its owner signs in first and then links the provider from the account menu, a route of its own: a
+sign-in never links, whatever session the browser carries. A new identity gets an account where registration
+is open, or where its provider has `create_accounts`; that account takes the e-mail of the token only when the
+provider says it is verified (`email_verified`).
 
 **Sessions.** A sign-in is an opaque token in an `HttpOnly`, `SameSite=Lax` cookie, valid for
 `RESPAWN_SESSION_DAYS`; only its SHA-256 is stored, and signing out deletes it.
@@ -163,7 +164,8 @@ part of the API.
 | `GET /api/v1/config` | What the sign-in page may offer: local sign-in, open registration, whether the account created now is the first one, the minimum length of a password, the providers |
 | `POST /api/v1/auth/register` | Creates a local account and signs in |
 | `POST /api/v1/auth/login` | Signs in with a local account |
-| `GET /api/v1/auth/oidc/{provider}` | Signs in through a configured provider, or links it to the account already signed in. A navigation from the app's pages, not a call: the browser is sent to the provider, then comes back on `return_to` (a path of the app, the home by default), with the outcome in the `provider_sign_in` parameter unless a session was opened: `linked`, `registration_closed`, `link_provider_first`, `linked_elsewhere`, `denied`, `failed` or `unavailable` |
+| `GET /api/v1/auth/oidc/{provider}` | Signs in through a configured provider, never links (a session the browser carries is replaced). A navigation from the app's pages, not a call: the browser is sent to the provider, then comes back on `return_to` (a path of the app, the home by default), with the outcome in the `provider_sign_in` parameter unless a session was opened: `registration_closed`, `link_provider_first`, `denied`, `failed` or `unavailable` |
+| `GET /api/v1/auth/oidc/{provider}/link` | Links a configured provider to the signed-in account, the same navigation; the account must still be signed in when the browser comes back. The outcome: `linked`, `linked_elsewhere`, `denied`, `failed` or `unavailable` |
 | `POST /api/v1/auth/logout` | Signs out of this browser |
 | `GET /api/v1/me` | The signed-in account, with the settings of its interface (`settings`: `language`, `theme`, `character`; null while it never chose) |
 | `PUT /api/v1/me/settings` | Keeps the three settings of the interface on the signed-in account, together, in place of the ones it had |

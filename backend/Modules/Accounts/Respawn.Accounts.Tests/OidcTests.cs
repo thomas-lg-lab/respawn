@@ -166,7 +166,7 @@ public sealed class OidcTests
         await using var app = await issuer.StartAppAsync();
         using var browser = app.Browser();
         var account = await browser.RegisterAsync().JsonAsync();
-        var back = await browser.SignInAsync(issuer, "/library?tab=all", ("email", "different@example.org"));
+        var back = await browser.LinkAsync(issuer, "/library?tab=all", ("email", "different@example.org"));
         Assert.Equal("/library?tab=all&provider_sign_in=linked", back.Landing());
         // Still the same session, of the same account.
         Assert.Equal(account.GetProperty("id").GetString(), (await browser.GetAsync("/api/v1/me").JsonAsync()).GetProperty("id").GetString());
@@ -177,7 +177,36 @@ public sealed class OidcTests
         Assert.Equal(account.GetProperty("id").GetString(), (await later.GetAsync("/api/v1/me").JsonAsync()).GetProperty("id").GetString());
 
         // Linking it again changes nothing.
-        Assert.Equal("/?provider_sign_in=linked", (await browser.SignInAsync(issuer)).Landing());
+        Assert.Equal("/?provider_sign_in=linked", (await browser.LinkAsync(issuer)).Landing());
+    }
+
+    [Fact]
+    public async Task A_link_needs_a_session()
+    {
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync();
+        using var browser = app.Browser();
+        Assert.Equal(HttpStatusCode.Unauthorized, await browser.StartAsync(link: true).StatusAsync());
+        Assert.Equal(0, issuer.Requests);
+    }
+
+    [Fact]
+    public async Task A_sign_in_never_links_whatever_session_the_browser_carries()
+    {
+        // A session planted in the browser (another site of the same parent domain can set the cookie) must
+        // not turn the visitor's own sign-in into a link of their identity to that account.
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync();
+        using var planted = app.Browser();
+        var attacker = (await planted.RegisterAsync().JsonAsync()).GetProperty("id").GetString();
+
+        // The same browser, so the same cookie, signs in through the provider: registration is closed and the
+        // identity is new, so it is turned away, and not attached to the account the cookie names.
+        Assert.Equal("/?provider_sign_in=registration_closed", (await planted.SignInAsync(issuer)).Landing());
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        using var victim = app.Browser();
+        await victim.SignInAsync(issuer);
+        Assert.NotEqual(attacker, (await victim.GetAsync("/api/v1/me").JsonAsync()).GetProperty("id").GetString());
     }
 
     [Fact]
@@ -192,7 +221,7 @@ public sealed class OidcTests
 
         using var second = app.Browser();
         await second.RegisterAsync("second@example.org", "Second");
-        Assert.Equal("/?provider_sign_in=linked_elsewhere", (await second.SignInAsync(issuer)).Landing());
+        Assert.Equal("/?provider_sign_in=linked_elsewhere", (await second.LinkAsync(issuer)).Landing());
 
         using var again = app.Browser();
         await again.SignInAsync(issuer);
@@ -204,15 +233,29 @@ public sealed class OidcTests
     {
         var issuer = new FakeIssuer();
         await using var app = await issuer.StartAppAsync();
-        using var browser = app.Browser();
-        await browser.RegisterAsync();
-        var start = await browser.StartAsync();
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
 
         // Signed out while at the provider: the link is not made, and no session is opened either.
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+        var start = await browser.StartAsync(link: true);
         await browser.PostAsync("/api/v1/auth/logout", null);
         var back = await browser.GetAsync(new Uri(issuer.Authorize(start.Headers.Location!, [])).PathAndQuery);
         Assert.Equal("/?provider_sign_in=failed", back.Landing());
         Assert.Equal(HttpStatusCode.Unauthorized, await browser.GetAsync("/api/v1/me").StatusAsync());
+
+        // Another account signed in while at the provider: not linked to either.
+        using var first = app.Browser();
+        await first.RegisterAsync("a@example.org", "A");
+        start = await first.StartAsync(link: true);
+        await first.PostAsync("/api/v1/auth/logout", null);
+        await first.LoginAsync("first@example.org", TestApp.Password);
+        back = await first.GetAsync(new Uri(issuer.Authorize(start.Headers.Location!, [])).PathAndQuery);
+        Assert.Equal("/?provider_sign_in=failed", back.Landing());
+        using var nobody = app.Browser();
+        await nobody.SignInAsync(issuer, "/", ("email", "fresh@example.org"));
+        var created = await nobody.GetAsync("/api/v1/me").JsonAsync();
+        Assert.Equal("fresh@example.org", created.GetProperty("email").GetString());
     }
 
     [Fact]
@@ -318,16 +361,68 @@ public sealed class OidcTests
     }
 
     [Fact]
+    public async Task A_provider_that_answers_wrongly_is_said_and_never_an_error_page()
+    {
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync();
+        using var browser = app.Browser();
+
+        // Its token endpoint answers a server error: trying again may work.
+        var start = await browser.StartAsync("/sign-in");
+        var comingBack = new Uri(issuer.Authorize(start.Headers.Location!, [])).PathAndQuery;
+        issuer.TokenEndpointDown = HttpStatusCode.ServiceUnavailable;
+        Assert.Equal("/sign-in?provider_sign_in=unavailable", (await browser.GetAsync(comingBack)).Landing());
+
+        // Its discovery document is not one (a captive portal, a mistyped issuer): nothing could be done.
+        var broken = new FakeIssuer { DiscoveryBody = "<html>not a document</html>" };
+        await using var second = await broken.StartAppAsync();
+        using var visitor = second.Browser();
+        Assert.Equal("/sign-in?provider_sign_in=failed", (await visitor.StartAsync("/sign-in")).Landing());
+        Assert.Equal(0, app.Logs.Count("unhandled error") + second.Logs.Count("unhandled error"));
+    }
+
+    [Fact]
+    public async Task The_return_is_a_navigation_and_nothing_else()
+    {
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync();
+        using var browser = app.Browser();
+        var start = await browser.StartAsync();
+        var comingBack = new Uri(issuer.Authorize(start.Headers.Location!, []));
+
+        // The same code and state, posted as a form: refused before the handler reads it.
+        var posted = await browser.PostAsync(comingBack.AbsolutePath, new FormUrlEncodedContent(QueryHelpers.ParseQuery(comingBack.Query)
+            .ToDictionary(pair => pair.Key, pair => pair.Value.ToString())));
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, posted.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, await browser.GetAsync("/api/v1/me").StatusAsync());
+
+        // The navigation itself still goes through.
+        Assert.Equal("/", (await browser.GetAsync(comingBack.PathAndQuery)).Landing());
+    }
+
+    [Fact]
+    public async Task A_start_typed_or_from_an_old_browser_goes_through()
+    {
+        // No Sec-Fetch-Site: a browser that sends none, or an address typed. Only another site's page is refused.
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync();
+        using var browser = app.Browser();
+        var start = await browser.GetAsync(ProviderCalls.Start);
+        Assert.Equal(HttpStatusCode.Found, start.StatusCode);
+        Assert.StartsWith(FakeIssuer.Issuer + "/authorize?", start.Headers.Location!.OriginalString, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Only_a_screen_of_the_app_is_come_back_to()
     {
         var issuer = new FakeIssuer();
         await using var app = await issuer.StartAppAsync();
         using var browser = app.Browser();
         Assert.Equal("/", (await browser.SignInAsync(issuer, "https://example.org/")).Landing());
-        Assert.Equal("/?provider_sign_in=linked", (await browser.SignInAsync(issuer, "//example.org/")).Landing());
-        Assert.Equal("/?provider_sign_in=linked", (await browser.SignInAsync(issuer, "/api/v1/me")).Landing());
+        Assert.Equal("/", (await browser.SignInAsync(issuer, "//example.org/")).Landing());
+        Assert.Equal("/", (await browser.SignInAsync(issuer, "/api/v1/me")).Landing());
         // An outcome written in advance is dropped.
-        Assert.Equal("/?provider_sign_in=linked", (await browser.SignInAsync(issuer, "/?provider_sign_in=linked_elsewhere")).Landing());
+        Assert.Equal("/?provider_sign_in=linked", (await browser.LinkAsync(issuer, "/?provider_sign_in=linked_elsewhere")).Landing());
     }
 
     [Fact]

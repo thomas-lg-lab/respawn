@@ -62,7 +62,7 @@ export class Shell {
     const back = this.router.serializeUrl(here);
     return (this.options.data()?.oidc_providers ?? []).map((provider) => ({
       ...provider,
-      address: providerSignInAddress(provider.name, back),
+      address: providerSignInAddress(provider.name, back, true),
     }));
   });
 

@@ -235,7 +235,7 @@ describe('routes', () => {
     const link = screen.querySelector<HTMLAnchorElement>('a[data-link-provider="sso"]')!;
     expect(link.textContent.trim()).toBe('Lier Mon SSO');
     // It comes back to this screen, without the word of the previous link.
-    expect(link.getAttribute('href')).toBe('/api/v1/auth/oidc/sso?return_to=%2F');
+    expect(link.getAttribute('href')).toBe('/api/v1/auth/oidc/sso/link?return_to=%2F');
   });
 
   it('says that a link through a provider failed', async () => {

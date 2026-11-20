@@ -39,7 +39,8 @@ public static class AccountsApi
             .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(SessionAuthenticationHandler.SchemeName, null);
 
         // Sign-in through a provider: one OpenID Connect scheme per provider, added when first needed.
-        services.AddHttpClient(ProviderSignIn.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10));
+        services.AddHttpClient(ProviderSignIn.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10))
+            .AddHttpMessageHandler(() => new ProviderServerErrors());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<OpenIdConnectOptions>, ProviderSchemeOptions>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
 

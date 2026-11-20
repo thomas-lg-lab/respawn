@@ -130,8 +130,8 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Sign in through a configured provider, or link it: sends the browser to the provider",
-        "description": "A navigation from the app's own pages, not a call: the browser is sent to the provider, which sends it back to the API once the visitor has signed in there. Without a session, the API opens one for the account the provider's identity is linked to, or creates the account where registration allows it, and the browser lands on return_to. With a session, the identity is linked to the signed-in account instead, and the browser lands on return_to with provider_sign_in=linked. Anything else lands on return_to with provider_sign_in set to registration_closed, link_provider_first (the provider's verified e-mail is an account's: sign in to it, then link the provider), linked_elsewhere (the identity is linked to another account), denied (the provider turned the visitor away), failed (nothing was proven) or unavailable (the provider could not be asked; trying again may work).",
+        "summary": "Sign in through a configured provider: sends the browser to the provider",
+        "description": "A navigation from the app's own pages, not a call: the browser is sent to the provider, which sends it back to the API once the visitor has signed in there. The API opens a session for the account the provider's identity is linked to, or creates the account where registration allows it (or the provider creates accounts), and the browser lands on return_to. It never links: a session the browser already has is replaced. Anything else lands on return_to with provider_sign_in set to registration_closed, link_provider_first (the provider's verified e-mail is an account's: sign in to it, then link the provider), denied (the provider turned the visitor away), failed (nothing was proven) or unavailable (the provider could not be asked; trying again may work).",
         "parameters": [
           {
             "name": "provider",
@@ -155,6 +155,71 @@
             "description": "Found",
             "content": {
               "application/json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/oidc/{provider}/link": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Link a configured provider to the signed-in account: sends the browser to the provider",
+        "description": "A navigation from the app's own pages, not a call, and only on purpose (the account menu): the browser is sent to the provider, and the identity it proves is linked to the account signed in when the link started, which must still be signed in when the browser comes back. The browser lands on return_to with provider_sign_in set to linked, linked_elsewhere (the identity is linked to another account), denied, failed or unavailable. No session is opened.",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "return_to",
+            "in": "query",
+            "description": "The path of the app to come back to, at most 512 characters; the home when it is not one.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "403": {
