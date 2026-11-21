@@ -1,0 +1,6 @@
+<span class="caption">{{ caption() }}</span>
+<span class="figure">{{ figure() }}</span>
+<ng-content />
+@if (note(); as said) {
+  <span class="note">{{ said }}</span>
+}

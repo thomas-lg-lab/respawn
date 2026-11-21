@@ -13,4 +13,6 @@ export * from './lib/logo/logo';
 export * from './lib/pill/pill';
 export * from './lib/pill-group/pill-group';
 export * from './lib/segmented-bar/segmented-bar';
+export * from './lib/skeleton/skeleton';
+export * from './lib/stat-tile/stat-tile';
 export * from './lib/text-field/text-field';

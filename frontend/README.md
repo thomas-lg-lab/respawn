@@ -21,13 +21,13 @@ npm run gen:api     # the API's types, from openapi.json
 
 The image builds this front and the API process serves it; the router decides the screen from the address.
 
-| Address        | Screen                                                                                                                                                                                             | Needs      |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `/sign-in`     | sign in, with a local account or through one of the instance's providers, or create an account where the instance allows it; says what came of a sign-in through a provider that opened no session | no session |
-| `/`            | who is signed in, under the header and its account menu: the settings, kept on the account at each pick, the providers linked or to link, the sign-out                                             | a session  |
-| `/foundations` | the type styles and the base components                                                                                                                                                            | nothing    |
-| `/docs`        | the API's description, drawn by Swagger UI; not an Angular screen                                                                                                                                  | nothing    |
-| anything else  | says that there is no such screen                                                                                                                                                                  | nothing    |
+| Address        | Screen                                                                                                                                                                                                                              | Needs      |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `/sign-in`     | sign in, with a local account or through one of the instance's providers, or create an account where the instance allows it; says what came of a sign-in through a provider that opened no session                                  | no session |
+| `/`            | the home, under the header and its account menu (the settings, kept on the account at each pick, the providers linked or to link, the sign-out): the way to link a Steam account, where its sync stands, and the library in figures | a session  |
+| `/foundations` | the type styles and the base components                                                                                                                                                                                             | nothing    |
+| `/docs`        | the API's description, drawn by Swagger UI; not an Angular screen                                                                                                                                                                   | nothing    |
+| anything else  | says that there is no such screen                                                                                                                                                                                                   | nothing    |
 
 A screen is where the API, the router and the settings are injected (`pages/x/x.ts`, and `layout/shell.ts` for
 the header). What it draws is made of components that only take inputs and emit outputs: its own in

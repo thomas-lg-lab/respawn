@@ -7,6 +7,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import {
   AccountQueries,
   PROVIDER_OUTCOME,
+  STEAM_LINK_OUTCOME,
   providerOutcome,
   providerSignInAddress,
 } from '@respawn/data';
@@ -60,12 +61,14 @@ export class Shell {
 
   /**
    * The providers: the ones linked already, and the others to link, each coming back to this
-   * screen, without the word of a previous link.
+   * screen, without the word of a previous link, through a provider or through Steam.
    */
   protected readonly providers = computed<LinkableProvider[]>(() => {
     const here = this.router.parseUrl(this.address());
     here.queryParams = Object.fromEntries(
-      Object.entries(here.queryParams).filter(([key]) => key !== PROVIDER_OUTCOME),
+      Object.entries(here.queryParams).filter(
+        ([key]) => key !== PROVIDER_OUTCOME && key !== STEAM_LINK_OUTCOME,
+      ),
     );
     const back = this.router.serializeUrl(here);
     return (this.accountProviders.data() ?? []).map((provider) => ({

@@ -1,3 +1,109 @@
-@if (me.data(); as account) {
-  <rs-account-summary [account]="account" />
-}
+<div class="flex flex-col gap-4.5" *transloco="let t">
+  <!-- What came of linking Steam: the API sent the browser back here with its word. -->
+  @if (cameBack; as outcome) {
+    @if (outcome === 'linked') {
+      <rs-banner role="status" data-steam-link="linked">{{ t('home.steamLink.linked') }}</rs-banner>
+    } @else {
+      <rs-banner tone="warn" role="alert" [attr.data-steam-link]="outcome">{{
+        t('home.steamLink.' + outcome)
+      }}</rs-banner>
+    }
+  }
+  <!-- A "sync now" the API refused: none ran, and that must be said. -->
+  @if (syncRefusal(); as refusal) {
+    <rs-banner tone="warn" role="alert">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span class="flex-1 basis-60" data-sync-refused>{{ t(refusal) }}</span>
+        <button rsButton type="button" data-refusal-dismiss (click)="dismissRefusal()">
+          {{ t('home.sync.dismiss') }}
+        </button>
+      </div>
+    </rs-banner>
+  }
+
+  @switch (view()) {
+    @case ('loading') {
+      <p class="text-muted" role="status">{{ t('home.loading') }}</p>
+    }
+    @case ('unavailable') {
+      <h1 class="type-page-title">{{ t('home.title') }}</h1>
+      <rs-banner tone="warn" role="alert">{{ t(failureKey(accounts.error())) }}</rs-banner>
+      <button rsButton type="button" class="self-start" (click)="accounts.refetch()">
+        {{ t('home.retry') }}
+      </button>
+    }
+    @case ('no-account') {
+      <rs-no-account [address]="linkAddress" />
+    }
+    @case ('first-sync') {
+      <rs-first-sync />
+    }
+    @case ('first-sync-late') {
+      <rs-first-sync late (syncNow)="syncNow()" />
+    }
+    @case ('sync-failed') {
+      <rs-sync-issue kind="failed" [reason]="reason()" (retry)="syncNow()" />
+    }
+    @case ('nothing-visible') {
+      <rs-sync-issue kind="nothing-visible" (retry)="syncNow()" />
+    }
+    @default {
+      <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+        <div class="flex flex-col gap-2">
+          <p rsLabel main>{{ t('home.label') }}</p>
+          <h1 class="type-page-title">{{ t('home.title') }}</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          @if (lastSuccess(); as date) {
+            <span class="type-caption text-muted" data-last-sync>{{
+              t('home.sync.last', { date })
+            }}</span>
+          }
+          <button
+            rsButton
+            variant="icon"
+            type="button"
+            data-sync-now
+            [aria-label]="t('home.sync.now')"
+            [disabled]="notice() === 'running'"
+            (click)="syncNow()"
+          >
+            <svg lucideRefreshCw class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+          </button>
+        </div>
+      </div>
+
+      @if (notice(); as said) {
+        <rs-sync-banner
+          [notice]="said"
+          [reason]="reason()"
+          [lastSuccess]="lastSuccess()"
+          (syncNow)="syncNow()"
+          (dismiss)="dismissStale()"
+        />
+      }
+
+      @if (stats.data(); as figures) {
+        <rs-figures [stats]="figures" [language]="currentLanguage()" />
+      } @else if (stats.isError()) {
+        <rs-banner tone="warn" role="alert">{{ t(failureKey(stats.error())) }}</rs-banner>
+        <button
+          rsButton
+          type="button"
+          class="self-start"
+          data-figures-retry
+          (click)="stats.refetch()"
+        >
+          {{ t('home.retry') }}
+        </button>
+      } @else {
+        <div class="grid grid-cols-1 gap-3 wide:grid-cols-3" role="status">
+          @for (tile of tiles; track tile) {
+            <rs-skeleton class="h-27" />
+          }
+          <span class="sr-only">{{ t('home.loading') }}</span>
+        </div>
+      }
+    }
+  }
+</div>

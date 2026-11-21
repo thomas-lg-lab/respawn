@@ -1,0 +1,29 @@
+<section class="flex flex-col items-center gap-4.5 py-10 text-center" *transloco="let t">
+  @let prefix = kind() === 'failed' ? 'home.syncFailed.' : 'home.nothingVisible.';
+  <span
+    class="flex size-18 items-center justify-center rounded-pill border border-warn-line bg-warn-bg text-warn"
+    aria-hidden="true"
+  >
+    <svg lucideTriangleAlert class="size-8" [strokeWidth]="2"></svg>
+  </span>
+  <p class="type-label text-warn">{{ t(prefix + 'label') }}</p>
+  <h1 class="max-w-[16em] type-page-title">{{ t(prefix + 'title') }}</h1>
+  @if (kind() === 'failed') {
+    <p class="max-w-[36em] text-muted" role="alert" data-sync-reason>
+      {{ t(reason() ?? 'home.syncErrors.unknown') }} {{ t('home.syncFailed.kept') }}
+    </p>
+  } @else {
+    <p class="max-w-[36em] text-muted" role="alert">{{ t('home.nothingVisible.text') }}</p>
+    <ol
+      class="flex max-w-[34em] list-decimal flex-col gap-1.5 rounded-card border border-line bg-surface py-4 pr-5 pl-10 text-left"
+    >
+      @for (step of steps; track step) {
+        <li>{{ t('home.nothingVisible.steps.' + step) }}</li>
+      }
+    </ol>
+  }
+  <button rsButton variant="primary" type="button" data-sync-retry (click)="retry.emit()">
+    {{ t(prefix + 'retry') }}
+  </button>
+  <p class="max-w-[36em] type-caption text-muted">{{ t(prefix + 'note') }}</p>
+</section>
