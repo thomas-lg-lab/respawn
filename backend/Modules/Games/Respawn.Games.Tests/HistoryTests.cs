@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Games.Infrastructure.Persistence;
+using Respawn.Games.Infrastructure.Persistence.Migrations;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
@@ -123,6 +124,50 @@ public sealed class HistoryTests
         // A good one puts its part of the hour on its own day.
         await RecordAsync(app, account.Id, Day(3), ("620", "Portal 2", 110), ("400", "Portal", 30));
         Assert.Equal([(Date(3), games["620"], 1200L), (Date(4), games["620"], 2400L)], await DaysAsync(browser));
+    }
+
+    [Fact]
+    public async Task The_zeros_recorded_before_are_corrected_by_the_migration()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+
+        // A store hiding the playtime, then saying it; Portal is never launched until the fourth day.
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 0), ("400", "Portal", 0));
+        await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 6000), ("400", "Portal", 0));
+        await RecordAsync(app, account.Id, Day(5), ("620", "Portal 2", 6030), ("400", "Portal", 45));
+        // And a reading of a day between, recorded after, poor for one game and good for the other.
+        await RecordAsync(app, account.Id, Day(4), ("620", "Portal 2", 0), ("400", "Portal", 10));
+        var games = await GamesAsync(app);
+        (DateOnly, Guid, long)[] right = [(Date(4), games["400"], 600L), (Date(5), games["400"], 2100L), (Date(5), games["620"], 1800L)];
+        Assert.Equal(right, await DaysAsync(browser));
+
+        // As these readings were recorded before: every zero said was kept as a known total, and the
+        // history gave everything ever played to the day the store said, twice.
+        TestDatabase.Run("UPDATE games.observations SET known_playtime_seconds = 0 WHERE playtime_seconds = 0 AND known_playtime_seconds IS NULL");
+        Assert.Equal(
+            [(Date(2), games["620"], 360000L), (Date(4), games["400"], 600L), (Date(5), games["620"], 361800L), (Date(5), games["400"], 2100L)],
+            await DaysAsync(browser));
+
+        // The migration's statement: the zeros that said nothing go, the one of the game never launched
+        // stays, and Portal's ten minutes still count from it. A second time changes nothing.
+        TestDatabase.Run(KnownZeros.Sql);
+        Assert.Equal(right, await DaysAsync(browser));
+        TestDatabase.Run(KnownZeros.Sql);
+        Assert.Equal(right, await DaysAsync(browser));
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        Assert.Equal(
+            [null, 0L, 600L, 2700L],
+            await (
+                from observation in db.Observations.AsNoTracking()
+                join snapshot in db.RawSnapshots on observation.SnapshotId equals snapshot.Id
+                join entry in db.StoreEntries on observation.StoreEntryId equals entry.Id
+                where entry.ExternalId == "400"
+                orderby snapshot.TakenAt
+                select observation.KnownPlaytimeSeconds).ToArrayAsync());
     }
 
     [Fact]
