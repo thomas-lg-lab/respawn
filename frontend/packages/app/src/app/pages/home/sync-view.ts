@@ -4,20 +4,37 @@ import { type LinkedAccount, type SyncRun, awaitsSync } from '@respawn/data';
  * What the home shows, from the linked accounts and their syncs:
  * - `no-account`: nothing is linked yet, the screen leads to the link;
  * - `first-sync`: an account is linked and no reading of it ever succeeded, one is on its way;
+ * - `first-sync-late`: that first reading was awaited long enough and left nothing behind,
+ *   the screen stops waiting and offers to ask for it;
  * - `sync-failed`, `nothing-visible`: the first reading ended and brought no game, because
  *   it failed or because the store showed none;
  * - `ready`: a reading succeeded once, there is a library to show whatever happened since.
  */
-export type SyncView = 'no-account' | 'first-sync' | 'sync-failed' | 'nothing-visible' | 'ready';
+export type SyncView =
+  'no-account' | 'first-sync' | 'first-sync-late' | 'sync-failed' | 'nothing-visible' | 'ready';
 
-/** `syncing`: a "sync now" asked from this screen has not answered yet. */
-export function syncView(accounts: LinkedAccount[], syncing: boolean): SyncView {
+/**
+ * `syncing`: a "sync now" asked from this screen has not answered yet. `now`: when the
+ * accounts were told, which is what a first reading is awaited against.
+ */
+export function syncView(accounts: LinkedAccount[], syncing: boolean, now: number): SyncView {
   if (accounts.length === 0) return 'no-account';
   if (accounts.some((account) => account.sync.last_succeeded_at)) return 'ready';
-  if (syncing || accounts.some(awaitsSync)) return 'first-sync';
-  return accounts.some((account) => account.sync.last?.outcome === 'failed')
-    ? 'sync-failed'
+  if (syncing || accounts.some((account) => awaitsSync(account, now))) return 'first-sync';
+  if (accounts.some((account) => account.sync.last?.outcome === 'failed')) return 'sync-failed';
+  return accounts.some((account) => account.sync.last === null)
+    ? 'first-sync-late'
     : 'nothing-visible';
+}
+
+/**
+ * Where the syncs stand, as one word: it changes when one starts or ends. What was said of
+ * a moment (a "sync now" refused) holds while the word does.
+ */
+export function syncsWord(accounts: LinkedAccount[]): string {
+  return accounts
+    .map(({ id, sync }) => `${id}:${sync.running ? 'running' : 'idle'}:${sync.last?.id ?? ''}`)
+    .join();
 }
 
 /** After this long without a successful reading, two daily ones were missed. */
@@ -25,7 +42,8 @@ export const STALE_AFTER = 48 * 60 * 60 * 1000;
 
 /**
  * What the home says above a library it shows:
- * - `running`: a sync is on its way, the games shown are the last reading's;
+ * - `running`: a sync is on its way (the first one of an account linked beside another
+ *   included), the games shown are the last reading's;
  * - `failed`, `nothing-visible`: the last reading brought nothing, the games shown are older;
  * - `stale`: nothing went wrong that the app knows of, and yet the last success is old.
  */
@@ -37,7 +55,7 @@ export function syncNotice(
   now: number,
 ): SyncNotice | null {
   const { running, last, last_succeeded_at } = account.sync;
-  if (syncing || running) return 'running';
+  if (syncing || running || awaitsSync(account, now)) return 'running';
   if (last?.outcome === 'failed') return 'failed';
   if (last?.outcome === 'nothing_visible') return 'nothing-visible';
   if (last_succeeded_at && now - Date.parse(last_succeeded_at) > STALE_AFTER) return 'stale';
@@ -46,15 +64,16 @@ export function syncNotice(
 
 /**
  * The account the home speaks of and syncs: the one whose last reading went wrong if any,
- * else the one read the longest ago.
+ * then one never read, else the one read the longest ago.
  */
 export function accountInView(accounts: LinkedAccount[]): LinkedAccount | undefined {
   const troubled = accounts.find((account) => account.sync.last?.outcome === 'failed');
+  const unread = accounts.find((account) => account.sync.last === null);
   const unseen = accounts.find((account) => account.sync.last?.outcome === 'nothing_visible');
   const oldestFirst = [...accounts].sort((one, other) =>
     (one.sync.last_succeeded_at ?? '').localeCompare(other.sync.last_succeeded_at ?? ''),
   );
-  return troubled ?? unseen ?? oldestFirst[0];
+  return troubled ?? unread ?? unseen ?? oldestFirst[0];
 }
 
 /** The reasons of a failed run the home has a sentence for. */

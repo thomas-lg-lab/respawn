@@ -7,13 +7,13 @@
     <svg lucideTriangleAlert class="size-8" [strokeWidth]="2"></svg>
   </span>
   <p class="type-label text-warn">{{ t(prefix + 'label') }}</p>
-  <h1 class="max-w-[16em] type-page-title" role="alert">{{ t(prefix + 'title') }}</h1>
+  <h1 class="max-w-[16em] type-page-title">{{ t(prefix + 'title') }}</h1>
   @if (kind() === 'failed') {
-    <p class="max-w-[36em] text-muted" data-sync-reason>
+    <p class="max-w-[36em] text-muted" role="alert" data-sync-reason>
       {{ t(reason() ?? 'home.syncErrors.unknown') }} {{ t('home.syncFailed.kept') }}
     </p>
   } @else {
-    <p class="max-w-[36em] text-muted">{{ t('home.nothingVisible.text') }}</p>
+    <p class="max-w-[36em] text-muted" role="alert">{{ t('home.nothingVisible.text') }}</p>
     <ol
       class="flex max-w-[34em] list-decimal flex-col gap-1.5 rounded-card border border-line bg-surface py-4 pr-5 pl-10 text-left"
     >

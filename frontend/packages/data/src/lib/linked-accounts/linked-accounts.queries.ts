@@ -13,11 +13,19 @@ export const linkedAccountKeys = {
 export const AWAITING_SYNC_INTERVAL = 5_000;
 
 /**
- * Whether a sync of this account is on its way: one is running, or the account was just
- * linked and its first reading has not ended yet (the API starts it within minutes).
+ * How long the first reading of an account just linked is awaited, in milliseconds. The API
+ * starts it within minutes; past this, something kept it from ending and waiting longer
+ * would bring nothing.
  */
-export function awaitsSync(account: LinkedAccount): boolean {
-  return account.sync.running || account.sync.last === null;
+export const FIRST_SYNC_WAIT = 10 * 60_000;
+
+/**
+ * Whether a sync of this account is on its way at `now`: one is running, or the account was
+ * just linked and its first reading has not ended yet.
+ */
+export function awaitsSync(account: LinkedAccount, now: number): boolean {
+  const { running, last } = account.sync;
+  return running || (last === null && now - Date.parse(account.linked_at) < FIRST_SYNC_WAIT);
 }
 
 /** The last finished run of each account, as one word: it changes when any sync ends. */
@@ -36,8 +44,8 @@ export class LinkedAccountQueries {
 
   /**
    * The linked accounts, each with the state of its sync. Asked again every few seconds
-   * while a sync is awaited, and that is where the end of one is learnt: the library it
-   * read is then stale.
+   * while a sync is awaited (`awaitsSync`: never for ever), and that is where the end of one
+   * is learnt: the library it read is then stale.
    */
   list() {
     return queryOptions({
@@ -48,10 +56,26 @@ export class LinkedAccountQueries {
         if (known && lastRuns(known) !== lastRuns(accounts)) this.libraryChanged();
         return accounts;
       },
-      refetchInterval: (query) =>
-        query.state.data?.some(awaitsSync) ? AWAITING_SYNC_INTERVAL : false,
+      // "Now" is when the accounts were last told: the screen reads the same moment, so the
+      // answer that ends the wait is also the one it shows.
+      refetchInterval: ({ state }) =>
+        state.data?.some((account) => awaitsSync(account, state.dataUpdatedAt))
+          ? AWAITING_SYNC_INTERVAL
+          : false,
       retry: false,
     });
+  }
+
+  /**
+   * The account that was never read and that nothing reads yet, once the accounts are known:
+   * the one just linked, whose first reading can be asked without waiting for the schedule.
+   * None when the accounts cannot be told.
+   */
+  async neverRead(): Promise<LinkedAccount | undefined> {
+    const accounts = await this.client
+      .ensureQueryData(this.list())
+      .catch((): LinkedAccount[] => []);
+    return accounts.find((account) => !account.sync.last && !account.sync.running);
   }
 
   /**

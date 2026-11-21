@@ -112,7 +112,9 @@
     "firstSync": {
       "label": "Chargement de la partie",
       "title": "Première synchronisation",
-      "text": "respawn lit votre bibliothèque Steam et vos temps de jeu. La première lecture démarre dans les minutes qui suivent le lien : cette page se met à jour toute seule."
+      "text": "respawn lit votre bibliothèque Steam et vos temps de jeu. La première lecture démarre dans les minutes qui suivent le lien : cette page se met à jour toute seule.",
+      "late": "La première lecture de votre bibliothèque Steam n’a pas abouti. Vous pouvez la demander maintenant.",
+      "now": "Synchroniser maintenant"
     },
     "syncFailed": {
       "label": "Première synchronisation",

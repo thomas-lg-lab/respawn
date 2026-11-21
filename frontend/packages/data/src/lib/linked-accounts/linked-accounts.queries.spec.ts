@@ -11,14 +11,18 @@ import {
 } from '../testing/fixtures';
 import {
   AWAITING_SYNC_INTERVAL,
+  FIRST_SYNC_WAIT,
   LinkedAccountQueries,
   awaitsSync,
   linkedAccountKeys,
 } from './linked-accounts.queries';
 import { steamLinkAddress, steamLinkOutcome } from './steam-link';
 
+const NOW = Date.parse('2026-11-21T12:00:00Z');
+
 const JUST_LINKED: LinkedAccount = {
   ...ACCOUNT,
+  linked_at: '2026-11-21T11:59:00Z',
   sync: { running: false, last: null, last_succeeded_at: null },
 };
 
@@ -55,19 +59,47 @@ describe('LinkedAccountQueries', () => {
   });
 
   it('awaits a sync that runs, and the first one of an account just linked', () => {
-    expect(awaitsSync(ACCOUNT)).toBe(false);
-    expect(awaitsSync(JUST_LINKED)).toBe(true);
-    expect(awaitsSync({ ...ACCOUNT, sync: { ...ACCOUNT.sync, running: true } })).toBe(true);
+    expect(awaitsSync(ACCOUNT, NOW)).toBe(false);
+    expect(awaitsSync(JUST_LINKED, NOW)).toBe(true);
+    expect(awaitsSync({ ...ACCOUNT, sync: { ...ACCOUNT.sync, running: true } }, NOW)).toBe(true);
+  });
+
+  it('stops awaiting a first reading that left nothing behind', () => {
+    expect(awaitsSync(JUST_LINKED, NOW + FIRST_SYNC_WAIT - 60_000 - 1)).toBe(true);
+    expect(awaitsSync(JUST_LINKED, NOW + FIRST_SYNC_WAIT)).toBe(false);
   });
 
   it('asks again every few seconds only while a sync is awaited', () => {
     const interval = queries.list().refetchInterval as (query: {
-      state: { data?: LinkedAccount[] };
+      state: { data?: LinkedAccount[]; dataUpdatedAt: number };
     }) => number | false;
+    const told = (data: LinkedAccount[] | undefined, dataUpdatedAt = NOW) =>
+      interval({ state: { data, dataUpdatedAt } });
 
-    expect(interval({ state: { data: [JUST_LINKED] } })).toBe(AWAITING_SYNC_INTERVAL);
-    expect(interval({ state: { data: [ACCOUNT] } })).toBe(false);
-    expect(interval({ state: {} })).toBe(false);
+    expect(told([JUST_LINKED])).toBe(AWAITING_SYNC_INTERVAL);
+    expect(told([ACCOUNT])).toBe(false);
+    expect(told(undefined, 0)).toBe(false);
+    // A first reading awaited long enough: the accounts are no longer asked for it.
+    expect(told([JUST_LINKED], NOW + FIRST_SYNC_WAIT)).toBe(false);
+  });
+
+  it('finds the account never read that nothing reads yet', async () => {
+    const running = { ...JUST_LINKED, id: 'running', sync: { ...JUST_LINKED.sync, running: true } };
+    const found = queries.neverRead();
+    (await request('/api/v1/linked-accounts')).flush({ accounts: [ACCOUNT, running, JUST_LINKED] });
+
+    expect((await found)?.id).toBe(JUST_LINKED.id);
+    expect(JUST_LINKED.id).not.toBe('running');
+  });
+
+  it('finds no account to read when they cannot be told', async () => {
+    const found = queries.neverRead();
+    (await request('/api/v1/linked-accounts')).flush(
+      { error: { code: 'database_unavailable', message: 'In English, for the log.' } },
+      { status: 503, statusText: '' },
+    );
+
+    expect(await found).toBeUndefined();
   });
 
   it('marks the library stale when it learns that a sync ended', async () => {

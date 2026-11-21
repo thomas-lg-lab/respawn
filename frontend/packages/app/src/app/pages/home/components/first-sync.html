@@ -1,13 +1,26 @@
-<section class="flex flex-col gap-6" role="status" *transloco="let t; prefix: 'home.firstSync'">
+<section class="flex flex-col gap-6" *transloco="let t; prefix: 'home.firstSync'">
   <div class="flex flex-col gap-2">
     <p rsLabel main>{{ t('label') }}</p>
     <h1 class="type-page-title">{{ t('title') }}</h1>
-    <p class="max-w-[36em] text-muted">{{ t('text') }}</p>
+    <p class="max-w-[36em] text-muted" role="status">{{ t(late() ? 'late' : 'text') }}</p>
   </div>
-  <rs-skeleton class="h-40 rounded-hero wide:h-62" />
-  <div class="grid grid-cols-1 gap-3 wide:grid-cols-3">
-    @for (tile of tiles; track tile) {
-      <rs-skeleton class="h-27" />
-    }
-  </div>
+  @if (late()) {
+    <button
+      rsButton
+      variant="primary"
+      type="button"
+      class="self-start"
+      data-sync-retry
+      (click)="syncNow.emit()"
+    >
+      {{ t('now') }}
+    </button>
+  } @else {
+    <rs-skeleton class="h-40 rounded-hero wide:h-62" />
+    <div class="grid grid-cols-1 gap-3 wide:grid-cols-3">
+      @for (tile of tiles; track tile) {
+        <rs-skeleton class="h-27" />
+      }
+    </div>
+  }
 </section>

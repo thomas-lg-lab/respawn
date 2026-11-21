@@ -12,7 +12,7 @@ import {
   steamLinkOutcome,
 } from '@respawn/data';
 import { Banner, Button, Label, Skeleton } from '@respawn/ui';
-import { QueryClient, injectMutation, injectQuery } from '@tanstack/angular-query';
+import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
@@ -22,7 +22,20 @@ import { FirstSync } from './components/first-sync';
 import { NoAccount } from './components/no-account';
 import { SyncBanner } from './components/sync-banner';
 import { SyncIssue } from './components/sync-issue';
-import { type SyncView, accountInView, syncErrorKey, syncNotice, syncView } from './sync-view';
+import {
+  type SyncView,
+  accountInView,
+  syncErrorKey,
+  syncNotice,
+  syncView,
+  syncsWord,
+} from './sync-view';
+
+/**
+ * The refusals of a reading nobody asked for (the one made on the return from Steam) that
+ * are not worth a word: something else reads the account, or just did.
+ */
+const READ_ANYWAY = ['sync_in_progress', 'too_many_requests'];
 
 /**
  * What the screen shows: `loading`, then `unavailable` when the API could not say which
@@ -61,19 +74,24 @@ export class Home {
   private readonly library = inject(LibraryQueries);
   private readonly linked = inject(LinkedAccountQueries);
   private readonly language = inject(LanguageSetting);
-  private readonly client = inject(QueryClient);
 
   protected readonly failureKey = failureKey;
   protected readonly currentLanguage = this.language.current;
   protected readonly tiles = [0, 1, 2];
 
   protected readonly accounts = injectQuery(() => this.linked.list());
+
+  /**
+   * When the accounts were last told: the "now" a wait or an age is measured against. It
+   * moves with each answer, so what depends on time is looked at again when one comes.
+   */
+  private readonly told = computed(() => this.accounts.dataUpdatedAt());
   protected readonly syncing = injectMutation(() => this.linked.syncNow());
 
   protected readonly view = computed<View>(() => {
     const accounts = this.accounts.data();
     if (!accounts) return this.accounts.isError() ? 'unavailable' : 'loading';
-    return syncView(accounts, this.syncing.isPending());
+    return syncView(accounts, this.syncing.isPending(), this.told());
   });
 
   /** The figures, asked once there is a library to count. */
@@ -83,15 +101,23 @@ export class Home {
   }));
 
   /**
+   * A "sync now" the API refused, and where the syncs stood when it did. It is said while
+   * they stand there: once one starts or ends, or the visitor puts it away, it is no longer
+   * true of the screen.
+   */
+  private readonly refused = signal<{ failure: unknown; stood: string } | null>(null);
+
+  /**
    * Why a "sync now" was refused, as a translation key. Too soon after the last one has a
    * sentence of its own: the API takes one a minute, which is not "too many attempts".
    */
   protected readonly syncRefusal = computed(() => {
-    const refusal = this.syncing.error();
-    if (!refusal) return null;
-    return refusal instanceof ApiFailure && refusal.code === 'too_many_requests'
+    const refused = this.refused();
+    if (!refused || refused.stood !== syncsWord(this.accounts.data() ?? [])) return null;
+    const { failure } = refused;
+    return failure instanceof ApiFailure && failure.code === 'too_many_requests'
       ? 'home.sync.tooSoon'
-      : failureKey(refusal);
+      : failureKey(failure);
   });
 
   /** The account the screen speaks of, and the one "sync now" reads. */
@@ -103,7 +129,7 @@ export class Home {
   protected readonly notice = computed(() => {
     const account = this.account();
     if (!account) return null;
-    const notice = syncNotice(account, this.syncing.isPending(), Date.now());
+    const notice = syncNotice(account, this.syncing.isPending(), this.told());
     return notice === 'stale' && this.staleDismissed() ? null : notice;
   });
 
@@ -136,17 +162,35 @@ export class Home {
   /**
    * An account was just linked: its first reading is asked now. Once the accounts are known,
    * and only for one never read that nothing reads yet; when they cannot be told, the screen
-   * says so and the schedule will read it.
+   * says so and the schedule will read it. The schedule may also get there first: that
+   * refusal is not said, the reading is on its way all the same.
    */
   private async readNewAccount(): Promise<void> {
-    const accounts = await this.client.ensureQueryData(this.linked.list()).catch(() => []);
-    const unread = accounts.find((account) => !account.sync.last && !account.sync.running);
-    if (unread) this.syncing.mutate(unread.id);
+    const unread = await this.linked.neverRead();
+    if (unread) this.read(unread.id, READ_ANYWAY);
   }
 
   protected syncNow(): void {
     const account = this.account();
-    if (account) this.syncing.mutate(account.id);
+    if (account) this.read(account.id);
+  }
+
+  protected dismissRefusal(): void {
+    this.refused.set(null);
+  }
+
+  /**
+   * Asks for a reading. A refusal is kept with where the syncs stand once the accounts were
+   * asked again (the mutation does that before it calls back), unless its code is `unsaid`.
+   */
+  private read(accountId: string, unsaid: string[] = []): void {
+    this.refused.set(null);
+    this.syncing.mutate(accountId, {
+      onError: (failure) => {
+        if (failure instanceof ApiFailure && unsaid.includes(failure.code)) return;
+        this.refused.set({ failure, stood: syncsWord(this.accounts.data() ?? []) });
+      },
+    });
   }
 
   protected dismissStale(): void {

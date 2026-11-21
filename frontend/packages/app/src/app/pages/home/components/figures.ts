@@ -30,8 +30,14 @@ export class Figures {
   protected readonly launched = computed(() => this.games(this.stats().launched));
   protected readonly recentlyPlayed = computed(() => this.games(this.stats().recently_played));
   protected readonly owned = computed(() => this.games(this.stats().games));
+  /**
+   * `null` while no store said any playtime: every game would count as never launched,
+   * which nothing says.
+   */
   protected readonly neverLaunched = computed(() =>
-    formatCount(this.stats().never_launched, this.language()),
+    this.stats().playtime_seconds === null
+      ? null
+      : formatCount(this.stats().never_launched, this.language()),
   );
 
   private duration(seconds: number | null): Said {
@@ -40,7 +46,9 @@ export class Figures {
     return { key: unit, count: formatCount(count, this.language()) };
   }
 
+  /** One game or several is the language's to say: French counts none as one. */
   private games(count: number): Said {
-    return { key: count === 1 ? 'ofOne' : 'ofMany', count: formatCount(count, this.language()) };
+    const one = new Intl.PluralRules(this.language()).select(count) === 'one';
+    return { key: one ? 'ofOne' : 'ofMany', count: formatCount(count, this.language()) };
   }
 }

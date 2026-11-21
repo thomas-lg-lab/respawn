@@ -112,7 +112,9 @@
     "firstSync": {
       "label": "Loading the game",
       "title": "First sync",
-      "text": "respawn is reading your Steam library and your playtime. The first reading starts within minutes of the link: this page updates on its own."
+      "text": "respawn is reading your Steam library and your playtime. The first reading starts within minutes of the link: this page updates on its own.",
+      "late": "The first reading of your Steam library has not come through. You can ask for it now.",
+      "now": "Sync now"
     },
     "syncFailed": {
       "label": "First sync",

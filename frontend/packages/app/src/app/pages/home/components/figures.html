@@ -22,9 +22,11 @@
   <rs-stat-tile
     data-figure="never-launched"
     [caption]="t('neverLaunched')"
-    [figure]="neverLaunched()"
+    [figure]="neverLaunched() ?? t('unknown')"
     [note]="t(owned().key, { count: owned().count })"
   >
-    <rs-segmented-bar class="my-1" [value]="stats().never_launched" [max]="stats().games" />
+    @if (neverLaunched() !== null) {
+      <rs-segmented-bar class="my-1" [value]="stats().never_launched" [max]="stats().games" />
+    }
   </rs-stat-tile>
 </section>

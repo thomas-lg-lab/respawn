@@ -9,6 +9,7 @@ import {
   TEST_LINKED_ACCOUNT,
   TEST_SYNC_RUN,
 } from '@respawn/data';
+import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, api, button, configureApp } from '@app/testing/app-testing';
 import '../../layout/shell';
 import './home';
@@ -31,9 +32,15 @@ function account(sync: Partial<LinkedAccount['sync']> = {}): LinkedAccount {
   };
 }
 
-/** An account whose only reading so far ended this way, with no game. */
-function neverRead(last: Partial<SyncRun> | null): LinkedAccount {
-  return account({ last: last && { ...succeeded(), ...last }, last_succeeded_at: null });
+/**
+ * An account whose only reading so far ended this way, with no game; `null`: none ended,
+ * and it was linked a moment ago unless the spec says when.
+ */
+function neverRead(last: Partial<SyncRun> | null, linkedAt = new Date()): LinkedAccount {
+  return {
+    ...account({ last: last && { ...succeeded(), ...last }, last_succeeded_at: null }),
+    linked_at: linkedAt.toISOString(),
+  };
 }
 
 const SYNC = `/linked-accounts/${TEST_LINKED_ACCOUNT.id}/sync`;
@@ -107,6 +114,39 @@ describe('Home', () => {
 
     expect(title(screen)).toBe('Première synchronisation');
     // `verify` fails on a sync nobody answered: none was asked.
+  });
+
+  it('says nothing of a first reading the schedule started before it was asked', async () => {
+    configureApp('fr');
+    const harness = await RouterTestingHarness.create();
+    const server = api();
+    const arrived = harness.navigateByUrl('/?steam_link=linked');
+    await server.answer('/me', ACCOUNT);
+    await server.home([neverRead(null)]);
+    await arrived;
+    const screen = harness.fixture.nativeElement as HTMLElement;
+
+    await server.refuse(SYNC, 409, 'sync_in_progress');
+    await settled(harness, server, [neverRead(null)]);
+
+    expect(screen.querySelector('[data-sync-refused]')).toBeNull();
+    expect(title(screen)).toBe('Première synchronisation');
+  });
+
+  it('stops waiting for a first reading that never came, and offers to ask for it', async () => {
+    const longAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const { harness, server, screen } = await open([neverRead(null, longAgo)]);
+
+    expect(text(screen, 'rs-first-sync p.text-muted')).toContain('n’a pas abouti');
+    expect(screen.querySelector('rs-skeleton')).toBeNull();
+
+    button(screen, 'Synchroniser maintenant').click();
+    const asked = await server.request(SYNC);
+    asked.flush(succeeded());
+    await server.home([account()]);
+    await server.answer('/library/stats', STATS);
+    await harness.fixture.whenStable();
+    expect(title(screen)).toBe('Accueil');
   });
 
   it('asks no reading when the link came back for an account already read', async () => {
@@ -199,6 +239,55 @@ describe('Home', () => {
 
     expect(text(screen, '[data-figure="recent"] .figure')).toBe('—');
     expect(text(screen, '[data-figure="recent"] .note')).toBe('Steam ne le dit pas pour ce profil');
+    expect(text(screen, '[data-figure="never-launched"] .figure')).toBe('444');
+  });
+
+  it('counts games as the language does: none is singular in French', async () => {
+    const { screen } = await open([account()], '/', {
+      ...STATS,
+      recent_playtime_seconds: 0,
+      recently_played: 0,
+    });
+
+    expect(text(screen, '[data-figure="recent"] .note')).toBe('sur 0 jeu');
+  });
+
+  it('keeps a heading on the screens that say what went wrong', async () => {
+    const { screen } = await open([neverRead({ outcome: 'failed', error: 'refused' })]);
+
+    expect(screen.querySelector('h1')?.hasAttribute('role')).toBe(false);
+    expect(text(screen, '[role="alert"]')).toContain('Steam a refusé');
+  });
+
+  it('does not count every game as never launched when no playtime was given', async () => {
+    const { screen } = await open([account()], '/', {
+      ...STATS,
+      playtime_seconds: null,
+      launched: 0,
+      never_launched: STATS.games,
+    });
+
+    expect(text(screen, '[data-figure="never-launched"] .figure')).toBe('—');
+    expect(screen.querySelector('[data-figure="never-launched"] rs-segmented-bar')).toBeNull();
+  });
+
+  it('asks the figures again on request when they could not be read', async () => {
+    configureApp('fr');
+    const harness = await RouterTestingHarness.create();
+    const server = api();
+    const arrived = harness.navigateByUrl('/');
+    await server.answer('/me', ACCOUNT);
+    await server.home([account()]);
+    await server.refuse('/library/stats', 503, 'database_unavailable');
+    await arrived;
+    await harness.fixture.whenStable();
+    const screen = harness.fixture.nativeElement as HTMLElement;
+
+    screen.querySelector<HTMLButtonElement>('[data-figures-retry]')!.click();
+    await server.answer('/library/stats', STATS);
+    await harness.fixture.whenStable();
+
+    expect(text(screen, '[data-figure="total"] .figure')).toBe('612 h');
   });
 
   it('keeps the games on screen when the last reading failed, and says so', async () => {
@@ -258,6 +347,30 @@ describe('Home', () => {
     await settled(harness, server, [linked]);
 
     expect(text(screen, '[data-sync-refused]')).toBe('Une synchronisation est déjà en cours.');
+  });
+
+  it('stops saying a sync was refused once a sync ended, or when it is put away', async () => {
+    const linked = account();
+    const { harness, server, screen } = await open([linked]);
+    const refuse = async () => {
+      screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
+      await server.refuse(SYNC, 429, 'too_many_requests');
+      await settled(harness, server, [linked]);
+    };
+
+    await refuse();
+    screen.querySelector<HTMLButtonElement>('[data-refusal-dismiss]')!.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-sync-refused]')).toBeNull();
+
+    await refuse();
+    expect(screen.querySelector('[data-sync-refused]')).not.toBeNull();
+    // Another reading ended since (the schedule's): what was refused is no longer the point.
+    void TestBed.inject(QueryClient).invalidateQueries({ queryKey: ['linked-accounts'] });
+    await server.home([account()]);
+    await server.answer('/library/stats', STATS);
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-sync-refused]')).toBeNull();
   });
 
   it('says that a sync was asked too soon after the last one', async () => {
