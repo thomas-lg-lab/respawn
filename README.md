@@ -17,15 +17,16 @@
 Self-hosted game library: stats, backlog and next-game suggestions.
 
 **Status: early days.** Accounts and sign-in work, with the public API they need, the front's first
-screens (sign in, create an account, who am I), and the image the rest will ship in. The library has its
+screens (sign in with a local account or through a provider, create an account, who am I, the account menu),
+and the image the rest will ship in. The library has its
 tables, its rules, and routes to read it and its figures; a Steam account can be linked through the API, and
 its library is then read every day, with the instance's key or one the user gives. It has no screen yet.
 
 | | |
 | --- | --- |
-| Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; in the API only, sign-in through OpenID Connect providers. The front, served by the app: sign in, create an account, the account menu with its settings (language, theme, character), kept on the account, in French and in English |
+| Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; sign-in through OpenID Connect providers, the flow run by the API. The front, served by the app: sign in with a local account or through a provider, create an account, the account menu with its settings (language, theme, character), kept on the account, and the providers linked to the account or to link, in French and in English |
 | In place, in the API only | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, `GET /api/v1/library` and its figures. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key, or with a user's own key, kept encrypted. Linking a Steam account ("Sign in through Steam", which proves the account is yours and never signs you in), the list of linked accounts, and unlinking one, which forgets everything read from it. The sync: every linked library read once a day, and at once when its owner asks. Groups, the scope sharing will use: one default group every account joins |
-| Planned | Sign-in through a provider from the sign-in screen, the library and stats screens, the backlog, more connectors, next-game suggestions |
+| Planned | The library and stats screens, the backlog, more connectors, next-game suggestions |
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
@@ -240,7 +241,7 @@ adapters around it.
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts |
 | `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity) and its API, which runs the sign-in through a provider |
-| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, and the sync that reads each library once a day |
+| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, and the sync that reads each library once a day; and its connectors, one project per outside source behind a port of the core (`Respawn.Games.Steam`) |
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 | [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API's types) |
@@ -267,7 +268,8 @@ The image is `ghcr.io/thomas-lg-lab/respawn`.
 | `X.Y.Z`, `X.Y`, `X`, `latest` | Published releases (`latest` leaves pre-releases out) |
 
 Merging is not releasing: a release is published by hand from its draft, whose notes are written from the
-titles of the merged pull requests. Every image is built by the CI after the checks pass, then started as it
+titles of the merged pull requests (the first release has no earlier one to compare with: its notes are
+written by hand). Every image is built by the CI after the checks pass, then started as it
 is meant to run (non-root, read-only filesystem, no database, no secret) and scanned before it is pushed.
 
 ## Development
