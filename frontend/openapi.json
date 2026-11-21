@@ -444,6 +444,67 @@
         }
       }
     },
+    "/api/v1/library/history": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What the signed-in account played, day by day",
+        "description": "Playtime per day and per game since the library is read (tracking_since), over the same games as the library. A day's time is the growth of the stores' totals between two readings in a row, dated by the later one, in UTC; what a game's total was at its first reading is not split over time and is not here. Days and games with nothing played are left out.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "The first day to answer with, as YYYY-MM-DD; the history from its start when left out.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "The last day to answer with, as YYYY-MM-DD; the history to its end when left out. Before from, no day is answered.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/linked-accounts": {
       "get": {
         "tags": [
@@ -891,6 +952,42 @@
           }
         }
       },
+      "HistoryDayResponse": {
+        "required": [
+          "date",
+          "games"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryGameResponse"
+            }
+          }
+        }
+      },
+      "HistoryGameResponse": {
+        "required": [
+          "game_id",
+          "seconds"
+        ],
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "LibraryEntryResponse": {
         "required": [
           "store_entry_id",
@@ -1004,6 +1101,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LibraryEntryResponse"
+            }
+          }
+        }
+      },
+      "LibraryHistoryResponse": {
+        "required": [
+          "tracking_since",
+          "days"
+        ],
+        "type": "object",
+        "properties": {
+          "tracking_since": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryDayResponse"
             }
           }
         }

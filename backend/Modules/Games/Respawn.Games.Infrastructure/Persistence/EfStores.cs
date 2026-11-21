@@ -380,7 +380,52 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             row.MissingSince))];
     }
 
+    public async Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct)
+    {
+        // The differences are taken by the database, which reads the owner's observations once: their
+        // snapshots come from the index on the linked account, their rows from the primary key. A
+        // reading that knew no total is skipped, so the next one is compared with the last that did.
+        // Two readings of the same moment come in the order they were recorded (a snapshot's id is
+        // made from the time).
+        var (first, last) = (from ?? DateOnly.MinValue, to ?? DateOnly.MaxValue);
+        var rows = await db.Database
+            .SqlQuery<PlayedRow>(
+                $"""
+                WITH readings AS (
+                    SELECT o.store_entry_id,
+                           (s.taken_at AT TIME ZONE 'UTC')::date AS day,
+                           o.known_playtime_seconds - LAG(o.known_playtime_seconds) OVER (
+                               PARTITION BY s.linked_account_id, o.store_entry_id
+                               ORDER BY s.taken_at, s.id) AS gained
+                    FROM games.observations o
+                    JOIN games.raw_snapshots s ON s.id = o.snapshot_id
+                    JOIN games.linked_accounts a ON a.id = s.linked_account_id
+                    JOIN games.ownerships w ON w.linked_account_id = a.id AND w.store_entry_id = o.store_entry_id
+                    WHERE a.owner_id = {ownerId}
+                      AND w.unlisted_since IS NULL
+                      AND o.known_playtime_seconds IS NOT NULL
+                )
+                SELECT r.day AS day, e.game_id AS game_id, SUM(r.gained)::bigint AS seconds
+                FROM readings r
+                JOIN games.store_entries e ON e.id = r.store_entry_id
+                WHERE r.gained > 0 AND r.day BETWEEN {first} AND {last}
+                GROUP BY r.day, e.game_id
+                """)
+            .ToListAsync(ct);
+        return [.. rows.Select(row => new PlayedDay(row.Day, row.GameId, TimeSpan.FromSeconds(row.Seconds)))];
+    }
+
     private static long? Seconds(TimeSpan? playtime) => playtime is { } value ? (long)value.TotalSeconds : null;
 
     private static TimeSpan? Playtime(long? seconds) => seconds is { } value ? TimeSpan.FromSeconds(value) : null;
+
+    /// <summary>A row of <see cref="ListPlayedAsync"/>, as the query names its columns.</summary>
+    private sealed class PlayedRow
+    {
+        public DateOnly Day { get; set; }
+
+        public Guid GameId { get; set; }
+
+        public long Seconds { get; set; }
+    }
 }
