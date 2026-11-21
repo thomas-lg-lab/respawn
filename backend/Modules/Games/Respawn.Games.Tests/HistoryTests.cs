@@ -86,6 +86,46 @@ public sealed class HistoryTests
     }
 
     [Fact]
+    public async Task A_store_that_hid_the_playtime_does_not_give_it_all_on_the_day_it_shows_it()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+
+        // Playtime kept private: every game is listed, with zero. Nothing is known yet.
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 0), ("400", "Portal", 0));
+        await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 0), ("400", "Portal", 0));
+        // The store says: years of play, which were not played that day. Portal was never launched.
+        await RecordAsync(app, account.Id, Day(3), ("620", "Portal 2", 6000), ("400", "Portal", 0));
+        Assert.Empty(await DaysAsync(browser));
+
+        // The count starts there, for the game never launched too.
+        await RecordAsync(app, account.Id, Day(4), ("620", "Portal 2", 6030), ("400", "Portal", 45));
+        var games = await GamesAsync(app);
+        Assert.Equal([(Date(4), games["400"], 2700L), (Date(4), games["620"], 1800L)], await DaysAsync(browser));
+    }
+
+    [Fact]
+    public async Task A_reading_that_arrives_late_and_says_zero_counts_nothing_twice()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 90), ("400", "Portal", 30));
+        await RecordAsync(app, account.Id, Day(4), ("620", "Portal 2", 150), ("400", "Portal", 30));
+        var games = await GamesAsync(app);
+        Assert.Equal([(Date(4), games["620"], 3600L)], await DaysAsync(browser));
+
+        // A reading of the day between, recorded after: a poor one, which changes nothing.
+        await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 0), ("400", "Portal", 30));
+        Assert.Equal([(Date(4), games["620"], 3600L)], await DaysAsync(browser));
+
+        // A good one puts its part of the hour on its own day.
+        await RecordAsync(app, account.Id, Day(3), ("620", "Portal 2", 110), ("400", "Portal", 30));
+        Assert.Equal([(Date(3), games["620"], 1200L), (Date(4), games["620"], 2400L)], await DaysAsync(browser));
+    }
+
+    [Fact]
     public async Task Two_entries_of_one_game_add_up()
     {
         await using var app = await StartAsync();

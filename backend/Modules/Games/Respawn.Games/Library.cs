@@ -78,7 +78,9 @@ public sealed record OwnedItem(
 /// <param name="LastPlayedAt">As the snapshot said it.</param>
 /// <param name="KnownPlaytime">The total played as it was known once this snapshot was read: what it
 /// said, or what was known before when it did not say. A history is a difference between these, never
-/// between what was said: a poor answer between two good ones would count the same hours twice.</param>
+/// between what was said: a poor answer between two good ones would count the same hours twice. Null
+/// while no total is known, which a zero does not always end: a reading that gives no time to any game
+/// is a store hiding the playtime, and its zeros are not totals to count from.</param>
 /// <param name="RecentPlaytime">What was played lately, as the snapshot said it.</param>
 public sealed record Observation(
     Guid StoreEntryId, TimeSpan? Playtime, DateTimeOffset? LastPlayedAt, TimeSpan? KnownPlaytime, TimeSpan? RecentPlaytime);
