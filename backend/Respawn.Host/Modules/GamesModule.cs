@@ -25,12 +25,18 @@ internal static class GamesModule
         services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));
 
-        // Giving or taking away an owner's own key: a bucket of its own per client address, at the pace
-        // of the sign-in routes. A key is given once in a while; a client that tries many is refused.
+        // Giving or taking away an owner's own key, and coming back from Steam: a bucket of its own for
+        // each, per client address, at the pace of the sign-in routes. A key is given once in a while,
+        // and a link comes back once; a client that tries many is refused.
         services.AddOptions<RateLimiterOptions>().Configure<HttpSettings>((limiter, http) =>
-            limiter.AddPolicy(GamesApi.OwnKeyRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
-                AccountsModule.ClientKey(context.Connection.RemoteIpAddress),
-                _ => new FixedWindowRateLimiterOptions { PermitLimit = http.AuthPermits, Window = http.AuthWindow })));
+        {
+            foreach (var policy in new[] { GamesApi.OwnKeyRateLimit, GamesApi.SteamReturnRateLimit })
+            {
+                limiter.AddPolicy(policy, context => RateLimitPartition.GetFixedWindowLimiter(
+                    AccountsModule.ClientKey(context.Connection.RemoteIpAddress),
+                    _ => new FixedWindowRateLimiterOptions { PermitLimit = http.AuthPermits, Window = http.AuthWindow }));
+            }
+        });
         return services;
     }
 }

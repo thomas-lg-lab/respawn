@@ -22,6 +22,21 @@ public static class Navigation
     /// way (a proxy's own sign-in, say) is not one, though the visitor started it here.</summary>
     public static bool OwnPage(string fetchSite) => fetchSite is "same-origin" or "none";
 
+    /// <summary>Whether a failure is the network's or the other site's own, anywhere in what caused it:
+    /// the site could not be asked, and trying again may work.</summary>
+    public static bool NotAnswering(Exception? failure)
+    {
+        for (var cause = failure; cause is not null; cause = cause.InnerException)
+        {
+            if (cause is HttpRequestException or IOException or TimeoutException or OperationCanceledException)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>An address of the app to send the browser back to: a path of this origin, in the
     /// characters an address is written in, and never the API's. Anything else gives the home, so
     /// the parameter cannot send elsewhere, nor break the answer that carries it.</summary>

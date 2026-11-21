@@ -48,7 +48,7 @@ public sealed class AuthController(
     public async Task<ActionResult<UserResponse>> Register(RegisterRequest body, CancellationToken ct)
     {
         var signedIn = await accounts.RegisterAsync(body.Email, body.DisplayName, body.Password, ct);
-        return StatusCode(StatusCodes.Status201Created, SignIn(signedIn));
+        return StatusCode(StatusCodes.Status201Created, await SignInAsync(signedIn));
     }
 
     [HttpPost("login")]
@@ -57,7 +57,7 @@ public sealed class AuthController(
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<UserResponse> Login(LoginRequest body, CancellationToken ct) =>
-        SignIn(await accounts.LoginAsync(body.Email, body.Password, ct));
+        await SignInAsync(await accounts.LoginAsync(body.Email, body.Password, ct));
 
     [HttpGet("oidc/{provider}")]
     [EnableRateLimiting(AccountsApi.SignInRateLimit)]
@@ -159,7 +159,7 @@ public sealed class AuthController(
         {
             // A navigation: the browser goes back to the app with a word it can show, not an error page,
             // whether the provider did not answer or answered something that is not a discovery document.
-            var unavailable = ProviderSignIn.NotAnswering(ex);
+            var unavailable = Navigation.NotAnswering(ex);
             logger.LogWarning(
                 "the provider {Provider} could not be asked to start a sign-in: {Reason}", configured.Name, ProviderSignIn.Cause(ex));
             return unavailable
@@ -184,9 +184,9 @@ public sealed class AuthController(
         return NoContent();
     }
 
-    private UserResponse SignIn(SignedIn signedIn)
+    private async Task<UserResponse> SignInAsync(SignedIn signedIn)
     {
-        SessionCookie.Set(Response, signedIn.SessionToken, options, cookie);
+        await SessionCookie.ReplaceAsync(HttpContext, accounts, signedIn.SessionToken, options, cookie, logger);
         return UserResponse.From(signedIn.Account);
     }
 }

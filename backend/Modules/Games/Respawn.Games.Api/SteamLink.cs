@@ -151,7 +151,7 @@ internal static partial class SteamLink
     /// it can act on: nothing was proven, or Steam did not answer and trying again may work.</summary>
     private static Task OnFailure(RemoteFailureContext context)
     {
-        var unavailable = NotAnswering(context.Failure);
+        var unavailable = Navigation.NotAnswering(context.Failure);
         if (unavailable)
         {
             Log(context.HttpContext).LogWarning(context.Failure, "Steam could not be asked to confirm a link");
@@ -175,20 +175,6 @@ internal static partial class SteamLink
         context.Response.Redirect(WithOutcome(ReturnPath(properties?.RedirectUri), unavailable ? "unavailable" : "failed"));
         context.HandleResponse();
         return Task.CompletedTask;
-    }
-
-    /// <summary>Whether a failure is the network's or Steam's own, anywhere in what caused it.</summary>
-    private static bool NotAnswering(Exception? failure)
-    {
-        for (var cause = failure; cause is not null; cause = cause.InnerException)
-        {
-            if (cause is HttpRequestException or IOException or TimeoutException or OperationCanceledException)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static ILogger Log(HttpContext http) =>

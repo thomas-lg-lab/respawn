@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Hosting;
 using Respawn.Games.Ports;
 using Respawn.SharedKernel;
@@ -79,11 +80,14 @@ public sealed class LinkedAccountsController(ILibraryService library, ISyncServi
     }
 
     /// <summary>Where Steam sends the browser back. The exchange's handler answers there before any
-    /// route does; this route only says that the address wants a session, which is how the app's
-    /// sign-in knows to look the session up on it, and answers the rare request the handler lets
+    /// route does; this route says that the address wants a session, which is how the app's
+    /// sign-in knows to look the session up on it, and how many returns a client may make (each one the
+    /// handler accepts costs a question to Steam), and answers the rare request the handler lets
     /// through. Not part of the contract: nothing but Steam's redirect comes here.</summary>
     [HttpGet("steam/link/callback")]
     [Authorize]
+    [EnableRateLimiting(GamesApi.SteamReturnRateLimit)]
+    [Navigation(SteamLink.OutcomeParameter)]
     [ApiExplorerSettings(IgnoreApi = true)]
     public IActionResult BackFromSteam() => Redirect(SteamLink.WithOutcome("/", "failed"));
 

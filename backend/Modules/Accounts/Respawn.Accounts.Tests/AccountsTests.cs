@@ -143,6 +143,63 @@ public sealed class AccountsTests
     }
 
     [Fact]
+    public async Task A_sign_in_closes_the_session_the_browser_carried()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        var registered = await browser.RegisterAsync();
+        var carried = registered.Headers.GetValues("Set-Cookie").Single().Split(';')[0];
+
+        // The same browser signs in again: it gets a new session, and the one it carried is closed.
+        var signedIn = await browser.LoginAsync("first@example.org", TestApp.Password);
+        Assert.Equal(HttpStatusCode.OK, signedIn.StatusCode);
+        Assert.NotEqual(carried, signedIn.Headers.GetValues("Set-Cookie").Single().Split(';')[0]);
+        Assert.Equal(HttpStatusCode.OK, await browser.GetAsync("/api/v1/me").StatusAsync());
+
+        using var replay = app.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/me");
+        request.Headers.Add("Cookie", carried);
+        Assert.Equal(HttpStatusCode.Unauthorized, await replay.SendAsync(request).StatusAsync());
+    }
+
+    [Fact]
+    public async Task Passwords_are_hashed_a_few_at_a_time()
+    {
+        // Each hash takes tens of megabytes: whatever asks, no more than a few run together.
+        var running = 0;
+        var most = 0;
+        using var entered = new SemaphoreSlim(0);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var work = Enumerable.Range(0, PasswordWork.AtOnce + 3)
+            .Select(_ => PasswordWork.RunAsync(
+                async () =>
+                {
+                    var now = Interlocked.Increment(ref running);
+                    lock (release)
+                    {
+                        most = Math.Max(most, now);
+                    }
+
+                    entered.Release();
+                    await release.Task;
+                    Interlocked.Decrement(ref running);
+                    return true;
+                },
+                CancellationToken.None))
+            .ToArray();
+
+        for (var turn = 0; turn < PasswordWork.AtOnce; turn++)
+        {
+            Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None));
+        }
+
+        Assert.False(await entered.WaitAsync(TimeSpan.FromMilliseconds(300), CancellationToken.None));
+        release.SetResult();
+        await Task.WhenAll(work);
+        Assert.Equal(PasswordWork.AtOnce, most);
+    }
+
+    [Fact]
     public async Task A_request_from_another_site_is_refused()
     {
         await using var app = await TestApp.StartAsync();

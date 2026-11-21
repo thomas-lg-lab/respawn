@@ -33,11 +33,10 @@ internal sealed class EfUnitOfWork(GamesDbContext db) : IUnitOfWork
 internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountStore
 {
     public async Task<LinkedAccount?> FindAsync(string source, string externalId, CancellationToken ct) =>
-        ToLinkedAccount(await db.LinkedAccounts.AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Source == source && a.ExternalId == externalId, ct));
+        await Accounts(db.LinkedAccounts.Where(a => a.Source == source && a.ExternalId == externalId)).FirstOrDefaultAsync(ct);
 
     public async Task<LinkedAccount?> FindByIdAsync(Guid id, CancellationToken ct) =>
-        ToLinkedAccount(await db.LinkedAccounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, ct));
+        await Accounts(db.LinkedAccounts.Where(a => a.Id == id)).FirstOrDefaultAsync(ct);
 
     public async Task AddAsync(LinkedAccount account, CancellationToken ct)
     {
@@ -54,10 +53,10 @@ internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountSt
     }
 
     public async Task<IReadOnlyList<LinkedAccount>> ListAsync(Guid ownerId, CancellationToken ct) =>
-        [.. (await db.LinkedAccounts.AsNoTracking().Where(a => a.OwnerId == ownerId).ToListAsync(ct)).Select(row => ToLinkedAccount(row)!)];
+        await Accounts(db.LinkedAccounts.Where(a => a.OwnerId == ownerId)).ToListAsync(ct);
 
     public async Task<IReadOnlyList<LinkedAccount>> ListAllAsync(CancellationToken ct) =>
-        [.. (await db.LinkedAccounts.AsNoTracking().ToListAsync(ct)).Select(row => ToLinkedAccount(row)!)];
+        await Accounts(db.LinkedAccounts).ToListAsync(ct);
 
     public async Task RemoveAsync(Guid id, CancellationToken ct)
     {
@@ -72,8 +71,11 @@ internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountSt
         await db.LinkedAccounts.Where(a => a.Id == id).ExecuteDeleteAsync(ct);
     }
 
-    private static LinkedAccount? ToLinkedAccount(LinkedAccountRow? row) =>
-        row is null ? null : new LinkedAccount(row.Id, row.OwnerId, row.Source, row.ExternalId, row.DisplayName, row.LinkedAt, row.Credential is not null);
+    /// <summary>Linked accounts as the core knows them. Whether a key was given is asked of the database:
+    /// the sealed key itself is only read when a sync opens it.</summary>
+    private static IQueryable<LinkedAccount> Accounts(IQueryable<LinkedAccountRow> rows) =>
+        rows.AsNoTracking().Select(row => new LinkedAccount(
+            row.Id, row.OwnerId, row.Source, row.ExternalId, row.DisplayName, row.LinkedAt, row.Credential != null));
 }
 
 internal sealed class EfSnapshotStore(GamesDbContext db) : ISnapshotStore

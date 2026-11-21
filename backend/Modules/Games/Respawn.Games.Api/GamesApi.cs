@@ -11,6 +11,10 @@ public static class GamesApi
     /// host defines it.</summary>
     public const string OwnKeyRateLimit = "games-own-key";
 
+    /// <summary>The rate-limit policy of the returns from Steam: a return the exchange accepts costs a
+    /// question to Steam, asked from the instance's address. The host defines it.</summary>
+    public const string SteamReturnRateLimit = "games-steam-return";
+
     /// <summary>Where the Steam link starts, and under it where Steam sends the browser back. Behind a
     /// reverse proxy the host gives these routes the address the instance is reached at, which the
     /// address Steam is told to come back to is built from.</summary>

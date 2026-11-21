@@ -41,7 +41,11 @@ public sealed class SyncService(
             }
 
             gate.Started(account.Id, SyncTrigger.Manual, now);
-            return await RunAsync(account, SyncTrigger.Manual, now, ct);
+            var run = await RunAsync(account, SyncTrigger.Manual, now, ct);
+
+            // Kept: from here its run says when it started.
+            gate.Forget(account.Id, SyncTrigger.Manual);
+            return run;
         }
         finally
         {
