@@ -534,6 +534,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the signed-in account played, day by day
+         * @description Playtime per day and per game since the library is read (tracking_since), over the same games as the library. A day's time is the growth of the stores' totals between two readings in a row, dated by the later one, in UTC; what a game's total was at its first reading is not split over time and is not here. Days and games with nothing played are left out.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The first day to answer with, as YYYY-MM-DD; the history from its start when left out. */
+                    from?: string;
+                    /** @description The last day to answer with, as YYYY-MM-DD; the history to its end when left out. Before from, no day is answered. */
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LibraryHistoryResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/linked-accounts": {
         parameters: {
             query?: never;
@@ -961,6 +1023,17 @@ export interface components {
         ErrorResponse: {
             error?: components["schemas"]["ErrorBody"];
         };
+        HistoryDayResponse: {
+            /** Format: date */
+            date: string;
+            games: components["schemas"]["HistoryGameResponse"][];
+        };
+        HistoryGameResponse: {
+            /** Format: uuid */
+            game_id: string;
+            /** Format: int64 */
+            seconds: number;
+        };
         LibraryEntryResponse: {
             /** Format: uuid */
             store_entry_id: string;
@@ -992,6 +1065,11 @@ export interface components {
             /** Format: date-time */
             last_played_at: null | string;
             entries: components["schemas"]["LibraryEntryResponse"][];
+        };
+        LibraryHistoryResponse: {
+            /** Format: date-time */
+            tracking_since: null | string;
+            days: components["schemas"]["HistoryDayResponse"][];
         };
         LibraryResponse: {
             /** Format: int32 */

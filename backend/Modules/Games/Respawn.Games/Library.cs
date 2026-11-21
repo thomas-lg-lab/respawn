@@ -185,6 +185,28 @@ public sealed record LibraryStats(
     int RecentlyPlayed,
     DateTimeOffset? TrackingSince);
 
+/// <summary>What an owner played of a game on one day, as the readings show it: the growth of its
+/// totals between two readings in a row, over every entry the game is owned through.</summary>
+/// <param name="Date">The day, in UTC, of the reading that showed the growth: the time was played
+/// between that reading and the one before, which with one reading a day is the day before as often
+/// as that day.</param>
+/// <param name="GameId">The canonical record.</param>
+/// <param name="Playtime">More than zero.</param>
+public sealed record PlayedDay(DateOnly Date, Guid GameId, TimeSpan Playtime);
+
+/// <summary>A game's share of a day of a history.</summary>
+public sealed record PlayedGame(Guid GameId, TimeSpan Playtime);
+
+/// <summary>A day of a history: the games played, at least one, the most played first.</summary>
+public sealed record HistoryDay(DateOnly Date, IReadOnlyList<PlayedGame> Games);
+
+/// <summary>What an owner played since their library is read, day by day. The total a game had at its
+/// first reading is not in it: nothing says when it was played.</summary>
+/// <param name="TrackingSince">The same date as <see cref="LibraryStats.TrackingSince"/>: no day is
+/// earlier.</param>
+/// <param name="Days">The days something was played, the earliest first; the others are left out.</param>
+public sealed record LibraryHistory(DateTimeOffset? TrackingSince, IReadOnlyList<HistoryDay> Days);
+
 /// <summary>The sizes the catalogue accepts.</summary>
 public static class Limits
 {

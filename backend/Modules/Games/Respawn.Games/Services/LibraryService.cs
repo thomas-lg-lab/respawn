@@ -196,6 +196,27 @@ public sealed class LibraryService(
             entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null);
     }
 
+    public async Task<LibraryHistory> GetHistoryAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct)
+    {
+        var entries = await library.ListAsync(ownerId, ct);
+        var played = await library.ListPlayedAsync(ownerId, from, to, ct);
+        return new LibraryHistory(
+            entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null,
+            [
+                .. played
+                    .GroupBy(day => day.Date)
+                    .OrderBy(day => day.Key)
+                    .Select(day => new HistoryDay(
+                        day.Key,
+                        [
+                            // An order that does not change from one answer to the next.
+                            .. day.OrderByDescending(game => game.Playtime)
+                                .ThenBy(game => game.GameId)
+                                .Select(game => new PlayedGame(game.GameId, game.Playtime)),
+                        ])),
+            ]);
+    }
+
     /// <summary>An owner's library, a game once however many entries it is owned through. What a store
     /// said was played lately is no longer recent once its window has gone by since that reading; a
     /// store no connector reads cannot say its window, so its figure is not kept either.</summary>

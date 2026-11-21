@@ -53,6 +53,25 @@ public sealed class LibraryController(ILibraryService library) : ControllerBase
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<LibraryStatsResponse> Stats(CancellationToken ct) =>
         LibraryStatsResponse.From(await library.GetStatsAsync(Caller.Id(User), ct));
+
+    [HttpGet("library/history")]
+    [Authorize]
+    [EndpointSummary("What the signed-in account played, day by day")]
+    [EndpointDescription(
+        "Playtime per day and per game since the library is read (tracking_since), over the same games as "
+        + "the library. A day's time is the growth of the stores' totals between two readings in a row, dated "
+        + "by the later one, in UTC; what a game's total was at its first reading is not split over time and "
+        + "is not here. Days and games with nothing played are left out.")]
+    [ProducesResponseType<LibraryHistoryResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<LibraryHistoryResponse> History(
+        [FromQuery, Description("The first day to answer with, as YYYY-MM-DD; the history from its start when left out.")]
+        DateOnly? from = null,
+        [FromQuery, Description("The last day to answer with, as YYYY-MM-DD; the history to its end when left out. Before from, no day is answered.")]
+        DateOnly? to = null,
+        CancellationToken ct = default) =>
+        LibraryHistoryResponse.From(await library.GetHistoryAsync(Caller.Id(User), from, to, ct));
 }
 
 /// <summary>The orders of a library, as the API spells them.</summary>
