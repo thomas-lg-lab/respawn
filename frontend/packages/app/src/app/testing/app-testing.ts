@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import type { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type Routes, provideRouter } from '@angular/router';
-import type { SignInOptions } from '@respawn/data';
+import type { LinkedAccount, SignInOptions } from '@respawn/data';
 import { routes } from '@app/app.routes';
 import { provideAccountSettings } from '@app/session/account-settings';
 import { provideServerState } from '@app/session/session.providers';
@@ -51,12 +51,15 @@ export function api() {
   const http = TestBed.inject(HttpTestingController);
   /** A request leaves on a later tick than the click that caused it. */
   const request = (path: string) => vi.waitFor(() => http.expectOne(`/api/v1${path}`));
+  const answer = async (path: string, body: object | null, status = 200): Promise<void> => {
+    (await request(path)).flush(body, { status, statusText: '' });
+  };
   return {
     http,
     request,
-    async answer(path: string, body: object | null, status = 200): Promise<void> {
-      (await request(path)).flush(body, { status, statusText: '' });
-    },
+    answer,
+    /** The home opens: it asks which store accounts are linked. None, unless the spec says. */
+    home: (accounts: LinkedAccount[] = []) => answer('/linked-accounts', { accounts }),
     async refuse(path: string, status: number, code: string): Promise<void> {
       (await request(path)).flush(
         { error: { code, message: 'In English, for the log.' } },

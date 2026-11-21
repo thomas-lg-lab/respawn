@@ -15,6 +15,14 @@ const root = document.documentElement;
 
 const withSettings = (settings: AccountSettings): Account => ({ ...ACCOUNT, settings });
 
+/** Signed in as `account`, on the home, which asks which store accounts are linked: none. */
+const signedIn =
+  (account: Account = ACCOUNT) =>
+  async (server: Server) => {
+    await server.answer('/me', account);
+    await server.home();
+  };
+
 /** The settings of the interface follow the account: taken at sign-in, kept at each pick. */
 describe('the settings on the account', () => {
   async function visit(path: string, exchanges: (server: Server) => Promise<void>) {
@@ -54,9 +62,7 @@ describe('the settings on the account', () => {
   afterEach(() => api().http.verify());
 
   it('takes the account’s settings when the app opens with a session, and keeps them here', async () => {
-    await visit('/', (server) =>
-      server.answer('/me', withSettings({ language: 'en', theme: 'dark', character: 'plain' })),
-    );
+    await visit('/', signedIn(withSettings({ language: 'en', theme: 'dark', character: 'plain' })));
 
     await vi.waitFor(() => expect(root.lang).toBe('en'));
     expect(root.getAttribute('data-theme')).toBe('dark');
@@ -78,6 +84,7 @@ describe('the settings on the account', () => {
       '/auth/login',
       withSettings({ language: 'fr', theme: 'light', character: 'plain' }),
     );
+    await server.home();
     await harness.fixture.whenStable();
 
     expect(root.getAttribute('data-theme')).toBe('light');
@@ -87,14 +94,14 @@ describe('the settings on the account', () => {
   it('leaves the browser’s own choices to an account that never chose', async () => {
     localStorage.setItem('respawn.theme', 'light');
 
-    await visit('/', (server) => server.answer('/me', ACCOUNT));
+    await visit('/', signedIn());
 
     expect(root.getAttribute('data-theme')).toBe('light');
     expect(root.getAttribute('data-character')).toBe('pixel');
   });
 
   it('shows a pick at once, and keeps the three on the account', async () => {
-    const { harness, server, screen } = await visit('/', (server) => server.answer('/me', ACCOUNT));
+    const { harness, server, screen } = await visit('/', signedIn());
 
     await pickTheme(harness, screen, 'light');
 
@@ -109,7 +116,7 @@ describe('the settings on the account', () => {
   });
 
   it('keeps the picks one at a time, in order, and is not undone by an earlier one’s answer', async () => {
-    const { harness, server, screen } = await visit('/', (server) => server.answer('/me', ACCOUNT));
+    const { harness, server, screen } = await visit('/', signedIn());
 
     await pickTheme(harness, screen, 'dark');
     const first = await server.request('/me/settings');
@@ -138,7 +145,7 @@ describe('the settings on the account', () => {
   });
 
   it('says when the account could not keep a pick, which still holds here', async () => {
-    const { harness, server, screen } = await visit('/', (server) => server.answer('/me', ACCOUNT));
+    const { harness, server, screen } = await visit('/', signedIn());
 
     await pickTheme(harness, screen, 'dark');
     await server.refuse('/me/settings', 503, 'database_unavailable');
@@ -151,7 +158,7 @@ describe('the settings on the account', () => {
   });
 
   it('leaves the warning behind on the next screen', async () => {
-    const { harness, server, screen } = await visit('/', (server) => server.answer('/me', ACCOUNT));
+    const { harness, server, screen } = await visit('/', signedIn());
     await pickTheme(harness, screen, 'dark');
     await server.refuse('/me/settings', 503, 'database_unavailable');
     await harness.fixture.whenStable();

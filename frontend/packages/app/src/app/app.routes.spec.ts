@@ -37,7 +37,11 @@ describe('routes', () => {
     };
   }
 
-  const signedIn = (server: Server) => server.answer('/me', ACCOUNT);
+  /** Signed in, with no store account linked: the home asks which ones are as it opens. */
+  const signedIn = async (server: Server) => {
+    await server.answer('/me', ACCOUNT);
+    await server.home();
+  };
   const title = (screen: HTMLElement) => screen.querySelector('h1')?.textContent.trim();
 
   beforeEach(() => localStorage.clear());
@@ -57,7 +61,7 @@ describe('routes', () => {
     const { router, screen } = await visit('/sign-in', signedIn);
 
     expect(router.url).toBe('/');
-    expect(title(screen)).toBe('Bonjour, First');
+    expect(title(screen)).toBe('Aucun compte de jeu lié');
   });
 
   it('sends to the sign-in a visitor the API cannot identify, where the reason is said', async () => {
@@ -108,10 +112,11 @@ describe('routes', () => {
     expect(() => button(screen, 'Réessayer')).toThrow();
     expect(screen.querySelector('form')).toBeNull();
     asked.flush(ACCOUNT);
+    await server.home();
     await harness.fixture.whenStable();
 
     await vi.waitFor(() => expect(router.url).toBe('/'));
-    await vi.waitFor(() => expect(title(screen)).toBe('Bonjour, First'));
+    await vi.waitFor(() => expect(title(screen)).toBe('Aucun compte de jeu lié'));
   });
 
   it('leads to the sign-in as soon as the API says the session ended', async () => {
@@ -142,13 +147,13 @@ describe('routes', () => {
     // A guard runs again, and asks the API nothing: the account it knows is still the answer.
     await harness.navigateByUrl('/sign-in');
     expect(router.url).toBe('/');
-    expect(title(screen)).toBe('Bonjour, First');
+    expect(title(screen)).toBe('Aucun compte de jeu lié');
   });
 
   it('says who is signed in', async () => {
     const { screen } = await visit('/', signedIn);
 
-    expect(title(screen)).toBe('Bonjour, First');
+    expect(title(screen)).toBe('Aucun compte de jeu lié');
     expect(screen.querySelector('[data-account-email]')?.textContent).toBe('first@example.org');
     expect(screen.querySelector('[data-account-role]')?.textContent).toBe('Administrateur');
   });
@@ -187,7 +192,7 @@ describe('routes', () => {
     expect(screen.querySelector('[role="alert"]')?.textContent).toContain(
       'La base de données ne répond pas.',
     );
-    expect(title(screen)).toBe('Bonjour, First');
+    expect(title(screen)).toBe('Aucun compte de jeu lié');
   });
 
   it('keeps the settings of the menu in the browser, and on the account', async () => {
@@ -212,7 +217,7 @@ describe('routes', () => {
 
     screen.querySelector<HTMLButtonElement>('[data-language-choice="en"]')!.click();
     await saved();
-    await vi.waitFor(() => expect(title(screen)).toBe('Hello, First'));
+    await vi.waitFor(() => expect(title(screen)).toBe('No game account linked'));
     expect(localStorage.getItem('respawn.language')).toBe('en');
 
     root.removeAttribute('data-theme');

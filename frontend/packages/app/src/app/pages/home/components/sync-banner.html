@@ -1,0 +1,31 @@
+<ng-container *transloco="let t">
+  @if (notice() === 'running') {
+    <rs-banner role="status" data-sync-notice="running">{{ t('home.sync.running') }}</rs-banner>
+  } @else {
+    <rs-banner tone="warn" role="alert" [attr.data-sync-notice]="notice()">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span class="flex-1 basis-60">
+          @switch (notice()) {
+            @case ('failed') {
+              {{ t(reason() ?? 'home.syncErrors.unknown') }} {{ t('home.sync.kept') }}
+            }
+            @case ('nothing-visible') {
+              {{ t('home.sync.nothingVisible') }}
+            }
+            @default {
+              {{ t('home.sync.stale', { date: lastSuccess() }) }}
+            }
+          }
+        </span>
+        <button rsButton type="button" data-sync-retry (click)="syncNow.emit()">
+          {{ t(notice() === 'stale' ? 'home.sync.now' : 'home.sync.retry') }}
+        </button>
+        @if (notice() === 'stale') {
+          <button rsButton type="button" data-sync-dismiss (click)="dismiss.emit()">
+            {{ t('home.sync.dismiss') }}
+          </button>
+        }
+      </div>
+    </rs-banner>
+  }
+</ng-container>

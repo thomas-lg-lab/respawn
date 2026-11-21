@@ -74,6 +74,8 @@
     "weak_password": "This password is too short.",
     "invalid_request": "The request was not understood. Check the fields.",
     "cross_site_request": "The request was refused: it seems to come from another site. Reload the page.",
+    "sync_in_progress": "A sync is already running.",
+    "unknown_linked_account": "This linked account no longer exists. Reload the page.",
     "database_unavailable": "The database is not answering. Try again in a moment.",
     "internal_error": "Something failed on the server. Try again in a moment.",
     "network_error": "The server is not answering. Check your connection and try again.",
@@ -90,12 +92,78 @@
     "providerLinked": "{{ provider }} is linked to this account"
   },
   "home": {
-    "label": "Account",
-    "title": "Hello, {{ name }}",
-    "email": "E-mail",
-    "role": "Role",
-    "administrator": "Administrator",
-    "member": "Member"
+    "label": "Game in progress",
+    "title": "Home",
+    "loading": "Loading your library…",
+    "retry": "Try again",
+    "noAccount": {
+      "label": "New game",
+      "title": "No game account linked",
+      "text": "Link your Steam account to find your games and your playtime here. You sign in at Steam: respawn never sees your password and changes nothing.",
+      "link": "Link my Steam account",
+      "note": "Read-only: respawn reads the list of your games and your playtime, nothing else."
+    },
+    "steamLink": {
+      "linked": "Your Steam account is linked.",
+      "linked_elsewhere": "This Steam account is already linked to another account.",
+      "failed": "The link with Steam did not go through. Try again.",
+      "unavailable": "Steam is not answering. Try again in a moment."
+    },
+    "firstSync": {
+      "label": "Loading the game",
+      "title": "First sync",
+      "text": "respawn is reading your Steam library and your playtime. The first reading starts within minutes of the link: this page updates on its own."
+    },
+    "syncFailed": {
+      "label": "First sync",
+      "title": "The sync with Steam failed",
+      "kept": "No game could be imported. Your Steam account stays linked.",
+      "retry": "Try again",
+      "note": "respawn will try again on its own at the next sync."
+    },
+    "nothingVisible": {
+      "label": "Empty library",
+      "title": "Steam shows us no games",
+      "text": "The sync went through, but Steam returned no games. Most often, the game details of your profile are private:",
+      "steps": {
+        "profile": "In Steam, open your profile, then “Edit Profile”.",
+        "privacy": "Under “Privacy Settings”, set “Game details” to Public.",
+        "back": "Come back here and sync again."
+      },
+      "retry": "Sync again",
+      "note": "Your Steam account stays linked. respawn only reads the list of your games and your playtime."
+    },
+    "syncErrors": {
+      "not_configured": "This instance has no Steam API key: its administrator has to add one.",
+      "refused": "Steam refused the instance’s API key: its administrator has to check it.",
+      "refused_own_key": "Steam refused your API key.",
+      "unavailable": "Steam is not answering.",
+      "unreadable": "Steam’s answer could not be read.",
+      "unknown": "The sync with Steam failed."
+    },
+    "sync": {
+      "now": "Sync now",
+      "retry": "Try again",
+      "dismiss": "Dismiss",
+      "running": "Syncing with Steam. You can keep browsing.",
+      "tooSoon": "A sync was just asked for. Try again in a minute.",
+      "last": "Last successful sync: {{ date }}",
+      "kept": "Your games are shown as of the last successful sync.",
+      "nothingVisible": "Steam no longer shows any games: the game details of your profile may have become private. Your games are shown as of the last successful sync.",
+      "stale": "The last successful sync was on {{ date }}: the daily readings have not run since."
+    },
+    "figures": {
+      "label": "In figures",
+      "total": "Playtime",
+      "recent": "Last two weeks",
+      "recentUnknown": "Steam does not say for this profile",
+      "neverLaunched": "Never launched",
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min",
+      "unknown": "—",
+      "ofOne": "across {{ count }} game",
+      "ofMany": "across {{ count }} games"
+    }
   },
   "notFound": {
     "label": "Not found",

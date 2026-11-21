@@ -74,6 +74,8 @@
     "weak_password": "Ce mot de passe est trop court.",
     "invalid_request": "La demande n’a pas été comprise. Vérifiez les champs.",
     "cross_site_request": "La demande a été refusée : elle semble venir d’un autre site. Rechargez la page.",
+    "sync_in_progress": "Une synchronisation est déjà en cours.",
+    "unknown_linked_account": "Ce compte lié n’existe plus. Rechargez la page.",
     "database_unavailable": "La base de données ne répond pas. Réessayez dans un instant.",
     "internal_error": "Une erreur s’est produite sur le serveur. Réessayez dans un instant.",
     "network_error": "Le serveur ne répond pas. Vérifiez votre connexion et réessayez.",
@@ -90,12 +92,78 @@
     "providerLinked": "{{ provider }} est lié à ce compte"
   },
   "home": {
-    "label": "Compte",
-    "title": "Bonjour, {{ name }}",
-    "email": "E-mail",
-    "role": "Rôle",
-    "administrator": "Administrateur",
-    "member": "Membre"
+    "label": "Partie en cours",
+    "title": "Accueil",
+    "loading": "Chargement de votre bibliothèque…",
+    "retry": "Réessayer",
+    "noAccount": {
+      "label": "Nouvelle partie",
+      "title": "Aucun compte de jeu lié",
+      "text": "Liez votre compte Steam pour retrouver vos jeux et votre temps de jeu. La connexion se fait chez Steam : respawn ne voit jamais votre mot de passe et ne modifie rien.",
+      "link": "Lier mon compte Steam",
+      "note": "Lecture seule : respawn lit la liste de vos jeux et vos temps de jeu, rien d’autre."
+    },
+    "steamLink": {
+      "linked": "Votre compte Steam est lié.",
+      "linked_elsewhere": "Ce compte Steam est déjà lié à un autre compte.",
+      "failed": "Le lien avec Steam n’a pas abouti. Réessayez.",
+      "unavailable": "Steam ne répond pas. Réessayez dans un instant."
+    },
+    "firstSync": {
+      "label": "Chargement de la partie",
+      "title": "Première synchronisation",
+      "text": "respawn lit votre bibliothèque Steam et vos temps de jeu. La première lecture démarre dans les minutes qui suivent le lien : cette page se met à jour toute seule."
+    },
+    "syncFailed": {
+      "label": "Première synchronisation",
+      "title": "La synchronisation avec Steam a échoué",
+      "kept": "Aucun jeu n’a pu être importé. Votre compte Steam reste lié.",
+      "retry": "Réessayer",
+      "note": "respawn réessaiera de lui-même à la prochaine synchronisation."
+    },
+    "nothingVisible": {
+      "label": "Bibliothèque vide",
+      "title": "Steam ne nous montre aucun jeu",
+      "text": "La synchronisation a abouti, mais Steam n’a renvoyé aucun jeu. Le plus souvent, le détail des jeux de votre profil est privé :",
+      "steps": {
+        "profile": "Dans Steam, ouvrez votre profil, puis « Modifier le profil ».",
+        "privacy": "Dans « Confidentialité », passez « Détails des jeux » sur Public.",
+        "back": "Revenez ici et relancez la synchronisation."
+      },
+      "retry": "Synchroniser à nouveau",
+      "note": "Votre compte Steam reste lié. respawn ne lit que la liste de vos jeux et vos temps de jeu."
+    },
+    "syncErrors": {
+      "not_configured": "Cette instance n’a pas de clé d’API Steam : elle est à ajouter par son administrateur.",
+      "refused": "Steam a refusé la clé d’API de l’instance : elle est à vérifier par son administrateur.",
+      "refused_own_key": "Steam a refusé votre clé d’API.",
+      "unavailable": "Steam ne répond pas.",
+      "unreadable": "La réponse de Steam n’a pas pu être lue.",
+      "unknown": "La synchronisation avec Steam a échoué."
+    },
+    "sync": {
+      "now": "Synchroniser maintenant",
+      "retry": "Réessayer",
+      "dismiss": "Masquer",
+      "running": "Synchronisation avec Steam en cours. Vous pouvez continuer à parcourir.",
+      "tooSoon": "Une synchronisation vient d’être demandée. Réessayez dans une minute.",
+      "last": "Dernière synchronisation réussie : {{ date }}",
+      "kept": "Vos jeux restent affichés tels qu’à la dernière synchronisation réussie.",
+      "nothingVisible": "Steam ne montre plus aucun jeu : le détail des jeux de votre profil est peut-être devenu privé. Vos jeux restent affichés tels qu’à la dernière synchronisation réussie.",
+      "stale": "La dernière synchronisation réussie date du {{ date }} : les lectures quotidiennes n’ont pas eu lieu depuis."
+    },
+    "figures": {
+      "label": "En chiffres",
+      "total": "Temps de jeu",
+      "recent": "Deux dernières semaines",
+      "recentUnknown": "Steam ne le dit pas pour ce profil",
+      "neverLaunched": "Jamais lancés",
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min",
+      "unknown": "—",
+      "ofOne": "sur {{ count }} jeu",
+      "ofMany": "sur {{ count }} jeux"
+    }
   },
   "notFound": {
     "label": "Introuvable",

@@ -1,0 +1,24 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  :host {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 1.125rem 1.25rem;
+    border: 1px solid var(--rs-line);
+    border-radius: var(--rs-radius-card);
+    background-color: var(--rs-surface);
+  }
+
+  .caption,
+  .note {
+    color: var(--rs-muted);
+    @apply type-caption;
+  }
+
+  .figure {
+    @apply type-figure;
+  }
+}

@@ -31,6 +31,34 @@ export type SignInProvider = Schemas['ProviderResponse'];
 /** A provider as the signed-in account sees it: linked to it or not (`GET /api/v1/me/providers`). */
 export type AccountProvider = Schemas['AccountProviderResponse'];
 
+/** One page of the library (`GET /api/v1/library`). */
+export type Library = Schemas['LibraryResponse'];
+
+/** A game of the library, whatever the stores it is owned on: its totals add up its entries. */
+export type LibraryGame = Schemas['LibraryGameResponse'];
+
+/** A game as one linked account owns it on one store. */
+export type LibraryEntry = Schemas['LibraryEntryResponse'];
+
+/** The figures of the library (`GET /api/v1/library/stats`). */
+export type LibraryStats = Schemas['LibraryStatsResponse'];
+
+/** The linked store accounts (`GET /api/v1/linked-accounts`). */
+export type LinkedAccounts = Schemas['LinkedAccountsResponse'];
+
+/** A store account linked to the signed-in account, with the state of its sync. */
+export type LinkedAccount = Schemas['LinkedAccountResponse'];
+
+/** Where the sync of a linked account stands: running or not, its last run, its last success. */
+export type SyncState = Schemas['SyncStateResponse'];
+
+/**
+ * One reading of a linked account's library, finished. `outcome` is `succeeded`,
+ * `nothing_visible` (the store showed no game: a private profile looks the same) or `failed`,
+ * and then `error` says why: `not_configured`, `refused`, `unavailable` or `unreadable`.
+ */
+export type SyncRun = Schemas['SyncRunResponse'];
+
 export type LoginRequest = Schemas['LoginRequest'];
 export type RegisterRequest = Schemas['RegisterRequest'];
 

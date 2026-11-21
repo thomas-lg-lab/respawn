@@ -1,0 +1,14 @@
+@layer components {
+  :host {
+    display: block;
+    border-radius: var(--rs-radius-card);
+    background-color: var(--rs-surface-2);
+    animation: rs-pulse var(--rs-duration-pulse) ease-in-out infinite;
+  }
+
+  @keyframes rs-pulse {
+    50% {
+      opacity: 0.5;
+    }
+  }
+}

@@ -14,6 +14,8 @@ export const KNOWN_FAILURES = [
   'weak_password',
   'invalid_request',
   'cross_site_request',
+  'sync_in_progress',
+  'unknown_linked_account',
   'database_unavailable',
   'internal_error',
   NETWORK_ERROR,

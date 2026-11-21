@@ -1,0 +1,30 @@
+<section
+  class="grid grid-cols-1 gap-3 wide:grid-cols-3"
+  [attr.aria-label]="t('label')"
+  *transloco="let t; prefix: 'home.figures'"
+>
+  <rs-stat-tile
+    data-figure="total"
+    [caption]="t('total')"
+    [figure]="t(total().key, { count: total().count })"
+    [note]="t(launched().key, { count: launched().count })"
+  />
+  <rs-stat-tile
+    data-figure="recent"
+    [caption]="t('recent')"
+    [figure]="t(recent().key, { count: recent().count })"
+    [note]="
+      stats().recent_playtime_seconds === null
+        ? t('recentUnknown')
+        : t(recentlyPlayed().key, { count: recentlyPlayed().count })
+    "
+  />
+  <rs-stat-tile
+    data-figure="never-launched"
+    [caption]="t('neverLaunched')"
+    [figure]="neverLaunched()"
+    [note]="t(owned().key, { count: owned().count })"
+  >
+    <rs-segmented-bar class="my-1" [value]="stats().never_launched" [max]="stats().games" />
+  </rs-stat-tile>
+</section>
