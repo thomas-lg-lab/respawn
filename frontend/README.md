@@ -21,13 +21,13 @@ npm run gen:api     # the API's types, from openapi.json
 
 The image builds this front and the API process serves it; the router decides the screen from the address.
 
-| Address        | Screen                                                            | Needs      |
-| -------------- | ----------------------------------------------------------------- | ---------- |
-| `/sign-in`     | sign in, or create an account where the instance allows it        | no session |
-| `/`            | who is signed in, under the header and its account menu           | a session  |
-| `/foundations` | the type styles and the base components                           | nothing    |
-| `/docs`        | the API's description, drawn by Swagger UI; not an Angular screen | nothing    |
-| anything else  | says that there is no such screen                                 | nothing    |
+| Address        | Screen                                                                                                                                                                                             | Needs      |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `/sign-in`     | sign in, with a local account or through one of the instance's providers, or create an account where the instance allows it; says what came of a sign-in through a provider that opened no session | no session |
+| `/`            | who is signed in, under the header and its account menu: the settings, kept on the account at each pick, the providers linked or to link, the sign-out                                             | a session  |
+| `/foundations` | the type styles and the base components                                                                                                                                                            | nothing    |
+| `/docs`        | the API's description, drawn by Swagger UI; not an Angular screen                                                                                                                                  | nothing    |
+| anything else  | says that there is no such screen                                                                                                                                                                  | nothing    |
 
 A screen is where the API, the router and the settings are injected (`pages/x/x.ts`, and `layout/shell.ts` for
 the header). What it draws is made of components that only take inputs and emit outputs: its own in
@@ -39,7 +39,9 @@ the header). What it draws is made of components that only take inputs and emit 
 What the API answered is kept by TanStack Query (`@tanstack/angular-query`, pinned to an exact version: it is a
 trial, to be judged on the first screens that read real data). A feature's queries and mutations are the
 methods of one service in `packages/data` (`account/account.queries.ts`); a component passes them to
-`injectQuery` or `injectMutation`, a route guard to the `QueryClient`. The signed-in account is one such query:
+`injectQuery` or `injectMutation`, a route guard to the `QueryClient`. A sign-in or a link through a provider
+is not a call but a navigation to the API, which comes back with its outcome on the address
+(`account/provider-sign-in.ts`: the address to go to, and the outcomes the front knows). The signed-in account is one such query:
 signing in writes it, signing out empties the cache.
 
 The session can also end without a sign-out (its age, another tab). The front learns it two ways: the account
