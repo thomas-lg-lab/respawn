@@ -23,6 +23,30 @@ name ending in `_test` (anything else is refused); a project puts its own name i
 two more for the connection tests, also ending in `_test`), so the account needs the right to create databases
 and roles.
 
+## The tools, kept running
+
+The commands above and below start from an empty container each time, so each one installs the packages again
+before it checks anything. `docker-compose.yml` also has the two tools as services that stay up, `sdk` and
+`node` (profile `tools`): the packages stay installed and the build stays warm between two checks. They mount
+the sources, `sdk` reaches the database by its name and already has `RESPAWN_TEST_DATABASE_URL`.
+
+```bash
+docker compose --profile tools up -d node sdk   # once; the database comes with sdk
+docker compose exec sdk dotnet test Respawn.slnx
+docker compose exec node npm ci                 # once, then after a change to package-lock.json
+docker compose exec node npm test
+```
+
+Any command of this page runs the same way, without its `docker run` and without `npm ci`. The dev server too,
+on http://localhost:4200, with the app beside it (`docker compose up -d --build app`); `--poll` because a
+change made on Windows or macOS does not reach a watcher inside the container:
+
+```bash
+docker compose exec node npm start -- --host 0.0.0.0 --poll 2000
+```
+
+`docker compose --profile tools down` stops them with the rest.
+
 ## The front
 
 The front's checks, in the Node image, or with Node 24 installed the same `npm` commands in `frontend/`:
