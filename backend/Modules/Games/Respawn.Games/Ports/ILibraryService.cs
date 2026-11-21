@@ -60,4 +60,11 @@ public interface ILibraryService
 
     /// <summary>An owner's library in figures, over the same games as <see cref="GetLibraryAsync"/>.</summary>
     Task<LibraryStats> GetStatsAsync(Guid ownerId, CancellationToken ct);
+
+    /// <summary>What an owner played day by day since their library is read, over the same games as
+    /// <see cref="GetLibraryAsync"/>: the growth of the totals between two readings in a row
+    /// (<see cref="ILibraryStore.ListPlayedAsync"/>). Only the days from <paramref name="from"/> to
+    /// <paramref name="to"/>, both included, when they are given: none when the last is before the
+    /// first.</summary>
+    Task<LibraryHistory> GetHistoryAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct);
 }

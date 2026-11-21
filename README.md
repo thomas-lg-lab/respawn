@@ -182,6 +182,7 @@ part of the API.
 | `DELETE /api/v1/linked-accounts/{id}/key` | Takes the user's own key away: the instance's key reads the account again |
 | `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 | `GET /api/v1/library/stats` | The same library in figures: games, launched and never launched, missing (flagged on every entry), total and recent playtime, games played lately, and `tracking_since`, the earliest reading that listed one of them. What a store said was played lately stops counting once the store's window has passed since that reading (Steam: two weeks), here and in the library |
+| `GET /api/v1/library/history` | What was played day by day since `tracking_since`: for each day, the games played and their `seconds`, the earliest day first. A store gives totals and no history, so a day's time is the growth of those totals between two readings in a row, dated by the later one (UTC); the total a game had at its first reading is not split over time, and days and games with nothing played are left out. `from` and `to` (`YYYY-MM-DD`, both included) ask for a part of it |
 
 Errors always have the same shape, whatever answered:
 

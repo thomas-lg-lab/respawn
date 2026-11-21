@@ -115,6 +115,11 @@ public sealed class LibraryService(
                 var before = await library.FindOwnershipsAsync(account.Id, ct);
                 var owned = new List<Ownership>();
                 var said = new List<Observation>();
+
+                // A store that hides the playtime answers zero for every game. A reading with no time at
+                // all is taken as that: where nothing was known, its zeros are not a total to count from,
+                // or the day the store says again would be given everything ever played.
+                var saysNoTime = !items.Any(item => item.Playtime > TimeSpan.Zero);
                 var renames = new List<StoreEntryRename>();
                 foreach (var item in items)
                 {
@@ -122,9 +127,10 @@ public sealed class LibraryService(
                     var current = before.GetValueOrDefault(entry);
                     if (current is not null && current.AsOf > takenAt)
                     {
-                        // Older than what is known: it is history, taken at its word, and may only
+                        // Older than what is known: it is history. Its total is taken at its word,
+                        // but for a zero that says nothing (Known), and of what is known it may only
                         // tell the game was owned earlier than thought.
-                        said.Add(new Observation(entry, item.Playtime, item.LastPlayedAt, item.Playtime, item.RecentPlaytime));
+                        said.Add(new Observation(entry, item.Playtime, item.LastPlayedAt, Known(item.Playtime, current.Playtime, saysNoTime), item.RecentPlaytime));
                         if (takenAt < current.FirstSeenAt)
                         {
                             owned.Add(current with { FirstSeenAt = takenAt });
@@ -135,7 +141,7 @@ public sealed class LibraryService(
 
                     var updated = Updated(current, item, entry, takenAt, snapshot.Id);
                     owned.Add(updated);
-                    said.Add(new Observation(entry, item.Playtime, item.LastPlayedAt, updated.Playtime, item.RecentPlaytime));
+                    said.Add(new Observation(entry, item.Playtime, item.LastPlayedAt, Known(updated.Playtime, current?.Playtime, saysNoTime), item.RecentPlaytime));
                     if (item.Name is not null && known.TryGetValue(item.ExternalId, out var kept) && kept.Name != item.Name)
                     {
                         renames.Add(new StoreEntryRename(kept.Id, item.Name));
@@ -194,6 +200,27 @@ public sealed class LibraryService(
             Sum(games.Select(game => game.RecentPlaytime)),
             games.Count(game => game.RecentPlaytime > TimeSpan.Zero),
             entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null);
+    }
+
+    public async Task<LibraryHistory> GetHistoryAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct)
+    {
+        var entries = await library.ListAsync(ownerId, ct);
+        var played = await library.ListPlayedAsync(ownerId, from, to, ct);
+        return new LibraryHistory(
+            entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null,
+            [
+                .. played
+                    .GroupBy(day => day.Date)
+                    .OrderBy(day => day.Key)
+                    .Select(day => new HistoryDay(
+                        day.Key,
+                        [
+                            // An order that does not change from one answer to the next.
+                            .. day.OrderByDescending(game => game.Playtime)
+                                .ThenBy(game => game.GameId)
+                                .Select(game => new PlayedGame(game.GameId, game.Playtime)),
+                        ])),
+            ]);
     }
 
     /// <summary>An owner's library, a game once however many entries it is owned through. What a store
@@ -314,6 +341,14 @@ public sealed class LibraryService(
             goneSince,
             missingSince);
     }
+
+    /// <summary>The total a reading leaves known, for the history: <paramref name="total"/>, unless it is
+    /// a zero that says nothing. A zero where a total is known is a poor answer, whenever the reading was
+    /// taken: one that arrives late is no more to be believed than one that arrives in order. A zero in a
+    /// reading that gives no time to any game is the store hiding the playtime. A zero beside games that
+    /// have a total is a game never launched, and is where its count starts.</summary>
+    private static TimeSpan? Known(TimeSpan? total, TimeSpan? before, bool saysNoTime) =>
+        total == TimeSpan.Zero && (before > TimeSpan.Zero || saysNoTime) ? null : total;
 
     /// <summary>The items of a reading, checked, one per store id: the last one listed wins.</summary>
     private static List<OwnedItem> Items(LibraryReading reading)

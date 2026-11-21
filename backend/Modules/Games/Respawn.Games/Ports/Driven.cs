@@ -84,6 +84,15 @@ public interface ILibraryStore
     /// <summary>Every way the owner owns a game today, in no order: the ownerships of their linked
     /// accounts, those noted as missing included, without those that left the library.</summary>
     Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
+
+    /// <summary>What the owner played, per day and per game, in no order, over the same ownerships as
+    /// <see cref="ListAsync"/>. For each of them, the readings that knew a total
+    /// (<see cref="Observation.KnownPlaytime"/>) are taken in the order of their dates: a total greater
+    /// than the one before is played time, dated by the reading that shows it; the first one is where
+    /// the count starts and gives nothing, and a total that went down gives nothing either. Only the
+    /// days from <paramref name="from"/> to <paramref name="to"/>, both included, when they are given;
+    /// a growth is still counted from the reading before, whatever its day.</summary>
+    Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct);
 }
 
 /// <summary>A store's libraries, read by a connector: an outbound adapter in a project of its own,

@@ -152,6 +152,31 @@ public sealed record LibraryStatsResponse(
             stats.TrackingSince);
 }
 
+/// <summary>What was played day by day since the library is read. A store gives totals and no history:
+/// a day's time is the growth of those totals between two readings in a row, so the total a game had
+/// at its first reading is not here, and with one reading a day the time may have been played the day
+/// before the date it is counted on.</summary>
+/// <param name="TrackingSince">The same date as in the library's figures: the history starts there.
+/// Null while no reading listed a game.</param>
+/// <param name="Days">The days something was played, the earliest first. A day with nothing is left out.</param>
+public sealed record LibraryHistoryResponse(DateTimeOffset? TrackingSince, IReadOnlyList<HistoryDayResponse> Days)
+{
+    public static LibraryHistoryResponse From(LibraryHistory history) =>
+        new(history.TrackingSince, [.. history.Days.Select(HistoryDayResponse.From)]);
+}
+
+/// <param name="Date">The day, in UTC, of the reading that showed the time played.</param>
+/// <param name="Games">The games played that day, at least one, the most played first.</param>
+public sealed record HistoryDayResponse(DateOnly Date, IReadOnlyList<HistoryGameResponse> Games)
+{
+    public static HistoryDayResponse From(HistoryDay day) =>
+        new(day.Date, [.. day.Games.Select(game => new HistoryGameResponse(game.GameId, (long)game.Playtime.TotalSeconds))]);
+}
+
+/// <param name="GameId">The game, as the library names it.</param>
+/// <param name="Seconds">What was played of it that day, added up over its entries; more than zero.</param>
+public sealed record HistoryGameResponse(Guid GameId, long Seconds);
+
 /// <param name="Id">The sync.</param>
 /// <param name="LinkedAccountId">The store account that was read.</param>
 /// <param name="Trigger">Why it ran: scheduled (the reading of the day) or manual (it was asked for).</param>
