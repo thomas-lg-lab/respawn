@@ -194,6 +194,27 @@ public sealed class SteamLinkTests
     }
 
     [Fact]
+    public async Task The_returns_from_steam_are_rate_limited()
+    {
+        var steam = new FakeSteamSignIn();
+        await using var app = await steam.StartAppAsync(new() { ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute" });
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+
+        // Each return the exchange accepts asks Steam: a third one in the minute is not let through.
+        var outcomes = new List<string>();
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var toSteam = await StartAsync(browser);
+            var back = await browser.GetAsync(FakeSteamSignIn.ComingBack(toSteam, FakeSteamSignIn.ClaimedId(SteamId)));
+            outcomes.Add(back.Headers.Location!.OriginalString);
+        }
+
+        Assert.Equal(["/?steam_link=linked", "/?steam_link=linked", "/?steam_link=failed"], outcomes);
+        Assert.Equal(2, steam.Asked.Count);
+    }
+
+    [Fact]
     public async Task An_answer_whose_signature_does_not_cover_the_account_links_nothing()
     {
         var steam = new FakeSteamSignIn();

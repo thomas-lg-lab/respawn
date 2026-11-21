@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Respawn.Accounts.Ports;
 using Respawn.SharedKernel;
 
 namespace Respawn.Accounts.Api;
@@ -105,6 +107,24 @@ internal static class SessionCookie
             SameSite = SameSiteMode.Lax,
             Path = "/",
         });
+
+    /// <summary>Gives the browser a new session in place of the one it carried, which is closed too: it
+    /// would otherwise stay good until it expires, with no sign-out left to close it. The sign-in stands
+    /// whether or not the old session could be closed; the log says when it could not.</summary>
+    public static async Task ReplaceAsync(
+        HttpContext http, IAccountService accountService, string token, AccountOptions accounts, SessionCookieOptions cookie, ILogger logger)
+    {
+        var carried = http.Request.Cookies[Name];
+        Set(http.Response, token, accounts, cookie);
+        try
+        {
+            await accountService.LogoutAsync(carried, http.RequestAborted);
+        }
+        catch (Exception ex) when (!http.RequestAborted.IsCancellationRequested)
+        {
+            logger.LogWarning("the session a sign-in replaced could not be closed: {Reason}", ex.Message);
+        }
+    }
 
     public static void Clear(HttpResponse response) => response.Cookies.Delete(Name, new CookieOptions { Path = "/" });
 }

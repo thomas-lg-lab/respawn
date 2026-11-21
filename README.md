@@ -82,7 +82,7 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_SESSION_DAYS` | `30` | Lifetime of a sign-in |
 | `RESPAWN_PASSWORD_MIN_LENGTH` | `12` | Minimum length of a local password |
 | `RESPAWN_LOCKOUT_THRESHOLD`, `RESPAWN_LOCKOUT_MINUTES` | `5`, `15` | Failed sign-ins before an account is locked, and for how long |
-| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes, and apart on the returns from a sign-in provider and on the routes that give or take away a user's own Steam key (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
+| `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes, and apart on the returns from a sign-in provider, on the returns from Steam when an account is linked, and on the routes that give or take away a user's own Steam key (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`, with an optional `"label"` (what the sign-in page shows, 40 characters at most) and `"create_accounts": true` (someone the provider proves gets a member account even while registration is closed): OpenID Connect providers to sign in with, the instance being a public client of each (no secret). A name is lower case letters, digits and dashes, once per list; an issuer is an `https` URL. Each provider sends the browser back to `<public address>/api/v1/auth/oidc/<name>/callback`, the address to register with it |
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
 
@@ -132,7 +132,7 @@ behind a proxy that signs users in.
 
 **Local accounts.** An e-mail address, a display name and a password of at least
 `RESPAWN_PASSWORD_MIN_LENGTH` characters; length is the only password rule. The first account is the
-administrator, and registration is closed after it. Passwords are stored as Argon2id hashes. After
+administrator, and registration is closed after it. Passwords are stored as Argon2id hashes, two computed at a time at most: each takes tens of megabytes. After
 `RESPAWN_LOCKOUT_THRESHOLD` failed sign-ins an account is locked for `RESPAWN_LOCKOUT_MINUTES`; a locked
 account, a wrong password and an unknown e-mail get the same answer.
 

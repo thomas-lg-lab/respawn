@@ -184,11 +184,8 @@ internal static class ProviderSignIn
         }
 
         var session = await accounts.SignInWithProviderAsync(provider, identity, http.RequestAborted);
-        SessionCookie.Set(
-            http.Response, session.SessionToken, options, http.RequestServices.GetRequiredService<SessionCookieOptions>());
-        // The session this browser carried is replaced: closed too, or it would stay good until it
-        // expires with no sign-out left to close it.
-        await accounts.LogoutAsync(http.Request.Cookies[SessionCookie.Name], http.RequestAborted);
+        await SessionCookie.ReplaceAsync(
+            http, accounts, session.SessionToken, options, http.RequestServices.GetRequiredService<SessionCookieOptions>(), Log(http));
         return null;
     }
 
@@ -221,7 +218,7 @@ internal static class ProviderSignIn
     /// two it can act on: nothing was proven, or the provider did not answer and trying again may work.</summary>
     private static Task OnFailure(RemoteFailureContext context)
     {
-        var unavailable = NotAnswering(context.Failure);
+        var unavailable = Navigation.NotAnswering(context.Failure);
         if (unavailable)
         {
             Log(context.HttpContext).LogWarning(
@@ -267,20 +264,6 @@ internal static class ProviderSignIn
         return cause is null ? "unknown"
             : cause.InnerException is { } under ? $"{cause.Message} ({under.Message})"
             : cause.Message;
-    }
-
-    /// <summary>Whether a failure is the network's or the provider's own, anywhere in what caused it.</summary>
-    public static bool NotAnswering(Exception? failure)
-    {
-        for (var cause = failure; cause is not null; cause = cause.InnerException)
-        {
-            if (cause is HttpRequestException or IOException or TimeoutException or OperationCanceledException)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static ILogger Log(HttpContext http) =>

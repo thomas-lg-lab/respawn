@@ -38,6 +38,29 @@ internal sealed class Argon2PasswordHasher : IPasswordHasher<AppUser>
     private static string Hash(string password) => PasswordHash.ArgonHashString(password, Strength).TrimEnd('\0');
 }
 
+/// <summary>How many passwords are hashed or verified at once in this process. Argon2id takes tens of
+/// megabytes for each, on purpose: with no bound, a handful of sign-ins sent together would ask for more
+/// memory than the app is given, and the app would be stopped. The others wait their turn.</summary>
+internal static class PasswordWork
+{
+    public const int AtOnce = 2;
+
+    private static readonly SemaphoreSlim Turns = new(AtOnce, AtOnce);
+
+    public static async Task<T> RunAsync<T>(Func<Task<T>> work, CancellationToken ct)
+    {
+        await Turns.WaitAsync(ct);
+        try
+        {
+            return await work();
+        }
+        finally
+        {
+            Turns.Release();
+        }
+    }
+}
+
 /// <summary>Opaque tokens: random bytes for the browser, their SHA-256 for the database.</summary>
 internal static class Tokens
 {

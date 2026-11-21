@@ -40,7 +40,9 @@ internal sealed class IdentityUserDirectory(
         IdentityResult result;
         try
         {
-            result = password is null ? await users.CreateAsync(user) : await users.CreateAsync(user, password);
+            result = password is null
+                ? await users.CreateAsync(user)
+                : await PasswordWork.RunAsync(() => users.CreateAsync(user, password), ct);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
@@ -73,13 +75,14 @@ internal sealed class IdentityUserDirectory(
 
         if (user?.PasswordHash is null)
         {
-            hasher.VerifyHashedPassword(user!, Argon2PasswordHasher.DummyHash, password);
+            await PasswordWork.RunAsync(
+                () => Task.FromResult(hasher.VerifyHashedPassword(user!, Argon2PasswordHasher.DummyHash, password)), ct);
             return null;
         }
 
         // Verified even when the account is locked, so that a locked account is refused no faster than
         // a wrong password.
-        var valid = await users.CheckPasswordAsync(user, password);
+        var valid = await PasswordWork.RunAsync(() => users.CheckPasswordAsync(user, password), ct);
         if (await users.IsLockedOutAsync(user))
         {
             return null;
