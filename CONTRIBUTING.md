@@ -72,7 +72,7 @@ and adapters around it.
 | `Respawn.SharedKernel` | what modules and the host agree on: the error format, the database contracts | nothing, not even a package |
 | `Modules/Accounts/Respawn.Accounts` | the core: use cases and the ports they need | nothing; no package |
 | `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, sessions | its core, the shared kernel |
-| `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie | its core, the shared kernel |
+| `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie, the sign-in through a provider (ASP.NET Core's OpenID Connect handler) | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, and the ports they need | nothing; no package |
 | `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core, and the encryption of the store keys users give (libsodium) | its core, the shared kernel |
