@@ -127,7 +127,8 @@ public sealed class LibraryService(
                     var current = before.GetValueOrDefault(entry);
                     if (current is not null && current.AsOf > takenAt)
                     {
-                        // Older than what is known: it is history, taken at its word, and may only
+                        // Older than what is known: it is history. Its total is taken at its word,
+                        // but for a zero that says nothing (Known), and of what is known it may only
                         // tell the game was owned earlier than thought.
                         said.Add(new Observation(entry, item.Playtime, item.LastPlayedAt, Known(item.Playtime, current.Playtime, saysNoTime), item.RecentPlaytime));
                         if (takenAt < current.FirstSeenAt)
