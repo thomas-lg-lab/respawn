@@ -97,11 +97,6 @@ curl -fsS http://localhost:8080/api/v1/openapi.json -o frontend/openapi.json
 docker run --rm -v "$PWD/frontend:/web" -w /web node:24-slim sh -c 'npm ci && npm run gen:api'
 ```
 
-The tests are compiled by Angular's builder and run by Vitest, which also reads `frontend/vitest-base.config.mts`:
-it compiles an icon of the icon package when a screen first draws it, where the package would compile its two
-thousand as each worker imports it. With `node_modules` on a disk shared from Windows or macOS, half of a run
-is still spent reading files (jsdom alone is some 950 of them); the same run on a Linux disk takes half the time.
-
 [frontend/README.md](frontend/README.md) describes the design tokens, the fonts and the translations.
 
 ## Layout
