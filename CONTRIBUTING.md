@@ -23,6 +23,45 @@ name ending in `_test` (anything else is refused); a project puts its own name i
 two more for the connection tests, also ending in `_test`), so the account needs the right to create databases
 and roles.
 
+## The tools, kept running
+
+The commands above and below start from an empty container each time, so each one installs the packages again
+before it checks anything. `docker-compose.yml` also has the two tools as services that stay up, `sdk` and
+`node` (profile `tools`): the packages stay installed and the build stays warm between two checks. They mount
+the sources, `sdk` reaches the database by its name and already has `RESPAWN_TEST_DATABASE_URL`.
+
+```bash
+docker compose --profile tools up -d node sdk   # once; the database comes with sdk
+docker compose exec sdk dotnet test Respawn.slnx
+docker compose exec node npm ci                 # once, then after a change to package-lock.json
+docker compose exec node npm test
+```
+
+Any command of this page runs the same way, without its `docker run` and without `npm ci`. The dev server too,
+on http://localhost:4200, with the app beside it (`docker compose up -d --build app`); `--poll` because a
+change made on Windows or macOS does not reach a watcher inside the container:
+
+```bash
+docker compose exec node npm start -- --host 0.0.0.0 --poll 2000
+```
+
+`docker compose --profile tools down` stops them with the rest.
+
+What to know before leaning on them:
+
+- **They check the checkout that started them.** The services mount the directory `docker compose up` ran in,
+  and the compose project is named after it. From another checkout or worktree, `docker compose exec` finds no
+  service, and reaching the first one's (`-p`) would check its sources, not yours. A second checkout cannot
+  start its own beside the first either: ports 5432 and 4200 are already published.
+- **One set of tools per checkout.** What the services install and build lands in the sources: `node_modules`
+  holds Linux binaries, `bin/` and `obj/` the container's paths. An editor reads them fine; `npm` or `dotnet`
+  run on the machine itself against the same checkout would break on them, or rebuild them and break the
+  services in turn. Pick one side; to change, `npm ci` again and delete `bin/` and `obj/`.
+- **Port 4200 is the `node` service's** as long as it is up, dev server running or not: the `docker run` dev
+  server of the next section, or one started on the machine, then finds the port taken.
+- **On a Linux host, what they write belongs to root** (as with the `docker run` commands): removing `bin/`, `obj/` or
+  `node_modules` then takes `sudo`, or an `rm` through the service.
+
 ## The front
 
 The front's checks, in the Node image, or with Node 24 installed the same `npm` commands in `frontend/`:
@@ -38,7 +77,7 @@ docker run --rm -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '
 
 The dev server, on http://localhost:4200. It hands `/api` and `/healthz` to the app, started beside it
 (`docker compose up --build`, on port 8080); `RESPAWN_API` says where that is when the dev server runs in a
-container:
+container. With the `node` service up, start it there instead (above): the service holds port 4200.
 
 ```bash
 docker run --rm -it -p 4200:4200 -e RESPAWN_API=http://host.docker.internal:8080 -v "$PWD/frontend:/web" -w /web node:24-slim sh -c '

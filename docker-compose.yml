@@ -2,6 +2,9 @@
 # the cookie is not marked Secure because the page is served over plain HTTP on localhost.
 #   docker compose up --build        http://localhost:8080
 #   docker compose up -d db          only the database, for the tests (CONTRIBUTING.md)
+#   docker compose --profile tools up -d node sdk
+#                                    the tools, kept running: the checks then go through
+#                                    `docker compose exec` (CONTRIBUTING.md)
 services:
   db:
     image: pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
@@ -30,3 +33,41 @@ services:
       - /tmp
     ports:
       - "127.0.0.1:8080:8080"
+
+  # The tools, kept running so that a check does not start from an empty container each time: the packages
+  # stay installed and the build stays warm. They do nothing by themselves; `docker compose exec` runs in them.
+  # They mount this checkout and write into it (node_modules, bin/, obj/): one checkout, one set of tools
+  # (CONTRIBUTING.md).
+  node:
+    profiles: [tools]
+    image: node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
+    init: true
+    command: ["sleep", "infinity"]
+    working_dir: /web
+    environment:
+      # Where the dev server finds the API: the app of this file, by its service name.
+      RESPAWN_API: http://app:8080
+    volumes:
+      - ./frontend:/web
+      - npm-cache:/root/.npm
+    ports:
+      - "127.0.0.1:4200:4200"
+
+  sdk:
+    profiles: [tools]
+    image: mcr.microsoft.com/dotnet/sdk:10.0@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb
+    init: true
+    command: ["sleep", "infinity"]
+    working_dir: /work
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      RESPAWN_TEST_DATABASE_URL: postgresql://respawn:respawn@db:5432/respawn_test
+    volumes:
+      - .:/work
+      - nuget-packages:/root/.nuget/packages
+
+volumes:
+  npm-cache:
+  nuget-packages:

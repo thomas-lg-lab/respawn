@@ -94,4 +94,7 @@
   `placeholder`, `title`, `alt`...). A language is shown and remembered only once its translations loaded.
 - **API types are generated.** `frontend/openapi.json` is the description the API serves and `api-types.ts`
   comes from it (`npm run gen:api`); the CI fails when either is stale. Never edit them by hand.
-- **Checks and dependencies**: CONTRIBUTING.md.
+- **Checks and dependencies**: CONTRIBUTING.md. When the `node` and `sdk` services of the compose file are up,
+  run the checks in them (`docker compose exec`) rather than in a new container. They check the checkout that
+  started them: `docker compose ps`, run from where you work, must list them. From another worktree, use a
+  new container, never the first checkout's services.
