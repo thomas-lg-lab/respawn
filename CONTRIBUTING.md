@@ -57,11 +57,8 @@ What to know before leaning on them:
   container's paths. An editor reads them fine; `dotnet` run on the machine itself against the same checkout
   would break on them, or rebuild them and break the service in turn. Pick one side; to change, delete `bin/`
   and `obj/`.
-- **The front's packages are the `node` service's own.** `node_modules` is a volume laid over the checkout's
-  folder, not the folder itself: read through a disk shared from Windows or macOS, the packages took most of a
-  check's time (`npm ci` 2 min 40 s against 50 s, `npm test` 69 s against 40 s). The folder on the machine
-  stays as it was, empty on a new checkout: an editor that wants the packages needs `npm ci` run on the
-  machine too, and the two no longer disturb each other.
+- **The front's packages are a volume of the `node` service**, not the checkout's `node_modules` (reading them
+  through a disk shared from Windows or macOS is slow): an editor on the machine needs its own `npm ci`.
 - **Port 4200 is the `node` service's** as long as it is up, dev server running or not: the `docker run` dev
   server of the next section, or one started on the machine, then finds the port taken.
 - **On a Linux host, what they write belongs to root** (as with the `docker run` commands): removing `bin/`, `obj/` or
