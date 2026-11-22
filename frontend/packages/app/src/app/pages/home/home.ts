@@ -1,10 +1,11 @@
 import { Location } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideRefreshCw } from '@lucide/angular';
 import {
   ApiFailure,
+  type LibraryGame,
   LibraryQueries,
   LinkedAccountQueries,
   STEAM_LINK_OUTCOME,
@@ -16,12 +17,26 @@ import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
-import { saidOnce } from '@app/session/said-once';
+import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
 import { Figures } from './components/figures';
 import { FirstSync } from './components/first-sync';
+import { GameSearch } from './components/game-search';
 import { NoAccount } from './components/no-account';
+import { PlayedRecently } from './components/played-recently';
+import { RandomPicks } from './components/random-picks';
+import { Resume } from './components/resume';
 import { SyncBanner } from './components/sync-banner';
 import { SyncIssue } from './components/sync-issue';
+import { TimeRanking } from './components/time-ranking';
+import {
+  PICKS,
+  drawn,
+  keptDraw,
+  lastPlayed,
+  neverLaunched,
+  playedRecently,
+  ranking,
+} from './library-blocks';
 import {
   type SyncView,
   accountInView,
@@ -44,10 +59,12 @@ const READ_ANYWAY = ['sync_in_progress', 'too_many_requests'];
 type View = 'loading' | 'unavailable' | SyncView;
 
 /**
- * The first screen after sign-in: the library in figures once a linked account was read, and
- * until then the way there, said state by state: link an account, wait for its first reading,
- * or learn why that reading brought no game. This is where the states meet the API: the
- * linked accounts and their syncs, "sync now", the figures.
+ * The first screen after sign-in: the library at a glance once a linked account was read (a
+ * search, the game to resume, the ones played lately, the figures, where the time went, a
+ * draw among the never launched), and until then the way there, said state by state: link an
+ * account, wait for its first reading, or learn why that reading brought no game. This is
+ * where the states meet the API: the linked accounts and their syncs, "sync now", the
+ * figures, the games.
  *
  * Linking Steam is a navigation: the API sends the browser there and back to this screen,
  * which says what came of it, and reads the new account's library at once: the schedule
@@ -64,9 +81,14 @@ type View = 'loading' | 'unavailable' | SyncView;
     Skeleton,
     Figures,
     FirstSync,
+    GameSearch,
     NoAccount,
+    PlayedRecently,
+    RandomPicks,
+    Resume,
     SyncBanner,
     SyncIssue,
+    TimeRanking,
   ],
   templateUrl: './home.html',
 })
@@ -74,6 +96,7 @@ export class Home {
   private readonly library = inject(LibraryQueries);
   private readonly linked = inject(LinkedAccountQueries);
   private readonly language = inject(LanguageSetting);
+  private readonly router = inject(Router);
 
   protected readonly failureKey = failureKey;
   protected readonly currentLanguage = this.language.current;
@@ -99,6 +122,44 @@ export class Home {
     ...this.library.stats(),
     enabled: this.view() === 'ready',
   }));
+
+  /**
+   * The games, asked with the figures: the blocks under them are made of what the browser
+   * holds, the same games the Library lists.
+   */
+  protected readonly games = injectQuery(() => ({
+    ...this.library.games(),
+    enabled: this.view() === 'ready',
+  }));
+
+  /** "Ago" is counted from the moment the games were read, so it follows each new reading. */
+  protected readonly now = computed(() => this.games.dataUpdatedAt() || Date.now());
+
+  /** The game to resume, the one played last; `null` while a store told no session. */
+  protected readonly resumed = computed(() =>
+    lastPlayed(this.games.data() ?? [], this.language.current()),
+  );
+
+  protected readonly recently = computed(() =>
+    playedRecently(this.games.data() ?? [], this.resumed(), this.language.current()),
+  );
+
+  protected readonly ranked = computed(() =>
+    ranking(this.games.data() ?? [], this.language.current()),
+  );
+
+  /** The games a draw is made among. */
+  private readonly neverLaunched = computed(() => neverLaunched(this.games.data() ?? []));
+  /** Another draw can only give other games when there are more than one draw shows. */
+  protected readonly moreToDraw = computed(() => this.neverLaunched().length > PICKS);
+  /**
+   * The draw: made when the games arrive, and again on request. A new reading of the games
+   * keeps it while its games can still be drawn.
+   */
+  protected readonly picks = linkedSignal<LibraryGame[], LibraryGame[]>({
+    source: this.neverLaunched,
+    computation: (pool, shown) => keptDraw(pool, shown?.value, PICKS),
+  });
 
   /**
    * A "sync now" the API refused, and where the syncs stood when it did. It is said while
@@ -155,7 +216,7 @@ export class Home {
   );
 
   constructor() {
-    saidOnce(inject(Location), inject(Router), STEAM_LINK_OUTCOME);
+    saidOnce(inject(Location), this.router, STEAM_LINK_OUTCOME);
     if (this.cameBack === 'linked') void this.readNewAccount();
   }
 
@@ -195,5 +256,16 @@ export class Home {
 
   protected dismissStale(): void {
     this.staleDismissed.set(true);
+  }
+
+  /** A title was asked for: the Library looks for it. */
+  protected search(title: string): void {
+    void this.router.navigate(['/library'], {
+      queryParams: title ? { [LIBRARY_SEARCH]: title } : {},
+    });
+  }
+
+  protected drawAgain(): void {
+    this.picks.set(drawn(this.neverLaunched(), PICKS));
   }
 }

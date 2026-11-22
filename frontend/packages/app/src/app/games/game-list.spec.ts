@@ -7,7 +7,8 @@ import {
   longestPlaytime,
   matching,
   sorted,
-} from './library-view';
+  steamLaunchAddress,
+} from '@app/games/game-list';
 
 function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
   return {
@@ -123,5 +124,26 @@ describe('library view', () => {
     expect(hue).toBeGreaterThanOrEqual(0);
     expect(hue).toBeLessThan(360);
     expect(Number.isInteger(hue)).toBe(true);
+  });
+
+  it('gives the address that launches a game in Steam, from its number there', () => {
+    expect(steamLaunchAddress(game('Portal 2', { entries: [entry(null)] }))).toBe(
+      'steam://run/620',
+    );
+  });
+
+  it('gives no address to launch a game Steam no longer lists, or one from another store', () => {
+    const gone = game('Gone', { entries: [entry('2026-11-19T04:00:00Z')] });
+    const elsewhere = game('Elsewhere', { entries: [{ ...entry(null), source: 'gog' }] });
+
+    expect(steamLaunchAddress(gone)).toBeNull();
+    expect(steamLaunchAddress(elsewhere)).toBeNull();
+    expect(steamLaunchAddress(game('Unowned'))).toBeNull();
+  });
+
+  it('never writes into the address a number that is not one', () => {
+    const odd = game('Odd', { entries: [{ ...entry(null), external_id: '620/../x' }] });
+
+    expect(steamLaunchAddress(odd)).toBeNull();
   });
 });

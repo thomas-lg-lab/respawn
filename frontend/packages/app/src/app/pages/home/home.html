@@ -83,6 +83,15 @@
         />
       }
 
+      <rs-game-search (searched)="search($event)" />
+
+      @if (resumed(); as game) {
+        <rs-resume [game]="game" [language]="currentLanguage()" [now]="now()" />
+      }
+      @if (recently().games.length) {
+        <rs-played-recently [played]="recently()" [language]="currentLanguage()" [now]="now()" />
+      }
+
       @if (stats.data(); as figures) {
         <rs-figures [stats]="figures" [language]="currentLanguage()" />
       } @else if (stats.isError()) {
@@ -101,6 +110,38 @@
           @for (tile of tiles; track tile) {
             <rs-skeleton class="h-27" />
           }
+          <span class="sr-only">{{ t('home.loading') }}</span>
+        </div>
+      }
+
+      @if (games.data()) {
+        @if (ranked().top.length || picks().length) {
+          <div class="grid grid-cols-1 items-start gap-4 wide:grid-cols-2">
+            @if (ranked().top.length) {
+              <rs-time-ranking [ranking]="ranked()" [language]="currentLanguage()" />
+            }
+            @if (picks().length) {
+              <rs-random-picks [games]="picks()" [more]="moreToDraw()" (reroll)="drawAgain()" />
+            }
+          </div>
+        }
+      } @else if (games.isError()) {
+        <rs-banner tone="warn" role="alert" data-games-refused>{{
+          t(failureKey(games.error()))
+        }}</rs-banner>
+        <button
+          rsButton
+          type="button"
+          class="self-start"
+          data-games-retry
+          (click)="games.refetch()"
+        >
+          {{ t('home.retry') }}
+        </button>
+      } @else {
+        <div class="grid grid-cols-1 gap-4 wide:grid-cols-2" role="status">
+          <rs-skeleton class="h-40" />
+          <rs-skeleton class="h-40" />
           <span class="sr-only">{{ t('home.loading') }}</span>
         </div>
       }

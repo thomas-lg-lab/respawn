@@ -1,7 +1,7 @@
 import type { LibraryGame } from '@respawn/data';
 
 /**
- * What the Library screen makes of the games it holds: which ones a search and a filter
+ * What the screens make of the games the browser holds: which ones a search and a filter
  * keep, and in what order. The whole library is in the browser, so none of this asks the API.
  */
 
@@ -99,6 +99,19 @@ export function sorted(
 /** No store lists the game any more: every copy of it is flagged. */
 export function isMissing(game: LibraryGame): boolean {
   return game.entries.length > 0 && game.entries.every((entry) => entry.missing_since !== null);
+}
+
+/**
+ * The address that asks the Steam client of this machine to launch the game: `steam://run/`
+ * and the game's number at Steam. `null` when no copy of it is still listed there, or when
+ * what the store gave as its number is not one: nothing else ever goes into that address.
+ */
+export function steamLaunchAddress(game: LibraryGame): string | null {
+  const owned = game.entries.find(
+    (entry) =>
+      entry.source === 'steam' && entry.missing_since === null && /^\d+$/.test(entry.external_id),
+  );
+  return owned ? `steam://run/${owned.external_id}` : null;
 }
 
 /** The longest playtime among the games: what a full bar stands for. */

@@ -63,6 +63,11 @@
   --rs-cover-saturation: 38%;
   --rs-cover-lightness: 26%;
 
+  /* Colour: the ground of a hero banner, from its game's hue (`--rs-hero-hue`): darker than a
+     cover, since words stand on it. The same in both themes. */
+  --rs-hero-saturation: 40%;
+  --rs-hero-lightness: 20%;
+
   /* Typography: the families. The logo does not follow the character. */
   --rs-font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --rs-font-display: 'Bricolage Grotesque Variable', var(--rs-font-body);

@@ -1,0 +1,42 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  /* A flat ground in a colour made from the hue of its game, set on the host
+     (`--rs-hero-hue`). What is projected stands at the foot, over the letter. */
+  :host {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0.625rem;
+    min-height: 12.5rem;
+    padding: 1.5rem 1.25rem;
+    overflow: hidden;
+    border-radius: var(--rs-radius-hero);
+    background-color: hsl(
+      var(--rs-hero-hue, 220) var(--rs-hero-saturation) var(--rs-hero-lightness)
+    );
+    color: var(--rs-text);
+
+    @variant wide {
+      padding: 1.5rem 2rem;
+    }
+  }
+
+  .letter {
+    display: none;
+    position: absolute;
+    top: 0.5rem;
+    right: 1.75rem;
+    font-family: var(--rs-font-display);
+    font-weight: 800;
+    font-size: 13.75rem;
+    line-height: 1;
+    opacity: 0.08;
+    pointer-events: none;
+
+    @variant wide {
+      display: block;
+    }
+  }
+}

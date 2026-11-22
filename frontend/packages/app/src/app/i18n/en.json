@@ -170,6 +170,39 @@
       "unknown": "—",
       "ofOne": "across {{ count }} game",
       "ofMany": "across {{ count }} games"
+    },
+    "time": {
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min"
+    },
+    "unnamed": "Unnamed game",
+    "search": {
+      "label": "Search a game",
+      "placeholder": "A title",
+      "submit": "Search"
+    },
+    "resume": {
+      "name": "Resume",
+      "label": "Resume · last session {{ ago }}",
+      "both": "{{ total }} in all · {{ recent }} over the last two weeks",
+      "total": "{{ total }} in all",
+      "launch": "Launch in Steam"
+    },
+    "recently": {
+      "title": "Played recently",
+      "recentAndTotal": "{{ recent }} over the last 2 weeks · {{ total }} in all",
+      "recent": "{{ recent }} over the last 2 weeks",
+      "agoAndTotal": "{{ ago }} · {{ total }} in all"
+    },
+    "ranking": {
+      "title": "Where the time went",
+      "total": "{{ time }} in all",
+      "othersOne": "The other launched game: {{ time }}.",
+      "othersMany": "The {{ count }} other launched games: {{ time }}."
+    },
+    "picks": {
+      "title": "Never launched, at random",
+      "reroll": "Draw again"
     }
   },
   "library": {

@@ -2,6 +2,7 @@ import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
+  type LibraryGame,
   type LibraryStats,
   type LinkedAccount,
   type SyncRun,
@@ -10,7 +11,7 @@ import {
   TEST_SYNC_RUN,
 } from '@respawn/data';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, api, button, configureApp } from '@app/testing/app-testing';
+import { ACCOUNT, api, button, configureApp, type } from '@app/testing/app-testing';
 import '../../layout/shell';
 import './home';
 
@@ -44,10 +45,83 @@ function neverRead(last: Partial<SyncRun> | null, linkedAt = new Date()): Linked
 }
 
 const SYNC = `/linked-accounts/${TEST_LINKED_ACCOUNT.id}/sync`;
+const GAMES = '/library?sort=name&offset=0&limit=500';
+
+let made = 0;
+
+function game(name: string | null, values: Partial<LibraryGame> = {}): LibraryGame {
+  return {
+    game_id: `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`,
+    name,
+    playtime_seconds: 0,
+    recent_playtime_seconds: 0,
+    last_played_at: null,
+    entries: [],
+    ...values,
+  };
+}
+
+/** Noon, that many days back on the calendar: a clock change cannot move it to another day. */
+function ago(days: number): string {
+  const moment = new Date();
+  moment.setDate(moment.getDate() - days);
+  moment.setHours(12, 0, 0, 0);
+  return moment.toISOString();
+}
+
+/** A small library that has been played, as the API gives it: by title. */
+function played(): LibraryGame[] {
+  return [
+    game('Celeste'),
+    game('Elden Ring', {
+      playtime_seconds: 142 * 3600,
+      recent_playtime_seconds: 6 * 3600,
+      last_played_at: ago(1),
+      entries: [
+        {
+          store_entry_id: '00000000-0000-4000-9000-000000000001',
+          linked_account_id: TEST_LINKED_ACCOUNT.id,
+          source: 'steam',
+          external_id: '1245620',
+          playtime_seconds: 142 * 3600,
+          recent_playtime_seconds: 6 * 3600,
+          last_played_at: ago(1),
+          first_seen_at: '2026-11-18T10:05:00Z',
+          as_of: '2026-11-20T04:02:05Z',
+          missing_since: null,
+        },
+      ],
+    }),
+    game('Hades', { playtime_seconds: 100 * 3600, last_played_at: ago(400) }),
+    game('Hollow Knight'),
+    game('Portal 2', {
+      playtime_seconds: 2 * 3600,
+      recent_playtime_seconds: 45 * 60,
+      last_played_at: ago(3),
+    }),
+    game('Tunic'),
+    game('Unpacking'),
+  ];
+}
+
+/** The library as the home asks for it once an account was read: its figures and its games. */
+async function library(
+  server: Server,
+  stats: LibraryStats,
+  games: LibraryGame[] = [],
+): Promise<void> {
+  await server.answer('/library/stats', stats);
+  await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
+}
 
 describe('Home', () => {
   /** Opens the home, signed in, with these accounts linked. */
-  async function open(accounts: LinkedAccount[], path = '/', stats: LibraryStats | null = STATS) {
+  async function open(
+    accounts: LinkedAccount[],
+    path = '/',
+    stats: LibraryStats | null = STATS,
+    games: LibraryGame[] = [],
+  ) {
     configureApp('fr');
     const harness = await RouterTestingHarness.create();
     const server = api();
@@ -55,7 +129,7 @@ describe('Home', () => {
     await server.answer('/me', ACCOUNT);
     await server.answer('/linked-accounts', { accounts });
     const read = accounts.some((each) => each.sync.last_succeeded_at);
-    if (read && stats) await server.answer('/library/stats', stats);
+    if (read && stats) await library(server, stats, games);
     await arrived;
     await harness.fixture.whenStable();
     return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
@@ -104,7 +178,7 @@ describe('Home', () => {
 
     asked.flush(succeeded());
     await server.home([account()]);
-    await server.answer('/library/stats', STATS);
+    await library(server, STATS);
     await harness.fixture.whenStable();
     expect(title(screen)).toBe('Accueil');
   });
@@ -144,7 +218,7 @@ describe('Home', () => {
     const asked = await server.request(SYNC);
     asked.flush(succeeded());
     await server.home([account()]);
-    await server.answer('/library/stats', STATS);
+    await library(server, STATS);
     await harness.fixture.whenStable();
     expect(title(screen)).toBe('Accueil');
   });
@@ -173,7 +247,7 @@ describe('Home', () => {
         timeout: 7_000,
       },
     );
-    await server.answer('/library/stats', STATS);
+    await library(server, STATS);
     await harness.fixture.whenStable();
 
     expect(title(screen)).toBe('Accueil');
@@ -196,7 +270,7 @@ describe('Home', () => {
     asked.flush(succeeded());
     // The accounts are asked again, and the run that ended makes the figures stale.
     await server.home([account()]);
-    await server.answer('/library/stats', STATS);
+    await library(server, STATS);
     await harness.fixture.whenStable();
     expect(title(screen)).toBe('Accueil');
   });
@@ -279,6 +353,7 @@ describe('Home', () => {
     await server.answer('/me', ACCOUNT);
     await server.home([account()]);
     await server.refuse('/library/stats', 503, 'database_unavailable');
+    await server.answer(GAMES, { total: 0, offset: 0, limit: 500, games: [] });
     await arrived;
     await harness.fixture.whenStable();
     const screen = harness.fixture.nativeElement as HTMLElement;
@@ -330,7 +405,7 @@ describe('Home', () => {
     asked.flush(succeeded());
     // The accounts are asked again, and the run that ended makes the figures stale.
     await server.home([account()]);
-    await server.answer('/library/stats', { ...STATS, playtime_seconds: 613 * 3600 });
+    await library(server, { ...STATS, playtime_seconds: 613 * 3600 });
     await harness.fixture.whenStable();
 
     expect(text(screen, '[data-figure="total"] .figure')).toBe('613 h');
@@ -368,7 +443,7 @@ describe('Home', () => {
     // Another reading ended since (the schedule's): what was refused is no longer the point.
     void TestBed.inject(QueryClient).invalidateQueries({ queryKey: ['linked-accounts'] });
     await server.home([account()]);
-    await server.answer('/library/stats', STATS);
+    await library(server, STATS);
     await harness.fixture.whenStable();
     expect(screen.querySelector('[data-sync-refused]')).toBeNull();
   });
@@ -404,5 +479,199 @@ describe('Home', () => {
     button(screen, 'Réessayer').click();
     await settled(harness, server, []);
     expect(title(screen)).toBe('Aucun compte de jeu lié');
+  });
+
+  describe('the blocks made of the games', () => {
+    const names = (screen: HTMLElement, block: string) =>
+      [...screen.querySelectorAll(`[data-${block}] [data-name]`)].map((each) =>
+        each.textContent.trim(),
+      );
+
+    // A draw is told what chance gives: never left so for the tests that follow.
+    afterEach(() => vi.restoreAllMocks());
+
+    it('puts forward the game played last, with what Steam says of it', async () => {
+      const { screen } = await open([account()], '/', STATS, played());
+
+      expect(text(screen, '[data-resume-label]')).toBe('Reprendre · dernière session hier');
+      expect(text(screen, '[data-resume-name]')).toBe('Elden Ring');
+      expect(text(screen, '[data-resume-time]')).toBe(
+        '142 h au total · 6 h ces deux dernières semaines',
+      );
+    });
+
+    it('launches the game in Steam, when a copy of it is there', async () => {
+      const { screen } = await open([account()], '/', STATS, played());
+
+      const launch = screen.querySelector<HTMLAnchorElement>('[data-launch]')!;
+      expect(launch.textContent.trim()).toBe('Lancer dans Steam');
+      expect(launch.getAttribute('href')).toBe('steam://run/1245620');
+    });
+
+    it('offers no launch for a game no Steam copy of which is known', async () => {
+      const games = played().map((each) => ({ ...each, entries: [] }));
+      const { screen } = await open([account()], '/', STATS, games);
+
+      expect(text(screen, '[data-resume-name]')).toBe('Elden Ring');
+      expect(screen.querySelector('[data-launch]')).toBeNull();
+    });
+
+    it('lists the other games of the last two weeks beside it', async () => {
+      const { screen } = await open([account()], '/', STATS, played());
+
+      expect(names(screen, 'recently')).toEqual(['Portal 2']);
+      expect(text(screen, '[data-recently] [data-played]')).toBe(
+        '45 min ces 2 semaines · 2 h au total',
+      );
+    });
+
+    it('falls back on the latest sessions when Steam names no game of the two weeks', async () => {
+      const games = played().map((each) => ({ ...each, recent_playtime_seconds: null }));
+      const { screen } = await open([account()], '/', STATS, games);
+
+      expect(text(screen, '[data-resume-time]')).toBe('142 h au total');
+      expect(names(screen, 'recently')).toEqual(['Portal 2', 'Hades']);
+      expect(text(screen, '[data-recently] [data-played]')).toBe('Il y a 3 jours · 2 h au total');
+    });
+
+    it('ranks the most played games and sums up the others', async () => {
+      const more = Array.from({ length: 6 }, (_, index) =>
+        game(`Jeu ${index}`, { playtime_seconds: (index + 1) * 60 }),
+      );
+      const { screen } = await open([account()], '/', STATS, [...played(), ...more]);
+
+      expect(names(screen, 'ranking')).toEqual([
+        'Elden Ring',
+        'Hades',
+        'Portal 2',
+        'Jeu 5',
+        'Jeu 4',
+        'Jeu 3',
+      ]);
+      expect(text(screen, '[data-ranking-total]')).toBe('244 h au total');
+      expect(text(screen, '[data-ranking-others]')).toBe('Les 3 autres jeux lancés : 6 min.');
+    });
+
+    it('draws three games never launched, and others on request', async () => {
+      const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const { harness, screen } = await open([account()], '/', STATS, played());
+      // Four were never launched: Celeste, Hollow Knight, Tunic, Unpacking.
+      expect(names(screen, 'picks')).toEqual(['Celeste', 'Hollow Knight', 'Tunic']);
+
+      random.mockReturnValue(0.99);
+      button(screen, 'Autre tirage').click();
+      await harness.fixture.whenStable();
+
+      expect(names(screen, 'picks')).toEqual(['Unpacking', 'Tunic', 'Hollow Knight']);
+    });
+
+    it('keeps the draw when the games are read again', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      const games = played();
+      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      expect(names(screen, 'picks')).toEqual(['Celeste', 'Hollow Knight', 'Tunic']);
+
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
+      const asked = await server.request(SYNC);
+      asked.flush(succeeded());
+      await server.home([account()]);
+      // The same library, read anew: every game is another object.
+      await library(
+        server,
+        STATS,
+        games.map((each) => ({ ...each })),
+      );
+      await harness.fixture.whenStable();
+
+      expect(names(screen, 'picks')).toEqual(['Celeste', 'Hollow Knight', 'Tunic']);
+    });
+
+    it('draws the letter behind the title whole, when it is an emoji', async () => {
+      const games = played().map((each) =>
+        each.name === 'Elden Ring' ? { ...each, name: '🎮 Arcade' } : each,
+      );
+      const { screen } = await open([account()], '/', STATS, games);
+
+      expect(text(screen, '[data-resume] .letter')).toBe('🎮');
+    });
+
+    it('offers no other draw when every game never launched is shown', async () => {
+      const { screen } = await open([account()], '/', STATS, played().slice(0, 4));
+
+      expect(names(screen, 'picks').sort()).toEqual(['Celeste', 'Hollow Knight']);
+      expect(screen.querySelector('[data-reroll]')).toBeNull();
+    });
+
+    it('shows no block a library that was never played has nothing to put in', async () => {
+      const { screen } = await open([account()], '/', STATS, [game('Celeste'), game(null)]);
+
+      expect(screen.querySelector('[data-resume]')).toBeNull();
+      expect(screen.querySelector('[data-recently]')).toBeNull();
+      expect(screen.querySelector('[data-ranking]')).toBeNull();
+      expect(names(screen, 'picks').sort()).toEqual(['Celeste', 'Jeu sans nom']);
+    });
+
+    it('leads to the Library with the title that was searched', async () => {
+      const { harness, server, screen } = await open([account()], '/', STATS, played());
+
+      type(screen.querySelector<HTMLInputElement>('[data-search] input')!, ' portal ');
+      button(screen, 'Chercher').click();
+      await harness.fixture.whenStable();
+
+      expect(title(screen)).toBe('Bibliothèque');
+      expect(names(screen, 'game')).toEqual(['Portal 2']);
+      // The games were already read for the home: they are not asked again.
+      server.http.expectNone(`/api/v1${GAMES}`);
+      // The title is in the field, and off the address.
+      expect(screen.querySelector<HTMLInputElement>('rs-library-toolbar input')?.value).toBe(
+        'portal',
+      );
+      expect(TestBed.inject(Location).path()).toBe('/library');
+    });
+
+    it('says that the games could not be read, and asks again on request', async () => {
+      configureApp('fr');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      await server.answer('/library/stats', STATS);
+      await server.refuse(GAMES, 503, 'database_unavailable');
+      await arrived;
+      await harness.fixture.whenStable();
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      expect(text(screen, '[data-games-refused]')).toBe(
+        'La base de données ne répond pas. Réessayez dans un instant.',
+      );
+      expect(text(screen, '[data-figure="total"] .figure')).toBe('612 h');
+
+      screen.querySelector<HTMLButtonElement>('[data-games-retry]')!.click();
+      await server.answer(GAMES, { total: 7, offset: 0, limit: 500, games: played() });
+      await harness.fixture.whenStable();
+
+      expect(text(screen, '[data-resume-name]')).toBe('Elden Ring');
+    });
+
+    it('says the blocks in English too', async () => {
+      configureApp('en');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      await library(server, STATS, played());
+      await arrived;
+      await harness.fixture.whenStable();
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      expect(text(screen, '[data-resume-label]')).toBe('Resume · last session yesterday');
+      expect(text(screen, '[data-resume-time]')).toBe('142 h in all · 6 h over the last two weeks');
+      expect(text(screen, '[data-recently] h2')).toBe('Played recently');
+      expect(text(screen, '[data-ranking] h2')).toBe('Where the time went');
+      expect(text(screen, '[data-picks] h2')).toBe('Never launched, at random');
+    });
   });
 });

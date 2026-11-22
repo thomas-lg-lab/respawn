@@ -2,7 +2,7 @@ import { Component, computed, input, model, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { FilterTab, SearchField, Select } from '@respawn/ui';
 import { formatCount } from '@app/format/format';
-import { FILTERS, type LibraryFilter, type LibrarySort, SORTS } from '../library-view';
+import { FILTERS, type LibraryFilter, type LibrarySort, SORTS } from '@app/games/game-list';
 
 /**
  * What narrows and orders the library: the filters as a row above the rest, each with how many

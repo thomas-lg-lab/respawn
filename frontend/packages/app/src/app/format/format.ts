@@ -50,6 +50,17 @@ export function playtime(seconds: number): Playtime {
     : { unit: 'hours', count: Math.round(seconds / 3600) };
 }
 
+/** A playtime as a translation says it: the key of its unit and its count in the language. */
+export interface SaidPlaytime {
+  readonly key: 'hours' | 'minutes';
+  readonly count: string;
+}
+
+export function saidPlaytime(seconds: number, language: string): SaidPlaytime {
+  const { unit, count } = playtime(seconds);
+  return { key: unit, count: formatCount(count, language) };
+}
+
 /** A moment, to the minute, in the reader's own time zone: "20 Nov 2026, 05:02". */
 export function formatMoment(moment: string, language: string): string {
   return moments(language).format(new Date(moment));
