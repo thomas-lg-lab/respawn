@@ -75,6 +75,10 @@ export class Api {
     return this.send(this.http.put<T>(API_BASE + path, body));
   }
 
+  delete<T>(path: string): Promise<T> {
+    return this.send(this.http.delete<T>(API_BASE + path));
+  }
+
   private async send<T>(request: Observable<T>): Promise<T> {
     try {
       return await firstValueFrom(request);

@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import type { Account } from '@respawn/data';
 import { ACCOUNT } from '@app/testing/app-testing';
 import { testTranslations } from '@app/testing/translations';
@@ -23,7 +24,11 @@ class Host {
 
 describe('AccountMenu', () => {
   async function create(account: Account = ACCOUNT) {
-    TestBed.configureTestingModule({ imports: [testTranslations('fr')] });
+    TestBed.configureTestingModule({
+      imports: [testTranslations('fr')],
+      // Any address leads somewhere: the menu's link is followed, to no screen of this spec.
+      providers: [provideRouter([{ path: '**', children: [] }])],
+    });
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.account.set(account);
     await fixture.whenStable();
@@ -76,6 +81,20 @@ describe('AccountMenu', () => {
     const fromProvider = await create({ ...ACCOUNT, email: null });
     expect(email(fromProvider.element)).toBeUndefined();
     expect(role(fromProvider.element)).toBe('Administrateur');
+  });
+
+  it('leads to the account screen, and closes behind the visitor', async () => {
+    const { fixture, element, trigger, panel } = await create();
+    trigger.click();
+    await fixture.whenStable();
+
+    const link = element.querySelector<HTMLAnchorElement>('[data-account-link]')!;
+    expect(link.getAttribute('href')).toBe('/account');
+    expect(link.textContent.trim()).toBe('Mon compte');
+
+    link.click();
+    await fixture.whenStable();
+    expect(panel.hidden).toBe(true);
   });
 
   it('says which setting was picked and that the way out was asked, and does neither itself', async () => {

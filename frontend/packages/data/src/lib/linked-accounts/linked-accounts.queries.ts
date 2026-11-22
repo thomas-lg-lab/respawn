@@ -28,6 +28,12 @@ export function awaitsSync(account: LinkedAccount, now: number): boolean {
   return running || (last === null && now - Date.parse(account.linked_at) < FIRST_SYNC_WAIT);
 }
 
+/** A key of the store, and the linked account it is given to. */
+export interface OwnKey {
+  readonly accountId: string;
+  readonly key: string;
+}
+
 /** The last finished run of each account, as one word: it changes when any sync ends. */
 function lastRuns(accounts: LinkedAccount[] | undefined): string {
   return (accounts ?? []).map((account) => `${account.id}:${account.sync.last?.id}`).join();
@@ -87,6 +93,47 @@ export class LinkedAccountQueries {
     return mutationOptions({
       mutationFn: (accountId: string) =>
         this.api.post<SyncRun>(`/linked-accounts/${encodeURIComponent(accountId)}/sync`, {}),
+      onSettled: () => this.client.invalidateQueries({ queryKey: linkedAccountKeys.list }),
+    });
+  }
+
+  /**
+   * Unlinks the account: the API forgets everything it read from it, for good. The account
+   * leaves the list at once, and the library it gave is stale.
+   */
+  unlink() {
+    return mutationOptions({
+      mutationFn: (accountId: string) =>
+        this.api.delete<void>(`/linked-accounts/${encodeURIComponent(accountId)}`),
+      onSuccess: (_, accountId) => {
+        this.client.setQueryData<LinkedAccount[]>(linkedAccountKeys.list, (known) =>
+          known?.filter((account) => account.id !== accountId),
+        );
+        this.libraryChanged();
+      },
+      onSettled: () => this.client.invalidateQueries({ queryKey: linkedAccountKeys.list }),
+    });
+  }
+
+  /**
+   * Gives the account the owner's own key of the store, in place of the one it had. The
+   * store is not asked: the next sync says whether it takes the key. The key is not kept
+   * here once the API answered.
+   */
+  giveKey() {
+    return mutationOptions({
+      mutationFn: ({ accountId, key }: OwnKey) =>
+        this.api.put<void>(`/linked-accounts/${encodeURIComponent(accountId)}/key`, { key }),
+      onSettled: () => this.client.invalidateQueries({ queryKey: linkedAccountKeys.list }),
+      gcTime: 0,
+    });
+  }
+
+  /** Takes the owner's key away: the account is read with the instance's key again. */
+  removeKey() {
+    return mutationOptions({
+      mutationFn: (accountId: string) =>
+        this.api.delete<void>(`/linked-accounts/${encodeURIComponent(accountId)}/key`),
       onSettled: () => this.client.invalidateQueries({ queryKey: linkedAccountKeys.list }),
     });
   }

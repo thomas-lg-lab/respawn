@@ -31,6 +31,11 @@ export const routes: Routes = [
         path: 'library',
         loadComponent: () => import('./pages/library/library').then((m) => m.Library),
       },
+      {
+        // Reached from the account menu, not from a tab.
+        path: 'account',
+        loadComponent: () => import('./pages/account/account').then((m) => m.Account),
+      },
     ],
   },
   {

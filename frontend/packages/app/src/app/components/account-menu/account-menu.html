@@ -1,6 +1,7 @@
 <div
   class="relative"
   rsDisclosure
+  #menu="rsDisclosure"
   (openChange)="$event && opened.emit()"
   *transloco="let t; prefix: 'account'"
 >
@@ -28,6 +29,12 @@
         }
       </div>
     </div>
+
+    <!-- The way to the account screen: the panel closes behind it. -->
+    <a rsButton shape="field" routerLink="/account" data-account-link (click)="menu.close()">
+      <svg lucideSettings class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+      {{ t('view') }}
+    </a>
 
     <rs-settings-choices
       [language]="language()"

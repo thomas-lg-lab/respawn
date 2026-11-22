@@ -1,0 +1,85 @@
+<div class="flex flex-col gap-6" *transloco="let t">
+  <!-- What came of linking Steam: the API sent the browser back here with its word. -->
+  @if (cameBack; as outcome) {
+    @if (outcome === 'linked') {
+      <rs-banner role="status" data-steam-link="linked">{{ t('home.steamLink.linked') }}</rs-banner>
+    } @else {
+      <rs-banner tone="warn" role="alert" [attr.data-steam-link]="outcome">{{
+        t('home.steamLink.' + outcome)
+      }}</rs-banner>
+    }
+  }
+
+  <div class="flex flex-col gap-2">
+    <p rsLabel main>{{ t('account.label') }}</p>
+    <h1 class="type-page-title">{{ t('account.title') }}</h1>
+  </div>
+
+  @if (me.data(); as account) {
+    <rs-card class="flex items-center gap-4" data-identity>
+      <rs-avatar [name]="account.display_name" />
+      <div class="flex min-w-0 flex-col">
+        <span class="truncate font-semibold" data-account-name>{{ account.display_name }}</span>
+        @if (account.email; as email) {
+          <span class="truncate text-muted" data-account-email [title]="email">{{ email }}</span>
+        }
+        @if (account.is_admin) {
+          <span class="type-caption text-muted" data-account-role>{{
+            t('account.administrator')
+          }}</span>
+        }
+      </div>
+    </rs-card>
+  }
+
+  <section class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+      <h2 class="type-card-title">{{ t('account.linked.title') }}</h2>
+      <p class="max-w-[44em] text-muted">{{ t('account.linked.text') }}</p>
+    </div>
+
+    @if (screenNotice(); as said) {
+      <rs-banner [tone]="said.tone" role="status" data-screen-notice>{{ t(said.key) }}</rs-banner>
+    }
+
+    @if (accounts.data(); as all) {
+      @for (account of all; track account.id) {
+        <rs-linked-account
+          [account]="account"
+          [language]="currentLanguage()"
+          [syncing]="isSyncing(account)"
+          [reason]="reasonOf(account)"
+          [notice]="noticeOf(account)"
+          [savingKey]="isSavingKey(account)"
+          [unlinking]="isUnlinking(account)"
+          (syncNow)="syncNow(account.id)"
+          (keyGiven)="giveKey(account.id, $event)"
+          (keyRemoved)="removeKey(account.id)"
+          (unlink)="unlink(account.id)"
+        />
+      } @empty {
+        <p class="text-muted" data-none-linked>{{ t('account.linked.none') }}</p>
+      }
+      <a
+        rsButton
+        class="self-start"
+        data-link-steam
+        [variant]="all.length ? 'outlined' : 'primary'"
+        [href]="linkAddress"
+      >
+        <svg lucideLink class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+        {{ t(all.length ? 'account.linked.another' : 'home.noAccount.link') }}
+      </a>
+    } @else if (accounts.isError()) {
+      <rs-banner tone="warn" role="alert">{{ t(failureKey(accounts.error())) }}</rs-banner>
+      <button rsButton type="button" class="self-start" data-retry (click)="accounts.refetch()">
+        {{ t('home.retry') }}
+      </button>
+    } @else {
+      <div role="status">
+        <rs-skeleton class="h-40" />
+        <span class="sr-only">{{ t('app.loading') }}</span>
+      </div>
+    }
+  </section>
+</div>
