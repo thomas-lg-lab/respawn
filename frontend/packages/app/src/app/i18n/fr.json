@@ -203,6 +203,23 @@
     "picks": {
       "title": "Jamais lancés, au hasard",
       "reroll": "Autre tirage"
+    },
+    "years": {
+      "title": "Temps de jeu par année",
+      "since": "Compté jour par jour depuis le {{ date }}, la première synchronisation. Une année en pointillés n’est pas entière.",
+      "open": "Année incomplète"
+    },
+    "activity": {
+      "title": "Activité",
+      "total": "{{ total }} au total",
+      "gone": "Un jeu qui n’est plus dans votre bibliothèque",
+      "othersOne": "et {{ count }} autre jeu",
+      "othersMany": "et {{ count }} autres jeux",
+      "note": "Un jour montre ce que sa lecture a trouvé depuis la précédente.",
+      "empty": {
+        "title": "Le suivi a commencé le {{ date }}",
+        "text": "Steam ne donne pas le détail des sessions passées. respawn relève vos temps de jeu une fois par jour : ce que vous jouez s’affichera ici après la prochaine lecture."
+      }
     }
   },
   "library": {
@@ -283,6 +300,8 @@
         "never": "Jamais lancés"
       },
       "bar": "Barre segmentée",
+      "chart": "Histogramme",
+      "chartOpen": "Pas encore entier",
       "hours": "{{ count }} h",
       "banners": "Bandeaux",
       "status": "Synchronisation en cours : vos jeux restent affichés.",

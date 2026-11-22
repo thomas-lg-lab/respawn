@@ -1,4 +1,10 @@
-import type { Account, LibraryStats, LinkedAccount, SyncRun } from '../models/models';
+import type {
+  Account,
+  LibraryHistory,
+  LibraryStats,
+  LinkedAccount,
+  SyncRun,
+} from '../models/models';
 
 /** For the specs, here and in the packages that use this one: an account as the API describes one. */
 export const TEST_ACCOUNT: Account = {
@@ -42,4 +48,10 @@ export const TEST_LIBRARY_STATS: LibraryStats = {
   recent_playtime_seconds: 50400,
   recently_played: 3,
   tracking_since: '2026-11-18T10:05:00Z',
+};
+
+/** A history that has nothing yet: the library was first read, and no reading followed. */
+export const TEST_LIBRARY_HISTORY: LibraryHistory = {
+  tracking_since: TEST_LIBRARY_STATS.tracking_since,
+  days: [],
 };

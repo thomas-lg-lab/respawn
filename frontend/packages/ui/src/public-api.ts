@@ -6,6 +6,7 @@ export * from './lib/avatar/avatar';
 export * from './lib/banner/banner';
 export * from './lib/button/button';
 export * from './lib/card/card';
+export * from './lib/column-chart/column-chart';
 export * from './lib/cover/cover';
 export * from './lib/disclosure/disclosure';
 export * from './lib/filter-tab/filter-tab';
