@@ -36,7 +36,7 @@ services:
 
   # The tools, kept running so that a check does not start from an empty container each time: the packages
   # stay installed and the build stays warm. They do nothing by themselves; `docker compose exec` runs in them.
-  # They mount this checkout and write into it (node_modules, bin/, obj/): one checkout, one set of tools
+  # They mount this checkout and write into it (bin/, obj/; node_modules is a volume): one checkout, one set of tools
   # (CONTRIBUTING.md).
   node:
     profiles: [tools]
@@ -49,6 +49,9 @@ services:
       RESPAWN_API: http://app:8080
     volumes:
       - ./frontend:/web
+      # The packages on a disk of the container's own, over the checkout's folder: read through a disk
+      # shared from Windows or macOS, they are what a check spends most of its time on (CONTRIBUTING.md).
+      - node-modules:/web/node_modules
       - npm-cache:/root/.npm
     ports:
       - "127.0.0.1:4200:4200"
@@ -69,5 +72,6 @@ services:
       - nuget-packages:/root/.nuget/packages
 
 volumes:
+  node-modules:
   npm-cache:
   nuget-packages:
