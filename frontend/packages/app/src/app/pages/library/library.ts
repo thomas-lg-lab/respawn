@@ -1,5 +1,6 @@
+import { Location } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
@@ -7,6 +8,7 @@ import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatCount } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
+import { saidOnce } from '@app/session/said-once';
 import { GameTable } from './components/game-table';
 import { LibraryToolbar } from './components/library-toolbar';
 import {
@@ -17,10 +19,13 @@ import {
   longestPlaytime,
   matching,
   sorted,
-} from './library-view';
+} from '@app/games/game-list';
 
 /** How many games a "show more" adds: a list of a thousand rows is not drawn at once. */
 const STEP = 100;
+
+/** The title another screen asks this one to look for, written on the address it leads to. */
+const SEARCHED = 'q';
 
 /**
  * The library as a list: every game of the linked accounts, searched by title, filtered and
@@ -43,7 +48,13 @@ export class Library {
   /** "Ago" is counted from the moment the games were read, so it follows each new reading. */
   protected readonly now = computed(() => this.games.dataUpdatedAt() || Date.now());
 
-  protected readonly search = signal('');
+  /**
+   * What is searched: at first the title the home was asked for, if it led here. The address
+   * says it for that one arrival, then the field does.
+   */
+  protected readonly search = signal(
+    inject(ActivatedRoute).snapshot.queryParamMap.get(SEARCHED) ?? '',
+  );
   protected readonly filter = signal<LibraryFilter>('all');
   protected readonly sort = signal<LibrarySort>('last_played');
   /** How many steps of the list are shown: back to one whenever the list changes. */
@@ -70,6 +81,10 @@ export class Library {
 
   /** A full bar is the most played game of the library, whatever is searched or filtered. */
   protected readonly scale = computed(() => longestPlaytime(this.games.data() ?? []));
+
+  constructor() {
+    saidOnce(inject(Location), inject(Router), SEARCHED);
+  }
 
   protected typed(search: string): void {
     this.search.set(search);

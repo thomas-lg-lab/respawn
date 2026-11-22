@@ -1,0 +1,30 @@
+<section class="flex flex-col gap-3" data-recently *transloco="let t; prefix: 'home'">
+  <h2 class="type-label text-muted">{{ t('recently.title') }}</h2>
+  <ul class="grid grid-cols-1 gap-3 wide:grid-cols-2">
+    @for (game of games(); track game.id) {
+      <li
+        class="flex items-center gap-3.5 rounded-card border border-line bg-surface p-3"
+        [attr.data-game]="game.id"
+      >
+        <rs-cover class="w-12 shrink-0" aria-hidden="true" [hue]="game.hue" />
+        <span class="flex min-w-0 flex-col gap-0.5">
+          <span class="truncate font-semibold" data-name>{{ game.name ?? t('unnamed') }}</span>
+          @let recent =
+            game.recent ? t('time.' + game.recent.key, { count: game.recent.count }) : null;
+          @let total = game.total ? t('time.' + game.total.key, { count: game.total.count }) : null;
+          <span class="type-caption text-muted tabular-nums" data-played>
+            @if (recent) {
+              {{
+                total
+                  ? t('recently.recentAndTotal', { recent, total })
+                  : t('recently.recent', { recent })
+              }}
+            } @else {
+              {{ total ? t('recently.agoAndTotal', { ago: game.ago, total }) : game.ago }}
+            }
+          </span>
+        </span>
+      </li>
+    }
+  </ul>
+</section>

@@ -170,6 +170,39 @@
       "unknown": "—",
       "ofOne": "sur {{ count }} jeu",
       "ofMany": "sur {{ count }} jeux"
+    },
+    "time": {
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min"
+    },
+    "unnamed": "Jeu sans nom",
+    "search": {
+      "label": "Rechercher un jeu",
+      "placeholder": "Un titre",
+      "submit": "Chercher"
+    },
+    "resume": {
+      "name": "Reprendre",
+      "label": "Reprendre · dernière session {{ ago }}",
+      "both": "{{ total }} au total · {{ recent }} ces deux dernières semaines",
+      "total": "{{ total }} au total",
+      "launch": "Lancer dans Steam"
+    },
+    "recently": {
+      "title": "Joué récemment",
+      "recentAndTotal": "{{ recent }} ces 2 semaines · {{ total }} au total",
+      "recent": "{{ recent }} ces 2 semaines",
+      "agoAndTotal": "{{ ago }} · {{ total }} au total"
+    },
+    "ranking": {
+      "title": "Où est passé le temps",
+      "total": "{{ time }} au total",
+      "othersOne": "L’autre jeu lancé : {{ time }}.",
+      "othersMany": "Les {{ count }} autres jeux lancés : {{ time }}."
+    },
+    "picks": {
+      "title": "Jamais lancés, au hasard",
+      "reroll": "Autre tirage"
     }
   },
   "library": {

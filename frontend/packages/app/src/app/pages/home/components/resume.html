@@ -1,0 +1,30 @@
+<section [attr.aria-label]="t('resume.name')" data-resume *transloco="let t; prefix: 'home'">
+  <rs-hero [hue]="hue()" [letter]="initial()">
+    <p rsLabel main class="relative" data-resume-label [attr.title]="last()?.moment">
+      {{ last() ? t('resume.label', { ago: last()?.ago }) : t('resume.name') }}
+    </p>
+    <h2 class="relative type-hero wrap-anywhere" data-resume-name>
+      {{ game().name ?? t('unnamed') }}
+    </h2>
+    @if (total(); as all) {
+      <p class="relative tabular-nums" data-resume-time>
+        @if (recent(); as lately) {
+          {{
+            t('resume.both', {
+              total: t('time.' + all.key, { count: all.count }),
+              recent: t('time.' + lately.key, { count: lately.count }),
+            })
+          }}
+        } @else {
+          {{ t('resume.total', { total: t('time.' + all.key, { count: all.count }) }) }}
+        }
+      </p>
+    }
+    @if (launch(); as address) {
+      <a rsButton variant="primary" class="relative mt-2 self-start" data-launch [href]="address">
+        <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+        {{ t('resume.launch') }}
+      </a>
+    }
+  </rs-hero>
+</section>

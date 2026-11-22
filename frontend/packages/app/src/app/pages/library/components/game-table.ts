@@ -3,7 +3,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import type { LibraryGame } from '@respawn/data';
 import { Cover, SegmentedBar } from '@respawn/ui';
 import { formatAgo, formatCount, formatMoment, playtime } from '@app/format/format';
-import { coverHue, isMissing } from '../library-view';
+import { coverHue, isMissing } from '@app/games/game-list';
 
 /** A duration as a cell shows it: a translation key and the count that goes in it. */
 interface Said {

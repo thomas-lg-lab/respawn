@@ -1,0 +1,20 @@
+<rs-card class="flex flex-col gap-3" data-picks *transloco="let t; prefix: 'home'">
+  <div class="flex min-h-touch items-center justify-between gap-3">
+    <h2 class="type-card-title">{{ t('picks.title') }}</h2>
+    @if (more()) {
+      <button rsButton type="button" data-reroll (click)="reroll.emit()">
+        {{ t('picks.reroll') }}
+      </button>
+    }
+  </div>
+  <ul class="flex flex-col gap-2.5">
+    @for (pick of picks(); track pick.id) {
+      <li class="flex items-center gap-3" [attr.data-game]="pick.id">
+        <rs-cover class="w-7.5 shrink-0 rounded-thumb" aria-hidden="true" [hue]="pick.hue" />
+        <span class="min-w-0 truncate font-semibold" data-name>{{
+          pick.name ?? t('unnamed')
+        }}</span>
+      </li>
+    }
+  </ul>
+</rs-card>
