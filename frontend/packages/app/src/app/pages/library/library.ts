@@ -8,7 +8,7 @@ import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatCount } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
-import { saidOnce } from '@app/session/said-once';
+import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
 import { GameTable } from './components/game-table';
 import { LibraryToolbar } from './components/library-toolbar';
 import {
@@ -23,9 +23,6 @@ import {
 
 /** How many games a "show more" adds: a list of a thousand rows is not drawn at once. */
 const STEP = 100;
-
-/** The title another screen asks this one to look for, written on the address it leads to. */
-const SEARCHED = 'q';
 
 /**
  * The library as a list: every game of the linked accounts, searched by title, filtered and
@@ -53,7 +50,7 @@ export class Library {
    * says it for that one arrival, then the field does.
    */
   protected readonly search = signal(
-    inject(ActivatedRoute).snapshot.queryParamMap.get(SEARCHED) ?? '',
+    inject(ActivatedRoute).snapshot.queryParamMap.get(LIBRARY_SEARCH) ?? '',
   );
   protected readonly filter = signal<LibraryFilter>('all');
   protected readonly sort = signal<LibrarySort>('last_played');
@@ -83,7 +80,7 @@ export class Library {
   protected readonly scale = computed(() => longestPlaytime(this.games.data() ?? []));
 
   constructor() {
-    saidOnce(inject(Location), inject(Router), SEARCHED);
+    saidOnce(inject(Location), inject(Router), LIBRARY_SEARCH);
   }
 
   protected typed(search: string): void {

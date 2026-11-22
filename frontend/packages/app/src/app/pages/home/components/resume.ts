@@ -36,8 +36,9 @@ export class Resume {
   });
 
   protected readonly hue = computed(() => coverHue(this.game().game_id));
+  /** The first character of the title, whole: an emoji is one, though it is two in a string. */
   protected readonly initial = computed(() =>
-    (this.game().name ?? '').trim().charAt(0).toLocaleUpperCase(this.language()),
+    ([...(this.game().name ?? '').trim()][0] ?? '').toLocaleUpperCase(this.language()),
   );
 
   /** The last session, as it reads inside a sentence: "yesterday", "3 days ago". */

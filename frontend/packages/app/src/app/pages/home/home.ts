@@ -1,10 +1,11 @@
 import { Location } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideRefreshCw } from '@lucide/angular';
 import {
   ApiFailure,
+  type LibraryGame,
   LibraryQueries,
   LinkedAccountQueries,
   STEAM_LINK_OUTCOME,
@@ -16,7 +17,7 @@ import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
-import { saidOnce } from '@app/session/said-once';
+import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
 import { Figures } from './components/figures';
 import { FirstSync } from './components/first-sync';
 import { GameSearch } from './components/game-search';
@@ -27,7 +28,15 @@ import { Resume } from './components/resume';
 import { SyncBanner } from './components/sync-banner';
 import { SyncIssue } from './components/sync-issue';
 import { TimeRanking } from './components/time-ranking';
-import { PICKS, drawn, lastPlayed, neverLaunched, playedRecently, ranking } from './library-blocks';
+import {
+  PICKS,
+  drawn,
+  keptDraw,
+  lastPlayed,
+  neverLaunched,
+  playedRecently,
+  ranking,
+} from './library-blocks';
 import {
   type SyncView,
   accountInView,
@@ -143,11 +152,13 @@ export class Home {
   private readonly neverLaunched = computed(() => neverLaunched(this.games.data() ?? []));
   /** Another draw can only give other games when there are more than one draw shows. */
   protected readonly moreToDraw = computed(() => this.neverLaunched().length > PICKS);
-  /** How many draws were asked for: each one draws again. */
-  private readonly draws = signal(0);
-  protected readonly picks = computed(() => {
-    this.draws();
-    return drawn(this.neverLaunched(), PICKS);
+  /**
+   * The draw: made when the games arrive, and again on request. A new reading of the games
+   * keeps it while its games can still be drawn.
+   */
+  protected readonly picks = linkedSignal<LibraryGame[], LibraryGame[]>({
+    source: this.neverLaunched,
+    computation: (pool, shown) => keptDraw(pool, shown?.value, PICKS),
   });
 
   /**
@@ -249,10 +260,12 @@ export class Home {
 
   /** A title was asked for: the Library looks for it. */
   protected search(title: string): void {
-    void this.router.navigate(['/library'], { queryParams: title ? { q: title } : {} });
+    void this.router.navigate(['/library'], {
+      queryParams: title ? { [LIBRARY_SEARCH]: title } : {},
+    });
   }
 
   protected drawAgain(): void {
-    this.draws.update((draws) => draws + 1);
+    this.picks.set(drawn(this.neverLaunched(), PICKS));
   }
 }

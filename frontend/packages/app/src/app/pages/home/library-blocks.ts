@@ -14,16 +14,20 @@ const RANKED = 6;
 /** How many never launched games a draw gives. */
 export const PICKS = 3;
 
-/** The game to resume: the one whose last session is the latest, if a store told any. */
+/**
+ * The game to resume: the one whose last session is the latest, if a store told any. Never
+ * one no store lists any more: it left the library, there is nothing to resume.
+ */
 export function lastPlayed(games: readonly LibraryGame[], language: string): LibraryGame | null {
-  const played = games.filter((game) => game.last_played_at !== null);
+  const played = games.filter((game) => game.last_played_at !== null && !isMissing(game));
   return sorted(played, 'last_played', language)[0] ?? null;
 }
 
 /**
- * The games played lately, beside the one to resume. `recent`: those of the last two weeks,
- * the most played first. When the store names none (it says nothing of the two weeks on some
- * profiles), `last`: the latest sessions.
+ * The games played lately, beside the one to resume, among those a store still lists.
+ * `recent`: those of the last two weeks, the most played first; none when the one to resume
+ * is the only one of them. When the store names no game of the two weeks at all (it says
+ * nothing of them on some profiles), `last`: the latest sessions.
  */
 export interface PlayedRecently {
   readonly by: 'recent' | 'last';
@@ -35,12 +39,16 @@ export function playedRecently(
   resumed: LibraryGame | null,
   language: string,
 ): PlayedRecently {
-  const others = games.filter((game) => game !== resumed);
-  // By title first: the sort keeps that order between two games played as much.
-  const lately = sorted(kept(others, 'recent'), 'name', language).sort(
-    (a, b) => (b.recent_playtime_seconds ?? 0) - (a.recent_playtime_seconds ?? 0),
-  );
-  if (lately.length) return { by: 'recent', games: lately.slice(0, RECENT) };
+  const listed = games.filter((game) => !isMissing(game));
+  const others = listed.filter((game) => game !== resumed);
+  // The store told the two weeks as soon as it names one game of them, the resumed one too.
+  if (kept(listed, 'recent').length) {
+    // By title first: the sort keeps that order between two games played as much.
+    const lately = sorted(kept(others, 'recent'), 'name', language).sort(
+      (a, b) => (b.recent_playtime_seconds ?? 0) - (a.recent_playtime_seconds ?? 0),
+    );
+    return { by: 'recent', games: lately.slice(0, RECENT) };
+  }
 
   const played = others.filter((game) => game.last_played_at !== null);
   return { by: 'last', games: sorted(played, 'last_played', language).slice(0, RECENT) };
@@ -85,4 +93,23 @@ export function drawn<T>(pool: readonly T[], count: number, random = Math.random
     picked.push(...left.splice(Math.floor(random() * left.length), 1));
   }
   return picked;
+}
+
+/**
+ * The draw to show once the games were read again: the one shown before, each game as it now
+ * is, while all of them can still be drawn and none is lacking; a new one otherwise. A new
+ * reading of the library must not change the draw under the visitor's eyes.
+ */
+export function keptDraw(
+  pool: readonly LibraryGame[],
+  shown: readonly LibraryGame[] | undefined,
+  count: number,
+  random = Math.random,
+): LibraryGame[] {
+  const byId = new Map(pool.map((game) => [game.game_id, game]));
+  const still = (shown ?? []).flatMap((game) => byId.get(game.game_id) ?? []);
+  const whole = shown !== undefined && still.length === shown.length;
+  return whole && still.length === Math.min(count, pool.length)
+    ? still
+    : drawn(pool, count, random);
 }

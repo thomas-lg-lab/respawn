@@ -1,5 +1,12 @@
 import type { LibraryEntry, LibraryGame } from '@respawn/data';
-import { drawn, lastPlayed, neverLaunched, playedRecently, ranking } from './library-blocks';
+import {
+  drawn,
+  keptDraw,
+  lastPlayed,
+  neverLaunched,
+  playedRecently,
+  ranking,
+} from './library-blocks';
 
 function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
   return {
@@ -58,6 +65,12 @@ describe('the blocks of the home', () => {
     expect(lastPlayed([celeste, unknown], 'en')).toBeNull();
   });
 
+  it('resumes no game that no store lists any more', () => {
+    const gone = { ...portal, entries: [entry('2026-11-20T04:00:00Z')] };
+
+    expect(lastPlayed([celeste, hades, gone, tunic], 'en')).toBe(hades);
+  });
+
   it('lists the games of the last two weeks, the most played first, without the resumed one', () => {
     const also = game('Also', { playtime_seconds: 9000, recent_playtime_seconds: 5400 });
 
@@ -92,6 +105,23 @@ describe('the blocks of the home', () => {
     expect(names(played.games)).toEqual(['Hades', 'Tunic']);
   });
 
+  it('lists none when the resumed game is the only one of the two weeks', () => {
+    const idle = { ...hades, recent_playtime_seconds: 0 };
+
+    // The store told the two weeks: an old session is not "played recently".
+    expect(playedRecently([celeste, idle, portal, tunic], portal, 'en')).toEqual({
+      by: 'recent',
+      games: [],
+    });
+  });
+
+  it('lists no game that no store lists any more', () => {
+    const gone = { ...hades, entries: [entry('2026-11-20T04:00:00Z')] };
+    const also = game('Also', { recent_playtime_seconds: 60 });
+
+    expect(names(playedRecently([gone, also, portal], portal, 'en').games)).toEqual(['Also']);
+  });
+
   it('ranks the launched games by playtime and sums up the ones it does not name', () => {
     const more = Array.from({ length: 6 }, (_, index) =>
       game(`G${index}`, { playtime_seconds: 1000 + index }),
@@ -124,5 +154,30 @@ describe('the blocks of the home', () => {
     expect(drawn(['a', 'b', 'c', 'd'], 3, always(0.99))).toEqual(['d', 'c', 'b']);
     expect(drawn(['a', 'b'], 3, always(0.5))).toEqual(['b', 'a']);
     expect(drawn([], 3)).toEqual([]);
+  });
+
+  it('keeps a draw when the games are read again, each game as it now is', () => {
+    const first = (value: string) => game(value);
+    const pool = ['a', 'b', 'c', 'd'].map(first);
+    const again = pool.map((each) => ({ ...each }));
+
+    const kept = keptDraw(again, [pool[3]!, pool[1]!, pool[0]!], 3, () => 0);
+
+    expect(kept).toEqual([again[3], again[1], again[0]]);
+    expect(kept[0]).toBe(again[3]);
+  });
+
+  it('draws again when a game of the draw can no longer be drawn, or when one is lacking', () => {
+    const pool = ['a', 'b', 'c', 'd'].map((each) => game(each));
+    const launched = game('z');
+
+    expect(names(keptDraw(pool, [launched, pool[1]!, pool[2]!], 3, () => 0))).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+    // Two were all there was; a third can now be drawn.
+    expect(keptDraw(pool, [pool[0]!, pool[1]!], 3, () => 0)).toHaveLength(3);
+    expect(keptDraw(pool, undefined, 3, () => 0)).toHaveLength(3);
   });
 });

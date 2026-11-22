@@ -93,6 +93,25 @@ describe('the return after a sign-in', () => {
     await vi.waitFor(() => expect(router.url).toBe('/library'));
   });
 
+  it('comes back without what the address said for one arrival', async () => {
+    // The home's search, and the word of a link: the screen read them when it arrived.
+    const { harness, router, server, returnTo } = await visit(
+      '/library?q=portal&sort=name&steam_link=linked',
+      (server) => server.answer('/me', ACCOUNT),
+    );
+
+    const read = TestBed.inject(QueryClient)
+      .fetchQuery({ queryKey: ['library'], queryFn: () => TestBed.inject(Api).get('/library') })
+      .catch(() => undefined);
+    await server.refuse('/library', 401, 'not_signed_in');
+    await read;
+    await server.answer('/config', SIGN_IN_OPTIONS);
+    await harness.fixture.whenStable();
+
+    await vi.waitFor(() => expect(returnTo()).toBe('/library?sort=name'));
+    expect(router.url.startsWith('/sign-in?')).toBe(true);
+  });
+
   it('comes back there after the creation of an account too', async () => {
     const { router, screen, server } = await visit('/library', async (server) => {
       await server.refuse('/me', 401, 'not_signed_in');

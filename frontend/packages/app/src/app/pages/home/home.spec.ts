@@ -487,6 +487,9 @@ describe('Home', () => {
         each.textContent.trim(),
       );
 
+    // A draw is told what chance gives: never left so for the tests that follow.
+    afterEach(() => vi.restoreAllMocks());
+
     it('puts forward the game played last, with what Steam says of it', async () => {
       const { screen } = await open([account()], '/', STATS, played());
 
@@ -560,7 +563,37 @@ describe('Home', () => {
       await harness.fixture.whenStable();
 
       expect(names(screen, 'picks')).toEqual(['Unpacking', 'Tunic', 'Hollow Knight']);
-      random.mockRestore();
+    });
+
+    it('keeps the draw when the games are read again', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      const games = played();
+      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      expect(names(screen, 'picks')).toEqual(['Celeste', 'Hollow Knight', 'Tunic']);
+
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
+      const asked = await server.request(SYNC);
+      asked.flush(succeeded());
+      await server.home([account()]);
+      // The same library, read anew: every game is another object.
+      await library(
+        server,
+        STATS,
+        games.map((each) => ({ ...each })),
+      );
+      await harness.fixture.whenStable();
+
+      expect(names(screen, 'picks')).toEqual(['Celeste', 'Hollow Knight', 'Tunic']);
+    });
+
+    it('draws the letter behind the title whole, when it is an emoji', async () => {
+      const games = played().map((each) =>
+        each.name === 'Elden Ring' ? { ...each, name: '🎮 Arcade' } : each,
+      );
+      const { screen } = await open([account()], '/', STATS, games);
+
+      expect(text(screen, '[data-resume] .letter')).toBe('🎮');
     });
 
     it('offers no other draw when every game never launched is shown', async () => {

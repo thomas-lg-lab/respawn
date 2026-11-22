@@ -14,7 +14,6 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import {
   AccountQueries,
   PROVIDER_OUTCOME,
-  STEAM_LINK_OUTCOME,
   providerOutcome,
   providerSignInAddress,
 } from '@respawn/data';
@@ -24,7 +23,7 @@ import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { AccountMenu, type LinkableProvider } from '@app/components/account-menu/account-menu';
 import { failureKey } from '@app/errors/failure-message';
 import { type Language, LanguageSetting } from '@app/i18n/language';
-import { saidOnce } from '@app/session/said-once';
+import { saidOnce, withoutSaidOnce } from '@app/session/said-once';
 
 /** The screens a tab leads to, in the order of the tabs, each with the key of its name. */
 const TABS = [
@@ -98,16 +97,11 @@ export class Shell {
 
   /**
    * The providers: the ones linked already, and the others to link, each coming back to this
-   * screen, without the word of a previous link, through a provider or through Steam.
+   * screen, without what its address said for one arrival (the word of a previous link, a
+   * search the home asked for).
    */
   protected readonly providers = computed<LinkableProvider[]>(() => {
-    const here = this.router.parseUrl(this.address());
-    here.queryParams = Object.fromEntries(
-      Object.entries(here.queryParams).filter(
-        ([key]) => key !== PROVIDER_OUTCOME && key !== STEAM_LINK_OUTCOME,
-      ),
-    );
-    const back = this.router.serializeUrl(here);
+    const back = withoutSaidOnce(this.router, this.address());
     return (this.accountProviders.data() ?? []).map((provider) => ({
       ...provider,
       address: providerSignInAddress(provider.name, back, true),

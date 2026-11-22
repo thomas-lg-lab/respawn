@@ -114,7 +114,7 @@
         </div>
       }
 
-      @if (games.data(); as all) {
+      @if (games.data()) {
         @if (ranked().top.length || picks().length) {
           <div class="grid grid-cols-1 items-start gap-4 wide:grid-cols-2">
             @if (ranked().top.length) {
