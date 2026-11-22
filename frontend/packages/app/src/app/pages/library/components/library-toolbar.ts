@@ -1,16 +1,17 @@
 import { Component, computed, input, model, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { Pill, SearchField, Select } from '@respawn/ui';
+import { FilterTab, SearchField, Select } from '@respawn/ui';
 import { formatCount } from '@app/format/format';
 import { FILTERS, type LibraryFilter, type LibrarySort, SORTS } from '../library-view';
 
 /**
- * What narrows and orders the library: a search by title, the filters, each with how many
- * games it would keep, and the order of the list. It holds none of it: the screen does.
+ * What narrows and orders the library: the filters as a row above the rest, each with how many
+ * games it would keep, a search by title, and the order of the list. It holds none of it: the
+ * screen does.
  */
 @Component({
   selector: 'rs-library-toolbar',
-  imports: [TranslocoDirective, Pill, SearchField, Select],
+  imports: [TranslocoDirective, FilterTab, SearchField, Select],
   templateUrl: './library-toolbar.html',
 })
 export class LibraryToolbar {

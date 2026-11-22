@@ -11,4 +11,15 @@
   :host(:disabled) {
     opacity: 0.5;
   }
+
+  /* Quiet: no box, the words and the arrow. As tall as before, so as easy to touch. */
+  :host([data-quiet]) {
+    padding-inline: 0.25rem;
+    border-color: transparent;
+    background-color: transparent;
+    font-weight: 600;
+  }
+  :host([data-quiet]:hover) {
+    background-color: var(--rs-surface-2);
+  }
 }

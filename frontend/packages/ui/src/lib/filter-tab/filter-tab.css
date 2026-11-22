@@ -1,0 +1,31 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  :host {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: var(--rs-size-touch);
+    background-color: transparent;
+    color: var(--rs-muted);
+    font-weight: 500;
+    white-space: nowrap;
+    transition-property: color, box-shadow;
+    transition-duration: var(--rs-duration-hover);
+    @apply type-control;
+  }
+  :host(:hover) {
+    color: var(--rs-text);
+  }
+  :host(:disabled) {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* On: the text's own colour, and a line that sits on the rule of the row. */
+  :host([aria-pressed='true']) {
+    box-shadow: inset 0 -2px 0 var(--rs-text);
+    color: var(--rs-text);
+    font-weight: 600;
+  }
+}

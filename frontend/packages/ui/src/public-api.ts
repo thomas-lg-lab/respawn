@@ -8,6 +8,7 @@ export * from './lib/button/button';
 export * from './lib/card/card';
 export * from './lib/cover/cover';
 export * from './lib/disclosure/disclosure';
+export * from './lib/filter-tab/filter-tab';
 export * from './lib/label/label';
 export * from './lib/logo/logo';
 export * from './lib/pill/pill';
