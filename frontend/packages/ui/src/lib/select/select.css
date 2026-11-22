@@ -1,0 +1,14 @@
+@layer components {
+  :host {
+    height: var(--rs-size-touch);
+    padding-inline: 0.75rem;
+    border: 1px solid var(--rs-control-line);
+    border-radius: var(--rs-radius-pill);
+    background-color: var(--rs-surface);
+    color: var(--rs-text);
+    font-weight: 500;
+  }
+  :host(:disabled) {
+    opacity: 0.5;
+  }
+}

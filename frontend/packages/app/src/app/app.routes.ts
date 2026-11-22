@@ -27,6 +27,10 @@ export const routes: Routes = [
         pathMatch: 'full',
         loadComponent: () => import('./pages/home/home').then((m) => m.Home),
       },
+      {
+        path: 'library',
+        loadComponent: () => import('./pages/library/library').then((m) => m.Library),
+      },
     ],
   },
   {

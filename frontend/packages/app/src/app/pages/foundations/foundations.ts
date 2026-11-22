@@ -44,7 +44,7 @@ type Filter = (typeof FILTERS)[number];
     SettingsChoices,
     LucideRefreshCw,
   ],
-  host: { class: 'mx-auto block max-w-5xl px-4 py-6 wide:px-10 wide:py-10' },
+  host: { class: 'mx-auto block max-w-7xl px-4 py-6 wide:px-10 wide:py-10' },
   templateUrl: './foundations.html',
 })
 export class Foundations {

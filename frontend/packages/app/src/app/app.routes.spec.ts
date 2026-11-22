@@ -280,6 +280,33 @@ describe('routes', () => {
     );
   });
 
+  it('says in the tabs which screen is the current one, whatever is written after its address', async () => {
+    const { harness, server, screen } = await visit('/?steam_link=failed', signedIn);
+    const current = (tabs: string) =>
+      [...screen.querySelectorAll(`[data-tabs="${tabs}"] a`)]
+        .filter((each) => each.getAttribute('aria-current') === 'page')
+        .map((each) => each.textContent);
+
+    expect(screen.querySelector('[data-tabs="row"]')?.getAttribute('aria-label')).toBe(
+      'Navigation principale',
+    );
+    expect(current('row')).toEqual(['Accueil']);
+    expect(current('bar')).toEqual(['Accueil']);
+
+    screen.querySelector<HTMLAnchorElement>('[data-tabs="row"] a[href="/library"]')!.click();
+    await server.answer('/library?sort=name&offset=0&limit=500', {
+      total: 0,
+      offset: 0,
+      limit: 500,
+      games: [],
+    });
+    await harness.fixture.whenStable();
+
+    expect(title(screen)).toBe('Bibliothèque');
+    expect(current('row')).toEqual(['Bibliothèque']);
+    expect(current('bar')).toEqual(['Bibliothèque']);
+  });
+
   it('shows the foundations to anyone, without asking who they are', async () => {
     const { screen } = await visit('/foundations', () => Promise.resolve());
 

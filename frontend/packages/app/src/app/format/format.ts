@@ -27,3 +27,31 @@ export function formatMoment(moment: string, language: string): string {
     new Date(moment),
   );
 }
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** The start of a moment's day, on the reader's own calendar. */
+function dayOf(moment: number): number {
+  const date = new Date(moment);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+/**
+ * How long ago a moment was, as the language says it and no finer than the day: "Today",
+ * "Yesterday", "3 days ago", then weeks, months and years. The days are the reader's
+ * calendar's: last night is yesterday, however few hours ago. A moment after `now` is today.
+ */
+export function formatAgo(moment: string, now: number, language: string): string {
+  // Rounded: a day is an hour short or long when the clocks change.
+  const days = Math.max(0, Math.round((dayOf(now) - dayOf(Date.parse(moment))) / DAY));
+  const said = new Intl.RelativeTimeFormat(language, { numeric: 'auto' });
+  const text =
+    days < 14
+      ? said.format(-days, 'day')
+      : days < 60
+        ? said.format(-Math.round(days / 7), 'week')
+        : days < 365
+          ? said.format(-Math.round(days / 30), 'month')
+          : said.format(-Math.floor(days / 365), 'year');
+  return text.charAt(0).toLocaleUpperCase(language) + text.slice(1);
+}

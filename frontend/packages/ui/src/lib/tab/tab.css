@@ -1,0 +1,26 @@
+@reference '../../styles/theme.css';
+
+@layer components {
+  :host {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--rs-size-touch);
+    padding-inline: 1rem;
+    border-radius: var(--rs-radius-pill);
+    color: var(--rs-text);
+    font-weight: 600;
+    transition-property: background-color, color;
+    transition-duration: var(--rs-duration-hover);
+    @apply type-control;
+  }
+  :host(:hover) {
+    background-color: var(--rs-surface-2);
+  }
+
+  /* The current screen: the inverse colours, under the pointer too. */
+  :host([aria-current='page']) {
+    background-color: var(--rs-inverse);
+    color: var(--rs-on-inverse);
+  }
+}

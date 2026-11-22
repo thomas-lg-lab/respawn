@@ -1,0 +1,33 @@
+<div class="flex flex-wrap items-center gap-3" *transloco="let t; prefix: 'library'">
+  <rs-search-field
+    class="max-w-130 flex-[1_1_16rem]"
+    [label]="t('search.label')"
+    [placeholder]="t('search.placeholder')"
+    [(value)]="search"
+  />
+  <!-- Three items of one row, which wraps where it must: the search always stands beside the
+       first filters, never between two lines of them. -->
+  <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="t('filter.label')">
+    @for (choice of filters(); track choice.id) {
+      <button
+        rsPill
+        [pressed]="filter() === choice.id"
+        [attr.data-filter]="choice.id"
+        (click)="filterPicked.emit(choice.id)"
+      >
+        {{ t('filter.' + choice.id) }}
+        <span class="ms-1.5 tabular-nums opacity-70">{{ choice.count }}</span>
+      </button>
+    }
+  </div>
+  <label class="ms-auto flex items-center gap-2 type-control text-muted">
+    {{ t('sort.label') }}
+    <select rsSelect data-sort (change)="pickSort($event)">
+      @for (choice of sorts; track choice) {
+        <option [value]="choice" [selected]="sort() === choice">
+          {{ t('sort.' + choice) }}
+        </option>
+      }
+    </select>
+  </label>
+</div>

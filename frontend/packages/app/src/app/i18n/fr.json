@@ -91,6 +91,11 @@
     "linkProvider": "Lier {{ provider }}",
     "providerLinked": "{{ provider }} est lié à ce compte"
   },
+  "nav": {
+    "label": "Navigation principale",
+    "home": "Accueil",
+    "library": "Bibliothèque"
+  },
   "home": {
     "label": "Partie en cours",
     "title": "Accueil",
@@ -166,6 +171,50 @@
       "ofOne": "sur {{ count }} jeu",
       "ofMany": "sur {{ count }} jeux"
     }
+  },
+  "library": {
+    "title": "Bibliothèque",
+    "countOne": "{{ count }} jeu, depuis Steam",
+    "countMany": "{{ count }} jeux, depuis Steam",
+    "loading": "Chargement de vos jeux…",
+    "retry": "Réessayer",
+    "empty": {
+      "text": "Aucun jeu ici pour l’instant. L’accueil dit où en est votre bibliothèque.",
+      "home": "Aller à l’accueil"
+    },
+    "search": {
+      "label": "Rechercher un jeu",
+      "placeholder": "Un titre"
+    },
+    "filter": {
+      "label": "Filtrer",
+      "all": "Tous",
+      "launched": "Lancés",
+      "recent": "Récents",
+      "never": "Jamais lancés"
+    },
+    "sort": {
+      "label": "Trier par",
+      "last_played": "Dernière session",
+      "playtime": "Temps de jeu",
+      "name": "Titre"
+    },
+    "columns": {
+      "game": "Jeu",
+      "playtime": "Temps de jeu",
+      "recent": "2 dern. semaines",
+      "lastPlayed": "Dernière session"
+    },
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min",
+    "unknown": "—",
+    "never": "Jamais lancé",
+    "unnamed": "Jeu sans nom",
+    "missing": "N’est plus listé par Steam",
+    "noMatch": "Aucun jeu ne correspond.",
+    "shownOne": "{{ shown }} jeu affiché sur {{ total }}",
+    "shownMany": "{{ shown }} jeux affichés sur {{ total }}",
+    "more": "Afficher la suite"
   },
   "notFound": {
     "label": "Introuvable",
