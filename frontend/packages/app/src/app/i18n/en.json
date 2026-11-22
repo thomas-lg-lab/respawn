@@ -203,6 +203,22 @@
     "picks": {
       "title": "Never launched, at random",
       "reroll": "Draw again"
+    },
+    "years": {
+      "title": "Playtime per year",
+      "since": "Counted day by day since {{ date }}, the first sync. A dashed year is not whole."
+    },
+    "activity": {
+      "title": "Activity",
+      "total": "{{ total }} in all",
+      "gone": "A game no longer in your library",
+      "othersOne": "and {{ count }} other game",
+      "othersMany": "and {{ count }} other games",
+      "note": "A day shows what its reading found since the one before.",
+      "empty": {
+        "title": "Tracking began on {{ date }}",
+        "text": "Steam does not give past sessions. respawn reads your playtime once a day: what you play will show here after the next reading."
+      }
     }
   },
   "library": {
@@ -283,6 +299,7 @@
         "never": "Never launched"
       },
       "bar": "Segmented bar",
+      "chart": "Column chart",
       "hours": "{{ count }} h",
       "banners": "Banners",
       "status": "Sync in progress: your games stay on screen.",

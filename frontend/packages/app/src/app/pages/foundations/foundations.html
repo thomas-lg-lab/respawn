@@ -67,6 +67,21 @@
         </div>
 
         <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.chart') }}</span>
+          <rs-column-chart>
+            @for (year of years; track year.label) {
+              <rs-chart-column
+                [label]="year.label"
+                [value]="year.hours"
+                [max]="yearsScale"
+                [open]="year.open"
+                >{{ t('components.hours', { count: year.hours }) }}</rs-chart-column
+              >
+            }
+          </rs-column-chart>
+        </div>
+
+        <div class="flex flex-col gap-2">
           <span class="type-caption text-muted">{{ t('components.banners') }}</span>
           <rs-banner>{{ t('components.status') }}</rs-banner>
           <rs-banner tone="warn">{{ t('components.warning') }}</rs-banner>

@@ -114,16 +114,62 @@
         </div>
       }
 
-      @if (games.data()) {
-        @if (ranked().top.length || picks().length) {
+      <!-- The blocks go two by two on a wide screen; one alone takes the row. A block made
+           of the history waits for it, and is not drawn when it could not be read. -->
+      @if (games.data() && !history.isPending()) {
+        @let since = history.data()?.tracking_since;
+        @if ((years().length && since) || ranked().top.length) {
           <div class="grid grid-cols-1 items-start gap-4 wide:grid-cols-2">
-            @if (ranked().top.length) {
-              <rs-time-ranking [ranking]="ranked()" [language]="currentLanguage()" />
+            @if (years().length && since) {
+              <rs-years
+                class="only:wide:col-span-2"
+                [years]="years()"
+                [since]="since"
+                [language]="currentLanguage()"
+              />
             }
-            @if (picks().length) {
-              <rs-random-picks [games]="picks()" [more]="moreToDraw()" (reroll)="drawAgain()" />
+            @if (ranked().top.length) {
+              <rs-time-ranking
+                class="only:wide:col-span-2"
+                [ranking]="ranked()"
+                [language]="currentLanguage()"
+              />
             }
           </div>
+        }
+        @if (picks().length || history.data()) {
+          <div class="grid grid-cols-1 items-start gap-4 wide:grid-cols-2">
+            @if (picks().length) {
+              <rs-random-picks
+                class="only:wide:col-span-2"
+                [games]="picks()"
+                [more]="moreToDraw()"
+                (reroll)="drawAgain()"
+              />
+            }
+            @if (history.data(); as told) {
+              <rs-activity
+                class="only:wide:col-span-2"
+                [days]="days()"
+                [since]="told.tracking_since"
+                [language]="currentLanguage()"
+              />
+            }
+          </div>
+        }
+        @if (history.isError()) {
+          <rs-banner tone="warn" role="alert" data-history-refused>{{
+            t(failureKey(history.error()))
+          }}</rs-banner>
+          <button
+            rsButton
+            type="button"
+            class="self-start"
+            data-history-retry
+            (click)="history.refetch()"
+          >
+            {{ t('home.retry') }}
+          </button>
         }
       } @else if (games.isError()) {
         <rs-banner tone="warn" role="alert" data-games-refused>{{

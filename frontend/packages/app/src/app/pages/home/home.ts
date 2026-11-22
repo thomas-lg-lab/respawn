@@ -18,6 +18,7 @@ import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
 import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
+import { Activity } from './components/activity';
 import { Figures } from './components/figures';
 import { FirstSync } from './components/first-sync';
 import { GameSearch } from './components/game-search';
@@ -28,6 +29,8 @@ import { Resume } from './components/resume';
 import { SyncBanner } from './components/sync-banner';
 import { SyncIssue } from './components/sync-issue';
 import { TimeRanking } from './components/time-ranking';
+import { Years } from './components/years';
+import { activity, playedYears } from './history-blocks';
 import {
   PICKS,
   drawn,
@@ -60,11 +63,11 @@ type View = 'loading' | 'unavailable' | SyncView;
 
 /**
  * The first screen after sign-in: the library at a glance once a linked account was read (a
- * search, the game to resume, the ones played lately, the figures, where the time went, a
- * draw among the never launched), and until then the way there, said state by state: link an
+ * search, the game to resume, the ones played lately, the figures, the years, where the time
+ * went, a draw among the never launched, the activity), and until then the way there, said state by state: link an
  * account, wait for its first reading, or learn why that reading brought no game. This is
  * where the states meet the API: the linked accounts and their syncs, "sync now", the
- * figures, the games.
+ * figures, the games, the history.
  *
  * Linking Steam is a navigation: the API sends the browser there and back to this screen,
  * which says what came of it, and reads the new account's library at once: the schedule
@@ -79,6 +82,7 @@ type View = 'loading' | 'unavailable' | SyncView;
     Button,
     Label,
     Skeleton,
+    Activity,
     Figures,
     FirstSync,
     GameSearch,
@@ -89,6 +93,7 @@ type View = 'loading' | 'unavailable' | SyncView;
     SyncBanner,
     SyncIssue,
     TimeRanking,
+    Years,
   ],
   templateUrl: './home.html',
 })
@@ -131,6 +136,27 @@ export class Home {
     ...this.library.games(),
     enabled: this.view() === 'ready',
   }));
+
+  /**
+   * What was played day by day since the first sync, asked with the rest: the years and
+   * the activity are made of it.
+   */
+  protected readonly history = injectQuery(() => ({
+    ...this.library.history(),
+    enabled: this.view() === 'ready',
+  }));
+
+  /** The time played each year; none while nothing was played since the first sync. */
+  protected readonly years = computed(() => {
+    const history = this.history.data();
+    return history ? playedYears(history, this.history.dataUpdatedAt()) : [];
+  });
+
+  /** The latest days something was played, each game as the library names it. */
+  protected readonly days = computed(() => {
+    const history = this.history.data();
+    return history ? activity(history, this.games.data() ?? []) : [];
+  });
 
   /** "Ago" is counted from the moment the games were read, so it follows each new reading. */
   protected readonly now = computed(() => this.games.dataUpdatedAt() || Date.now());

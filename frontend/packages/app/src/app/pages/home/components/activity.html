@@ -1,0 +1,47 @@
+<rs-card class="flex flex-col gap-3.5" data-activity *transloco="let t; prefix: 'home'">
+  <h2 class="type-card-title">{{ t('activity.title') }}</h2>
+  @for (day of shown(); track day.date) {
+    <section class="flex flex-col gap-1" [attr.data-day]="day.date">
+      <h3 class="type-caption font-semibold text-muted">{{ day.name }}</h3>
+      <ul class="flex flex-col">
+        @for (game of day.games; track game.id) {
+          <li
+            class="flex min-h-touch items-center justify-between gap-3 border-t border-line px-1.5 py-1.5"
+            [attr.data-game]="game.id"
+          >
+            <span class="flex min-w-0 flex-col">
+              <span class="truncate font-semibold" data-name>{{
+                game.gone ? t('activity.gone') : (game.name ?? t('unnamed'))
+              }}</span>
+              @if (game.total; as total) {
+                <span class="type-caption text-muted tabular-nums" data-total>{{
+                  t('activity.total', { total: t('time.' + total.key, { count: total.count }) })
+                }}</span>
+              }
+            </span>
+            <span class="font-semibold whitespace-nowrap tabular-nums" data-playtime>{{
+              t('time.' + game.time.key, { count: game.time.count })
+            }}</span>
+          </li>
+        }
+      </ul>
+      @if (day.others; as others) {
+        <span class="type-caption text-muted tabular-nums" data-others>{{
+          t(others.one ? 'activity.othersOne' : 'activity.othersMany', { count: others.count })
+        }}</span>
+      }
+    </section>
+  } @empty {
+    <div class="flex flex-col gap-1.5" data-activity-empty>
+      @if (sinceDate(); as date) {
+        <span class="font-semibold" data-activity-since>{{
+          t('activity.empty.title', { date })
+        }}</span>
+      }
+      <span class="type-caption text-muted">{{ t('activity.empty.text') }}</span>
+    </div>
+  }
+  @if (shown().length) {
+    <p class="type-caption text-muted" data-activity-note>{{ t('activity.note') }}</p>
+  }
+</rs-card>

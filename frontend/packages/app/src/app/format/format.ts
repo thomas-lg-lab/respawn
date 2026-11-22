@@ -95,3 +95,28 @@ export function formatAgo(moment: string, now: number, language: string): string
           : agoInFigures(language).format(-Math.floor(days / 365), 'year');
   return text.charAt(0).toLocaleUpperCase(language) + text.slice(1);
 }
+
+const dates = perLanguage((language) => new Intl.DateTimeFormat(language, { dateStyle: 'medium' }));
+const utcDays = perLanguage(
+  (language) =>
+    new Intl.DateTimeFormat(language, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    }),
+);
+
+/** The day of a moment, in the reader's own time zone: "18 Nov 2026". */
+export function formatDate(moment: string, language: string): string {
+  return dates(language).format(new Date(moment));
+}
+
+/**
+ * A day the API gave as `YYYY-MM-DD`, with its weekday: "Saturday 21 November". The day is
+ * UTC's and is written as it is: no time zone moves it to the one before.
+ */
+export function formatDay(day: string, language: string): string {
+  const text = utcDays(language).format(new Date(`${day}T00:00:00Z`));
+  return text.charAt(0).toLocaleUpperCase(language) + text.slice(1);
+}
