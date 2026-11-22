@@ -2,10 +2,13 @@ import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
+  AWAITING_SYNC_INTERVAL,
   type LibraryGame,
+  type LibraryHistory,
   type LibraryStats,
   type LinkedAccount,
   type SyncRun,
+  TEST_LIBRARY_HISTORY as NO_HISTORY,
   TEST_LIBRARY_STATS as STATS,
   TEST_LINKED_ACCOUNT,
   TEST_SYNC_RUN,
@@ -46,6 +49,7 @@ function neverRead(last: Partial<SyncRun> | null, linkedAt = new Date()): Linked
 
 const SYNC = `/linked-accounts/${TEST_LINKED_ACCOUNT.id}/sync`;
 const GAMES = '/library?sort=name&offset=0&limit=500';
+const HISTORY = '/library/history';
 
 let made = 0;
 
@@ -104,13 +108,18 @@ function played(): LibraryGame[] {
   ];
 }
 
-/** The library as the home asks for it once an account was read: its figures and its games. */
+/**
+ * The library as the home asks for it once an account was read: its figures, its games and
+ * its history.
+ */
 async function library(
   server: Server,
   stats: LibraryStats,
   games: LibraryGame[] = [],
+  history: LibraryHistory = NO_HISTORY,
 ): Promise<void> {
   await server.answer('/library/stats', stats);
+  await server.answer(HISTORY, history);
   await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
 }
 
@@ -121,6 +130,7 @@ describe('Home', () => {
     path = '/',
     stats: LibraryStats | null = STATS,
     games: LibraryGame[] = [],
+    history: LibraryHistory = NO_HISTORY,
   ) {
     configureApp('fr');
     const harness = await RouterTestingHarness.create();
@@ -129,7 +139,7 @@ describe('Home', () => {
     await server.answer('/me', ACCOUNT);
     await server.answer('/linked-accounts', { accounts });
     const read = accounts.some((each) => each.sync.last_succeeded_at);
-    if (read && stats) await library(server, stats, games);
+    if (read && stats) await library(server, stats, games, history);
     await arrived;
     await harness.fixture.whenStable();
     return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
@@ -237,21 +247,24 @@ describe('Home', () => {
   });
 
   it('shows the library as soon as the first reading ended', async () => {
-    const { harness, server, screen } = await open([neverRead(null)]);
-    expect(title(screen)).toBe('Première synchronisation');
+    // Only the interval the accounts are asked again on is the test's to move: the rest of
+    // the app keeps the real clock.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const { harness, server, screen } = await open([neverRead(null)]);
+      expect(title(screen)).toBe('Première synchronisation');
 
-    // The accounts are asked again while the reading is awaited.
-    await vi.waitFor(
-      () => server.http.expectOne('/api/v1/linked-accounts').flush({ accounts: [account()] }),
-      {
-        timeout: 7_000,
-      },
-    );
-    await library(server, STATS);
-    await harness.fixture.whenStable();
+      // The accounts are asked again while the reading is awaited.
+      vi.advanceTimersByTime(AWAITING_SYNC_INTERVAL);
+      await server.home([account()]);
+      await library(server, STATS);
+      await harness.fixture.whenStable();
 
-    expect(title(screen)).toBe('Accueil');
-  }, 10_000);
+      expect(title(screen)).toBe('Accueil');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it('says why the first reading failed, and tries again on request', async () => {
     const failed = neverRead({ outcome: 'failed', error: 'refused' });
@@ -353,6 +366,7 @@ describe('Home', () => {
     await server.answer('/me', ACCOUNT);
     await server.home([account()]);
     await server.refuse('/library/stats', 503, 'database_unavailable');
+    await server.answer(HISTORY, NO_HISTORY);
     await server.answer(GAMES, { total: 0, offset: 0, limit: 500, games: [] });
     await arrived;
     await harness.fixture.whenStable();
@@ -638,6 +652,7 @@ describe('Home', () => {
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       await server.answer('/library/stats', STATS);
+      await server.answer(HISTORY, NO_HISTORY);
       await server.refuse(GAMES, 503, 'database_unavailable');
       await arrived;
       await harness.fixture.whenStable();
@@ -672,6 +687,207 @@ describe('Home', () => {
       expect(text(screen, '[data-recently] h2')).toBe('Played recently');
       expect(text(screen, '[data-ranking] h2')).toBe('Where the time went');
       expect(text(screen, '[data-picks] h2')).toBe('Never launched, at random');
+    });
+  });
+
+  describe('the blocks made of the history', () => {
+    const all = (screen: HTMLElement, selector: string) =>
+      [...screen.querySelectorAll(selector)].map((each) =>
+        each.textContent.replace(/\s+/g, ' ').trim(),
+      );
+
+    /** Two days of readings over the small library, and a game that left it since. */
+    function readings(games: LibraryGame[]): LibraryHistory {
+      const id = (name: string) => games.find((each) => each.name === name)!.game_id;
+      const [elden, portal] = [id('Elden Ring'), id('Portal 2')];
+      return {
+        tracking_since: '2026-11-18T10:05:00Z',
+        days: [
+          {
+            date: '2026-11-20',
+            games: [
+              { game_id: elden, seconds: 2 * 3600 },
+              { game_id: portal, seconds: 45 * 60 },
+              { game_id: '00000000-0000-4000-8000-ffffffffffff', seconds: 10 * 60 },
+            ],
+          },
+          { date: '2026-11-21', games: [{ game_id: elden, seconds: 3600 }] },
+        ],
+      };
+    }
+
+    it('shows the time played per year, and says since when it is counted', async () => {
+      const games = played();
+      const { screen } = await open([account()], '/', STATS, games, readings(games));
+
+      expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
+      expect(text(screen, '[data-year="2026"] .label')).toBe('2026');
+      // The year of the first sync is not whole.
+      expect(screen.querySelector('[data-year="2026"]')?.hasAttribute('data-open')).toBe(true);
+      expect(text(screen, '[data-years-since]')).toBe(
+        'Compté jour par jour depuis le 18 nov. 2026, la première synchronisation. Une année en pointillés n’est pas entière.',
+      );
+    });
+
+    it('lists the latest days played, the latest first, each game with its time', async () => {
+      const games = played();
+      const { screen } = await open([account()], '/', STATS, games, readings(games));
+
+      expect(all(screen, '[data-activity] h3')).toEqual([
+        'Samedi 21 novembre',
+        'Vendredi 20 novembre',
+      ]);
+      expect(all(screen, '[data-day="2026-11-21"] [data-name]')).toEqual(['Elden Ring']);
+      expect(all(screen, '[data-day="2026-11-21"] [data-playtime]')).toEqual(['1 h']);
+      expect(all(screen, '[data-day="2026-11-21"] [data-total]')).toEqual(['142 h au total']);
+      expect(all(screen, '[data-day="2026-11-20"] [data-name]')).toEqual([
+        'Elden Ring',
+        'Portal 2',
+        'Un jeu qui n’est plus dans votre bibliothèque',
+      ]);
+      expect(all(screen, '[data-day="2026-11-20"] [data-playtime]')).toEqual([
+        '2 h',
+        '45 min',
+        '10 min',
+      ]);
+      expect(screen.querySelector('[data-activity-empty]')).toBeNull();
+    });
+
+    it('says when the tracking began while no day was played, and draws no year', async () => {
+      const { screen } = await open([account()], '/', STATS, played());
+
+      expect(text(screen, '[data-activity-since]')).toBe('Le suivi a commencé le 18 nov. 2026');
+      expect(text(screen, '[data-activity-empty]')).toContain(
+        'Steam ne donne pas le détail des sessions passées. respawn relève vos temps de jeu une fois par jour : ce que vous jouez s’affichera ici après la prochaine lecture.',
+      );
+      expect(screen.querySelector('[data-activity-note]')).toBeNull();
+      expect(screen.querySelector('[data-years]')).toBeNull();
+    });
+
+    it('says that the history could not be read, keeps the other blocks, and asks again', async () => {
+      configureApp('fr');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      const games = played();
+      await server.answer('/library/stats', STATS);
+      await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
+      await server.refuse(HISTORY, 503, 'database_unavailable');
+      await arrived;
+      await harness.fixture.whenStable();
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      expect(text(screen, '[data-history-refused]')).toBe(
+        'La base de données ne répond pas. Réessayez dans un instant.',
+      );
+      expect(text(screen, '[data-ranking] h2')).toBe('Où est passé le temps');
+      expect(screen.querySelector('[data-activity]')).toBeNull();
+
+      screen.querySelector<HTMLButtonElement>('[data-history-retry]')!.click();
+      await server.answer(HISTORY, readings(games));
+      await harness.fixture.whenStable();
+
+      expect(screen.querySelector('[data-history-refused]')).toBeNull();
+      expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+    });
+
+    it('reads the history again once a sync ended', async () => {
+      const games = played();
+      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      expect(screen.querySelector('[data-activity-empty]')).not.toBeNull();
+
+      screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
+      (await server.request(SYNC)).flush(succeeded());
+      await server.home([account()]);
+      await library(server, STATS, games, readings(games));
+      await harness.fixture.whenStable();
+
+      expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+    });
+
+    it('shows the blocks made of the games while the history is awaited', async () => {
+      configureApp('fr');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      const games = played();
+      await server.answer('/library/stats', STATS);
+      await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
+      const history = await server.request(HISTORY);
+      await arrived;
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      // Not `whenStable`: the history is still awaited, on purpose.
+      await vi.waitFor(() =>
+        expect(text(screen, '[data-ranking] h2')).toBe('Où est passé le temps'),
+      );
+      expect(screen.querySelector('[data-picks]')).not.toBeNull();
+      expect(screen.querySelector('[data-history-awaited]')).not.toBeNull();
+      expect(screen.querySelector('[data-activity]')).toBeNull();
+
+      history.flush(readings(games));
+      await harness.fixture.whenStable();
+
+      expect(screen.querySelector('[data-history-awaited]')).toBeNull();
+      expect(screen.querySelector('[data-years]')).not.toBeNull();
+      expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+    });
+
+    it('does not say gone a game the history has before the games asked again do', async () => {
+      const games = played();
+      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      const bought = game('Outer Wilds', { playtime_seconds: 3600 });
+      const told: LibraryHistory = {
+        tracking_since: '2026-11-18T10:05:00Z',
+        days: [{ date: '2026-11-21', games: [{ game_id: bought.game_id, seconds: 3600 }] }],
+      };
+
+      screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
+      (await server.request(SYNC)).flush(succeeded());
+      await server.home([account()]);
+      await server.answer('/library/stats', STATS);
+      await server.answer(HISTORY, told);
+      const asked = await server.request(GAMES);
+
+      // Not `whenStable`: the games are still awaited, on purpose.
+      await vi.waitFor(() =>
+        expect(all(screen, '[data-day="2026-11-21"] [data-name]')).toEqual(['Jeu sans nom']),
+      );
+
+      const now = [...games, bought];
+      asked.flush({ total: now.length, offset: 0, limit: 500, games: now });
+      await harness.fixture.whenStable();
+
+      expect(all(screen, '[data-day="2026-11-21"] [data-name]')).toEqual(['Outer Wilds']);
+    });
+
+    it('says the history in English too', async () => {
+      configureApp('en');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      const games = played();
+      await library(server, STATS, games, readings(games));
+      await arrived;
+      await harness.fixture.whenStable();
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      expect(text(screen, '[data-years] h2')).toBe('Playtime per year');
+      expect(text(screen, '[data-years-since]')).toBe(
+        'Counted day by day since Nov 18, 2026, the first sync. A dashed year is not whole.',
+      );
+      expect(text(screen, '[data-activity] h2')).toBe('Activity');
+      expect(all(screen, '[data-activity] h3')[0]).toBe('Saturday, November 21');
+      expect(all(screen, '[data-day="2026-11-21"] [data-total]')).toEqual(['142 h in all']);
+      expect(text(screen, '[data-activity-note]')).toBe(
+        'A day shows what its reading found since the one before.',
+      );
     });
   });
 });

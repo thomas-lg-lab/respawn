@@ -7,6 +7,8 @@ import {
   Banner,
   Button,
   Card,
+  ChartColumn,
+  ColumnChart,
   Label,
   Pill,
   PillGroup,
@@ -36,6 +38,8 @@ type Filter = (typeof FILTERS)[number];
     Banner,
     Button,
     Card,
+    ChartColumn,
+    ColumnChart,
     Label,
     Pill,
     PillGroup,
@@ -58,6 +62,11 @@ export class Foundations {
   // Sample values: the screen has no data of its own.
   protected readonly hours = 142;
   protected readonly hoursScale = 200;
+  protected readonly yearsScale = 888;
+  protected readonly years = [
+    { label: '2025', hours: 888, open: false },
+    { label: '2026', hours: 612, open: true },
+  ];
   protected readonly person = 'Élodie';
   private readonly games = 1276;
 

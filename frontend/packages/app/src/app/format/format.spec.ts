@@ -1,4 +1,4 @@
-import { formatAgo, formatCount, formatMoment, playtime } from './format';
+import { formatAgo, formatCount, formatDate, formatDay, formatMoment, playtime } from './format';
 
 describe('format', () => {
   it('groups a count the way the language does', () => {
@@ -41,5 +41,20 @@ describe('format', () => {
     expect(formatAgo(lastNight, morning, 'en')).toBe('Yesterday');
     // A clock that runs behind the server's is no reason to speak of the future.
     expect(ago(-1)).toBe('Today');
+  });
+
+  it('writes the day of a moment', () => {
+    expect(formatDate('2026-11-18T10:05:00Z', 'en')).toBe('Nov 18, 2026');
+    expect(formatDate('2026-11-18T10:05:00Z', 'fr')).toBe('18 nov. 2026');
+    // In UTC, as the years of the history are: the last evening of a year stays in it.
+    expect(formatDate('2026-12-31T23:30:00Z', 'en')).toBe('Dec 31, 2026');
+    expect(formatDate('2027-01-01T00:30:00Z', 'en')).toBe('Jan 1, 2027');
+  });
+
+  it('writes a day the API gave with its weekday, as it is in UTC', () => {
+    expect(formatDay('2026-11-21', 'en')).toBe('Saturday, November 21');
+    expect(formatDay('2026-11-21', 'fr')).toBe('Samedi 21 novembre');
+    // The first of the month stays so, whatever the reader's time zone.
+    expect(formatDay('2026-12-01', 'en')).toBe('Tuesday, December 1');
   });
 });

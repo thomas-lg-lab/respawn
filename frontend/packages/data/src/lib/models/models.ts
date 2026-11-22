@@ -43,6 +43,15 @@ export type LibraryEntry = Schemas['LibraryEntryResponse'];
 /** The figures of the library (`GET /api/v1/library/stats`). */
 export type LibraryStats = Schemas['LibraryStatsResponse'];
 
+/**
+ * What was played day by day since the first sync (`GET /api/v1/library/history`). A day's
+ * time is what the reading of that day found more than the one before; days are in UTC.
+ */
+export type LibraryHistory = Schemas['LibraryHistoryResponse'];
+
+/** A day something was played, and the games it was. */
+export type HistoryDay = Schemas['HistoryDayResponse'];
+
 /** The linked store accounts (`GET /api/v1/linked-accounts`). */
 export type LinkedAccounts = Schemas['LinkedAccountsResponse'];
 
