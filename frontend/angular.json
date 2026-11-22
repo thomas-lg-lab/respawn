@@ -110,6 +110,7 @@
           "options": {
             "buildTarget": "app:build",
             "tsConfig": "tsconfig.spec.json",
+            "runnerConfig": "vitest-base.config.mts",
             "include": ["**/*.spec.ts"]
           }
         }
