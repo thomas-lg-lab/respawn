@@ -1,0 +1,10 @@
+<svg lucideSearch class="icon" [strokeWidth]="2" aria-hidden="true"></svg>
+<input
+  #control
+  type="search"
+  autocomplete="off"
+  [attr.aria-label]="label()"
+  [placeholder]="placeholder()"
+  [value]="value()"
+  (input)="value.set(control.value)"
+/>

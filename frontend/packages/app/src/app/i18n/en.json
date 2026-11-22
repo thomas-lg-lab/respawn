@@ -91,6 +91,11 @@
     "linkProvider": "Link {{ provider }}",
     "providerLinked": "{{ provider }} is linked to this account"
   },
+  "nav": {
+    "label": "Main navigation",
+    "home": "Home",
+    "library": "Library"
+  },
   "home": {
     "label": "Game in progress",
     "title": "Home",
@@ -166,6 +171,50 @@
       "ofOne": "across {{ count }} game",
       "ofMany": "across {{ count }} games"
     }
+  },
+  "library": {
+    "title": "Library",
+    "countOne": "{{ count }} game, from Steam",
+    "countMany": "{{ count }} games, from Steam",
+    "loading": "Loading your games…",
+    "retry": "Try again",
+    "empty": {
+      "text": "No game here yet. The home says where your library stands.",
+      "home": "Go to the home"
+    },
+    "search": {
+      "label": "Search a game",
+      "placeholder": "A title"
+    },
+    "filter": {
+      "label": "Filter",
+      "all": "All",
+      "launched": "Launched",
+      "recent": "Recent",
+      "never": "Never launched"
+    },
+    "sort": {
+      "label": "Sort by",
+      "last_played": "Last session",
+      "playtime": "Playtime",
+      "name": "Title"
+    },
+    "columns": {
+      "game": "Game",
+      "playtime": "Playtime",
+      "recent": "Last 2 weeks",
+      "lastPlayed": "Last session"
+    },
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min",
+    "unknown": "—",
+    "never": "Never launched",
+    "unnamed": "Unnamed game",
+    "missing": "No longer listed by Steam",
+    "noMatch": "No game matches.",
+    "shownOne": "{{ shown }} game shown out of {{ total }}",
+    "shownMany": "{{ shown }} games shown out of {{ total }}",
+    "more": "Show more"
   },
   "notFound": {
     "label": "Not found",

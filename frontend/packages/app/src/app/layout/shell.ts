@@ -1,7 +1,14 @@
 import { Location } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import {
+  type IsActiveMatchOptions,
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { filter } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import {
@@ -11,7 +18,7 @@ import {
   providerOutcome,
   providerSignInAddress,
 } from '@respawn/data';
-import { Banner, Logo } from '@respawn/ui';
+import { Banner, Logo, Tab } from '@respawn/ui';
 import { type Character, DisplaySettings, type Theme } from '@respawn/util';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { AccountMenu, type LinkableProvider } from '@app/components/account-menu/account-menu';
@@ -19,15 +26,43 @@ import { failureKey } from '@app/errors/failure-message';
 import { type Language, LanguageSetting } from '@app/i18n/language';
 import { saidOnce } from '@app/session/said-once';
 
+/** The screens a tab leads to, in the order of the tabs, each with the key of its name. */
+const TABS = [
+  { path: '/', label: 'nav.home' },
+  { path: '/library', label: 'nav.library' },
+] as const;
+
 /**
- * The frame of the signed-in screens: the header, with the account menu, and the screen
- * under it. It is where the menu's requests meet what answers them: the settings, shown at
+ * A tab is the current one on its own address, whatever a return from a provider or from
+ * Steam wrote after it.
+ */
+const SAME_PATH: IsActiveMatchOptions = {
+  paths: 'exact',
+  queryParams: 'ignored',
+  matrixParams: 'ignored',
+  fragment: 'ignored',
+};
+
+/**
+ * The frame of the signed-in screens: the header, with the tabs and the account menu, and
+ * the screen under it; on a phone the tabs are a bar at the foot of the window. It is where the menu's requests meet what answers them: the settings, shown at
  * once and kept on the account, the providers to link, and the sign-out. A link through a
  * provider comes back to the screen it started from, and what came of it is said here.
  */
 @Component({
   selector: 'rs-shell',
-  imports: [RouterLink, RouterOutlet, TranslocoDirective, Banner, Logo, AccountMenu],
+  imports: [
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    TranslocoDirective,
+    Banner,
+    Logo,
+    Tab,
+    AccountMenu,
+  ],
+  // As tall as the window at least, so the bar of tabs has a foot to stick to.
+  host: { class: 'flex min-h-dvh flex-col' },
   templateUrl: './shell.html',
 })
 export class Shell {
@@ -37,6 +72,8 @@ export class Shell {
   protected readonly display = inject(DisplaySettings);
   protected readonly language = inject(LanguageSetting);
   protected readonly failureKey = failureKey;
+  protected readonly tabs = TABS;
+  protected readonly samePath = SAME_PATH;
 
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly signingOut = injectMutation(() => this.queries.signOut());

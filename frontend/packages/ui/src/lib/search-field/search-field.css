@@ -1,0 +1,27 @@
+@layer components {
+  :host {
+    position: relative;
+    display: block;
+  }
+
+  .icon {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0.875rem;
+    width: var(--rs-size-icon);
+    height: var(--rs-size-icon);
+    margin-block: auto;
+    color: var(--rs-muted);
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    height: var(--rs-size-touch);
+    padding-inline: 2.625rem 0.875rem;
+    border: 1px solid var(--rs-control-line);
+    border-radius: var(--rs-radius-pill);
+    background-color: var(--rs-surface);
+    color: var(--rs-text);
+  }
+}

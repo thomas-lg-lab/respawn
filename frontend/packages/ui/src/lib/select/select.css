@@ -1,0 +1,25 @@
+@layer components {
+  :host {
+    height: var(--rs-size-touch);
+    padding-inline: 0.75rem;
+    border: 1px solid var(--rs-control-line);
+    border-radius: var(--rs-radius-pill);
+    background-color: var(--rs-surface);
+    color: var(--rs-text);
+    font-weight: 500;
+  }
+  :host(:disabled) {
+    opacity: 0.5;
+  }
+
+  /* Quiet: no box, the words and the arrow. As tall as before, so as easy to touch. */
+  :host([data-quiet]) {
+    padding-inline: 0.25rem;
+    border-color: transparent;
+    background-color: transparent;
+    font-weight: 600;
+  }
+  :host([data-quiet]:hover) {
+    background-color: var(--rs-surface-2);
+  }
+}
