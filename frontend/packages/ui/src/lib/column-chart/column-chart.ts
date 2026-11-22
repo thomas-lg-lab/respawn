@@ -11,7 +11,8 @@ export function barHeight(value: number, max: number): number {
 
 /**
  * A few values side by side as columns: a list, each item a `rs-chart-column`. A column
- * keeps its width, so one alone does not stretch over the card.
+ * keeps its width, so one alone does not stretch over the card; more than the width holds
+ * are scrolled to.
  */
 @Component({
   selector: 'rs-column-chart',
@@ -25,7 +26,8 @@ export class ColumnChart {}
  * One column of a `rs-column-chart`: a bar as tall as `value` is of `max`, the value in
  * words above it (projected) and what it measures under it. The bar is a drawing, hidden
  * from screen readers: the column is read by its words. `open` is a value that is not whole
- * yet, a year still running: drawn as an outline.
+ * yet, a year still running: drawn as an outline, and said by `openLabel` to who does not
+ * see the drawing. A value of zero draws no bar.
  */
 @Component({
   selector: 'rs-chart-column',
@@ -39,6 +41,8 @@ export class ChartColumn {
   readonly max = input.required<number>();
   readonly label = input.required<string>();
   readonly open = input(false, { transform: booleanAttribute });
+  /** What an open column is, in words: read after its label, never drawn. */
+  readonly openLabel = input<string>();
 
   protected readonly height = computed(() => barHeight(this.value(), this.max()));
 }

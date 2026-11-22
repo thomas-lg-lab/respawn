@@ -46,6 +46,9 @@ describe('format', () => {
   it('writes the day of a moment', () => {
     expect(formatDate('2026-11-18T10:05:00Z', 'en')).toBe('Nov 18, 2026');
     expect(formatDate('2026-11-18T10:05:00Z', 'fr')).toBe('18 nov. 2026');
+    // In UTC, as the years of the history are: the last evening of a year stays in it.
+    expect(formatDate('2026-12-31T23:30:00Z', 'en')).toBe('Dec 31, 2026');
+    expect(formatDate('2027-01-01T00:30:00Z', 'en')).toBe('Jan 1, 2027');
   });
 
   it('writes a day the API gave with its weekday, as it is in UTC', () => {

@@ -8,6 +8,7 @@
         [value]="column.seconds"
         [max]="scale()"
         [open]="column.open"
+        [openLabel]="t('years.open')"
         >{{ t('time.' + column.time.key, { count: column.time.count }) }}</rs-chart-column
       >
     }

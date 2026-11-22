@@ -16,7 +16,7 @@ import type { PlayedDay } from '../history-blocks';
 })
 export class Activity {
   readonly days = input.required<readonly PlayedDay[]>();
-  /** When the history starts: the first sync. `null` while no reading listed a game. */
+  /** When the history starts: the first sync, said in UTC. `null` while no reading listed a game. */
   readonly since = input.required<string | null>();
   readonly language = input.required<string>();
 
@@ -30,10 +30,10 @@ export class Activity {
     return this.days().map((day) => ({
       date: day.date,
       name: formatDay(day.date, language),
-      games: day.games.map(({ id, game, seconds }) => ({
+      games: day.games.map(({ id, game, gone, seconds }) => ({
         id,
         /** No longer a game of the library: there is no name to give it. */
-        gone: game === null,
+        gone,
         name: game?.name ?? null,
         time: saidPlaytime(seconds, language),
         total:

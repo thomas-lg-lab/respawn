@@ -2,6 +2,7 @@ import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
+  AWAITING_SYNC_INTERVAL,
   type LibraryGame,
   type LibraryHistory,
   type LibraryStats,
@@ -246,21 +247,24 @@ describe('Home', () => {
   });
 
   it('shows the library as soon as the first reading ended', async () => {
-    const { harness, server, screen } = await open([neverRead(null)]);
-    expect(title(screen)).toBe('Première synchronisation');
+    // Only the interval the accounts are asked again on is the test's to move: the rest of
+    // the app keeps the real clock.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const { harness, server, screen } = await open([neverRead(null)]);
+      expect(title(screen)).toBe('Première synchronisation');
 
-    // The accounts are asked again while the reading is awaited.
-    await vi.waitFor(
-      () => server.http.expectOne('/api/v1/linked-accounts').flush({ accounts: [account()] }),
-      {
-        timeout: 7_000,
-      },
-    );
-    await library(server, STATS);
-    await harness.fixture.whenStable();
+      // The accounts are asked again while the reading is awaited.
+      vi.advanceTimersByTime(AWAITING_SYNC_INTERVAL);
+      await server.home([account()]);
+      await library(server, STATS);
+      await harness.fixture.whenStable();
 
-    expect(title(screen)).toBe('Accueil');
-  }, 10_000);
+      expect(title(screen)).toBe('Accueil');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it('says why the first reading failed, and tries again on request', async () => {
     const failed = neverRead({ outcome: 'failed', error: 'refused' });
@@ -801,6 +805,64 @@ describe('Home', () => {
       await harness.fixture.whenStable();
 
       expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+    });
+
+    it('shows the blocks made of the games while the history is awaited', async () => {
+      configureApp('fr');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      const games = played();
+      await server.answer('/library/stats', STATS);
+      await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
+      const history = await server.request(HISTORY);
+      await arrived;
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      // Not `whenStable`: the history is still awaited, on purpose.
+      await vi.waitFor(() =>
+        expect(text(screen, '[data-ranking] h2')).toBe('Où est passé le temps'),
+      );
+      expect(screen.querySelector('[data-picks]')).not.toBeNull();
+      expect(screen.querySelector('[data-history-awaited]')).not.toBeNull();
+      expect(screen.querySelector('[data-activity]')).toBeNull();
+
+      history.flush(readings(games));
+      await harness.fixture.whenStable();
+
+      expect(screen.querySelector('[data-history-awaited]')).toBeNull();
+      expect(screen.querySelector('[data-years]')).not.toBeNull();
+      expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+    });
+
+    it('does not say gone a game the history has before the games asked again do', async () => {
+      const games = played();
+      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      const bought = game('Outer Wilds', { playtime_seconds: 3600 });
+      const told: LibraryHistory = {
+        tracking_since: '2026-11-18T10:05:00Z',
+        days: [{ date: '2026-11-21', games: [{ game_id: bought.game_id, seconds: 3600 }] }],
+      };
+
+      screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
+      (await server.request(SYNC)).flush(succeeded());
+      await server.home([account()]);
+      await server.answer('/library/stats', STATS);
+      await server.answer(HISTORY, told);
+      const asked = await server.request(GAMES);
+
+      // Not `whenStable`: the games are still awaited, on purpose.
+      await vi.waitFor(() =>
+        expect(all(screen, '[data-day="2026-11-21"] [data-name]')).toEqual(['Jeu sans nom']),
+      );
+
+      const now = [...games, bought];
+      asked.flush({ total: now.length, offset: 0, limit: 500, games: now });
+      await harness.fixture.whenStable();
+
+      expect(all(screen, '[data-day="2026-11-21"] [data-name]')).toEqual(['Outer Wilds']);
     });
 
     it('says the history in English too', async () => {

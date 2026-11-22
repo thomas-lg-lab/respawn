@@ -93,7 +93,7 @@ describe('the blocks of the home made of the history', () => {
         days: [1, 2, 3, 4, 5, 6, 7].map((each) => day(`2026-11-0${each}`, ['a', 60])),
       };
 
-      expect(activity(history, games).map((each) => each.date)).toEqual([
+      expect(activity(history, games, true).map((each) => each.date)).toEqual([
         '2026-11-07',
         '2026-11-06',
         '2026-11-05',
@@ -108,12 +108,12 @@ describe('the blocks of the home made of the history', () => {
         days: [day('2026-11-02', ['a', 3600], ['b', 60])],
       };
 
-      expect(activity(history, games)).toEqual([
+      expect(activity(history, games, true)).toEqual([
         {
           date: '2026-11-02',
           games: [
-            { id: 'id-a', game: games[0], seconds: 3600 },
-            { id: 'id-b', game: games[1], seconds: 60 },
+            { id: 'id-a', game: games[0], gone: false, seconds: 3600 },
+            { id: 'id-b', game: games[1], gone: false, seconds: 60 },
           ],
           others: 0,
         },
@@ -125,7 +125,7 @@ describe('the blocks of the home made of the history', () => {
         tracking_since: '2026-11-01T00:00:00Z',
         days: [day('2026-11-02', ['a', 6], ['b', 5], ['c', 4], ['d', 3], ['e', 2], ['f', 1])],
       };
-      const [only] = activity(history, games);
+      const [only] = activity(history, games, true);
 
       expect(only?.games.map((each) => each.id)).toEqual(['id-a', 'id-b', 'id-c', 'id-d']);
       expect(only?.others).toBe(2);
@@ -137,8 +137,20 @@ describe('the blocks of the home made of the history', () => {
         days: [day('2026-11-02', ['gone', 600])],
       };
 
-      expect(activity(history, games)[0]?.games).toEqual([
-        { id: 'id-gone', game: null, seconds: 600 },
+      expect(activity(history, games, true)[0]?.games).toEqual([
+        { id: 'id-gone', game: null, gone: true, seconds: 600 },
+      ]);
+    });
+
+    it('does not say gone a game that games still asked again do not have', () => {
+      const history: LibraryHistory = {
+        tracking_since: '2026-11-01T00:00:00Z',
+        days: [day('2026-11-02', ['new', 600], ['a', 60])],
+      };
+
+      expect(activity(history, games, false)[0]?.games).toEqual([
+        { id: 'id-new', game: null, gone: false, seconds: 600 },
+        { id: 'id-a', game: games[0], gone: false, seconds: 60 },
       ]);
     });
   });

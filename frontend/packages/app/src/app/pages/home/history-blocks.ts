@@ -52,8 +52,13 @@ export function playedYears(history: LibraryHistory, now: number): PlayedYear[] 
 /** A game of a day of the activity. */
 export interface PlayedGame {
   readonly id: string;
-  /** `null`: the library names no such game any more, or no source named it. */
+  /** `null`: the games held do not have it. */
   readonly game: LibraryGame | null;
+  /**
+   * The library no longer has it. Only said of games that are as fresh as the history: a
+   * game the games held do not have yet may just have been added.
+   */
+  readonly gone: boolean;
   /** What was played of it that day. */
   readonly seconds: number;
 }
@@ -66,19 +71,31 @@ export interface PlayedDay {
   readonly others: number;
 }
 
-/** The latest days something was played, the latest first. */
-export function activity(history: LibraryHistory, games: readonly LibraryGame[]): PlayedDay[] {
+/**
+ * The latest days something was played, the latest first. `settled`: the games are the
+ * library as it is now, not an older reading still being asked again; only then is a game
+ * they do not have one that left the library.
+ */
+export function activity(
+  history: LibraryHistory,
+  games: readonly LibraryGame[],
+  settled: boolean,
+): PlayedDay[] {
   const byId = new Map(games.map((game) => [game.game_id, game]));
   return history.days
     .slice(-DAYS)
     .reverse()
     .map((day: HistoryDay): PlayedDay => ({
       date: day.date,
-      games: day.games.slice(0, NAMED).map((played) => ({
-        id: played.game_id,
-        game: byId.get(played.game_id) ?? null,
-        seconds: played.seconds,
-      })),
+      games: day.games.slice(0, NAMED).map((played) => {
+        const game = byId.get(played.game_id) ?? null;
+        return {
+          id: played.game_id,
+          game,
+          gone: settled && game === null,
+          seconds: played.seconds,
+        };
+      }),
       others: Math.max(0, day.games.length - NAMED),
     }));
 }

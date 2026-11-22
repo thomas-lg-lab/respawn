@@ -96,7 +96,9 @@ export function formatAgo(moment: string, now: number, language: string): string
   return text.charAt(0).toLocaleUpperCase(language) + text.slice(1);
 }
 
-const dates = perLanguage((language) => new Intl.DateTimeFormat(language, { dateStyle: 'medium' }));
+const utcDates = perLanguage(
+  (language) => new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeZone: 'UTC' }),
+);
 const utcDays = perLanguage(
   (language) =>
     new Intl.DateTimeFormat(language, {
@@ -107,13 +109,17 @@ const utcDays = perLanguage(
     }),
 );
 
-/** The day of a moment, in the reader's own time zone: "18 Nov 2026". */
+/**
+ * The day of a moment, in UTC: "Nov 18, 2026". It is written beside days and years the API
+ * counts in UTC (the history), and names the same ones: the reader's time zone would put a
+ * first sync late on 31 December in the year after the one its column is drawn in.
+ */
 export function formatDate(moment: string, language: string): string {
-  return dates(language).format(new Date(moment));
+  return utcDates(language).format(new Date(moment));
 }
 
 /**
- * A day the API gave as `YYYY-MM-DD`, with its weekday: "Saturday 21 November". The day is
+ * A day the API gave as `YYYY-MM-DD`, with its weekday: "Saturday, November 21". The day is
  * UTC's and is written as it is: no time zone moves it to the one before.
  */
 export function formatDay(day: string, language: string): string {

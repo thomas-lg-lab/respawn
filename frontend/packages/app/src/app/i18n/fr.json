@@ -206,7 +206,8 @@
     },
     "years": {
       "title": "Temps de jeu par année",
-      "since": "Compté jour par jour depuis le {{ date }}, la première synchronisation. Une année en pointillés n’est pas entière."
+      "since": "Compté jour par jour depuis le {{ date }}, la première synchronisation. Une année en pointillés n’est pas entière.",
+      "open": "Année incomplète"
     },
     "activity": {
       "title": "Activité",
@@ -300,6 +301,7 @@
       },
       "bar": "Barre segmentée",
       "chart": "Histogramme",
+      "chartOpen": "Pas encore entier",
       "hours": "{{ count }} h",
       "banners": "Bandeaux",
       "status": "Synchronisation en cours : vos jeux restent affichés.",

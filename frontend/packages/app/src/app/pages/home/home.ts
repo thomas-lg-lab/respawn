@@ -152,10 +152,15 @@ export class Home {
     return history ? playedYears(history, this.history.dataUpdatedAt()) : [];
   });
 
-  /** The latest days something was played, each game as the library names it. */
+  /**
+   * The latest days something was played, each game as the library names it. While the games
+   * are asked again, or could not be, the ones held may be older than the history: a game
+   * they lack is then not said to have left the library.
+   */
   protected readonly days = computed(() => {
     const history = this.history.data();
-    return history ? activity(history, this.games.data() ?? []) : [];
+    const settled = !this.games.isFetching() && !this.games.isError();
+    return history ? activity(history, this.games.data() ?? [], settled) : [];
   });
 
   /** "Ago" is counted from the moment the games were read, so it follows each new reading. */
