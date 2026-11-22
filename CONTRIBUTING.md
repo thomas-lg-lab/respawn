@@ -53,14 +53,22 @@ What to know before leaning on them:
   and the compose project is named after it. From another checkout or worktree, `docker compose exec` finds no
   service, and reaching the first one's (`-p`) would check its sources, not yours. A second checkout cannot
   start its own beside the first either: ports 5432 and 4200 are already published.
-- **One set of tools per checkout.** What the services install and build lands in the sources: `node_modules`
-  holds Linux binaries, `bin/` and `obj/` the container's paths. An editor reads them fine; `npm` or `dotnet`
-  run on the machine itself against the same checkout would break on them, or rebuild them and break the
-  services in turn. Pick one side; to change, `npm ci` again and delete `bin/` and `obj/`.
+- **One set of tools per checkout.** What `sdk` builds lands in the sources: `bin/` and `obj/` hold the
+  container's paths. An editor reads them fine; `dotnet` run on the machine itself against the same checkout
+  would break on them, or rebuild them and break the service in turn. Pick one side; to change, delete `bin/`
+  and `obj/`. The `node` service writes the front's build cache and output there too (`frontend/.angular`,
+  `frontend/dist`).
+- **The front's packages are a volume of the `node` service**, not the checkout's `node_modules` (reading them
+  through a disk shared from Windows or macOS is slow): an editor on the machine needs its own `npm ci`. The
+  volume starts empty, and `npm ci` in the service empties it before it fills it. The checkout's folder is
+  still the one the `docker run` commands of this page fill, with Linux binaries: after one of them, or on a
+  checkout whose service filled that folder before it had a volume, `npm ci` on the machine again.
 - **Port 4200 is the `node` service's** as long as it is up, dev server running or not: the `docker run` dev
   server of the next section, or one started on the machine, then finds the port taken.
-- **On a Linux host, what they write belongs to root** (as with the `docker run` commands): removing `bin/`, `obj/` or
-  `node_modules` then takes `sudo`, or an `rm` through the service.
+- **On a Linux host, what they write belongs to root** (as with the `docker run` commands): removing `bin/` or
+  `obj/` then takes `sudo`, or an `rm` through the service. So does the folder the volume is laid over: on a
+  new checkout, `mkdir frontend/node_modules` before the first `up`, or Docker makes it, as root, and `npm ci`
+  on the machine is refused.
 
 ## The front
 
