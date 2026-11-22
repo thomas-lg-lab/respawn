@@ -36,8 +36,8 @@ services:
 
   # The tools, kept running so that a check does not start from an empty container each time: the packages
   # stay installed and the build stays warm. They do nothing by themselves; `docker compose exec` runs in them.
-  # They mount this checkout and write into it (bin/, obj/; node_modules is a volume): one checkout, one set of tools
-  # (CONTRIBUTING.md).
+  # They mount this checkout and write into it (bin/, obj/, the front's .angular and dist; node_modules is a
+  # volume): one checkout, one set of tools (CONTRIBUTING.md).
   node:
     profiles: [tools]
     image: node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
