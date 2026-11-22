@@ -26,4 +26,8 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
+  /* No value projected: the bar alone, without the gap that would stand before it. */
+  .value:empty {
+    display: none;
+  }
 }

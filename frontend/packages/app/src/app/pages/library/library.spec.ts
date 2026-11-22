@@ -5,7 +5,6 @@ import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
 import './library';
 
-const DAY = 24 * 60 * 60 * 1000;
 const FIRST_PAGE = '/library?sort=name&offset=0&limit=500';
 
 let made = 0;
@@ -22,7 +21,13 @@ function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
   };
 }
 
-const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
+/** Noon, that many days back on the calendar: a clock change cannot move it to another day. */
+function ago(days: number): string {
+  const moment = new Date();
+  moment.setDate(moment.getDate() - days);
+  moment.setHours(12, 0, 0, 0);
+  return moment.toISOString();
+}
 
 /** A small library, as the API gives it: by title. */
 function library(): LibraryGame[] {
@@ -86,7 +91,7 @@ describe('Library', () => {
     expect(text(portal, '[data-last-played]')).toBe('Hier');
     expect(text(row(screen, 'Hades'), '[data-playtime]')).toBe('100 h');
     expect(text(row(screen, 'Hades'), '[data-recent]')).toBe('');
-    expect(text(row(screen, 'Hades'), '[data-last-played]')).toBe('L’année dernière');
+    expect(text(row(screen, 'Hades'), '[data-last-played]')).toBe('Il y a 1 an');
   });
 
   it('names the table, and says the last session under the title too, for a phone', async () => {

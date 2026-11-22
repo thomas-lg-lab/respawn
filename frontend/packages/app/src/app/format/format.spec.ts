@@ -30,6 +30,9 @@ describe('format', () => {
     expect(ago(21)).toBe('3 weeks ago');
     expect(ago(90)).toBe('3 months ago');
     expect(ago(800)).toBe('2 years ago');
+    // A year is counted: "last year" would be the calendar's.
+    expect(ago(400)).toBe('1 year ago');
+    expect(ago(400, 'fr')).toBe('Il y a 1 an');
     expect(ago(1, 'fr')).toBe('Hier');
     expect(ago(3, 'fr')).toBe('Il y a 3 jours');
     // Last night is yesterday, however few hours ago.

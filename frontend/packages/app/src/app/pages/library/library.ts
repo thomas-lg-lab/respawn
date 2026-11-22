@@ -39,10 +39,9 @@ export class Library {
   protected readonly failureKey = failureKey;
   protected readonly currentLanguage = this.language.current;
   protected readonly placeholders = [0, 1, 2, 3, 4, 5, 6, 7];
-  /** "Ago" is counted from the moment the screen was opened. */
-  protected readonly now = Date.now();
-
   protected readonly games = injectQuery(() => this.queries.games());
+  /** "Ago" is counted from the moment the games were read, so it follows each new reading. */
+  protected readonly now = computed(() => this.games.dataUpdatedAt() || Date.now());
 
   protected readonly search = signal('');
   protected readonly filter = signal<LibraryFilter>('all');
