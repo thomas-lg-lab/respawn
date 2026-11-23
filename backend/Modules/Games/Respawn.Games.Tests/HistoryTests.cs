@@ -309,6 +309,39 @@ public sealed class HistoryTests
     }
 
     [Fact]
+    public async Task A_reading_at_midnight_is_of_the_day_that_starts_and_one_just_before_of_the_day_that_ends()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+        DateTimeOffset Midnight(int day) => new(2026, 11, day, 0, 0, 0, TimeSpan.Zero);
+
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 10));
+        await RecordAsync(app, account.Id, Midnight(2).AddTicks(-10), ("620", "Portal 2", 15));
+        await RecordAsync(app, account.Id, Midnight(2), ("620", "Portal 2", 25));
+        await RecordAsync(app, account.Id, Midnight(3).AddTicks(-10), ("620", "Portal 2", 45));
+        await RecordAsync(app, account.Id, Midnight(3), ("620", "Portal 2", 85));
+        var portal2 = (await GamesAsync(app))["620"];
+
+        // The second day is from its midnight to the last instant before the next: neither the five
+        // minutes read just before it, nor the forty read at the midnight after.
+        var whole = await DaysAsync(browser);
+        Assert.Equal([(Date(1), portal2, 300L), (Date(2), portal2, 1800L), (Date(3), portal2, 2400L)], whole);
+        for (var first = 1; first <= 4; first++)
+        {
+            Assert.Equal(
+                whole.Where(day => day.Date >= Date(first)),
+                await DaysAsync(browser, $"?from=2026-11-0{first}"));
+            Assert.Equal(
+                whole.Where(day => day.Date <= Date(first)),
+                await DaysAsync(browser, $"?to=2026-11-0{first}"));
+            Assert.Equal(
+                whole.Where(day => day.Date == Date(first)),
+                await DaysAsync(browser, $"?from=2026-11-0{first}&to=2026-11-0{first}"));
+        }
+    }
+
+    [Fact]
     public async Task The_description_says_what_the_history_answers()
     {
         await using var app = await StartAsync();

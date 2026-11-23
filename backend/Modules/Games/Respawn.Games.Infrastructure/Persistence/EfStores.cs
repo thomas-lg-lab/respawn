@@ -390,7 +390,9 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         //
         // The first reading of a game in the days asked counts from the last one before them that knew
         // a total, however far back: the snapshots are walked backwards from the first day, one row
-        // looked up in each, and the walk stops at the first that has one.
+        // looked up in each, and the walk stops at the first that has one, or at the earliest reading
+        // that listed the game: one bought in the days asked is looked up nowhere. That lookup is a
+        // lateral join so that it is made once for a reading, and only for one with none before it.
         var since = (from ?? DateOnly.MinValue).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
         var until = to is { } day && day < DateOnly.MaxValue
             ? day.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
@@ -401,6 +403,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 WITH readings AS (
                     SELECT s.linked_account_id,
                            o.store_entry_id,
+                           w.first_seen_at,
                            (s.taken_at AT TIME ZONE 'UTC')::date AS day,
                            o.known_playtime_seconds AS known,
                            LAG(o.known_playtime_seconds) OVER (
@@ -418,17 +421,19 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 gains AS (
                     SELECT r.day,
                            r.store_entry_id,
-                           r.known - COALESCE(r.before, (
-                               SELECT p.known_playtime_seconds
-                               FROM games.raw_snapshots ps
-                               JOIN games.observations p ON p.snapshot_id = ps.id
-                               WHERE ps.linked_account_id = r.linked_account_id
-                                 AND ps.taken_at < {since}
-                                 AND p.store_entry_id = r.store_entry_id
-                                 AND p.known_playtime_seconds IS NOT NULL
-                               ORDER BY ps.taken_at DESC, ps.id DESC
-                               LIMIT 1)) AS gained
+                           r.known - COALESCE(r.before, earlier.known) AS gained
                     FROM readings r
+                    LEFT JOIN LATERAL (
+                        SELECT p.known_playtime_seconds AS known
+                        FROM games.raw_snapshots ps
+                        JOIN games.observations p ON p.snapshot_id = ps.id
+                        WHERE r.before IS NULL
+                          AND ps.linked_account_id = r.linked_account_id
+                          AND ps.taken_at >= r.first_seen_at AND ps.taken_at < {since}
+                          AND p.store_entry_id = r.store_entry_id
+                          AND p.known_playtime_seconds IS NOT NULL
+                        ORDER BY ps.taken_at DESC, ps.id DESC
+                        LIMIT 1) earlier ON TRUE
                 )
                 SELECT g.day AS day, e.game_id AS game_id, SUM(g.gained)::bigint AS seconds
                 FROM gains g
