@@ -39,11 +39,20 @@ export class Disclosure {
     this.open.set(false);
   }
 
+  /**
+   * Closes the panel and gives the focus back to the button: for what closes it from inside
+   * (Escape, a link of the panel that was followed), where the focus would otherwise stay on
+   * something hidden and be lost.
+   */
+  dismiss(): void {
+    this.close();
+    this.host.querySelector<HTMLElement>(`[aria-controls="${this.panelId}"]`)?.focus();
+  }
+
   protected onEscape(event: Event): void {
     if (!this.open()) return;
     event.stopPropagation();
-    this.close();
-    this.host.querySelector<HTMLElement>(`[aria-controls="${this.panelId}"]`)?.focus();
+    this.dismiss();
   }
 
   protected onFocusOut(event: FocusEvent): void {

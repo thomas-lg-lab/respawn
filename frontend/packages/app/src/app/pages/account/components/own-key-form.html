@@ -1,0 +1,27 @@
+<form class="flex flex-col gap-3" data-own-key [formRoot]="form" *transloco="let t">
+  @let keyError = fieldErrorKey(form.key().errors());
+  <rs-text-field
+    type="password"
+    autocomplete="new-password"
+    [formField]="form.key"
+    [label]="t(hasKey() ? 'account.key.replaceLabel' : 'account.key.label')"
+    [hint]="t('account.key.hint')"
+    [error]="keyError && t(keyError)"
+  />
+  <div class="flex flex-wrap gap-2">
+    <button rsButton type="submit" data-key-give [disabled]="pending() || !typed()">
+      {{ t(hasKey() ? 'account.key.replace' : 'account.key.give') }}
+    </button>
+    @if (hasKey()) {
+      <button
+        rsButton
+        type="button"
+        data-key-remove
+        [disabled]="pending()"
+        (click)="removed.emit()"
+      >
+        {{ t('account.key.remove') }}
+      </button>
+    }
+  </div>
+</form>

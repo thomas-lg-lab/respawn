@@ -76,6 +76,8 @@
     "cross_site_request": "The request was refused: it seems to come from another site. Reload the page.",
     "sync_in_progress": "A sync is already running.",
     "unknown_linked_account": "This linked account no longer exists. Reload the page.",
+    "invalid_key": "This is not a Steam Web API key: it is made of letters and digits only.",
+    "keys_unavailable": "This instance cannot keep a key: its administrator has to give it an encryption key.",
     "database_unavailable": "The database is not answering. Try again in a moment.",
     "internal_error": "Something failed on the server. Try again in a moment.",
     "network_error": "The server is not answering. Check your connection and try again.",
@@ -89,7 +91,47 @@
     "signOut": "Sign out",
     "providers": "Sign-in providers",
     "linkProvider": "Link {{ provider }}",
-    "providerLinked": "{{ provider }} is linked to this account"
+    "providerLinked": "{{ provider }} is linked to this account",
+    "view": "My account",
+    "label": "Player profile",
+    "title": "My account",
+    "linked": {
+      "title": "Game accounts",
+      "text": "The store accounts respawn reads your games and your playtime from, once a day.",
+      "none": "No game account is linked yet.",
+      "another": "Link another Steam account"
+    },
+    "sources": {
+      "steam": "Steam"
+    },
+    "linkedAt": "Linked on {{ date }}",
+    "sync": {
+      "now": "Sync now",
+      "running": "Syncing…",
+      "last": "Last successful sync: {{ date }}",
+      "never": "No sync has succeeded yet.",
+      "nothingVisible": "The last sync went through, but Steam showed no games: the game details of your profile may be private."
+    },
+    "key": {
+      "instance": "Read with the instance’s key",
+      "own": "Read with your own key",
+      "text": "The instance’s key only sees a library whose game details are public. With your own Steam Web API key, respawn reads yours even when they are private. The key is stored encrypted and never shown again; the next sync says whether Steam takes it.",
+      "label": "Your Steam Web API key",
+      "replaceLabel": "Another Steam Web API key",
+      "hint": "Steam gives it at steamcommunity.com/dev/apikey.",
+      "give": "Keep this key",
+      "replace": "Replace the key",
+      "remove": "Remove my key",
+      "kept": "Your key is kept. The next sync will say whether Steam takes it.",
+      "removed": "Your key is removed: this account is read with the instance’s key again."
+    },
+    "unlink": {
+      "ask": "Unlink this account",
+      "warning": "Unlinking forgets everything that was read from this account: its games, their playtime and their history. It cannot be undone; linking it again starts from nothing.",
+      "confirm": "Unlink and forget",
+      "cancel": "Keep it linked",
+      "done": "The account is unlinked, and what was read from it is forgotten."
+    }
   },
   "nav": {
     "label": "Main navigation",

@@ -16,6 +16,8 @@ export const KNOWN_FAILURES = [
   'cross_site_request',
   'sync_in_progress',
   'unknown_linked_account',
+  'invalid_key',
+  'keys_unavailable',
   'database_unavailable',
   'internal_error',
   NETWORK_ERROR,

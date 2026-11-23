@@ -76,6 +76,8 @@
     "cross_site_request": "La demande a été refusée : elle semble venir d’un autre site. Rechargez la page.",
     "sync_in_progress": "Une synchronisation est déjà en cours.",
     "unknown_linked_account": "Ce compte lié n’existe plus. Rechargez la page.",
+    "invalid_key": "Ce n’est pas une clé d’API Web Steam : elle n’est faite que de lettres et de chiffres.",
+    "keys_unavailable": "Cette instance ne peut pas garder de clé : son administrateur doit lui donner une clé de chiffrement.",
     "database_unavailable": "La base de données ne répond pas. Réessayez dans un instant.",
     "internal_error": "Une erreur s’est produite sur le serveur. Réessayez dans un instant.",
     "network_error": "Le serveur ne répond pas. Vérifiez votre connexion et réessayez.",
@@ -89,7 +91,47 @@
     "signOut": "Se déconnecter",
     "providers": "Fournisseurs de connexion",
     "linkProvider": "Lier {{ provider }}",
-    "providerLinked": "{{ provider }} est lié à ce compte"
+    "providerLinked": "{{ provider }} est lié à ce compte",
+    "view": "Mon compte",
+    "label": "Profil du joueur",
+    "title": "Mon compte",
+    "linked": {
+      "title": "Comptes de jeu",
+      "text": "Les comptes de boutiques où respawn lit vos jeux et votre temps de jeu, une fois par jour.",
+      "none": "Aucun compte de jeu n’est encore lié.",
+      "another": "Lier un autre compte Steam"
+    },
+    "sources": {
+      "steam": "Steam"
+    },
+    "linkedAt": "Lié le {{ date }}",
+    "sync": {
+      "now": "Synchroniser maintenant",
+      "running": "Synchronisation en cours…",
+      "last": "Dernière synchronisation réussie : {{ date }}",
+      "never": "Aucune synchronisation n’a encore réussi.",
+      "nothingVisible": "La dernière synchronisation a abouti, mais Steam n’a montré aucun jeu : les détails de jeu de votre profil sont peut-être privés."
+    },
+    "key": {
+      "instance": "Lu avec la clé de l’instance",
+      "own": "Lu avec votre propre clé",
+      "text": "La clé de l’instance ne voit une bibliothèque que si ses détails de jeu sont publics. Avec votre propre clé d’API Web Steam, respawn lit la vôtre même s’ils sont privés. La clé est stockée chiffrée et n’est plus jamais affichée ; la prochaine synchronisation dira si Steam l’accepte.",
+      "label": "Votre clé d’API Web Steam",
+      "replaceLabel": "Une autre clé d’API Web Steam",
+      "hint": "Steam la donne sur steamcommunity.com/dev/apikey.",
+      "give": "Garder cette clé",
+      "replace": "Remplacer la clé",
+      "remove": "Retirer ma clé",
+      "kept": "Votre clé est gardée. La prochaine synchronisation dira si Steam l’accepte.",
+      "removed": "Votre clé est retirée : ce compte est de nouveau lu avec la clé de l’instance."
+    },
+    "unlink": {
+      "ask": "Délier ce compte",
+      "warning": "Délier ce compte oublie tout ce qui en a été lu : ses jeux, leur temps de jeu et leur historique. C’est définitif ; le lier à nouveau repart de zéro.",
+      "confirm": "Délier et oublier",
+      "cancel": "Le garder lié",
+      "done": "Le compte est délié, et ce qui en avait été lu est oublié."
+    }
   },
   "nav": {
     "label": "Navigation principale",

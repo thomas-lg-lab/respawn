@@ -26,6 +26,9 @@ const JUST_LINKED: LinkedAccount = {
   sync: { running: false, last: null, last_succeeded_at: null },
 };
 
+/** Another store account of the same owner, linked a moment ago. */
+const JUST_LINKED_ELSEWHERE: LinkedAccount = { ...JUST_LINKED, id: 'elsewhere' };
+
 describe('LinkedAccountQueries', () => {
   let queries: LinkedAccountQueries;
   let client: QueryClient;
@@ -147,6 +150,63 @@ describe('LinkedAccountQueries', () => {
     );
 
     expect(await done).toMatchObject({ status: 409, code: 'sync_in_progress' });
+  });
+
+  it('unlinks an account: it leaves the list at once and the library is stale', async () => {
+    client.setQueryData(linkedAccountKeys.list, [ACCOUNT, JUST_LINKED_ELSEWHERE]);
+    client.setQueryData(libraryKeys.stats, TEST_LIBRARY_STATS);
+    const unlink = new MutationObserver(client, queries.unlink());
+
+    const done = unlink.mutate(ACCOUNT.id);
+    const sent = await request(`/api/v1/linked-accounts/${ACCOUNT.id}`);
+    expect(sent.request.method).toBe('DELETE');
+    sent.flush(null, { status: 204, statusText: '' });
+    await done;
+
+    expect(client.getQueryData(linkedAccountKeys.list)).toEqual([JUST_LINKED_ELSEWHERE]);
+    expect(stale(linkedAccountKeys.list)).toBe(true);
+    expect(stale(libraryKeys.stats)).toBe(true);
+  });
+
+  it('keeps the account in the list when unlinking is refused', async () => {
+    client.setQueryData(linkedAccountKeys.list, [ACCOUNT]);
+    const unlink = new MutationObserver(client, queries.unlink());
+
+    const done = unlink.mutate(ACCOUNT.id).catch((thrown: unknown) => thrown);
+    (await request(`/api/v1/linked-accounts/${ACCOUNT.id}`)).flush(
+      { error: { code: 'database_unavailable', message: 'In English, for the log.' } },
+      { status: 503, statusText: '' },
+    );
+
+    expect(await done).toMatchObject({ status: 503, code: 'database_unavailable' });
+    expect(client.getQueryData(linkedAccountKeys.list)).toEqual([ACCOUNT]);
+  });
+
+  it('gives an account its owner’s key, then asks again for the accounts', async () => {
+    client.setQueryData(linkedAccountKeys.list, [ACCOUNT]);
+    const give = new MutationObserver(client, queries.giveKey());
+
+    const done = give.mutate({ accountId: ACCOUNT.id, key: 'A1B2' });
+    const sent = await request(`/api/v1/linked-accounts/${ACCOUNT.id}/key`);
+    expect(sent.request.method).toBe('PUT');
+    expect(sent.request.body).toEqual({ key: 'A1B2' });
+    sent.flush(null, { status: 204, statusText: '' });
+    await done;
+
+    expect(stale(linkedAccountKeys.list)).toBe(true);
+  });
+
+  it('takes the owner’s key away, then asks again for the accounts', async () => {
+    client.setQueryData(linkedAccountKeys.list, [{ ...ACCOUNT, has_own_key: true }]);
+    const remove = new MutationObserver(client, queries.removeKey());
+
+    const done = remove.mutate(ACCOUNT.id);
+    const sent = await request(`/api/v1/linked-accounts/${ACCOUNT.id}/key`);
+    expect(sent.request.method).toBe('DELETE');
+    sent.flush(null, { status: 204, statusText: '' });
+    await done;
+
+    expect(stale(linkedAccountKeys.list)).toBe(true);
   });
 });
 
