@@ -251,6 +251,9 @@ namespace Respawn.Games.Infrastructure.Persistence.Migrations
                     b.HasIndex("LinkedAccountId", "Kind", "TakenAt")
                         .HasDatabaseName("ix_raw_snapshots_linked_account_id_kind_taken_at");
 
+                    b.HasIndex("LinkedAccountId", "TakenAt", "Id")
+                        .HasDatabaseName("ix_raw_snapshots_linked_account_id_taken_at_id");
+
                     b.HasIndex("Source", "Kind", "TakenAt")
                         .HasDatabaseName("ix_raw_snapshots_source_kind_taken_at");
 

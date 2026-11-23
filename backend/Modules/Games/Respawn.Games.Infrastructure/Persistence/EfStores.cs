@@ -382,34 +382,64 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
 
     public async Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
-        // The differences are taken by the database, which reads the owner's observations once: their
-        // snapshots come from the index on the linked account, their rows from the primary key. A
-        // reading that knew no total is skipped, so the next one is compared with the last that did.
-        // Two readings of the same moment come in the order they were recorded (a snapshot's id is
-        // made from the time).
-        var (first, last) = (from ?? DateOnly.MinValue, to ?? DateOnly.MaxValue);
+        // The differences are taken by the database, which reads the observations of the days asked
+        // and no others: their snapshots come from the index on the linked account and the date, their
+        // rows from the primary key. A reading that knew no total is skipped, so the next one is
+        // compared with the last that did. Two readings of the same moment come in the order they
+        // were recorded (a snapshot's id is made from the time).
+        //
+        // The first reading of a game in the days asked counts from the last one before them that knew
+        // a total, however far back: the snapshots are walked backwards from the first day, one row
+        // looked up in each, and the walk stops at the first that has one, or at the earliest reading
+        // that listed the game: one bought in the days asked is looked up nowhere. That lookup is a
+        // lateral join so that it is made once for a reading, and only for one with none before it.
+        var since = (from ?? DateOnly.MinValue).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var until = to is { } day && day < DateOnly.MaxValue
+            ? day.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
+            : DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
         var rows = await db.Database
             .SqlQuery<PlayedRow>(
                 $"""
                 WITH readings AS (
-                    SELECT o.store_entry_id,
+                    SELECT s.linked_account_id,
+                           o.store_entry_id,
+                           w.first_seen_at,
                            (s.taken_at AT TIME ZONE 'UTC')::date AS day,
-                           o.known_playtime_seconds - LAG(o.known_playtime_seconds) OVER (
+                           o.known_playtime_seconds AS known,
+                           LAG(o.known_playtime_seconds) OVER (
                                PARTITION BY s.linked_account_id, o.store_entry_id
-                               ORDER BY s.taken_at, s.id) AS gained
-                    FROM games.observations o
-                    JOIN games.raw_snapshots s ON s.id = o.snapshot_id
-                    JOIN games.linked_accounts a ON a.id = s.linked_account_id
+                               ORDER BY s.taken_at, s.id) AS before
+                    FROM games.linked_accounts a
+                    JOIN games.raw_snapshots s ON s.linked_account_id = a.id
+                    JOIN games.observations o ON o.snapshot_id = s.id
                     JOIN games.ownerships w ON w.linked_account_id = a.id AND w.store_entry_id = o.store_entry_id
                     WHERE a.owner_id = {ownerId}
+                      AND s.taken_at >= {since} AND s.taken_at < {until}
                       AND w.unlisted_since IS NULL
                       AND o.known_playtime_seconds IS NOT NULL
+                ),
+                gains AS (
+                    SELECT r.day,
+                           r.store_entry_id,
+                           r.known - COALESCE(r.before, earlier.known) AS gained
+                    FROM readings r
+                    LEFT JOIN LATERAL (
+                        SELECT p.known_playtime_seconds AS known
+                        FROM games.raw_snapshots ps
+                        JOIN games.observations p ON p.snapshot_id = ps.id
+                        WHERE r.before IS NULL
+                          AND ps.linked_account_id = r.linked_account_id
+                          AND ps.taken_at >= r.first_seen_at AND ps.taken_at < {since}
+                          AND p.store_entry_id = r.store_entry_id
+                          AND p.known_playtime_seconds IS NOT NULL
+                        ORDER BY ps.taken_at DESC, ps.id DESC
+                        LIMIT 1) earlier ON TRUE
                 )
-                SELECT r.day AS day, e.game_id AS game_id, SUM(r.gained)::bigint AS seconds
-                FROM readings r
-                JOIN games.store_entries e ON e.id = r.store_entry_id
-                WHERE r.gained > 0 AND r.day BETWEEN {first} AND {last}
-                GROUP BY r.day, e.game_id
+                SELECT g.day AS day, e.game_id AS game_id, SUM(g.gained)::bigint AS seconds
+                FROM gains g
+                JOIN games.store_entries e ON e.id = g.store_entry_id
+                WHERE g.gained > 0
+                GROUP BY g.day, e.game_id
                 """)
             .ToListAsync(ct);
         return [.. rows.Select(row => new PlayedDay(row.Day, row.GameId, TimeSpan.FromSeconds(row.Seconds)))];
