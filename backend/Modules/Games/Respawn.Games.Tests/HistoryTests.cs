@@ -270,6 +270,78 @@ public sealed class HistoryTests
     }
 
     [Fact]
+    public async Task A_day_asked_counts_from_the_last_total_known_before_it_however_far_back()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var owner = await OwnerAsync(browser);
+        var account = await LinkAsync(app, owner, "76561190000000001");
+        var other = await LinkAsync(app, owner, "76561190000000002");
+
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 10), ("400", "Portal", 30));
+        await RecordAsync(app, other.Id, Day(1), ("620", "Portal 2", 100));
+        // Portal is not listed that day, and the day after Portal 2 comes with a zero that says nothing.
+        await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 20));
+        await RecordAsync(app, account.Id, Day(3), ("620", "Portal 2", 0));
+        await RecordAsync(app, account.Id, Day(4), ("620", "Portal 2", 50), ("400", "Portal", 45));
+        await RecordAsync(app, other.Id, Day(4), ("620", "Portal 2", 105));
+        await RecordAsync(app, account.Id, Day(5), ("620", "Portal 2", 60));
+        var games = await GamesAsync(app);
+
+        // Portal 2 counts from the second day on one account and from the first on the other, Portal
+        // from the first: none of them from the reading just before the day asked.
+        (DateOnly, Guid, long)[] fourth = [(Date(4), games["620"], 2100L), (Date(4), games["400"], 900L)];
+        Assert.Equal(fourth, await DaysAsync(browser, "?from=2026-11-04&to=2026-11-04"));
+        var fifth = (Date(5), games["620"], 600L);
+        Assert.Equal(fourth.Append(fifth), await DaysAsync(browser, "?from=2026-11-04"));
+
+        // A part is the whole history, cut: whatever the first day asked.
+        var whole = await DaysAsync(browser);
+        for (var first = 1; first <= 6; first++)
+        {
+            Assert.Equal(
+                whole.Where(day => day.Date >= Date(first)),
+                await DaysAsync(browser, $"?from=2026-11-0{first}"));
+            Assert.Equal(
+                whole.Where(day => day.Date >= Date(first) && day.Date <= Date(first)),
+                await DaysAsync(browser, $"?from=2026-11-0{first}&to=2026-11-0{first}"));
+        }
+    }
+
+    [Fact]
+    public async Task A_reading_at_midnight_is_of_the_day_that_starts_and_one_just_before_of_the_day_that_ends()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+        DateTimeOffset Midnight(int day) => new(2026, 11, day, 0, 0, 0, TimeSpan.Zero);
+
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 10));
+        await RecordAsync(app, account.Id, Midnight(2).AddTicks(-10), ("620", "Portal 2", 15));
+        await RecordAsync(app, account.Id, Midnight(2), ("620", "Portal 2", 25));
+        await RecordAsync(app, account.Id, Midnight(3).AddTicks(-10), ("620", "Portal 2", 45));
+        await RecordAsync(app, account.Id, Midnight(3), ("620", "Portal 2", 85));
+        var portal2 = (await GamesAsync(app))["620"];
+
+        // The second day is from its midnight to the last instant before the next: neither the five
+        // minutes read just before it, nor the forty read at the midnight after.
+        var whole = await DaysAsync(browser);
+        Assert.Equal([(Date(1), portal2, 300L), (Date(2), portal2, 1800L), (Date(3), portal2, 2400L)], whole);
+        for (var first = 1; first <= 4; first++)
+        {
+            Assert.Equal(
+                whole.Where(day => day.Date >= Date(first)),
+                await DaysAsync(browser, $"?from=2026-11-0{first}"));
+            Assert.Equal(
+                whole.Where(day => day.Date <= Date(first)),
+                await DaysAsync(browser, $"?to=2026-11-0{first}"));
+            Assert.Equal(
+                whole.Where(day => day.Date == Date(first)),
+                await DaysAsync(browser, $"?from=2026-11-0{first}&to=2026-11-0{first}"));
+        }
+    }
+
+    [Fact]
     public async Task The_description_says_what_the_history_answers()
     {
         await using var app = await StartAsync();
