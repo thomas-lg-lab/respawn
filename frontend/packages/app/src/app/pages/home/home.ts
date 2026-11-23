@@ -182,7 +182,7 @@ export class Home {
     ranking(this.games.data() ?? [], this.language.current()),
   );
 
-  /** The most played games as the tiles of the time map; none under two launched games. */
+  /** The most played games, as the time map draws them; none under two launched games. */
   protected readonly map = computed(() =>
     timeMap(this.games.data() ?? [], this.language.current(), this.now()),
   );

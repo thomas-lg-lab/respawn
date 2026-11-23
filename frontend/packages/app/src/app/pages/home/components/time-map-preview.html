@@ -3,25 +3,27 @@
   data-time-map
   *transloco="let t; prefix: 'home'"
 >
-  <div class="relative h-32.5" aria-hidden="true">
-    @for (tile of tiles(); track tile.id) {
+  <div #drawing class="relative h-32.5" aria-hidden="true">
+    @for (tile of tiles(); track tile.item.id) {
+      <!-- The gap between two tiles is one side of each, and a tile keeps two pixels at
+           least: the smallest share still shows its colour. -->
       <span
-        class="absolute border border-surface"
-        [class.bg-recency-1]="tile.recency === 1"
-        [class.bg-recency-2]="tile.recency === 2"
-        [class.bg-recency-3]="tile.recency === 3"
-        [class.bg-recency-4]="tile.recency === 4"
+        class="absolute min-h-0.5 min-w-0.5 border-r border-b border-surface"
+        [class.bg-recency-1]="tile.item.recency === 1"
+        [class.bg-recency-2]="tile.item.recency === 2"
+        [class.bg-recency-3]="tile.item.recency === 3"
+        [class.bg-recency-4]="tile.item.recency === 4"
         [style.left.%]="tile.x"
         [style.top.%]="tile.y"
         [style.width.%]="tile.width"
         [style.height.%]="tile.height"
-        [attr.data-game]="tile.id"
-        [attr.data-recency]="tile.recency"
+        [attr.data-game]="tile.item.id"
+        [attr.data-recency]="tile.item.recency"
       ></span>
     }
   </div>
   <div class="flex flex-col gap-0.5 px-5 py-4 wide:px-6">
     <h2 class="type-card-title">{{ t('timeMap.title') }}</h2>
-    <p class="type-caption text-muted">{{ t('timeMap.caption', { count: tiles().length }) }}</p>
+    <p class="type-caption text-muted">{{ t('timeMap.caption', { count: games().length }) }}</p>
   </div>
 </rs-card>

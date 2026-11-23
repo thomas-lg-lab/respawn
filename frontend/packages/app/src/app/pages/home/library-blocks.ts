@@ -1,6 +1,6 @@
 import type { LibraryGame } from '@respawn/data';
 import { isMissing, kept, sorted } from '@app/games/game-list';
-import { type Recency, recency, treemap } from '@app/games/time-map';
+import { type Recency, recency } from '@app/games/time-map';
 
 /**
  * What the home's blocks make of the games the browser holds: the one to resume, the ones
@@ -14,8 +14,6 @@ const RECENT = 4;
 const RANKED = 6;
 /** How many games the time map preview draws. */
 const MAPPED = 13;
-/** The preview's width over its height, about: its tiles are cut for that shape. */
-const MAP_RATIO = 2.6;
 /** How many never launched games a draw gives. */
 export const PICKS = 3;
 
@@ -82,31 +80,30 @@ export function ranking(games: readonly LibraryGame[], language: string): Rankin
   };
 }
 
-/** A game on the time map preview: its tile, in percent of the map, and its colour. */
-export interface MapTile {
+/** A game on the time map preview: what its tile is sized by, and its colour. */
+export interface MapGame {
   readonly id: string;
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
+  readonly seconds: number;
   readonly recency: Recency;
 }
 
 /**
- * The time map preview: the most played games, a tile as large as each one's share of their
- * playtime, coloured by how long before `now` it was last played. None when fewer than two
- * games were launched: one tile alone would say nothing.
+ * The time map preview: the most played games, the most played first, each with its playtime
+ * and how long before `now` it was last played. None when fewer than two games were launched:
+ * one tile alone would say nothing. A game played these two weeks whose last session no
+ * store dates is among the latest: the two weeks say more than the missing date.
  */
-export function timeMap(games: readonly LibraryGame[], language: string, now: number): MapTile[] {
+export function timeMap(games: readonly LibraryGame[], language: string, now: number): MapGame[] {
   const mapped = sorted(kept(games, 'launched'), 'playtime', language).slice(0, MAPPED);
   if (mapped.length < 2) return [];
-  return treemap(mapped, (game) => game.playtime_seconds ?? 0, MAP_RATIO).map(
-    ({ item, ...place }) => ({
-      id: item.game_id,
-      ...place,
-      recency: recency(item.last_played_at, now),
-    }),
-  );
+  return mapped.map((game) => ({
+    id: game.game_id,
+    seconds: game.playtime_seconds ?? 0,
+    recency:
+      game.last_played_at === null && (game.recent_playtime_seconds ?? 0) > 0
+        ? 1
+        : recency(game.last_played_at, now),
+  }));
 }
 
 /**

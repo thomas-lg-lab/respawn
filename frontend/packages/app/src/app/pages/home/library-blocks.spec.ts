@@ -140,27 +140,33 @@ describe('the blocks of the home', () => {
     expect(ranking(games, 'en').others).toEqual({ count: 0, seconds: 0 });
   });
 
-  it('maps the most played games, a tile as large as its share and coloured by its last session', () => {
+  it('maps the most played games, each with its playtime and coloured by its last session', () => {
     const now = Date.parse('2026-11-23T12:00:00Z');
     const undated = game('Undated', { playtime_seconds: 7200 });
 
-    const tiles = timeMap([...games, undated], 'en', now);
+    const mapped = timeMap([...games, undated], 'en', now);
 
-    const byId = new Map(tiles.map((tile) => [tile.id, tile]));
-    // Never launched or unknown: no tile.
-    expect([...byId.keys()].sort()).toEqual(['id-Hades', 'id-Portal 2', 'id-Tunic', 'id-Undated']);
-    const share = (id: string) => {
-      const tile = byId.get(id)!;
-      return (tile.width * tile.height) / 100;
-    };
-    const whole = 360000 + 7200 + 7200 + 600;
-    expect(share('id-Hades')).toBeCloseTo((360000 / whole) * 100);
-    expect(share('id-Tunic')).toBeCloseTo((600 / whole) * 100);
+    // Never launched or unknown: not on the map. The most played first.
+    expect(mapped.map(({ id, seconds }) => ({ id, seconds }))).toEqual([
+      { id: 'id-Hades', seconds: 360000 },
+      { id: 'id-Portal 2', seconds: 7200 },
+      { id: 'id-Undated', seconds: 7200 },
+      { id: 'id-Tunic', seconds: 600 },
+    ]);
     // Two weeks at most, then three months, a year, and older; older too when no store says.
-    expect(byId.get('id-Hades')?.recency).toBe(1);
-    expect(byId.get('id-Portal 2')?.recency).toBe(1);
-    expect(byId.get('id-Tunic')?.recency).toBe(4);
-    expect(byId.get('id-Undated')?.recency).toBe(4);
+    const byId = new Map(mapped.map((each) => [each.id, each.recency]));
+    expect(byId.get('id-Hades')).toBe(1);
+    expect(byId.get('id-Portal 2')).toBe(1);
+    expect(byId.get('id-Tunic')).toBe(4);
+    expect(byId.get('id-Undated')).toBe(4);
+  });
+
+  it('maps among the latest a game of the two weeks whose last session no store dates', () => {
+    const lately = game('Lately', { playtime_seconds: 36000, recent_playtime_seconds: 7200 });
+
+    const mapped = timeMap([hades, lately], 'en', Date.now());
+
+    expect(mapped.find((each) => each.id === 'id-Lately')?.recency).toBe(1);
   });
 
   it('maps thirteen games at most, the most played', () => {

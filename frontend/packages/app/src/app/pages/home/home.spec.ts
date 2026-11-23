@@ -582,6 +582,42 @@ describe('Home', () => {
       );
     });
 
+    it('cuts the time map for the shape it is drawn in', async () => {
+      let resized: ResizeObserverCallback = () => undefined;
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: ResizeObserverCallback) {
+            resized = callback;
+          }
+          observe() {}
+          disconnect() {}
+        },
+      );
+      try {
+        const games = [
+          game('Hades', { playtime_seconds: 3600 }),
+          game('Tunic', { playtime_seconds: 3600 }),
+        ];
+        const { harness, screen } = await open([account()], '/', STATS, games);
+        const first = () => screen.querySelector<HTMLElement>('[data-time-map] [data-game]');
+
+        // Wider than tall until it is measured: the two halves side by side.
+        expect(first()?.style.width).toBe('50%');
+        expect(first()?.style.height).toBe('100%');
+
+        const drawn = { contentRect: { width: 100, height: 400 } } as ResizeObserverEntry;
+        resized([drawn], {} as ResizeObserver);
+        await harness.fixture.whenStable();
+
+        // Taller than wide: one above the other.
+        expect(first()?.style.width).toBe('100%');
+        expect(first()?.style.height).toBe('50%');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
     it('draws no time map of one launched game alone', async () => {
       const games = [game('Celeste'), game('Hades', { playtime_seconds: 3600 })];
       const { screen } = await open([account()], '/', STATS, games);
