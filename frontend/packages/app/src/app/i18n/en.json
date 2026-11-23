@@ -242,6 +242,10 @@
       "othersOne": "The other launched game: {{ time }}.",
       "othersMany": "The {{ count }} other launched games: {{ time }}."
     },
+    "timeMap": {
+      "title": "The time map",
+      "caption": "The {{ count }} most played games: a tile as large as the playtime, and the warmer the more recent the last session."
+    },
     "picks": {
       "title": "Never launched, at random",
       "reroll": "Draw again"

@@ -114,7 +114,7 @@
         </div>
       }
 
-      <!-- The blocks go two by two on a wide screen; one alone takes the row. A block made
+      <!-- The blocks go two by two on a wide screen; one left alone on its row takes it. A block made
            of the history holds its place while it is awaited, and is not drawn when it could
            not be read; the ones made of the games do not wait for it. -->
       @if (games.data()) {
@@ -141,24 +141,27 @@
             }
           </div>
         }
-        @if (awaited || picks().length || history.data()) {
+        @if (awaited || map().length || picks().length || history.data()) {
           <div class="grid grid-cols-1 items-start gap-4 wide:grid-cols-2">
+            @if (map().length) {
+              <rs-time-map-preview class="last:odd:wide:col-span-2" [games]="map()" />
+            }
             @if (picks().length) {
               <rs-random-picks
-                class="only:wide:col-span-2"
+                class="last:odd:wide:col-span-2"
                 [games]="picks()"
                 [more]="moreToDraw()"
                 (reroll)="drawAgain()"
               />
             }
             @if (awaited) {
-              <div class="only:wide:col-span-2" role="status">
+              <div class="last:odd:wide:col-span-2" role="status">
                 <rs-skeleton class="h-40" />
                 <span class="sr-only">{{ t('home.loading') }}</span>
               </div>
             } @else if (history.data(); as told) {
               <rs-activity
-                class="only:wide:col-span-2"
+                class="last:odd:wide:col-span-2"
                 [days]="days()"
                 [since]="told.tracking_since"
                 [language]="currentLanguage()"

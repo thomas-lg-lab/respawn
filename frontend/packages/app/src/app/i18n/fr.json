@@ -242,6 +242,10 @@
       "othersOne": "L’autre jeu lancé : {{ time }}.",
       "othersMany": "Les {{ count }} autres jeux lancés : {{ time }}."
     },
+    "timeMap": {
+      "title": "La carte du temps",
+      "caption": "Les {{ count }} jeux les plus joués : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente."
+    },
     "picks": {
       "title": "Jamais lancés, au hasard",
       "reroll": "Autre tirage"
