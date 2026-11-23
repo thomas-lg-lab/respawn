@@ -566,6 +566,30 @@ describe('Home', () => {
       expect(text(screen, '[data-ranking-others]')).toBe('Les 3 autres jeux lancés : 6 min.');
     });
 
+    it('draws the time map of the most played games, coloured by their last session', async () => {
+      const { screen } = await open([account()], '/', STATS, played());
+
+      const tiles = [...screen.querySelectorAll('[data-time-map] [data-game]')];
+      // Elden Ring and Portal 2 were played these two weeks, Hades over a year ago.
+      expect(tiles.map((tile) => tile.getAttribute('data-recency')).sort()).toEqual([
+        '1',
+        '1',
+        '4',
+      ]);
+      expect(text(screen, '[data-time-map] h2')).toBe('La carte du temps');
+      expect(text(screen, '[data-time-map] p')).toBe(
+        'Les 3 jeux les plus joués : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
+      );
+    });
+
+    it('draws no time map of one launched game alone', async () => {
+      const games = [game('Celeste'), game('Hades', { playtime_seconds: 3600 })];
+      const { screen } = await open([account()], '/', STATS, games);
+
+      expect(screen.querySelector('[data-ranking]')).not.toBeNull();
+      expect(screen.querySelector('[data-time-map]')).toBeNull();
+    });
+
     it('draws three games never launched, and others on request', async () => {
       const random = vi.spyOn(Math, 'random').mockReturnValue(0);
       const { harness, screen } = await open([account()], '/', STATS, played());
@@ -623,6 +647,7 @@ describe('Home', () => {
       expect(screen.querySelector('[data-resume]')).toBeNull();
       expect(screen.querySelector('[data-recently]')).toBeNull();
       expect(screen.querySelector('[data-ranking]')).toBeNull();
+      expect(screen.querySelector('[data-time-map]')).toBeNull();
       expect(names(screen, 'picks').sort()).toEqual(['Celeste', 'Jeu sans nom']);
     });
 
@@ -686,6 +711,7 @@ describe('Home', () => {
       expect(text(screen, '[data-resume-time]')).toBe('142 h in all · 6 h over the last two weeks');
       expect(text(screen, '[data-recently] h2')).toBe('Played recently');
       expect(text(screen, '[data-ranking] h2')).toBe('Where the time went');
+      expect(text(screen, '[data-time-map] h2')).toBe('The time map');
       expect(text(screen, '[data-picks] h2')).toBe('Never launched, at random');
     });
   });

@@ -6,6 +6,7 @@ import {
   neverLaunched,
   playedRecently,
   ranking,
+  timeMap,
 } from './library-blocks';
 
 function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
@@ -137,6 +138,46 @@ describe('the blocks of the home', () => {
 
   it('names every launched game when there are few, with nothing left to sum up', () => {
     expect(ranking(games, 'en').others).toEqual({ count: 0, seconds: 0 });
+  });
+
+  it('maps the most played games, a tile as large as its share and coloured by its last session', () => {
+    const now = Date.parse('2026-11-23T12:00:00Z');
+    const undated = game('Undated', { playtime_seconds: 7200 });
+
+    const tiles = timeMap([...games, undated], 'en', now);
+
+    const byId = new Map(tiles.map((tile) => [tile.id, tile]));
+    // Never launched or unknown: no tile.
+    expect([...byId.keys()].sort()).toEqual(['id-Hades', 'id-Portal 2', 'id-Tunic', 'id-Undated']);
+    const share = (id: string) => {
+      const tile = byId.get(id)!;
+      return (tile.width * tile.height) / 100;
+    };
+    const whole = 360000 + 7200 + 7200 + 600;
+    expect(share('id-Hades')).toBeCloseTo((360000 / whole) * 100);
+    expect(share('id-Tunic')).toBeCloseTo((600 / whole) * 100);
+    // Two weeks at most, then three months, a year, and older; older too when no store says.
+    expect(byId.get('id-Hades')?.recency).toBe(1);
+    expect(byId.get('id-Portal 2')?.recency).toBe(1);
+    expect(byId.get('id-Tunic')?.recency).toBe(4);
+    expect(byId.get('id-Undated')?.recency).toBe(4);
+  });
+
+  it('maps thirteen games at most, the most played', () => {
+    const many = Array.from({ length: 15 }, (_, index) =>
+      game(`G${String(index).padStart(2, '0')}`, { playtime_seconds: 1000 + index }),
+    );
+
+    const ids = timeMap(many, 'en', Date.now()).map((tile) => tile.id);
+
+    expect(ids).toHaveLength(13);
+    expect(ids).not.toContain('id-G00');
+    expect(ids).not.toContain('id-G01');
+  });
+
+  it('maps nothing under two launched games', () => {
+    expect(timeMap([celeste, hades, unknown], 'en', Date.now())).toEqual([]);
+    expect(timeMap([], 'en', Date.now())).toEqual([]);
   });
 
   it('draws among the games never launched that a store still lists', () => {

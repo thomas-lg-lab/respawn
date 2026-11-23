@@ -1,9 +1,10 @@
 import type { LibraryGame } from '@respawn/data';
 import { isMissing, kept, sorted } from '@app/games/game-list';
+import { type Recency, recency, treemap } from '@app/games/time-map';
 
 /**
  * What the home's blocks make of the games the browser holds: the one to resume, the ones
- * played lately, where the time went and a draw among the never launched. None of it asks
+ * played lately, where the time went, its map and a draw among the never launched. None of it asks
  * the API, and each says only what a store gave: totals, the last two weeks, the last session.
  */
 
@@ -11,6 +12,10 @@ import { isMissing, kept, sorted } from '@app/games/game-list';
 const RECENT = 4;
 /** How many games the ranking names; the others are summed up under it. */
 const RANKED = 6;
+/** How many games the time map preview draws. */
+const MAPPED = 13;
+/** The preview's width over its height, about: its tiles are cut for that shape. */
+const MAP_RATIO = 2.6;
 /** How many never launched games a draw gives. */
 export const PICKS = 3;
 
@@ -75,6 +80,33 @@ export function ranking(games: readonly LibraryGame[], language: string): Rankin
     seconds,
     others: { count: launched.length - top.length, seconds: seconds - played(top) },
   };
+}
+
+/** A game on the time map preview: its tile, in percent of the map, and its colour. */
+export interface MapTile {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly recency: Recency;
+}
+
+/**
+ * The time map preview: the most played games, a tile as large as each one's share of their
+ * playtime, coloured by how long before `now` it was last played. None when fewer than two
+ * games were launched: one tile alone would say nothing.
+ */
+export function timeMap(games: readonly LibraryGame[], language: string, now: number): MapTile[] {
+  const mapped = sorted(kept(games, 'launched'), 'playtime', language).slice(0, MAPPED);
+  if (mapped.length < 2) return [];
+  return treemap(mapped, (game) => game.playtime_seconds ?? 0, MAP_RATIO).map(
+    ({ item, ...place }) => ({
+      id: item.game_id,
+      ...place,
+      recency: recency(item.last_played_at, now),
+    }),
+  );
 }
 
 /**

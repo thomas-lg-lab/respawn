@@ -28,6 +28,7 @@ import { RandomPicks } from './components/random-picks';
 import { Resume } from './components/resume';
 import { SyncBanner } from './components/sync-banner';
 import { SyncIssue } from './components/sync-issue';
+import { TimeMapPreview } from './components/time-map-preview';
 import { TimeRanking } from './components/time-ranking';
 import { Years } from './components/years';
 import { activity, playedYears } from './history-blocks';
@@ -39,6 +40,7 @@ import {
   neverLaunched,
   playedRecently,
   ranking,
+  timeMap,
 } from './library-blocks';
 import {
   type SyncView,
@@ -64,7 +66,7 @@ type View = 'loading' | 'unavailable' | SyncView;
 /**
  * The first screen after sign-in: the library at a glance once a linked account was read (a
  * search, the game to resume, the ones played lately, the figures, the years, where the time
- * went, a draw among the never launched, the activity), and until then the way there, said state by state: link an
+ * went and its map, a draw among the never launched, the activity), and until then the way there, said state by state: link an
  * account, wait for its first reading, or learn why that reading brought no game. This is
  * where the states meet the API: the linked accounts and their syncs, "sync now", the
  * figures, the games, the history.
@@ -92,6 +94,7 @@ type View = 'loading' | 'unavailable' | SyncView;
     Resume,
     SyncBanner,
     SyncIssue,
+    TimeMapPreview,
     TimeRanking,
     Years,
   ],
@@ -177,6 +180,11 @@ export class Home {
 
   protected readonly ranked = computed(() =>
     ranking(this.games.data() ?? [], this.language.current()),
+  );
+
+  /** The most played games as the tiles of the time map; none under two launched games. */
+  protected readonly map = computed(() =>
+    timeMap(this.games.data() ?? [], this.language.current(), this.now()),
   );
 
   /** The games a draw is made among. */
