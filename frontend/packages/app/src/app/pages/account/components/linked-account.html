@@ -7,7 +7,14 @@
         {{ t('account.linkedAt', { date: linkedAt() }) }}
       </p>
     </div>
-    <button rsButton type="button" data-sync-now [disabled]="syncing()" (click)="syncNow.emit()">
+    <!-- Nothing more is asked of an account that is being unlinked. -->
+    <button
+      rsButton
+      type="button"
+      data-sync-now
+      [disabled]="syncing() || unlinking()"
+      (click)="syncNow.emit()"
+    >
       <svg lucideRefreshCw class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
       {{ t('account.sync.now') }}
     </button>
@@ -48,7 +55,7 @@
     <rs-own-key-form
       class="max-w-md"
       [hasKey]="account().has_own_key"
-      [pending]="savingKey()"
+      [pending]="savingKey() || unlinking()"
       (given)="keyGiven.emit($event)"
       (removed)="keyRemoved.emit()"
     />
@@ -63,7 +70,7 @@
           variant="primary"
           type="button"
           data-unlink-confirm
-          [disabled]="unlinking()"
+          [disabled]="unlinking() || savingKey()"
           (click)="unlink.emit()"
         >
           {{ t('account.unlink.confirm') }}

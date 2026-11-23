@@ -39,7 +39,12 @@
     </div>
 
     @if (screenNotice(); as said) {
-      <rs-banner [tone]="said.tone" role="status" data-screen-notice>{{ t(said.key) }}</rs-banner>
+      <rs-banner
+        [tone]="said.tone"
+        [attr.role]="said.tone === 'warn' ? 'alert' : 'status'"
+        data-screen-notice
+        >{{ t(said.key) }}</rs-banner
+      >
     }
 
     @if (accounts.data(); as all) {

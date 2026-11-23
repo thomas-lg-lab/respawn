@@ -174,6 +174,85 @@ describe('Account', () => {
       'Ce n’est pas une clé d’API Web Steam : elle n’est faite que de lettres et de chiffres.',
     );
     expect(screen.querySelector('[data-notice]')?.getAttribute('role')).toBe('alert');
+    // Still there to correct: only a key that was kept leaves the field.
+    expect(field(screen, 'Votre clé d’API Web Steam').value).toBe('not a key');
+  });
+
+  it('asks the browser for no saved password in the key’s field', async () => {
+    const { screen } = await open([linked()]);
+
+    // `off` is ignored on a password's field: the account's own password would be offered.
+    expect(field(screen, 'Votre clé d’API Web Steam').getAttribute('autocomplete')).toBe(
+      'new-password',
+    );
+  });
+
+  it('follows what two accounts wait for at once, and says each outcome on its card', async () => {
+    const other = linked({ id: '0198a000-0000-7000-8000-0000000000ff', external_id: '2' });
+    const { screen, server, told } = await open([linked(), other]);
+    const cards = () => [...screen.querySelectorAll<HTMLElement>('[data-linked-account]')];
+    const card = (index: number) => cards()[index]!;
+    const syncNow = (card: HTMLElement) =>
+      card.querySelector<HTMLButtonElement>('[data-sync-now]')!;
+
+    syncNow(card(0)).click();
+    const first = await server.request(SYNC);
+    syncNow(card(1)).click();
+    const second = await server.request(`/linked-accounts/${other.id}/sync`);
+
+    // The second reading did not take the first one's place. Not `whenStable`: the screen is
+    // not at rest while a reading is on its way.
+    await vi.waitFor(() =>
+      expect(cards().map((one) => syncNow(one).disabled)).toEqual([true, true]),
+    );
+
+    first.flush(
+      { error: { code: 'too_many_requests', message: 'In English, for the log.' } },
+      { status: 429, statusText: '' },
+    );
+    // Not `told`: the other reading is still on its way.
+    await server.home([linked(), other]);
+
+    await vi.waitFor(() =>
+      expect(text(card(0), '[data-notice]')).toContain('Réessayez dans une minute'),
+    );
+    expect(cards().map((one) => syncNow(one).disabled)).toEqual([false, true]);
+
+    second.flush(TEST_SYNC_RUN);
+    await told([linked(), other]);
+    expect(text(card(0), '[data-notice]')).toContain('Réessayez dans une minute');
+    expect(cards().map((one) => syncNow(one).disabled)).toEqual([false, false]);
+  });
+
+  it('says on the screen that an account is no longer there, once its card is gone', async () => {
+    const { screen, server, told } = await open([linked()]);
+
+    click(screen, '[data-sync-now]');
+    await server.refuse(SYNC, 404, 'unknown_linked_account');
+    await told([]);
+
+    expect(screen.querySelector('[data-linked-account]')).toBeNull();
+    expect(text(screen, '[data-screen-notice]')).toBe(
+      'Ce compte lié n’existe plus. Rechargez la page.',
+    );
+    expect(screen.querySelector('[data-screen-notice]')?.getAttribute('role')).toBe('alert');
+  });
+
+  it('asks nothing more of an account while it is unlinked', async () => {
+    const { screen, server, harness, told } = await open([linked({ has_own_key: true })]);
+
+    click(screen, '[data-unlink]');
+    await harness.fixture.whenStable();
+    click(screen, '[data-unlink-confirm]');
+    const sent = await server.request(LINKED);
+
+    await vi.waitFor(() =>
+      expect(screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.disabled).toBe(true),
+    );
+    expect(screen.querySelector<HTMLButtonElement>('[data-key-remove]')!.disabled).toBe(true);
+
+    sent.flush(null, { status: 204, statusText: '' });
+    await told([]);
   });
 
   it('takes the owner’s key away', async () => {

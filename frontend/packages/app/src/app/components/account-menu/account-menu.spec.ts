@@ -95,6 +95,8 @@ describe('AccountMenu', () => {
     link.click();
     await fixture.whenStable();
     expect(panel.hidden).toBe(true);
+    // Not left on a link that is now hidden.
+    expect(document.activeElement).toBe(trigger);
   });
 
   it('says which setting was picked and that the way out was asked, and does neither itself', async () => {

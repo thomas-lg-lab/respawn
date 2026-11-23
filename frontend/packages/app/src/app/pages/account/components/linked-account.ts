@@ -4,7 +4,7 @@ import { LucideRefreshCw, LucideUnlink } from '@lucide/angular';
 import type { LinkedAccount as LinkedStoreAccount } from '@respawn/data';
 import { Banner, Button, Card } from '@respawn/ui';
 import { formatMoment } from '@app/format/format';
-import { OwnKeyForm } from './own-key-form';
+import { type GivenKey, OwnKeyForm } from './own-key-form';
 
 /** What the screen says of one linked account: the key of a sentence, and whether it is a refusal. */
 export interface AccountNotice {
@@ -39,7 +39,7 @@ export class LinkedAccount {
   readonly unlinking = input(false);
 
   readonly syncNow = output<void>();
-  readonly keyGiven = output<string>();
+  readonly keyGiven = output<GivenKey>();
   readonly keyRemoved = output<void>();
   readonly unlink = output<void>();
 

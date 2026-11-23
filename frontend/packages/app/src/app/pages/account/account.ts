@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideLink } from '@lucide/angular';
@@ -20,10 +20,16 @@ import { LanguageSetting } from '@app/i18n/language';
 import { syncErrorKey } from '@app/pages/home/sync-view';
 import { saidOnce } from '@app/session/said-once';
 import { type AccountNotice, LinkedAccount } from './components/linked-account';
+import type { GivenKey } from './components/own-key-form';
 
-/** What is said of one linked account, or of the screen when `accountId` is `null`. */
-interface Said extends AccountNotice {
-  readonly accountId: string | null;
+/** What a card may be waiting for: a reading, its key kept or taken away, its unlinking. */
+type Asked = 'sync' | 'key' | 'unlink';
+
+/** Why a "sync now" was refused. Too soon after the last one has a sentence of its own, as on the home. */
+function syncRefusalKey(failure: unknown): string {
+  return failure instanceof ApiFailure && failure.code === 'too_many_requests'
+    ? 'home.sync.tooSoon'
+    : failureKey(failure);
 }
 
 /**
@@ -55,25 +61,30 @@ export class Account {
   private readonly language = inject(LanguageSetting);
 
   protected readonly failureKey = failureKey;
-  protected readonly syncErrorKey = syncErrorKey;
   protected readonly currentLanguage = this.language.current;
 
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly accounts = injectQuery(() => this.linked.list());
 
-  protected readonly syncing = injectMutation(() => this.linked.syncNow());
-  protected readonly unlinking = injectMutation(() => this.linked.unlink());
-  protected readonly givingKey = injectMutation(() => this.linked.giveKey());
-  protected readonly removingKey = injectMutation(() => this.linked.removeKey());
+  private readonly syncing = injectMutation(() => this.linked.syncNow());
+  private readonly unlinking = injectMutation(() => this.linked.unlink());
+  private readonly givingKey = injectMutation(() => this.linked.giveKey());
+  private readonly removingKey = injectMutation(() => this.linked.removeKey());
 
-  /** What came of the last thing asked here. One sentence at a time: the next one replaces it. */
-  private readonly said = signal<Said | null>(null);
+  /**
+   * What the cards wait for, as `what:account`. Kept here and not read from the mutations:
+   * each of them follows its last call only, and two cards may wait at once.
+   */
+  private readonly pending = signal<ReadonlySet<string>>(new Set());
+
+  /** What came of the last thing asked of each account, by its id. */
+  private readonly notices = signal<ReadonlyMap<string, AccountNotice>>(new Map());
 
   /** What is said of the screen itself: an account that is no longer there has no card. */
-  protected readonly screenNotice = computed(() => {
-    const said = this.said();
-    return said?.accountId === null ? said : null;
-  });
+  protected readonly screenNotice = signal<AccountNotice | null>(null);
+
+  /** The accounts unlinked from here: what was still asked of them is no longer worth a word. */
+  private readonly unlinked = new Set<string>();
 
   /** The link through Steam comes back to this screen. */
   protected readonly linkAddress = steamLinkAddress('/account');
@@ -94,27 +105,20 @@ export class Account {
 
   /** What is said on the card of this account, if anything. */
   protected noticeOf(account: LinkedStoreAccount): AccountNotice | null {
-    const said = this.said();
-    return said?.accountId === account.id ? said : null;
+    return this.notices().get(account.id) ?? null;
   }
 
   /** Whether a sync of this account is on its way: asked here, running, or its first awaited. */
   protected isSyncing(account: LinkedStoreAccount): boolean {
-    return (
-      (this.syncing.isPending() && this.syncing.variables() === account.id) ||
-      awaitsSync(account, this.accounts.dataUpdatedAt())
-    );
+    return this.waits('sync', account.id) || awaitsSync(account, this.accounts.dataUpdatedAt());
   }
 
   protected isSavingKey(account: LinkedStoreAccount): boolean {
-    return (
-      (this.givingKey.isPending() && this.givingKey.variables()?.accountId === account.id) ||
-      (this.removingKey.isPending() && this.removingKey.variables() === account.id)
-    );
+    return this.waits('key', account.id);
   }
 
   protected isUnlinking(account: LinkedStoreAccount): boolean {
-    return this.unlinking.isPending() && this.unlinking.variables() === account.id;
+    return this.waits('unlink', account.id);
   }
 
   /** Why the last reading of this account failed, as a translation key; `null` when it did not. */
@@ -123,53 +127,109 @@ export class Account {
     return last?.outcome === 'failed' ? syncErrorKey(last) : null;
   }
 
-  /**
-   * Reads the account now. A run that ended is not said: the card shows what it left. Too
-   * soon after the last one has a sentence of its own, as on the home.
-   */
+  /** Reads the account now. A run that ended is not said: the card shows what it left. */
   protected syncNow(accountId: string): void {
-    this.said.set(null);
-    this.syncing.mutate(accountId, {
-      onError: (failure) =>
-        this.refused(
-          accountId,
-          failure instanceof ApiFailure && failure.code === 'too_many_requests'
-            ? 'home.sync.tooSoon'
-            : failureKey(failure),
-        ),
+    void this.ask('sync', accountId, () => this.syncing.mutateAsync(accountId), {
+      refusal: syncRefusalKey,
     });
   }
 
-  protected giveKey(accountId: string, key: string): void {
-    this.said.set(null);
-    this.givingKey.mutate(
-      { accountId, key },
+  /**
+   * Keeps the key. The form is told once the API took it, and only then lets go of what was
+   * typed; nothing of the key stays here either, whatever the API answered.
+   */
+  protected giveKey(accountId: string, given: GivenKey): void {
+    void this.ask(
+      'key',
+      accountId,
+      () =>
+        this.givingKey
+          .mutateAsync({ accountId, key: given.key })
+          .finally(() => this.givingKey.reset()),
       {
-        onSuccess: () => this.said.set({ accountId, tone: 'status', key: 'account.key.kept' }),
-        onError: (failure) => this.refused(accountId, failureKey(failure)),
+        done: () => {
+          given.kept();
+          this.say(accountId, { tone: 'status', key: 'account.key.kept' });
+        },
       },
     );
   }
 
   protected removeKey(accountId: string): void {
-    this.said.set(null);
-    this.removingKey.mutate(accountId, {
-      onSuccess: () => this.said.set({ accountId, tone: 'status', key: 'account.key.removed' }),
-      onError: (failure) => this.refused(accountId, failureKey(failure)),
+    void this.ask('key', accountId, () => this.removingKey.mutateAsync(accountId), {
+      done: () => this.say(accountId, { tone: 'status', key: 'account.key.removed' }),
     });
   }
 
   protected unlink(accountId: string): void {
-    this.said.set(null);
-    this.unlinking.mutate(accountId, {
-      onSuccess: () =>
-        this.said.set({ accountId: null, tone: 'status', key: 'account.unlink.done' }),
-      onError: (failure) => this.refused(accountId, failureKey(failure)),
+    void this.ask('unlink', accountId, () => this.unlinking.mutateAsync(accountId), {
+      done: () => {
+        this.unlinked.add(accountId);
+        this.say(accountId, null);
+        this.screenNotice.set({ tone: 'status', key: 'account.unlink.done' });
+      },
     });
   }
 
-  private refused(accountId: string, key: string): void {
-    this.said.set({ accountId, tone: 'warn', key });
+  private waits(what: Asked, accountId: string): boolean {
+    return this.pending().has(`${what}:${accountId}`);
+  }
+
+  /**
+   * Asks something of one account and says what came of it, on its card. The card waits
+   * until the API answered and the accounts were asked again (each mutation does that
+   * before it ends), whatever the other cards ask meanwhile. `refusal` picks the sentence
+   * of a refusal, or none when it is not worth a word.
+   */
+  private async ask(
+    what: Asked,
+    accountId: string,
+    work: () => Promise<unknown>,
+    {
+      done,
+      refusal = failureKey,
+    }: { done?: () => void; refusal?: (failure: unknown) => string | null } = {},
+  ): Promise<void> {
+    const word = `${what}:${accountId}`;
+    if (this.pending().has(word)) return;
+
+    this.say(accountId, null);
+    this.screenNotice.set(null);
+    this.pending.update((all) => new Set(all).add(word));
+    try {
+      await work();
+      done?.();
+    } catch (failure) {
+      this.refused(accountId, refusal(failure));
+    } finally {
+      this.pending.update((all) => new Set([...all].filter((other) => other !== word)));
+    }
+  }
+
+  /** Says this of the account on its card, in place of what was said there; `null` says nothing. */
+  private say(accountId: string, notice: AccountNotice | null): void {
+    this.notices.update((all) => {
+      const said = new Map(all);
+      if (notice) said.set(accountId, notice);
+      else said.delete(accountId);
+      return said;
+    });
+  }
+
+  /**
+   * A refusal is said on the account's card, or on the screen when the account is no longer
+   * there (unlinked elsewhere: the accounts were asked again, and its card is gone). Of an
+   * account unlinked from here nothing more is said: what it still waited for went with it.
+   */
+  private refused(accountId: string, key: string | null): void {
+    if (!key || this.unlinked.has(accountId)) return;
+
+    const notice: AccountNotice = { tone: 'warn', key };
+    if (this.accounts.data()?.some((account) => account.id === accountId)) {
+      this.say(accountId, notice);
+    } else {
+      this.screenNotice.set(notice);
+    }
   }
 
   /**
@@ -178,6 +238,10 @@ export class Account {
    */
   private async readNewAccount(): Promise<void> {
     const unread = await this.linked.neverRead();
-    if (unread) this.syncing.mutate(unread.id);
+    if (unread) {
+      await this.ask('sync', unread.id, () => this.syncing.mutateAsync(unread.id), {
+        refusal: () => null,
+      });
+    }
   }
 }

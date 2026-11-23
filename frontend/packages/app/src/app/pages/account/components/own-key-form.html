@@ -2,7 +2,7 @@
   @let keyError = fieldErrorKey(form.key().errors());
   <rs-text-field
     type="password"
-    autocomplete="off"
+    autocomplete="new-password"
     [formField]="form.key"
     [label]="t(hasKey() ? 'account.key.replaceLabel' : 'account.key.label')"
     [hint]="t('account.key.hint')"
