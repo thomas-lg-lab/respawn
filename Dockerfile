@@ -1,6 +1,6 @@
 # --- Stage 1: build the front ---
 # On the BUILD platform too: its output is files a browser reads, the same for every architecture.
-FROM --platform=$BUILDPLATFORM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS front
+FROM --platform=$BUILDPLATFORM node:24.22.3-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS front
 WORKDIR /web
 
 # The dependencies first, in a layer of their own: npm ci installs exactly what the committed lock
