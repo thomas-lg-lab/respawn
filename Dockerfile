@@ -14,7 +14,7 @@ RUN npm run build
 # Pinned to the BUILD platform, not the target: the publish is portable (no runtime identifier), so
 # its output is architecture-neutral IL plus a runtimes/ folder carrying every native asset. The
 # runtime stage below is what makes the image amd64 or arm64.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0@sha256:8c6edfb26c85153f236d26efebd9ad349aec403583f343f201ee67838b23658d AS build
 WORKDIR /src
 
 # Everything under backend/ but the tests (.dockerignore). --locked-mode: the image is built from the
@@ -25,7 +25,7 @@ RUN dotnet restore backend/Respawn.Host/Respawn.Host.csproj --locked-mode
 RUN dotnet publish backend/Respawn.Host/Respawn.Host.csproj --configuration Release --output /publish --no-restore
 
 # --- Stage 3: runtime ---
-FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:aac50ceef10391e78a899e3d2ccd00bbafa2dcb56ccf4586cbccf00edb84fc21
 
 LABEL org.opencontainers.image.title="respawn"
 LABEL org.opencontainers.image.description="Self-hosted game library: stats, backlog and next-game suggestions"
