@@ -66,8 +66,15 @@ and where your time went.
   else.
 - On a phone as on a desktop, in light or dark.
 
-Planned: covers and game durations through IGDB, the backlog in hours, statuses and ratings, more stores,
-next-game suggestions, sharing with a group.
+**Roadmap**, in order:
+
+1. **Next**: take a game the store no longer lists out of the library, and import the years before the
+   first sync from Steam's Year in Review.
+2. **Covers and durations** through IGDB, and with them the backlog in hours; a first try at searching your
+   own backlog by what you feel like playing.
+3. **Statuses and ratings** for each game.
+4. **Tokens for the public API.**
+5. **More stores, next-game suggestions, sharing with a group.**
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
