@@ -1,14 +1,14 @@
 # Contributing
 
 The checks the CI runs, locally. They need Docker only: the tools run in the .NET SDK image of the Dockerfile,
-against the database server of `docker-compose.yml`. With the .NET 10 SDK installed, the same `dotnet` commands
+against the database server of `docker-compose.yml`. With the .NET 11 SDK installed, the same `dotnet` commands
 run directly (the tests then reach the database on `localhost`, their default).
 
 ```bash
 docker compose up -d db
 docker run --rm --network respawn_default -v "$PWD:/work" -w /work \
   -e RESPAWN_TEST_DATABASE_URL=postgresql://respawn:respawn@db:5432/respawn_test \
-  mcr.microsoft.com/dotnet/sdk:10.0 sh -c '
+  mcr.microsoft.com/dotnet/sdk:11.0 sh -c '
     dotnet restore Respawn.slnx --locked-mode &&
     dotnet format Respawn.slnx --verify-no-changes --no-restore &&
     dotnet build Respawn.slnx --no-restore --configuration Release &&

@@ -25,7 +25,7 @@
 
 ## This project
 
-- **Layout.** `backend/`, .NET 10, split by responsibility: `Respawn.Host` (composition only: `Program.cs`, the
+- **Layout.** `backend/`, .NET 11, split by responsibility: `Respawn.Host` (composition only: `Program.cs`, the
   HTTP pipeline, the front's files served from `wwwroot/`, which only the image fills), `Respawn.Persistence` (the database connection, opened and
   migrated on first use), `Respawn.SharedKernel` (the error format,
   the database contracts; no package), and one hexagonal module per responsibility under `Modules/`. Today

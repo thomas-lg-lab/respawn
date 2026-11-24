@@ -60,7 +60,7 @@ jobs:
       # description this build serves. The app starts with no database, which is all this needs.
       - name: The committed API description is current
         run: |
-          (cd backend/Respawn.Host/bin/Release/net10.0 && ASPNETCORE_HTTP_PORTS=5080 dotnet Respawn.Host.dll) &
+          (cd backend/Respawn.Host/bin/Release/net11.0 && ASPNETCORE_HTTP_PORTS=5080 dotnet Respawn.Host.dll) &
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:5080/api/v1/openapi.json -o /tmp/openapi.json; then break; fi
             sleep 1
