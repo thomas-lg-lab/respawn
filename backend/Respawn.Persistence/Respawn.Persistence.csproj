@@ -6,8 +6,8 @@
 
   <ItemGroup>
     <!-- Named, not left to what Npgsql brings along: this project registers services and logs. -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
   </ItemGroup>
 
