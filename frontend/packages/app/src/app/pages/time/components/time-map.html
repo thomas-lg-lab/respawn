@@ -92,10 +92,11 @@
     @if (band(); as said) {
       @let name = t(said.one ? 'othersOne' : 'othersMany', { count: said.count });
       @let time = t('playtime.' + said.time.key, { count: said.time.count });
-      <!-- Not to scale: the long tail as a band, so the tiles keep the drawing. -->
+      <!-- Not to scale: the long tail as a band, so the tiles keep the drawing. Rounded like the
+           bottom of the map, so the ring of the band pressed follows its corners. -->
       <button
         type="button"
-        class="flex h-11 shrink-0 items-center justify-between gap-3 bg-surface-2 px-3 text-left text-text hover:brightness-110 focus-visible:-outline-offset-6 aria-pressed:inset-ring-2 aria-pressed:inset-ring-text"
+        class="flex h-11 shrink-0 items-center rounded-b-card justify-between gap-3 bg-surface-2 px-3 text-left text-text hover:brightness-110 focus-visible:-outline-offset-6 aria-pressed:inset-ring-2 aria-pressed:inset-ring-text"
         [attr.aria-pressed]="rest.id === selected()"
         [attr.aria-label]="name + ', ' + time"
         data-tile="others"
