@@ -21,8 +21,8 @@
       },
       "AngleSharp": {
         "type": "Transitive",
-        "resolved": "1.10.4",
-        "contentHash": "pv8cLA19oRc8UwczC1ogMeq5mTBWn8V1N12CVMfrAjykf8imNDHt82yzompriVN/Z7ededDP0Fg5ZWAtG5DB+Q=="
+        "resolved": "1.10.5",
+        "contentHash": "+XcQgYnOCjizDLpBImAscxgyje0ypUdWXvP+TDEVowygb50J6frELXN3YD2SjOR/BuJInWUr6tFUwl9WN1l31w=="
       },
       "AspNet.Security.OpenId": {
         "type": "Transitive",
@@ -475,7 +475,7 @@
       "respawn.games.api": {
         "type": "Project",
         "dependencies": {
-          "AngleSharp": "[1.10.4, )",
+          "AngleSharp": "[1.10.5, )",
           "AspNet.Security.OpenId.Steam": "[11.0.0, )",
           "Respawn.Games": "[1.0.0, )",
           "Respawn.SharedKernel": "[1.0.0, )"
@@ -516,7 +516,7 @@
       "respawn.persistence": {
         "type": "Project",
         "dependencies": {
-          "Npgsql": "[10.0.3, )",
+          "Npgsql": "[10.0.4, )",
           "Respawn.SharedKernel": "[1.0.0, )"
         }
       },

@@ -13,7 +13,7 @@
     <PackageReference Include="AspNet.Security.OpenId.Steam" Version="11.0.0" />
     <!-- The HTML parser that library reads Steam's discovery page with. Named here only to have a
          version without the advisory GHSA-pgww-w46g-26qg, which the library's own minimum carries. -->
-    <PackageReference Include="AngleSharp" Version="1.10.4" />
+    <PackageReference Include="AngleSharp" Version="1.10.5" />
   </ItemGroup>
 
   <ItemGroup>
