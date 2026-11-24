@@ -16,22 +16,58 @@
 
 Self-hosted game library: stats, backlog and next-game suggestions.
 
-**Status: early days.** Accounts and sign-in work, with the public API they need, the front's first
-screens (sign in with a local account or through a provider, create an account, who am I, the account menu),
-and the image the rest will ship in. The library has its
-tables, its rules, and routes to read it and its figures; a Steam account is linked from the app, and
-its library is then read every day, with the instance's key or one the user gives. Its first screens are the
-home (link a Steam account, follow its sync, then the library at a glance: the game to resume, the ones
-played lately, three figures, the time played per year, where the time went and its map, a draw among the never launched,
-the latest days played), the library, as a
-list to search, filter and sort, the Time tab, the time map in full, and the account, with its linked Steam
-accounts.
+Link a Steam account and respawn reads its library every day: what you own, how long you played each game,
+and, from one day's reading to the next, what you played and when. The home tells you what to pick up again
+and where your time went.
 
-| | |
-| --- | --- |
-| Today | Local accounts (the first one is the administrator), sessions, lockout and rate limit on sign-in, a versioned API with its OpenAPI description; sign-in through OpenID Connect providers, the flow run by the API. The front, served by the app: sign in with a local account or through a provider, create an account, the account menu with its settings (language, theme, character), kept on the account, and the providers linked to the account or to link; the account screen, reached from that menu: who is signed in, and each linked Steam account with where its sync stands, a reading on request, a key of the user's own (given, replaced or taken away, never shown) and unlinking, asked twice since it forgets everything read from it; the home, which leads to the Steam link ("Sign in through Steam", which proves the account is yours and never signs you in), reads the new account's library at once, says where its sync stands (first one on its way, failed and why, a profile that shows nothing, a last success that is old) with "sync now", and shows the library at a glance: a search by title that leads to the library, the game played last to resume, the others played lately, three figures (playtime, the last two weeks, games never launched), the most played games and their time map (a tile as large as a game's playtime, coloured by its last session), which leads to the Time tab, three never launched drawn at random, and, from the daily readings, the time played per year and the latest days played with their games; the library as a list, searched by title, filtered (launched, recent, never launched) and sorted (last session, playtime, title), each game with its playtime, its last two weeks and its last session; the Time tab, the time map in full: the thirty most played games as tiles and the others in a band under them, each pressed for its time, its share and its last session; in French and in English |
-| In place, in the API only | The library: a game as one record whatever the store, what each source answered kept as it came and dated, playtime with its history, `GET /api/v1/library` and its figures. The Steam connector: owned games and playtime, read through the official Steam Web API with the instance's key, or with a user's own key, kept encrypted. The sync: every linked library read once a day, and at once when its owner asks. Groups, the scope sharing will use: one default group every account joins |
-| Planned | The library as covers, the stats screens, the backlog, more connectors, next-game suggestions |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.webp">
+  <img src="docs/screenshots/home-light.webp" alt="The home: the game to resume, the games played lately, three figures, the time played per year and the most played games">
+</picture>
+
+<table>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/library-dark.webp">
+        <img src="docs/screenshots/library-light.webp" alt="The library as a list, with each game's playtime, its last two weeks and its last session">
+      </picture>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/time-dark.webp">
+        <img src="docs/screenshots/time-light.webp" alt="The Time tab: the most played games as tiles as large as their playtime, coloured by their last session">
+      </picture>
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>The library</b>: search, filter, sort</td>
+    <td align="center"><b>The time map</b>: where the hours went</td>
+  </tr>
+</table>
+
+<sub>A demo library: real titles, made-up playtime.</sub>
+
+**Status: early days.** What works today:
+
+- **Your Steam library, read every day** by the app itself, with the instance's Steam Web API key or one you
+  give (kept encrypted, never shown). Each reading is kept, and the history is built from them: no game is
+  ever taken out behind your back, one the store stops listing is only flagged.
+- **The home**: the game to resume, with "Launch in Steam", the ones played lately, your playtime, the last
+  two weeks and the games never launched, the time played per year, the most played and their time map,
+  three never launched drawn at random, and the latest days played.
+- **The library** as a list, searched, filtered (launched, recent, never launched) and sorted; **the Time
+  tab**, the time map in full.
+- **Accounts**: local accounts (the first one is the administrator), or sign-in through any OpenID Connect
+  provider; the language (French or English), the theme and the character of the labels kept on the
+  account; the account screen with its linked Steam accounts, a reading on request, your own key and
+  unlinking.
+- **A versioned public API** under `/api/v1` with its OpenAPI description, which the front uses and nothing
+  else.
+- On a phone as on a desktop, in light or dark.
+
+Planned: covers and game durations through IGDB, the backlog in hours, statuses and ratings, more stores,
+next-game suggestions, sharing with a group.
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
