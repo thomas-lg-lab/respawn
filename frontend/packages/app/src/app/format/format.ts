@@ -43,8 +43,9 @@ export interface Playtime {
   readonly count: number;
 }
 
+/** A game played for a few seconds was still played: it says one minute, never none. */
 export function playtime(seconds: number): Playtime {
-  const minutes = Math.round(seconds / 60);
+  const minutes = seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : 0;
   return minutes < 60
     ? { unit: 'minutes', count: minutes }
     : { unit: 'hours', count: Math.round(seconds / 3600) };

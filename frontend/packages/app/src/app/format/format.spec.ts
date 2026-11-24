@@ -9,6 +9,7 @@ describe('format', () => {
 
   it('says a playtime in whole hours, or in minutes under one hour', () => {
     expect(playtime(0)).toEqual({ unit: 'minutes', count: 0 });
+    expect(playtime(20)).toEqual({ unit: 'minutes', count: 1 });
     expect(playtime(45 * 60)).toEqual({ unit: 'minutes', count: 45 });
     expect(playtime(3600)).toEqual({ unit: 'hours', count: 1 });
     expect(playtime(2203200)).toEqual({ unit: 'hours', count: 612 });

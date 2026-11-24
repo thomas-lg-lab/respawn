@@ -136,7 +136,8 @@
   "nav": {
     "label": "Navigation principale",
     "home": "Accueil",
-    "library": "Bibliothèque"
+    "library": "Bibliothèque",
+    "time": "Temps"
   },
   "home": {
     "label": "Partie en cours",
@@ -311,6 +312,34 @@
     "shownOne": "{{ shown }} jeu affiché sur {{ total }}",
     "shownMany": "{{ shown }} jeux affichés sur {{ total }}",
     "more": "Afficher la suite"
+  },
+  "time": {
+    "title": "Temps",
+    "heading": "{{ time }} de jeu sur {{ count }} jeux. Voici où il est passé.",
+    "map": "Où est passé le temps, une case par jeu",
+    "caption": "Une case est à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.",
+    "legend": {
+      "1": "Ces deux dernières semaines",
+      "2": "Ces trois derniers mois",
+      "3": "Cette dernière année",
+      "4": "Plus ancien"
+    },
+    "othersOne": "{{ count }} autre jeu",
+    "othersMany": "{{ count }} autres jeux",
+    "othersLink": "Les parcourir dans la bibliothèque",
+    "share": "{{ time }}, soit {{ share }} de votre temps de jeu.",
+    "lastSession": "Dernière session {{ ago }}.",
+    "unnamed": "Jeu sans nom",
+    "playtime": {
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min"
+    },
+    "empty": {
+      "text": "La carte a besoin d’au moins deux jeux lancés. L’accueil dit où en est la bibliothèque.",
+      "home": "Aller à l’accueil"
+    },
+    "loading": "Chargement de la carte",
+    "retry": "Réessayer"
   },
   "notFound": {
     "label": "Introuvable",

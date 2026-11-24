@@ -29,6 +29,7 @@ import { saidOnce, withoutSaidOnce } from '@app/session/said-once';
 const TABS = [
   { path: '/', label: 'nav.home' },
   { path: '/library', label: 'nav.library' },
+  { path: '/time', label: 'nav.time' },
 ] as const;
 
 /**
