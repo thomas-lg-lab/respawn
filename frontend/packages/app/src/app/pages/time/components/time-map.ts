@@ -25,6 +25,10 @@ const TIMED = { width: 56, height: 26 };
 const SECOND_LINE = 24;
 /** A tile whose shorter side reaches this names its game in large, on two lines if need be. */
 const LARGE = 150;
+/** What the label of a tile takes, its margin included: two lines of text in a card. */
+const LABEL = 64;
+/** How close to a side of the drawing, in percent, a tile still counts as on it. */
+const EDGE = 0.01;
 
 /**
  * The time map, full size: a tile per named game, as large as its playtime and coloured by
@@ -69,37 +73,50 @@ export class TimeMap {
         large,
         wraps: large || down >= NAMED.height + SECOND_LINE + (timed ? TIMED.height : 0),
         time: saidPlaytime(tile.item.seconds, this.language()),
+        // Picked, a tile grows away from the sides of the drawing it touches, which would
+        // cut it.
+        origin: `${side(tile.x, tile.x + tile.width, 'left', 'right')} ${side(tile.y, tile.y + tile.height, 'top', 'bottom')}`,
       };
     });
   });
 
-  /** The tile under the pointer or the focus; the one tapped last, on a touch screen. */
+  /**
+   * The tile under the pointer or the focus; on a touch screen, the one tapped last, as long
+   * as it is still the one picked (a tap on another tile or on the band moves on).
+   */
   private readonly pointed = signal<string | null>(null);
   private readonly touched = signal<string | null>(null);
 
   /**
    * Where the label of the tile pointed at goes, in percent of the drawing: centred on the
-   * tile unless that would cross a side, and on whichever side of it has more room.
+   * tile unless that would cross a side, above or under it on whichever side has more room,
+   * and inside its top when neither has enough (a tile as tall as the drawing).
    */
   protected readonly label = computed(() => {
-    const id = this.pointed() ?? this.touched();
+    const touched = this.touched();
+    const id = this.pointed() ?? (touched === this.selected() ? touched : null);
     const tile = this.placed().find((each) => each.item.id === id);
     if (!tile) return null;
+    const { height } = this.size();
     const centre = tile.x + tile.width / 2;
-    const below = tile.y + tile.height / 2 <= 50;
+    const above = (tile.y / 100) * height;
+    const under = ((100 - tile.y - tile.height) / 100) * height;
+    const inside = Math.max(above, under) < LABEL;
+    const below = !inside && under >= above;
     return {
       tile,
       centred: centre >= 25 && centre <= 75,
       left: centre > 75 ? null : centre < 25 ? tile.x : centre,
       right: centre > 75 ? 100 - tile.x - tile.width : null,
-      top: below ? tile.y + tile.height : null,
-      bottom: below ? null : 100 - tile.y,
+      top: inside ? tile.y : below ? tile.y + tile.height : null,
+      bottom: inside || below ? null : 100 - tile.y,
     };
   });
 
   /** A mouse or a pen points; a finger has no hover, and its tap keeps the label instead. */
   protected point(id: string, event?: PointerEvent): void {
     if (event?.pointerType === 'touch') return;
+    if (event) this.touched.set(null);
     this.pointed.set(id);
   }
 
@@ -139,4 +156,11 @@ export class TimeMap {
       destroyed.onDestroy(() => observer.disconnect());
     });
   }
+}
+
+/** Where a tile grows from along one axis: the side of the drawing it touches, if any. */
+function side(start: number, end: number, first: string, last: string): string {
+  if (start <= EDGE) return first;
+  if (end >= 100 - EDGE) return last;
+  return 'center';
 }

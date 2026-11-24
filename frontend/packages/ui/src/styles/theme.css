@@ -89,6 +89,12 @@
   }
 }
 
+/* A raised element, a little larger than its neighbours (`aria-pressed:scale-pop`). Tailwind
+   has no theme key for a scale: the utility is written here, on its token. */
+@utility scale-pop {
+  scale: var(--rs-pop);
+}
+
 /* The type styles. One class sets the face, the size, the line height and the tracking. */
 @utility type-hero {
   font-family: var(--rs-font-display);

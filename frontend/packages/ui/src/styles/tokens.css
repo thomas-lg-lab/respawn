@@ -111,7 +111,7 @@
   --rs-lift: 4px;
   /* A tile picked on the time map: a little larger, above its neighbours. */
   --rs-pop: 1.04;
-  --rs-shadow-raised: 0 8px 24px rgb(0 0 0 / 0.45);
+  --rs-shadow-raised: 0 8px 24px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.45));
   --rs-duration-pulse: 1.4s;
   --rs-duration-spin: 1s;
   --rs-duration-blink: 1s;

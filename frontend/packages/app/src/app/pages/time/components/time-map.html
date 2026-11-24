@@ -16,7 +16,7 @@
          would grow over its neighbours. -->
       <button
         type="button"
-        class="absolute flex min-h-1 min-w-1 flex-col items-start justify-end gap-0.5 overflow-hidden border-r-2 border-b-2 border-transparent bg-clip-padding text-left transition-[scale,box-shadow] duration-hover ease-out hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:z-10 aria-pressed:scale-(--rs-pop) aria-pressed:shadow-raised"
+        class="absolute flex min-h-1 min-w-1 flex-col items-start justify-end gap-0.5 overflow-hidden border-r-2 border-b-2 border-transparent bg-clip-padding text-left transition-[scale,box-shadow] duration-hover ease-out hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:z-10 aria-pressed:scale-pop aria-pressed:shadow-raised"
         [class.px-3]="tile.named || tile.timed"
         [class.py-2]="tile.named || tile.timed"
         [class.bg-recency-1]="tile.item.recency === 1"
@@ -31,6 +31,7 @@
         [style.top.%]="tile.y"
         [style.width.%]="tile.width"
         [style.height.%]="tile.height"
+        [style.transform-origin]="tile.origin"
         [attr.aria-pressed]="tile.item.id === selected()"
         [attr.aria-label]="name + ', ' + time"
         [attr.data-tile]="tile.item.id"
@@ -92,7 +93,7 @@
       <!-- Not to scale: the long tail as a band, so the tiles keep the drawing. -->
       <button
         type="button"
-        class="flex h-11 shrink-0 items-center justify-between gap-3 bg-surface-2 px-3 text-left text-text hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:outline-2 aria-pressed:-outline-offset-6 aria-pressed:outline-text"
+        class="flex h-11 shrink-0 items-center justify-between gap-3 bg-surface-2 px-3 text-left text-text hover:brightness-110 focus-visible:-outline-offset-6 aria-pressed:inset-ring-2 aria-pressed:inset-ring-text"
         [attr.aria-pressed]="rest.id === selected()"
         [attr.aria-label]="name + ', ' + time"
         data-tile="others"
