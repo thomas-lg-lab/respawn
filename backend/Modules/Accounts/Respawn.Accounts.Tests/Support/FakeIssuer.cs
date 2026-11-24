@@ -4,7 +4,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Respawn.Accounts.Api;
@@ -29,12 +31,14 @@ internal sealed class FakeIssuer
 
     private readonly ConcurrentDictionary<string, Grant> _grants = new();
     private RsaSecurityKey _key = NewKey("test-key");
+    private int _requests;
+    private TaskCompletionSource? _keysHeld;
 
     /// <summary>A key this provider never publishes, under the name of the one it does.</summary>
     public RsaSecurityKey OtherKey { get; } = NewKey("test-key");
 
-    /// <summary>How many requests the app sent the provider.</summary>
-    public int Requests { get; private set; }
+    /// <summary>How many requests the app sent the provider, some of them from a background refresh.</summary>
+    public int Requests => Volatile.Read(ref _requests);
 
     /// <summary>The forms the app posted to the token endpoint.</summary>
     public ConcurrentQueue<Dictionary<string, string>> Redemptions { get; } = new();
@@ -72,6 +76,25 @@ internal sealed class FakeIssuer
 
     /// <summary>Sign with a new key from now on, as a provider does from time to time.</summary>
     public void Rotate() => _key = NewKey($"test-key-{Guid.NewGuid():N}");
+
+    /// <summary>Keep the answer to the next requests for the keys until <see cref="ReleaseKeys"/>: a fetch
+    /// started in the background cannot land in the middle of a validation.</summary>
+    public void HoldKeys() => _keysHeld = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void ReleaseKeys() => _keysHeld?.TrySetResult();
+
+    /// <summary>Waits until the app's configuration of this provider holds the key it signs with now.</summary>
+    public async Task KeyKnownAsync(TestApp app)
+    {
+        var manager = app.Services.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
+            .Get(ProviderSignIn.Scheme("test")).ConfigurationManager!;
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!(await manager.GetConfigurationAsync(CancellationToken.None)).SigningKeys.Any(key => key.KeyId == _key.KeyId))
+        {
+            Assert.True(DateTime.UtcNow < deadline, "the app never fetched the provider's new key");
+            await Task.Delay(10);
+        }
+    }
 
     /// <summary>
     /// The visitor signs in at the provider, which sends the browser back: the address of the app it is
@@ -149,8 +172,13 @@ internal sealed class FakeIssuer
         code_challenge_methods_supported = new[] { "S256" },
     });
 
-    private HttpResponseMessage Keys()
+    private async Task<HttpResponseMessage> KeysAsync()
     {
+        if (_keysHeld is { } held)
+        {
+            await held.Task;
+        }
+
         var parameters = _key.Rsa.ExportParameters(includePrivateParameters: false);
         return Json(new
         {
@@ -197,7 +225,7 @@ internal sealed class FakeIssuer
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            issuer.Requests++;
+            Interlocked.Increment(ref issuer._requests);
             if (issuer.TimesOut)
             {
                 // What HttpClient throws when its timeout fires.
@@ -219,7 +247,7 @@ internal sealed class FakeIssuer
                 "/.well-known/openid-configuration" when issuer.DiscoveryBody is { } body =>
                     new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) },
                 "/.well-known/openid-configuration" => issuer.Discovery(),
-                "/jwks" => issuer.Keys(),
+                "/jwks" => await issuer.KeysAsync(),
                 "/token" when request.Method == HttpMethod.Post => issuer.Redeem(
                     QueryHelpers.ParseQuery(await request.Content!.ReadAsStringAsync(ct)).ToDictionary(pair => pair.Key, pair => pair.Value.ToString())),
                 _ => new HttpResponseMessage(HttpStatusCode.NotFound),
