@@ -10,7 +10,7 @@
   <ItemGroup>
     <!-- "Sign in through Steam" (OpenID 2.0), to link a library: the exchange with Steam and the
          check of its answer are this library's, not written by hand. -->
-    <PackageReference Include="AspNet.Security.OpenId.Steam" Version="10.0.0" />
+    <PackageReference Include="AspNet.Security.OpenId.Steam" Version="11.0.0" />
     <!-- The HTML parser that library reads Steam's discovery page with. Named here only to have a
          version without the advisory GHSA-pgww-w46g-26qg, which the library's own minimum carries. -->
     <PackageReference Include="AngleSharp" Version="1.10.4" />

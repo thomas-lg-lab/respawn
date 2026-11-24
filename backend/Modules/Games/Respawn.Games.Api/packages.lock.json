@@ -10,51 +10,57 @@
       },
       "AspNet.Security.OpenId.Steam": {
         "type": "Direct",
-        "requested": "[10.0.0, )",
-        "resolved": "10.0.0",
-        "contentHash": "uZfwHLOPqerIEdnVGTzGQzZA6CSAJug2lMr3SFQWnw55mgPmywUC2/RP1QSpBbXwq4PWZGUUakaoPT+6eX8JDQ==",
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "IZvWjeVbuMx3hs0dLBnbiLkeNepYji+i9EyejS7RsA632xJ3YCkCjnv7EAc3WMxwL9cglSvBqsR/OvFyNi3UZA==",
         "dependencies": {
-          "AngleSharp": "1.3.0",
-          "AspNet.Security.OpenId": "10.0.0",
-          "Microsoft.IdentityModel.Protocols": "8.14.0"
+          "AngleSharp": "1.10.1",
+          "AspNet.Security.OpenId": "11.0.0",
+          "Microsoft.IdentityModel.Protocols": "8.19.1"
         }
       },
       "AspNet.Security.OpenId": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "0HBhxme85NKRcN6bVGAoPffuGmXTt3ojYfZWPJvb/5i4szKbysdQYvHpFc88M2C51QwR/wEsQJ3SKzIeO1pXvg==",
+        "resolved": "11.0.0",
+        "contentHash": "HiCfhUew+o/WGeJmOJYdA2AaspxYXqhs27RDeKBcGUUj/KAifbqD1wu24YpoL9VqMYZyVlikbHZR7+7IFEymZg==",
         "dependencies": {
-          "AngleSharp": "1.3.0",
-          "Microsoft.IdentityModel.Protocols": "8.14.0"
+          "AngleSharp": "1.10.1",
+          "Microsoft.IdentityModel.Protocols": "8.19.1"
         }
+      },
+      "Microsoft.Bcl.Cryptography": {
+        "type": "Transitive",
+        "resolved": "10.0.2",
+        "contentHash": "LG9Yll3B5aNpxv0+D47g6LiOiKBIlodhcHdQwcYzo8VeexFLGqx5ymetmA2aBRyo9cCcWsQWrFsdbsr8LvmWDw=="
       },
       "Microsoft.IdentityModel.Abstractions": {
         "type": "Transitive",
-        "resolved": "8.14.0",
-        "contentHash": "iwbCpSjD3ehfTwBhtSNEtKPK0ICun6ov7Ibx6ISNA9bfwIyzI2Siwyi9eJFCJBwxowK9xcA1mj+jBWiigeqgcQ=="
+        "resolved": "8.19.1",
+        "contentHash": "gFA8THIk23uNF/vMdOHnjIdXD1LyA2g12cHzMJ+Xag6WpgWLw6E/6uCXxvA0gp9d2yAvkRt3xzFzMUiO/hofnQ=="
       },
       "Microsoft.IdentityModel.Logging": {
         "type": "Transitive",
-        "resolved": "8.14.0",
-        "contentHash": "eqqnemdW38CKZEHS6diA50BV94QICozDZEvSrsvN3SJXUFwVB9gy+/oz76gldP7nZliA16IglXjXTCTdmU/Ejg==",
+        "resolved": "8.19.1",
+        "contentHash": "H+sMrMpdbWnwkQnpb/ESkQovtOgdefmj0ecGCcP40mDKzE5i4dUYkH6599M9mWYFNGNJnTp92l/9wLubYXWimw==",
         "dependencies": {
-          "Microsoft.IdentityModel.Abstractions": "8.14.0"
+          "Microsoft.IdentityModel.Abstractions": "8.19.1"
         }
       },
       "Microsoft.IdentityModel.Protocols": {
         "type": "Transitive",
-        "resolved": "8.14.0",
-        "contentHash": "rLr9HmibIpwkrOnsYyF3SGKx+6q2ewKDc3xzITngydqflG3TDVqAaby7yFRbP8du43If2S44fseoAkaL8A0Ivg==",
+        "resolved": "8.19.1",
+        "contentHash": "7jtpdKFIncGCmob3y3LnSHihCYtmw8mlPFI+DV5rdx4YFOfCVlNQ9RhtLAQnjC9kges1+w/8BCnAN3QhqOc0ng==",
         "dependencies": {
-          "Microsoft.IdentityModel.Tokens": "8.14.0"
+          "Microsoft.IdentityModel.Tokens": "8.19.1"
         }
       },
       "Microsoft.IdentityModel.Tokens": {
         "type": "Transitive",
-        "resolved": "8.14.0",
-        "contentHash": "lKIZiBiGd36k02TCdMHp1KlNWisyIvQxcYJvIkz7P4gSQ9zi8dgh6S5Grj8NNG7HWYIPfQymGyoZ6JB5d1Lo1g==",
+        "resolved": "8.19.1",
+        "contentHash": "KDiuSLXud2AFVNAOottd8ztVysfPeHyr4r8gofU3/VKUXlI7oytzGTnPsNJ/B3nui17rgz8wAdWNJOtzPjkUxw==",
         "dependencies": {
-          "Microsoft.IdentityModel.Logging": "8.14.0"
+          "Microsoft.Bcl.Cryptography": "10.0.2",
+          "Microsoft.IdentityModel.Logging": "8.19.1"
         }
       },
       "respawn.games": {
