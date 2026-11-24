@@ -369,7 +369,7 @@ export interface paths {
         get?: never;
         /**
          * Keep the settings of the interface on the signed-in account
-         * @description The language, the theme and the character, the three together, in place of the ones the account had: the front applies them after each sign-in, whatever the browser. The answer is the account as it now is. 422 invalid_request: a setting is missing or not one of its words.
+         * @description The language, the theme, the character and the home's layout, together, in place of the ones the account had: the front applies them after each sign-in, whatever the browser. The home's layout may be left out: the account keeps the one it had, blocks if it had none. The answer is the account as it now is. 422 invalid_request: a setting is missing or not one of its words.
          */
         put: {
             parameters: {
@@ -1132,11 +1132,13 @@ export interface components {
             language: string;
             theme: string;
             character: string;
+            home?: null | string;
         };
         SettingsResponse: {
             language: string;
             theme: string;
             character: string;
+            home: string;
         };
         SyncRunResponse: {
             /** Format: uuid */

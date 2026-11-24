@@ -5,7 +5,7 @@ import {
   provideEnvironmentInitializer,
 } from '@angular/core';
 import { type Account, accountKeys } from '@respawn/data';
-import { CHARACTERS, DisplaySettings, THEMES } from '@respawn/util';
+import { CHARACTERS, DisplaySettings, HOME_LAYOUTS, THEMES } from '@respawn/util';
 import { QueryClient, hashKey } from '@tanstack/angular-query';
 import { LANGUAGES, type Language, LanguageSetting } from '@app/i18n/language';
 
@@ -45,7 +45,7 @@ export class AccountSettingsFollower {
   private follow(account: Account | null | undefined): void {
     const settings = account?.settings;
     const seen = settings
-      ? [account.id, settings.language, settings.theme, settings.character].join(' ')
+      ? [account.id, settings.language, settings.theme, settings.character, settings.home].join(' ')
       : null;
     if (seen === this.taken) return;
     this.taken = seen;
@@ -55,8 +55,10 @@ export class AccountSettingsFollower {
     const language = LANGUAGES.find((each) => each === settings.language);
     const theme = THEMES.find((each) => each === settings.theme);
     const character = CHARACTERS.find((each) => each === settings.character);
+    const home = HOME_LAYOUTS.find((each) => each === settings.home);
     if (theme) this.display.setTheme(theme);
     if (character) this.display.setCharacter(character);
+    if (home) this.display.setHome(home);
     if (language) void this.retakeIfUnavailable(language, seen);
   }
 

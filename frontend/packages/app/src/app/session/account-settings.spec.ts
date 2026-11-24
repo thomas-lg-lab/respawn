@@ -62,13 +62,18 @@ describe('the settings on the account', () => {
   afterEach(() => api().http.verify());
 
   it('takes the account’s settings when the app opens with a session, and keeps them here', async () => {
-    await visit('/', signedIn(withSettings({ language: 'en', theme: 'dark', character: 'plain' })));
+    await visit(
+      '/',
+      signedIn(withSettings({ language: 'en', theme: 'dark', character: 'plain', home: 'column' })),
+    );
 
     await vi.waitFor(() => expect(root.lang).toBe('en'));
     expect(root.getAttribute('data-theme')).toBe('dark');
     expect(root.getAttribute('data-character')).toBe('plain');
+    expect(TestBed.inject(DisplaySettings).home()).toBe('column');
     expect(localStorage.getItem('respawn.language')).toBe('en');
     expect(localStorage.getItem('respawn.theme')).toBe('dark');
+    expect(localStorage.getItem('respawn.home')).toBe('column');
   });
 
   it('takes them at a sign-in too', async () => {
@@ -82,7 +87,7 @@ describe('the settings on the account', () => {
     screen.querySelector('form')!.requestSubmit();
     await server.answer(
       '/auth/login',
-      withSettings({ language: 'fr', theme: 'light', character: 'plain' }),
+      withSettings({ language: 'fr', theme: 'light', character: 'plain', home: 'blocks' }),
     );
     await server.home();
     await harness.fixture.whenStable();
@@ -100,7 +105,7 @@ describe('the settings on the account', () => {
     expect(root.getAttribute('data-character')).toBe('pixel');
   });
 
-  it('shows a pick at once, and keeps the three on the account', async () => {
+  it('shows a pick at once, and keeps the four on the account', async () => {
     const { harness, server, screen } = await visit('/', signedIn());
 
     await pickTheme(harness, screen, 'light');
@@ -109,10 +114,40 @@ describe('the settings on the account', () => {
     // Shown before the account answers.
     await vi.waitFor(() => expect(root.getAttribute('data-theme')).toBe('light'));
     expect(sent.request.method).toBe('PUT');
-    expect(sent.request.body).toEqual({ language: 'fr', theme: 'light', character: 'pixel' });
+    expect(sent.request.body).toEqual({
+      language: 'fr',
+      theme: 'light',
+      character: 'pixel',
+      home: 'blocks',
+    });
     sent.flush(withSettings(sent.request.body as AccountSettings));
     await harness.fixture.whenStable();
     expect(screen.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('offers the home’s layout in the header of the home, and keeps the pick with the rest', async () => {
+    const { harness, server, screen } = await visit('/', signedIn());
+    const choice = screen.querySelector('[data-home-layout-choice]')!;
+    expect(choice.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe(
+      'Disposition de l’accueil',
+    );
+    const column = choice.querySelector<HTMLButtonElement>('[data-home-choice="column"]')!;
+    expect(column.getAttribute('aria-label')).toBe('En une colonne');
+    expect(column.getAttribute('aria-pressed')).toBe('false');
+
+    column.click();
+
+    const sent = await server.request('/me/settings');
+    expect(sent.request.body).toEqual({
+      language: 'fr',
+      theme: 'system',
+      character: 'pixel',
+      home: 'column',
+    });
+    expect(localStorage.getItem('respawn.home')).toBe('column');
+    sent.flush(withSettings(sent.request.body as AccountSettings));
+    await harness.fixture.whenStable();
+    expect(column.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('keeps the picks one at a time, in order, and is not undone by an earlier one’s answer', async () => {

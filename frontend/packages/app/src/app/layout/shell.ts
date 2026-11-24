@@ -18,8 +18,9 @@ import {
   providerSignInAddress,
 } from '@respawn/data';
 import { Banner, Logo, Tab } from '@respawn/ui';
-import { type Character, DisplaySettings, type Theme } from '@respawn/util';
+import { type Character, DisplaySettings, type HomeLayout, type Theme } from '@respawn/util';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
+import { HomeLayoutChoice } from '@app/components/home-layout-choice/home-layout-choice';
 import { AccountMenu, type LinkableProvider } from '@app/components/account-menu/account-menu';
 import { failureKey } from '@app/errors/failure-message';
 import { type Language, LanguageSetting } from '@app/i18n/language';
@@ -60,6 +61,7 @@ const SAME_PATH: IsActiveMatchOptions = {
     Logo,
     Tab,
     AccountMenu,
+    HomeLayoutChoice,
   ],
   // As tall as the window at least, so the bar of tabs has a foot to stick to.
   host: { class: 'flex min-h-dvh flex-col' },
@@ -92,6 +94,11 @@ export class Shell {
    * What came of a link through a provider, as the API wrote it on the address it came back to.
    * Said until the visitor moves on, and once: the word is taken off the browser's address.
    */
+  /** The home's layout is chosen from the header while the home is the screen. */
+  protected readonly onHome = computed(
+    () => !this.router.parseUrl(this.address()).root.hasChildren(),
+  );
+
   protected readonly cameBack = computed(() =>
     providerOutcome(this.router.parseUrl(this.address()).queryParamMap.get(PROVIDER_OUTCOME)),
   );
@@ -139,6 +146,11 @@ export class Shell {
     this.saveSettings();
   }
 
+  protected pickHome(home: HomeLayout): void {
+    this.display.setHome(home);
+    this.saveSettings();
+  }
+
   protected signOut(): void {
     this.signingOut.mutate(undefined, {
       onSuccess: () => void this.router.navigateByUrl('/sign-in'),
@@ -146,7 +158,7 @@ export class Shell {
   }
 
   /**
-   * The three as the interface shows them, or is about to for a language still loading: the
+   * The four as the interface shows them, or is about to for a language still loading: the
    * account holds all of them or none.
    */
   private saveSettings(): void {
@@ -154,6 +166,7 @@ export class Shell {
       language: this.language.chosen(),
       theme: this.display.theme(),
       character: this.display.character(),
+      home: this.display.home(),
     });
   }
 }

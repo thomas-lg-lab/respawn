@@ -76,4 +76,23 @@ describe('DisplaySettings', () => {
     expect(root.getAttribute('data-character')).toBe('plain');
     expect(localStorage.getItem('respawn.character')).toBe('plain');
   });
+
+  it('places the home in blocks until another layout is chosen, and keeps the choice', () => {
+    const settings = create();
+    expect(settings.home()).toBe('blocks');
+
+    settings.setHome('column');
+
+    expect(settings.home()).toBe('column');
+    expect(localStorage.getItem('respawn.home')).toBe('column');
+  });
+
+  it('starts from the home layout kept in the browser, unless it is not one', () => {
+    localStorage.setItem('respawn.home', 'column');
+    expect(create().home()).toBe('column');
+
+    TestBed.resetTestingModule();
+    localStorage.setItem('respawn.home', 'grid');
+    expect(create().home()).toBe('blocks');
+  });
 });

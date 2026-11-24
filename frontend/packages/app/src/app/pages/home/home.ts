@@ -13,6 +13,7 @@ import {
   steamLinkOutcome,
 } from '@respawn/data';
 import { Banner, Button, Label, Skeleton } from '@respawn/ui';
+import { DisplaySettings } from '@respawn/util';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
@@ -105,9 +106,16 @@ export class Home {
   private readonly linked = inject(LinkedAccountQueries);
   private readonly language = inject(LanguageSetting);
   private readonly router = inject(Router);
+  private readonly display = inject(DisplaySettings);
 
   protected readonly failureKey = failureKey;
   protected readonly currentLanguage = this.language.current;
+
+  /**
+   * The layout chosen is blocks: from 1,000px the blocks stand in named groups side by side.
+   * Under that width the home is the column either way, which its styles say on their own.
+   */
+  protected readonly blocks = computed(() => this.display.home() === 'blocks');
   protected readonly tiles = [0, 1, 2];
 
   protected readonly accounts = injectQuery(() => this.linked.list());

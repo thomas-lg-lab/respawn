@@ -122,7 +122,7 @@ internal sealed class IdentityUserDirectory(
 
     public async Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct)
     {
-        // One UPDATE of the three columns: Identity's concurrency stamp guards what Identity changes
+        // One UPDATE of the four columns: Identity's concurrency stamp guards what Identity changes
         // (the password, the lockout), not these, so a sign-in counted at the same time never refuses it.
         var updated = await db.Users
             .Where(u => u.Id == accountId)
@@ -130,7 +130,8 @@ internal sealed class IdentityUserDirectory(
                 set => set
                     .SetProperty(u => u.InterfaceLanguage, settings.Language)
                     .SetProperty(u => u.InterfaceTheme, settings.Theme)
-                    .SetProperty(u => u.InterfaceCharacter, settings.Character),
+                    .SetProperty(u => u.InterfaceCharacter, settings.Character)
+                    .SetProperty(u => u.InterfaceHome, settings.Home),
                 ct);
         if (updated == 0)
         {

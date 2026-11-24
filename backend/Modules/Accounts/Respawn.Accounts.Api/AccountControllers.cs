@@ -219,14 +219,15 @@ public sealed class MeController(IAccountService accounts) : ControllerBase
     [Authorize]
     [EndpointSummary("Keep the settings of the interface on the signed-in account")]
     [EndpointDescription(
-        "The language, the theme and the character, the three together, in place of the ones the account had: "
-        + "the front applies them after each sign-in, whatever the browser. The answer is the account as it now is. "
+        "The language, the theme, the character and the home's layout, together, in place of the ones the account had: "
+        + "the front applies them after each sign-in, whatever the browser. The home's layout may be left out: "
+        + "the account keeps the one it had, blocks if it had none. The answer is the account as it now is. "
         + "422 invalid_request: a setting is missing or not one of its words.")]
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserResponse>> SaveSettings(SettingsRequest body, CancellationToken ct) =>
-        await accounts.SaveSettingsAsync(SignedIn.Id, body.ToSettings(), ct) is { } account
+        await accounts.SaveSettingsAsync(SignedIn.Id, body.ToSettings(SignedIn.Settings?.Home ?? HomeLayout.Blocks), ct) is { } account
             ? UserResponse.From(account)
             // The account went away during the request: its session goes with it.
             : AccountsApi.Error(StatusCodes.Status401Unauthorized, "not_signed_in", "Sign in to continue.");

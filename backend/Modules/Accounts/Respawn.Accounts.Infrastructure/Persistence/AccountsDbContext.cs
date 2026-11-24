@@ -46,10 +46,11 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
         {
             user.ToTable("users", table =>
             {
-                // The settings are chosen together: all three or none.
+                // The settings are kept together: all four or none.
                 table.HasCheckConstraint(
                     "ck_users_interface_settings_together",
-                    "(interface_language IS NULL) = (interface_theme IS NULL) AND (interface_theme IS NULL) = (interface_character IS NULL)");
+                    "(interface_language IS NULL) = (interface_theme IS NULL) AND (interface_theme IS NULL) = (interface_character IS NULL)"
+                    + " AND (interface_character IS NULL) = (interface_home IS NULL)");
                 // Each one is one of its words: the ones the converters below write.
                 table.HasCheckConstraint(
                     "ck_users_interface_language",
@@ -60,6 +61,9 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
                 table.HasCheckConstraint(
                     "ck_users_interface_character",
                     OneOf("interface_character", Enum.GetValues<Character>().Select(v => SettingWords.Of(v))));
+                table.HasCheckConstraint(
+                    "ck_users_interface_home",
+                    OneOf("interface_home", Enum.GetValues<HomeLayout>().Select(v => SettingWords.Of(v))));
             });
             user.Property(u => u.DisplayName).HasMaxLength(100);
             // Stored as the words the API uses, so that a row reads as what the account chose.
@@ -69,6 +73,8 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
                 new ValueConverter<Theme, string>(v => SettingWords.Of(v), v => SettingWords.ToTheme(v)));
             user.Property(u => u.InterfaceCharacter).HasMaxLength(8).HasConversion(
                 new ValueConverter<Character, string>(v => SettingWords.Of(v), v => SettingWords.ToCharacter(v)));
+            user.Property(u => u.InterfaceHome).HasMaxLength(8).HasConversion(
+                new ValueConverter<HomeLayout, string>(v => SettingWords.Of(v), v => SettingWords.ToHomeLayout(v)));
             user.Property(u => u.Email).HasMaxLength(320);
             user.Property(u => u.NormalizedEmail).HasMaxLength(320);
             // One account per e-mail; accounts without one are not concerned (NULL is never equal to NULL).

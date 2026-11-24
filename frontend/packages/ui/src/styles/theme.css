@@ -89,6 +89,17 @@
   }
 }
 
+/*
+ * One more threshold, for the home alone: from 1,000px of the same width its blocks can stand
+ * in groups side by side (`roomy:`). Under it the home is a column whatever its setting, and
+ * the choice of layout is not offered.
+ */
+@custom-variant roomy {
+  @container app (min-width: 1000px) {
+    @slot;
+  }
+}
+
 /* A raised element, a little larger than its neighbours (`aria-pressed:scale-pop`). Tailwind
    has no theme key for a scale: the utility is written here, on its token. */
 @utility scale-pop {

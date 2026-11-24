@@ -18,6 +18,11 @@
     "characters": {
       "pixel": "Pixel",
       "plain": "Plain"
+    },
+    "home": "Home layout",
+    "homes": {
+      "blocks": "In blocks",
+      "column": "In one column"
     }
   },
   "signIn": {
@@ -267,6 +272,11 @@
         "title": "Tracking began on {{ date }}",
         "text": "Steam does not give past sessions. respawn reads your playtime once a day: what you play will show here after the next reading."
       }
+    },
+    "groups": {
+      "current": "In progress",
+      "standing": "Where I stand",
+      "browse": "To explore"
     }
   },
   "library": {

@@ -14,7 +14,7 @@ public sealed class AppUser : IdentityUser<Guid>
 
     public DateTimeOffset CreatedAt { get; set; }
 
-    // The settings of the interface: the three together, or none (a check of the table says so).
+    // The settings of the interface: the four together, or none (a check of the table says so).
 
     public Language? InterfaceLanguage { get; set; }
 
@@ -22,15 +22,20 @@ public sealed class AppUser : IdentityUser<Guid>
 
     public Character? InterfaceCharacter { get; set; }
 
+    public HomeLayout? InterfaceHome { get; set; }
+
     /// <summary>The account as the use cases see it.</summary>
     public Account ToAccount() => new(
         Id,
         Email,
         DisplayName,
         IsAdmin,
-        InterfaceLanguage is { } language && InterfaceTheme is { } theme && InterfaceCharacter is { } character
-            ? new InterfaceSettings(language, theme, character)
-            : null);
+        InterfaceLanguage is { } language
+            && InterfaceTheme is { } theme
+            && InterfaceCharacter is { } character
+            && InterfaceHome is { } home
+                ? new InterfaceSettings(language, theme, character, home)
+                : null);
 }
 
 /// <summary>A sharing scope. The default group holds every account; the database allows one only.</summary>

@@ -23,19 +23,33 @@
     </div>
 
     @if (me.data(); as account) {
-      <rs-account-menu
-        [account]="account"
-        [language]="language.current()"
-        [theme]="display.theme()"
-        [character]="display.character()"
-        [providers]="providers()"
-        [signingOut]="signingOut.isPending()"
-        (languagePicked)="pickLanguage($event)"
-        (themePicked)="pickTheme($event)"
-        (characterPicked)="pickCharacter($event)"
-        (signOut)="signOut()"
-        (opened)="menuOpened.set(true)"
-      />
+      <div class="flex items-center gap-3">
+        <!-- The home's layout, chosen where it shows: only on the home, and only once it has room
+           for its groups. -->
+        @if (onHome()) {
+          <div class="hidden roomy:block" data-home-layout-choice>
+            <rs-home-layout-choice
+              [layout]="display.home()"
+              [label]="t('settings.home')"
+              (picked)="pickHome($event)"
+              *transloco="let t"
+            />
+          </div>
+        }
+        <rs-account-menu
+          [account]="account"
+          [language]="language.current()"
+          [theme]="display.theme()"
+          [character]="display.character()"
+          [providers]="providers()"
+          [signingOut]="signingOut.isPending()"
+          (languagePicked)="pickLanguage($event)"
+          (themePicked)="pickTheme($event)"
+          (characterPicked)="pickCharacter($event)"
+          (signOut)="signOut()"
+          (opened)="menuOpened.set(true)"
+        />
+      </div>
     }
   </div>
 </header>

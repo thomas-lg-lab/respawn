@@ -1,6 +1,6 @@
 <section class="flex flex-col gap-3" data-recently *transloco="let t; prefix: 'home'">
   <h2 class="type-label text-muted">{{ t('recently.title') }}</h2>
-  <ul class="grid grid-cols-1 gap-3 wide:grid-cols-2">
+  <ul class="grid grid-cols-1 gap-3 wide:grid-cols-2" [class]="narrow() ? 'roomy:grid-cols-1' : ''">
     @for (game of games(); track game.id) {
       <li
         class="flex items-center gap-3.5 rounded-card border border-line bg-surface p-3"

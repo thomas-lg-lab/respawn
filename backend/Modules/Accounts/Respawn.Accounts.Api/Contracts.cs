@@ -17,7 +17,10 @@ public sealed record UserResponse(Guid Id, string? Email, string DisplayName, bo
         account.IsAdmin,
         account.Settings is { } settings
             ? new SettingsResponse(
-                SettingWords.Of(settings.Language), SettingWords.Of(settings.Theme), SettingWords.Of(settings.Character))
+                SettingWords.Of(settings.Language),
+                SettingWords.Of(settings.Theme),
+                SettingWords.Of(settings.Character),
+                SettingWords.Of(settings.Home))
             : null);
 }
 
@@ -25,9 +28,12 @@ public sealed record UserResponse(Guid Id, string? Email, string DisplayName, bo
 /// <param name="Language">fr or en.</param>
 /// <param name="Theme">system (the device's preference), dark or light.</param>
 /// <param name="Character">pixel or plain: what the labels look like.</param>
-public sealed record SettingsResponse(string Language, string Theme, string Character);
+/// <param name="Home">blocks or column: how the home places its blocks on a wide screen.</param>
+public sealed record SettingsResponse(string Language, string Theme, string Character, string Home);
 
-/// <summary>The settings of the interface, the three together: they replace the ones the account had.</summary>
+/// <summary>The settings of the interface, together: they replace the ones the account had. The home's
+/// layout came after the other three and may be left out, so that a client that does not know it keeps
+/// working: the account then keeps the one it had.</summary>
 public sealed class SettingsRequest
 {
     /// <summary>fr or en.</summary>
@@ -42,9 +48,18 @@ public sealed class SettingsRequest
     [Required, AllowedValues(SettingWords.Pixel, SettingWords.Plain)]
     public string Character { get; init; } = "";
 
-    /// <summary>The settings, once the request is valid.</summary>
-    public InterfaceSettings ToSettings() => new(
-        SettingWords.ToLanguage(Language), SettingWords.ToTheme(Theme), SettingWords.ToCharacter(Character));
+    /// <summary>blocks or column: how the home places its blocks on a wide screen. Left out, the account
+    /// keeps the one it had, blocks for an account that had none.</summary>
+    [AllowedValues(SettingWords.Blocks, SettingWords.Column, null)]
+    public string? Home { get; init; }
+
+    /// <summary>The settings, once the request is valid, with <paramref name="kept"/> for a home layout
+    /// left out.</summary>
+    public InterfaceSettings ToSettings(HomeLayout kept) => new(
+        SettingWords.ToLanguage(Language),
+        SettingWords.ToTheme(Theme),
+        SettingWords.ToCharacter(Character),
+        Home is { } home ? SettingWords.ToHomeLayout(home) : kept);
 }
 
 /// <summary>A provider the sign-in page may offer: <c>Name</c> goes in the address that starts a sign-in

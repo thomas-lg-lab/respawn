@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Accounts.Infrastructure.Persistence;
 using Respawn.Accounts.Ports;
@@ -10,7 +12,8 @@ using Respawn.Testing;
 
 namespace Respawn.Accounts.Tests;
 
-/// <summary>The settings of the interface kept on the account: the language, the theme, the character.</summary>
+/// <summary>The settings of the interface kept on the account: the language, the theme, the character and
+/// the home's layout.</summary>
 public sealed class SettingsTests
 {
     private const string Settings = "/api/v1/me/settings";
@@ -34,29 +37,48 @@ public sealed class SettingsTests
         using var browser = app.Browser();
         await browser.RegisterAsync();
 
-        var saved = await browser.PutAsJsonAsync(Settings, new { language = "fr", theme = "dark", character = "plain" });
+        var saved = await browser.PutAsJsonAsync(
+            Settings, new { language = "fr", theme = "dark", character = "plain", home = "column" });
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
-        AssertSettings(("fr", "dark", "plain"), await saved.JsonAsync());
+        AssertSettings(("fr", "dark", "plain", "column"), await saved.JsonAsync());
 
         await browser.PostAsync("/api/v1/auth/logout", null);
         using var elsewhere = app.Browser();
         var signedIn = await elsewhere.LoginAsync("first@example.org", TestApp.Password).JsonAsync();
 
-        AssertSettings(("fr", "dark", "plain"), signedIn);
-        AssertSettings(("fr", "dark", "plain"), await elsewhere.GetAsync("/api/v1/me").JsonAsync());
+        AssertSettings(("fr", "dark", "plain", "column"), signedIn);
+        AssertSettings(("fr", "dark", "plain", "column"), await elsewhere.GetAsync("/api/v1/me").JsonAsync());
     }
 
     [Fact]
-    public async Task Saving_again_replaces_the_three()
+    public async Task Saving_again_replaces_the_four()
     {
         await using var app = await TestApp.StartAsync();
         using var browser = app.Browser();
         await browser.RegisterAsync();
-        await browser.PutAsJsonAsync(Settings, new { language = "fr", theme = "dark", character = "plain" });
+        await browser.PutAsJsonAsync(Settings, new { language = "fr", theme = "dark", character = "plain", home = "column" });
 
-        await browser.PutAsJsonAsync(Settings, new { language = "en", theme = "system", character = "pixel" });
+        await browser.PutAsJsonAsync(Settings, new { language = "en", theme = "system", character = "pixel", home = "blocks" });
 
-        AssertSettings(("en", "system", "pixel"), await browser.GetAsync("/api/v1/me").JsonAsync());
+        AssertSettings(("en", "system", "pixel", "blocks"), await browser.GetAsync("/api/v1/me").JsonAsync());
+    }
+
+    [Fact]
+    public async Task A_home_layout_left_out_is_kept_and_is_blocks_for_a_first_save()
+    {
+        // A client that knows the first three settings only keeps working, and does not undo the fourth.
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+
+        var first = await browser.PutAsJsonAsync(Settings, new { language = "fr", theme = "dark", character = "plain" });
+        AssertSettings(("fr", "dark", "plain", "blocks"), await first.JsonAsync());
+
+        await browser.PutAsJsonAsync(Settings, new { language = "fr", theme = "dark", character = "plain", home = "column" });
+        var again = await browser.PutAsJsonAsync(Settings, new { language = "en", theme = "light", character = "pixel" });
+
+        AssertSettings(("en", "light", "pixel", "column"), await again.JsonAsync());
+        AssertSettings(("en", "light", "pixel", "column"), await browser.GetAsync("/api/v1/me").JsonAsync());
     }
 
     [Fact]
@@ -65,7 +87,7 @@ public sealed class SettingsTests
         await using var app = await TestApp.StartAsync();
         using var browser = app.Browser();
         await browser.RegisterAsync();
-        await browser.PutAsJsonAsync(Settings, new { language = "fr", theme = "dark", character = "plain" });
+        await browser.PutAsJsonAsync(Settings, new { language = "fr", theme = "dark", character = "plain", home = "column" });
 
         Assert.Equal(
             (HttpStatusCode.UnprocessableEntity, "invalid_request"),
@@ -76,8 +98,12 @@ public sealed class SettingsTests
         Assert.Equal(
             (HttpStatusCode.UnprocessableEntity, "invalid_request"),
             await browser.PutAsJsonAsync(Settings, new { language = "en", theme = "light" }).RefusalAsync());
+        Assert.Equal(
+            (HttpStatusCode.UnprocessableEntity, "invalid_request"),
+            await browser.PutAsJsonAsync(
+                Settings, new { language = "en", theme = "light", character = "pixel", home = "grid" }).RefusalAsync());
 
-        AssertSettings(("fr", "dark", "plain"), await browser.GetAsync("/api/v1/me").JsonAsync());
+        AssertSettings(("fr", "dark", "plain", "column"), await browser.GetAsync("/api/v1/me").JsonAsync());
     }
 
     [Fact]
@@ -116,12 +142,59 @@ public sealed class SettingsTests
         Assert.False(await scope.ServiceProvider.GetRequiredService<AccountsDbContext>().Users.AnyAsync(u => u.Id == id));
     }
 
-    private static void AssertSettings((string Language, string Theme, string Character) expected, JsonElement account)
+    [Fact]
+    public async Task The_migration_gives_the_accounts_that_kept_settings_the_blocks()
+    {
+        // A database as it was before the home's layout, with an account that kept its three settings and
+        // one that never chose any.
+        TestDatabase.EnsureCreated();
+        var name = TestDatabase.Name[..^"_test".Length] + "_home_upgrade_test";
+        var url = TestDatabase.UrlFor(name);
+        TestDatabase.Admin($"DROP DATABASE IF EXISTS \"{name}\" WITH (FORCE)");
+        TestDatabase.Create(url);
+
+        await using var dataSource = TestDatabase.DataSource(url);
+        var options = new DbContextOptionsBuilder<AccountsDbContext>();
+        AccountsDbContext.Configure(options, dataSource);
+        await using var db = new AccountsDbContext(options.Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync("ProviderSignInByTheApi");
+
+        // Written as that schema knows them, not through today's model.
+        var chose = Guid.CreateVersion7();
+        var never = Guid.CreateVersion7();
+        foreach (var (id, isAdmin) in new[] { (chose, true), (never, false) })
+        {
+            await db.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO accounts.users
+                    (id, display_name, is_admin, created_at, email_confirmed, phone_number_confirmed,
+                     two_factor_enabled, lockout_enabled, access_failed_count)
+                VALUES ({id}, 'Before the layout', {isAdmin}, {DateTimeOffset.UtcNow}, FALSE, FALSE, FALSE, TRUE, 0)
+                """);
+        }
+
+        await db.Database.ExecuteSqlAsync(
+            $"UPDATE accounts.users SET interface_language = 'fr', interface_theme = 'dark', interface_character = 'plain' WHERE id = {chose}");
+
+        await migrator.MigrateAsync();
+
+        var accounts = await db.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
+        Assert.Equal(
+            new InterfaceSettings(Language.French, Theme.Dark, Character.Plain, HomeLayout.Blocks),
+            accounts[chose].ToAccount().Settings);
+        Assert.Null(accounts[never].ToAccount().Settings);
+        Assert.Null(accounts[never].InterfaceHome);
+    }
+
+    private static void AssertSettings(
+        (string Language, string Theme, string Character, string Home) expected, JsonElement account)
     {
         var settings = account.GetProperty("settings");
         Assert.Equal(expected.Language, settings.GetProperty("language").GetString());
         Assert.Equal(expected.Theme, settings.GetProperty("theme").GetString());
         Assert.Equal(expected.Character, settings.GetProperty("character").GetString());
+        Assert.Equal(expected.Home, settings.GetProperty("home").GetString());
     }
 
     /// <summary>The account service, but the account is deleted right before its settings are saved, as

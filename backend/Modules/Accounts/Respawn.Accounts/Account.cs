@@ -26,10 +26,18 @@ public enum Character
     Plain,
 }
 
+/// <summary>How the home places its blocks on a wide screen: in labelled groups side by side, or one
+/// column. Under the width the groups need, the home is a column whatever the setting.</summary>
+public enum HomeLayout
+{
+    Blocks,
+    Column,
+}
+
 /// <summary>How the interface looks to an account, kept on it so that it follows its owner from one
-/// browser to the next. The three are chosen together: an account has all of them or none, and with none
+/// browser to the next. The four are kept together: an account has all of them or none, and with none
 /// the browser's own choices apply.</summary>
-public sealed record InterfaceSettings(Language Language, Theme Theme, Character Character);
+public sealed record InterfaceSettings(Language Language, Theme Theme, Character Character, HomeLayout Home);
 
 /// <summary>Someone a provider has proven, known by its issuer and subject, never by its e-mail.</summary>
 public sealed record ExternalIdentity(

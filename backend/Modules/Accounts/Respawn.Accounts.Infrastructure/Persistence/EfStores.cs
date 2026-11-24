@@ -114,6 +114,7 @@ internal sealed class EfSessionStore(AccountsDbContext db, TimeProvider clock) :
                 InterfaceLanguage = account.InterfaceLanguage,
                 InterfaceTheme = account.InterfaceTheme,
                 InterfaceCharacter = account.InterfaceCharacter,
+                InterfaceHome = account.InterfaceHome,
             }).FirstOrDefaultAsync(ct);
         return user?.ToAccount();
     }

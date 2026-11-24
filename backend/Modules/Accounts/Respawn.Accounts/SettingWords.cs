@@ -11,6 +11,8 @@ public static class SettingWords
     public const string Light = "light";
     public const string Pixel = "pixel";
     public const string Plain = "plain";
+    public const string Blocks = "blocks";
+    public const string Column = "column";
 
     public static string Of(Language language) => language switch
     {
@@ -34,6 +36,13 @@ public static class SettingWords
         _ => throw new ArgumentOutOfRangeException(nameof(character), character, null),
     };
 
+    public static string Of(HomeLayout home) => home switch
+    {
+        HomeLayout.Blocks => Blocks,
+        HomeLayout.Column => Column,
+        _ => throw new ArgumentOutOfRangeException(nameof(home), home, null),
+    };
+
     public static Language ToLanguage(string word) => word switch
     {
         French => Language.French,
@@ -54,5 +63,12 @@ public static class SettingWords
         Pixel => Character.Pixel,
         Plain => Character.Plain,
         _ => throw new ArgumentOutOfRangeException(nameof(word), word, "not a character"),
+    };
+
+    public static HomeLayout ToHomeLayout(string word) => word switch
+    {
+        Blocks => HomeLayout.Blocks,
+        Column => HomeLayout.Column,
+        _ => throw new ArgumentOutOfRangeException(nameof(word), word, "not a home layout"),
     };
 }

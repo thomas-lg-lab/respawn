@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, booleanAttribute, computed, input } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Cover } from '@respawn/ui';
 import { type SaidPlaytime, formatAgo, saidPlaytime } from '@app/format/format';
@@ -31,6 +31,8 @@ export class PlayedRecently {
   readonly language = input.required<string>();
   /** The moment "ago" is counted from. */
   readonly now = input.required<number>();
+  /** It stands beside the banner, in a third of a wide screen: one game a row from 1,000px. */
+  readonly narrow = input(false, { transform: booleanAttribute });
 
   protected readonly games = computed(() => {
     const { by, games } = this.played();

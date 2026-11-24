@@ -317,6 +317,41 @@ describe('Home', () => {
     expect(screen.querySelector('[data-sync-notice]')).toBeNull();
   });
 
+  it('names its three groups when its blocks stand side by side', async () => {
+    const { screen } = await open([account()], '/', STATS, played());
+
+    const groups = [...screen.querySelectorAll('[data-home-group]')];
+    expect(groups.map((group) => group.getAttribute('data-home-group'))).toEqual([
+      'current',
+      'standing',
+      'browse',
+    ]);
+    expect(
+      groups.map((group) => group.querySelector(':scope > [rsLabel]')?.textContent.trim()),
+    ).toEqual(['En cours', 'Où j’en suis', 'À parcourir']);
+    expect(groups[0]?.querySelector('rs-resume')).not.toBeNull();
+    expect(groups[1]?.querySelector('rs-figures')).not.toBeNull();
+    expect(groups[2]?.querySelector('rs-activity')).not.toBeNull();
+  });
+
+  it('names no group in one column', async () => {
+    localStorage.setItem('respawn.home', 'column');
+
+    const { screen } = await open([account()], '/', STATS, played());
+
+    expect(screen.querySelectorAll('[data-home-group]')).toHaveLength(3);
+    expect(screen.querySelectorAll('[data-home-group] > [rsLabel]')).toHaveLength(0);
+  });
+
+  it('leaves out the group of the games in progress when none was played', async () => {
+    const { screen } = await open([account()]);
+
+    expect(screen.querySelector('[data-home-group="current"]')).toBeNull();
+    expect(
+      screen.querySelector('[data-home-group="standing"] > [rsLabel]')?.textContent.trim(),
+    ).toBe('Où j’en suis');
+  });
+
   it('says a figure Steam did not give is unknown, never zero', async () => {
     const { screen } = await open([account()], '/', {
       ...STATS,

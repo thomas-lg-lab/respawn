@@ -18,6 +18,11 @@
     "characters": {
       "pixel": "Pixel",
       "plain": "Sobre"
+    },
+    "home": "Disposition de l’accueil",
+    "homes": {
+      "blocks": "En blocs",
+      "column": "En une colonne"
     }
   },
   "signIn": {
@@ -267,6 +272,11 @@
         "title": "Le suivi a commencé le {{ date }}",
         "text": "Steam ne donne pas le détail des sessions passées. respawn relève vos temps de jeu une fois par jour : ce que vous jouez s’affichera ici après la prochaine lecture."
       }
+    },
+    "groups": {
+      "current": "En cours",
+      "standing": "Où j’en suis",
+      "browse": "À parcourir"
     }
   },
   "library": {

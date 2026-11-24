@@ -134,7 +134,7 @@ export class AccountQueries {
   }
 
   /**
-   * Keeps the three settings of the interface on the account, which answers as it now is.
+   * Keeps the settings of the interface on the account, which answers as it now is.
    * The interface already shows them: this only makes them follow the account elsewhere.
    */
   saveSettings() {

@@ -1,0 +1,19 @@
+<ng-container *transloco="let t; prefix: 'settings.homes'">
+  @for (choice of layouts; track choice) {
+    <button
+      rsPill
+      class="px-3"
+      [pressed]="choice === layout()"
+      [attr.aria-label]="t(choice)"
+      [attr.title]="t(choice)"
+      [attr.data-home-choice]="choice"
+      (click)="picked.emit(choice)"
+    >
+      @if (choice === 'blocks') {
+        <svg lucideLayoutDashboard class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+      } @else {
+        <svg lucideRows3 class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+      }
+    </button>
+  }
+</ng-container>
