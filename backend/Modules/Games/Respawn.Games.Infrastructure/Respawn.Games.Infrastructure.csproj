@@ -10,13 +10,13 @@
 
   <ItemGroup>
     <!-- snake_case tables and columns, the PostgreSQL convention, without naming each one by hand. -->
-    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <PackageReference Include="EFCore.NamingConventions" Version="11.0.0" />
     <!-- Design-time only (dotnet ef migrations add): not shipped with the app. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0" />
     <!-- libsodium: the authenticated encryption of an owner's key, as Accounts uses it for Argon2id. -->
     <PackageReference Include="Sodium.Core" Version="1.4.1" />
   </ItemGroup>

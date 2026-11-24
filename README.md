@@ -8,7 +8,7 @@
 [![CI](https://github.com/thomas-lg-lab/respawn/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/thomas-lg-lab/respawn/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thomas-lg-lab/respawn/badge)](https://scorecard.dev/viewer/?uri=github.com/thomas-lg-lab/respawn)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
-[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)](global.json)
+[![.NET 11](https://img.shields.io/badge/.NET-11-512BD4)](global.json)
 [![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-4169E1)](docker-compose.yml)
 [![Angular 22](https://img.shields.io/badge/Angular-22-DD0031)](frontend/package.json)
 [![Tailwind CSS 4](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4)](frontend/package.json)
@@ -236,7 +236,7 @@ A breaking change to these routes means a new version beside `/api/v1`, not a ch
 
 ## How it is built
 
-.NET 10 and ASP.NET Core, PostgreSQL through EF Core, and an Angular front. The app is one process, split by
+.NET 11 and ASP.NET Core, PostgreSQL through EF Core, and an Angular front. The app is one process, split by
 responsibility rather than by layer: each module is hexagonal, a core with its use cases and ports, and
 adapters around it.
 

@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.1",
+  "openapi": "3.2.0",
   "info": {
     "title": "respawn",
     "version": "dev"
@@ -1494,19 +1494,19 @@
   },
   "tags": [
     {
-      "name": "Config"
-    },
-    {
       "name": "Auth"
     },
     {
-      "name": "Me"
+      "name": "Config"
     },
     {
       "name": "Library"
     },
     {
       "name": "LinkedAccounts"
+    },
+    {
+      "name": "Me"
     }
   ]
 }
