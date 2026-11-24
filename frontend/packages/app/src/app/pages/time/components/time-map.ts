@@ -25,8 +25,11 @@ const TIMED = { width: 56, height: 26 };
 const SECOND_LINE = 24;
 /** A tile whose shorter side reaches this names its game in large, on two lines if need be. */
 const LARGE = 150;
-/** What the label of a tile takes, its margin included: two lines of text in a card. */
-const LABEL = 64;
+/**
+ * What the label of a tile takes, its margin included: its name on two lines at most, its
+ * time, in a card.
+ */
+const LABEL = 88;
 /** How close to a side of the drawing, in percent, a tile still counts as on it. */
 const EDGE = 0.01;
 
@@ -158,8 +161,10 @@ export class TimeMap {
   }
 }
 
-/** Where a tile grows from along one axis: the side of the drawing it touches, if any. */
+/** Where a tile grows from along one axis: the side of the drawing it touches, if only one. */
 function side(start: number, end: number, first: string, last: string): string {
+  // Across the whole drawing, either way would be cut: it grows from its middle.
+  if (start <= EDGE && end >= 100 - EDGE) return 'center';
   if (start <= EDGE) return first;
   if (end >= 100 - EDGE) return last;
   return 'center';

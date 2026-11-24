@@ -79,7 +79,9 @@
         aria-hidden="true"
         data-tile-label
       >
-        <span class="type-card-title">{{ at.tile.item.game.name || t('unnamed') }}</span>
+        <span class="line-clamp-2 type-card-title" data-label-name>{{
+          at.tile.item.game.name || t('unnamed')
+        }}</span>
         <span class="type-caption font-semibold tabular-nums">{{
           t('playtime.' + at.tile.time.key, { count: at.tile.time.count })
         }}</span>

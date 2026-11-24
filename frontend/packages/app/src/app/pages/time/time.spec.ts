@@ -143,8 +143,11 @@ describe('Time', () => {
     const label = screen.querySelector<HTMLElement>('[data-tile-label]')!;
     expect(label.style.top).toBe('0%');
     expect(label.style.bottom).toBe('');
-    // Picked, it grows away from the sides it touches.
-    expect(tile(screen, 'Hades').style.transformOrigin).toBe('left top');
+    // Picked, it grows away from the side it touches, and from its middle along the height it
+    // fills: either way would be cut.
+    expect(tile(screen, 'Hades').style.transformOrigin).toBe('left center');
+    // A name keeps to two lines, so the label is never taller than the room it was given.
+    expect(label.querySelector('[data-label-name]')?.classList).toContain('line-clamp-2');
   });
 
   it('says more of the most played game, then of the tile pressed', async () => {
