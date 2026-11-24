@@ -32,6 +32,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/library/library').then((m) => m.Library),
       },
       {
+        path: 'time',
+        loadComponent: () => import('./pages/time/time').then((m) => m.Time),
+      },
+      {
         // Reached from the account menu, not from a tab.
         path: 'account',
         loadComponent: () => import('./pages/account/account').then((m) => m.Account),

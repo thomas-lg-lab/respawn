@@ -9,6 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Card } from '@respawn/ui';
 import { treemap } from '@app/games/time-map';
@@ -20,14 +21,15 @@ const RATIO = 2.6;
 /**
  * The time map at a glance: the most played games as tiles, each as large as its playtime
  * and coloured by its last session. A drawing only, with what it shows said under it: no
- * tile names its game, and the ranking names the first of them only.
+ * tile names its game, and the ranking names the first of them only. The whole card leads to
+ * the Time tab, where the map is drawn in full.
  *
  * The drawing keeps its height and takes the width it is given, so its shape changes with
  * the window: it is measured, and the tiles are cut for the shape it has.
  */
 @Component({
   selector: 'rs-time-map-preview',
-  imports: [TranslocoDirective, Card],
+  imports: [RouterLink, TranslocoDirective, Card],
   templateUrl: './time-map-preview.html',
 })
 export class TimeMapPreview {

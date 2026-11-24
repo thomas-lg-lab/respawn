@@ -1,0 +1,159 @@
+import { RouterTestingHarness } from '@angular/router/testing';
+import type { LibraryGame } from '@respawn/data';
+import { ACCOUNT, api, configureApp } from '@app/testing/app-testing';
+import type { Language } from '@app/i18n/language';
+import '../../layout/shell';
+import './time';
+
+const FIRST_PAGE = '/library?sort=name&offset=0&limit=500';
+const HOUR = 3600;
+
+let made = 0;
+
+function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
+  return {
+    game_id: `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`,
+    name,
+    playtime_seconds: 0,
+    recent_playtime_seconds: 0,
+    last_played_at: null,
+    entries: [],
+    ...values,
+  };
+}
+
+/** Noon, that many days back on the calendar: a clock change cannot move it to another day. */
+function ago(days: number): string {
+  const moment = new Date();
+  moment.setDate(moment.getDate() - days);
+  moment.setHours(12, 0, 0, 0);
+  return moment.toISOString();
+}
+
+/** Three launched games, 152 hours in all, and one never launched. */
+function library(): LibraryGame[] {
+  return [
+    game('Celeste'),
+    game('Elden Ring', { playtime_seconds: 50 * HOUR, last_played_at: ago(3) }),
+    game('Hades', { playtime_seconds: 100 * HOUR, last_played_at: ago(400) }),
+    game('Portal 2', { playtime_seconds: 2 * HOUR, last_played_at: ago(1) }),
+  ];
+}
+
+describe('Time', () => {
+  /** Opens the Time tab, signed in; the API answers with these games unless told not to. */
+  async function open(games: LibraryGame[] | null = library(), language: Language = 'fr') {
+    configureApp(language);
+    const harness = await RouterTestingHarness.create();
+    const server = api();
+    const arrived = harness.navigateByUrl('/time');
+    await server.answer('/me', ACCOUNT);
+    await arrived;
+    if (games) {
+      await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
+      await harness.fixture.whenStable();
+    }
+    return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
+  }
+
+  const text = (within: Element, selector: string) =>
+    within.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim();
+  const tile = (screen: HTMLElement, name: string) =>
+    screen.querySelector<HTMLButtonElement>(`[data-tile][aria-label^="${name},"]`)!;
+
+  beforeEach(() => localStorage.clear());
+  afterEach(() => api().http.verify());
+
+  it('draws a tile per launched game, coloured by its last session, and says the whole', async () => {
+    const { screen } = await open();
+
+    expect(text(screen, '[data-heading]')).toBe('152 h de jeu sur 3 jeux. Voici où il est passé.');
+    const tiles = [...screen.querySelectorAll('[data-tile]')];
+    expect(tiles.map((each) => each.getAttribute('aria-label'))).toEqual([
+      'Hades, 100 h',
+      'Elden Ring, 50 h',
+      'Portal 2, 2 h',
+    ]);
+    expect(tiles.map((each) => each.getAttribute('data-recency'))).toEqual(['4', '1', '1']);
+    expect(
+      [...screen.querySelectorAll('[data-legend] li')].map((each) => each.textContent.trim()),
+    ).toEqual([
+      'Ces deux dernières semaines',
+      'Ces trois derniers mois',
+      'Cette dernière année',
+      'Plus ancien',
+    ]);
+  });
+
+  it('says more of the most played game, then of the tile pressed', async () => {
+    const { harness, screen } = await open();
+
+    expect(tile(screen, 'Hades').getAttribute('aria-pressed')).toBe('true');
+    expect(text(screen, '[data-detail] h2')).toBe('Hades');
+    expect(text(screen, '[data-share]')).toBe(
+      '100 h, soit 66 % de votre temps de jeu. Dernière session il y a 1 an.',
+    );
+
+    tile(screen, 'Portal 2').click();
+    await harness.fixture.whenStable();
+
+    expect(tile(screen, 'Hades').getAttribute('aria-pressed')).toBe('false');
+    expect(tile(screen, 'Portal 2').getAttribute('aria-pressed')).toBe('true');
+    expect(text(screen, '[data-detail] h2')).toBe('Portal 2');
+    expect(text(screen, '[data-share]')).toBe(
+      '2 h, soit 1 % de votre temps de jeu. Dernière session hier.',
+    );
+  });
+
+  it('puts the launched games past the thirteenth in one tile, which leads to the library', async () => {
+    const games = Array.from({ length: 15 }, (_, rank) =>
+      game(`Game ${rank + 1}`, { playtime_seconds: (100 - rank) * HOUR }),
+    );
+    const { harness, screen } = await open(games);
+
+    expect(screen.querySelectorAll('[data-tile]')).toHaveLength(14);
+    tile(screen, '2 autres jeux').click();
+    await harness.fixture.whenStable();
+
+    expect(text(screen, '[data-detail] h2')).toBe('2 autres jeux');
+    expect(screen.querySelector('[data-detail] a')?.getAttribute('href')).toBe('/library');
+  });
+
+  it('draws nothing under two launched games, and leads to the home', async () => {
+    const { screen } = await open([game('Hades', { playtime_seconds: HOUR }), game('Celeste')]);
+
+    expect(screen.querySelector('[data-time-map]')).toBeNull();
+    expect(text(screen, '[data-empty]')).toBe(
+      'La carte a besoin d’au moins deux jeux lancés. L’accueil dit où en est la bibliothèque.',
+    );
+    expect(screen.querySelector('[data-home]')?.getAttribute('href')).toBe('/');
+  });
+
+  it('says why the games could not be read, and asks again on request', async () => {
+    const { harness, server, screen } = await open(null);
+    await server.refuse(FIRST_PAGE, 503, 'database_unavailable');
+    await harness.fixture.whenStable();
+
+    expect(text(screen, '[role="alert"]')).toBe(
+      'La base de données ne répond pas. Réessayez dans un instant.',
+    );
+
+    screen.querySelector<HTMLButtonElement>('[data-retry]')!.click();
+    const games = library();
+    await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
+    await harness.fixture.whenStable();
+
+    expect(screen.querySelectorAll('[data-tile]')).toHaveLength(3);
+  });
+
+  it('speaks English too', async () => {
+    const { screen } = await open(library(), 'en');
+
+    expect(text(screen, '[data-heading]')).toBe(
+      '152 h played over 3 games. Here is where it went.',
+    );
+    expect(text(screen, '[data-share]')).toBe(
+      '100 h, 66% of your playtime. Last session 1 year ago.',
+    );
+  });
+});

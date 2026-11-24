@@ -1,4 +1,5 @@
-import { recency, treemap } from './time-map';
+import type { LibraryGame } from '@respawn/data';
+import { playedRecency, recency, treemap } from './time-map';
 
 const weight = (value: number) => value;
 const area = (tile: { width: number; height: number }) => (tile.width * tile.height) / 100;
@@ -59,5 +60,22 @@ describe('the time map', () => {
 
   it('counts a game no store dates a session of among the oldest', () => {
     expect(recency(null, Date.now())).toBe(4);
+  });
+
+  it('colours a game played these two weeks as the latest, though no store dates its session', () => {
+    const game = (values: Partial<LibraryGame>): LibraryGame => ({
+      game_id: '00000000-0000-4000-8000-000000000001',
+      name: 'Hades',
+      playtime_seconds: 7200,
+      recent_playtime_seconds: 0,
+      last_played_at: null,
+      entries: [],
+      ...values,
+    });
+    const now = Date.parse('2026-11-24T12:00:00Z');
+
+    expect(playedRecency(game({ recent_playtime_seconds: 1800 }), now)).toBe(1);
+    expect(playedRecency(game({}), now)).toBe(4);
+    expect(playedRecency(game({ last_played_at: '2026-06-01T12:00:00Z' }), now)).toBe(3);
   });
 });

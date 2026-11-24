@@ -1,0 +1,91 @@
+<div class="flex flex-col gap-5" *transloco="let t">
+  @if (games.data()) {
+    @if (map(); as whole) {
+      @if (heading(); as said) {
+        <h1 class="type-page-title max-w-[18em] text-balance" data-heading>
+          {{
+            t('time.heading', {
+              time: t('time.playtime.' + said.time.key, { count: said.time.count }),
+              count: said.count,
+            })
+          }}
+        </h1>
+      }
+
+      <rs-time-map
+        [tiles]="whole.tiles"
+        [selected]="selected()!.id"
+        [language]="currentLanguage()"
+        (picked)="pick($event)"
+      />
+
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-2 type-caption text-muted">
+        <p class="basis-full">{{ t('time.caption') }}</p>
+        <ul class="flex flex-wrap gap-x-5 gap-y-2" data-legend>
+          @for (step of recencies; track step) {
+            <li class="flex items-center gap-1.5">
+              <span
+                class="size-3.5 rounded-thumb border border-control-line"
+                [class.bg-recency-1]="step === 1"
+                [class.bg-recency-2]="step === 2"
+                [class.bg-recency-3]="step === 3"
+                [class.bg-recency-4]="step === 4"
+                aria-hidden="true"
+              ></span>
+              {{ t('time.legend.' + step) }}
+            </li>
+          }
+        </ul>
+      </div>
+
+      @if (detail(); as said) {
+        <section
+          class="flex flex-col gap-1 rounded-card border border-line bg-surface px-6 py-5"
+          aria-live="polite"
+          data-detail
+        >
+          <h2 class="type-card-title">
+            @if (said.others; as others) {
+              {{ t(others.one ? 'time.othersOne' : 'time.othersMany', { count: others.count }) }}
+            } @else if (said.tile.kind === 'game') {
+              {{ said.tile.game.name ?? t('time.unnamed') }}
+            }
+          </h2>
+          <p class="tabular-nums" data-share>
+            {{
+              t('time.share', {
+                time: t('time.playtime.' + said.time.key, { count: said.time.count }),
+                share: said.share,
+              })
+            }}
+            @if (said.ago) {
+              {{ t('time.lastSession', { ago: said.ago }) }}
+            }
+          </p>
+          @if (said.others) {
+            <a class="self-start font-medium text-accent-text underline" routerLink="/library">{{
+              t('time.othersLink')
+            }}</a>
+          }
+        </section>
+      }
+    } @else {
+      <!-- Nothing to draw yet: the home says why, and what to do about it. -->
+      <h1 class="type-page-title">{{ t('time.title') }}</h1>
+      <p class="text-muted" data-empty>{{ t('time.empty.text') }}</p>
+      <a rsButton class="self-start" routerLink="/" data-home>{{ t('time.empty.home') }}</a>
+    }
+  } @else if (games.isError()) {
+    <h1 class="type-page-title">{{ t('time.title') }}</h1>
+    <rs-banner tone="warn" role="alert">{{ t(failureKey(games.error())) }}</rs-banner>
+    <button rsButton type="button" class="self-start" data-retry (click)="games.refetch()">
+      {{ t('time.retry') }}
+    </button>
+  } @else {
+    <h1 class="type-page-title">{{ t('time.title') }}</h1>
+    <div role="status">
+      <rs-skeleton class="h-125 wide:h-140" />
+      <span class="sr-only">{{ t('time.loading') }}</span>
+    </div>
+  }
+</div>

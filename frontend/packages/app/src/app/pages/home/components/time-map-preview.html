@@ -1,5 +1,6 @@
 <rs-card
-  class="flex flex-col overflow-hidden p-0 wide:p-0"
+  interactive
+  class="relative flex flex-col overflow-hidden p-0 wide:p-0"
   data-time-map
   *transloco="let t; prefix: 'home'"
 >
@@ -23,7 +24,15 @@
     }
   </div>
   <div class="flex flex-col gap-0.5 px-5 py-4 wide:px-6">
-    <h2 class="type-card-title">{{ t('timeMap.title') }}</h2>
+    <h2 class="type-card-title">
+      <!-- The whole card leads to the Time tab: the link's box is stretched over it. -->
+      <a
+        class="after:absolute after:inset-0 after:rounded-card focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-focus"
+        routerLink="/time"
+        data-time-link
+        >{{ t('timeMap.title') }}</a
+      >
+    </h2>
     <p class="type-caption text-muted">{{ t('timeMap.caption', { count: games().length }) }}</p>
   </div>
 </rs-card>
