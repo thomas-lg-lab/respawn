@@ -1,7 +1,12 @@
+import type { LibraryGame } from '@respawn/data';
+
 /**
  * The time map: a rectangle cut into tiles, a tile's area being its share of the whole, and
  * its colour how long ago its game was played.
  */
+
+/** How many games the map names, on the home and on the Time tab: past that, a tile says nothing. */
+export const MAPPED = 13;
 
 /** What a tile stands for, and its place in the map, in percent of its width and height. */
 export interface Tile<T> {
@@ -77,4 +82,14 @@ export function recency(lastPlayedAt: string | null, now: number): Recency {
   const days = (now - Date.parse(lastPlayedAt)) / DAY;
   const step = STEPS.findIndex((last) => days <= last);
   return (step === -1 ? 4 : step + 1) as Recency;
+}
+
+/**
+ * The step a game's tile is coloured with. A game played these two weeks whose last session
+ * no store dates is among the latest: the two weeks say more than the missing date.
+ */
+export function playedRecency(game: LibraryGame, now: number): Recency {
+  return game.last_played_at === null && (game.recent_playtime_seconds ?? 0) > 0
+    ? 1
+    : recency(game.last_played_at, now);
 }

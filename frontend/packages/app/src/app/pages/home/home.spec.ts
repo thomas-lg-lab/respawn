@@ -577,6 +577,7 @@ describe('Home', () => {
         '4',
       ]);
       expect(text(screen, '[data-time-map] h2')).toBe('La carte du temps');
+      expect(screen.querySelector('[data-time-link]')?.getAttribute('href')).toBe('/time');
       expect(text(screen, '[data-time-map] p')).toBe(
         'Les 3 jeux les plus joués : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
       );

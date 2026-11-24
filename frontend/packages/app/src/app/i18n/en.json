@@ -136,7 +136,8 @@
   "nav": {
     "label": "Main navigation",
     "home": "Home",
-    "library": "Library"
+    "library": "Library",
+    "time": "Time"
   },
   "home": {
     "label": "Game in progress",
@@ -311,6 +312,34 @@
     "shownOne": "{{ shown }} game shown out of {{ total }}",
     "shownMany": "{{ shown }} games shown out of {{ total }}",
     "more": "Show more"
+  },
+  "time": {
+    "title": "Time",
+    "heading": "{{ time }} played over {{ count }} games. Here is where it went.",
+    "map": "Where the time went, a tile per game",
+    "caption": "A tile is as large as its playtime, and the warmer the more recent its last session.",
+    "legend": {
+      "1": "The last two weeks",
+      "2": "The last three months",
+      "3": "The last year",
+      "4": "Older"
+    },
+    "othersOne": "{{ count }} other game",
+    "othersMany": "{{ count }} other games",
+    "othersLink": "Browse them in the library",
+    "share": "{{ time }}, {{ share }} of your playtime.",
+    "lastSession": "Last session {{ ago }}.",
+    "unnamed": "Unnamed game",
+    "playtime": {
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min"
+    },
+    "empty": {
+      "text": "The map needs two launched games at least. The home says where the library stands.",
+      "home": "Go to the home"
+    },
+    "loading": "Loading the map",
+    "retry": "Try again"
   },
   "notFound": {
     "label": "Not found",

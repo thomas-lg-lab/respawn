@@ -1,6 +1,6 @@
 import type { LibraryGame } from '@respawn/data';
 import { isMissing, kept, sorted } from '@app/games/game-list';
-import { type Recency, recency } from '@app/games/time-map';
+import { MAPPED, type Recency, playedRecency } from '@app/games/time-map';
 
 /**
  * What the home's blocks make of the games the browser holds: the one to resume, the ones
@@ -12,8 +12,6 @@ import { type Recency, recency } from '@app/games/time-map';
 const RECENT = 4;
 /** How many games the ranking names; the others are summed up under it. */
 const RANKED = 6;
-/** How many games the time map preview draws. */
-const MAPPED = 13;
 /** How many never launched games a draw gives. */
 export const PICKS = 3;
 
@@ -90,8 +88,7 @@ export interface MapGame {
 /**
  * The time map preview: the most played games, the most played first, each with its playtime
  * and how long before `now` it was last played. None when fewer than two games were launched:
- * one tile alone would say nothing. A game played these two weeks whose last session no
- * store dates is among the latest: the two weeks say more than the missing date.
+ * one tile alone would say nothing.
  */
 export function timeMap(games: readonly LibraryGame[], language: string, now: number): MapGame[] {
   const mapped = sorted(kept(games, 'launched'), 'playtime', language).slice(0, MAPPED);
@@ -99,10 +96,7 @@ export function timeMap(games: readonly LibraryGame[], language: string, now: nu
   return mapped.map((game) => ({
     id: game.game_id,
     seconds: game.playtime_seconds ?? 0,
-    recency:
-      game.last_played_at === null && (game.recent_playtime_seconds ?? 0) > 0
-        ? 1
-        : recency(game.last_played_at, now),
+    recency: playedRecency(game, now),
   }));
 }
 

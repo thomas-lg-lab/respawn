@@ -290,6 +290,9 @@ describe('routes', () => {
     expect(screen.querySelector('[data-tabs="row"]')?.getAttribute('aria-label')).toBe(
       'Navigation principale',
     );
+    expect(
+      [...screen.querySelectorAll('[data-tabs="row"] a')].map((each) => each.textContent),
+    ).toEqual(['Accueil', 'Bibliothèque', 'Temps']);
     expect(current('row')).toEqual(['Accueil']);
     expect(current('bar')).toEqual(['Accueil']);
 

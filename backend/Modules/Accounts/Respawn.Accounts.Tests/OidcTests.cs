@@ -581,12 +581,26 @@ public sealed class OidcTests
         await first.SignInAsync(issuer);
         Assert.Equal(asked + 1, issuer.Requests); // the code only
 
-        // A token signed with a key published a moment ago is refused, not a failure of the app: the keys
-        // are fetched again once their minimum interval has passed (Microsoft.IdentityModel's), not at
-        // the call of whoever posts a token naming an unknown key.
+        // The provider rotates its key. The first token naming a key the app does not know has the keys
+        // fetched again, at once but in the background (Microsoft.IdentityModel's first refresh), and that
+        // token is refused, not a failure of the app. The answer is held until then, or the fetch could
+        // land while the token is still being validated and have it accepted.
         issuer.Rotate();
+        issuer.HoldKeys();
         using var second = app.Browser();
-        Assert.Equal("/?provider_sign_in=failed", (await second.SignInAsync(issuer, "/", ("iat", Now - 1))).Landing());
+        Assert.Equal("/?provider_sign_in=failed", (await second.SignInAsync(issuer)).Landing());
+        issuer.ReleaseKeys();
+        await issuer.KeyKnownAsync(app);
+        Assert.Equal("/", (await second.SignInAsync(issuer)).Landing());
+
+        // Another key a moment later: refused, and nothing is asked of the provider but the code. The keys
+        // are fetched again once their minimum interval has passed, not at the call of whoever posts a
+        // token naming an unknown key.
+        issuer.Rotate();
+        asked = issuer.Requests;
+        using var third = app.Browser();
+        Assert.Equal("/?provider_sign_in=failed", (await third.SignInAsync(issuer)).Landing());
+        Assert.Equal(asked + 1, issuer.Requests);
         Assert.Equal(0, app.Logs.Count("unhandled error"));
     }
 }
