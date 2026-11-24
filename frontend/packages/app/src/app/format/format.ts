@@ -37,15 +37,13 @@ export function formatCount(count: number, language: string): string {
   return counts(language).format(count);
 }
 
-/**
- * A playtime as the app says it: whole hours, or minutes under one hour. A game played for a
- * few seconds was still played: it says one minute, never none.
- */
+/** A playtime as the app says it: whole hours, or minutes under one hour. */
 export interface Playtime {
   readonly unit: 'hours' | 'minutes';
   readonly count: number;
 }
 
+/** A game played for a few seconds was still played: it says one minute, never none. */
 export function playtime(seconds: number): Playtime {
   const minutes = seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : 0;
   return minutes < 60
