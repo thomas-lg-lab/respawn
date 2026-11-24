@@ -5,7 +5,7 @@ import type { LibraryGame } from '@respawn/data';
  * its colour how long ago its game was played.
  */
 
-/** How many games the map names, on the home and on the Time tab: past that, a tile says nothing. */
+/** How many games the home's preview of the map names: past that, a tile says nothing there. */
 export const MAPPED = 13;
 
 /** What a tile stands for, and its place in the map, in percent of its width and height. */

@@ -8,13 +8,13 @@ import { failureKey } from '@app/errors/failure-message';
 import { formatAgo, formatCount, saidPlaytime } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
 import { TimeMap } from './components/time-map';
-import { timeTiles } from './time-tiles';
+import { type TimeTile, timeTiles } from './time-tiles';
 
 const RECENCIES = [1, 2, 3, 4] as const;
 
 /**
  * Where the time went, as a map: the most played games as tiles, each as large as its
- * playtime and coloured by its last session, the other launched games in one more. A tile
+ * playtime and coloured by its last session, the other launched games in a band under them. A tile
  * pressed is said under the map. Like the library, it shows what was read and leaves the home
  * to say how the library gets there.
  */
@@ -41,7 +41,8 @@ export class Time {
   /** The tile pressed last; the most played game until one is, or once it left the map. */
   private readonly picked = signal<string | null>(null);
   protected readonly selected = computed(() => {
-    const tiles = this.map()?.tiles ?? [];
+    const map = this.map();
+    const tiles: TimeTile[] = map ? [...map.tiles, ...(map.others ? [map.others] : [])] : [];
     return tiles.find((tile) => tile.id === this.picked()) ?? tiles[0] ?? null;
   });
 

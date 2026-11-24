@@ -14,13 +14,19 @@
 
       <rs-time-map
         [tiles]="whole.tiles"
+        [others]="whole.others"
         [selected]="selected()!.id"
         [language]="currentLanguage()"
         (picked)="pick($event)"
       />
 
       <div class="flex flex-wrap items-center gap-x-5 gap-y-2 type-caption text-muted">
-        <p class="basis-full">{{ t('time.caption') }}</p>
+        <p class="basis-full">
+          {{ t('time.caption') }}
+          @if (whole.others) {
+            {{ t('time.othersCaption') }}
+          }
+        </p>
         <ul class="flex flex-wrap gap-x-5 gap-y-2" data-legend>
           @for (step of recencies; track step) {
             <li class="flex items-center gap-1.5">

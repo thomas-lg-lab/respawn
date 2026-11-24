@@ -72,6 +72,7 @@
   --spacing-lift: var(--rs-lift);
 
   --transition-duration-hover: var(--rs-duration-hover);
+  --shadow-raised: var(--rs-shadow-raised);
 }
 
 /*
@@ -86,6 +87,12 @@
   @container app (min-width: 640px) {
     @slot;
   }
+}
+
+/* A raised element, a little larger than its neighbours (`aria-pressed:scale-pop`). Tailwind
+   has no theme key for a scale: the utility is written here, on its token. */
+@utility scale-pop {
+  scale: var(--rs-pop);
 }
 
 /* The type styles. One class sets the face, the size, the line height and the tracking. */

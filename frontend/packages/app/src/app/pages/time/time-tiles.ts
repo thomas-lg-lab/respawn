@@ -1,11 +1,15 @@
 import type { LibraryGame } from '@respawn/data';
 import { kept, sorted } from '@app/games/game-list';
-import { MAPPED, type Recency, playedRecency } from '@app/games/time-map';
+import { type Recency, playedRecency } from '@app/games/time-map';
 
 /**
  * What the Time tab draws: the most played games, each a tile as large as its playtime, and
- * the other launched games together in one more, so that the map is the whole of the time.
+ * the other launched games together under them, so that the whole of the time is there
+ * without the long tail taking most of the drawing.
  */
+
+/** How many games the Time tab names: more than the home's preview, which has less room. */
+export const NAMED = 30;
 
 /** One of the most played games, coloured by its last session. */
 export interface GameTile {
@@ -16,7 +20,7 @@ export interface GameTile {
   readonly recency: Recency;
 }
 
-/** The launched games the map does not name, as one tile. */
+/** The launched games the map does not name, together under it, not drawn to scale. */
 export interface OthersTile {
   readonly kind: 'others';
   readonly id: 'others';
@@ -27,8 +31,10 @@ export interface OthersTile {
 export type TimeTile = GameTile | OthersTile;
 
 export interface TimeMap {
-  /** The heaviest first, the other games last whatever their weight. */
-  readonly tiles: readonly TimeTile[];
+  /** The named games, the heaviest first: the tiles of the drawing. */
+  readonly tiles: readonly GameTile[];
+  /** The other launched games, or `null` when every one is named. */
+  readonly others: OthersTile | null;
   /** The playtime of every launched game: the whole map. */
   readonly seconds: number;
   readonly launched: number;
@@ -45,9 +51,9 @@ export function timeTiles(
   const launched = sorted(kept(games, 'launched'), 'playtime', language);
   if (launched.length < 2) return null;
 
-  const named = launched.slice(0, MAPPED);
-  const rest = launched.slice(MAPPED);
-  const tiles: TimeTile[] = named.map((game) => ({
+  const named = launched.slice(0, NAMED);
+  const rest = launched.slice(NAMED);
+  const tiles: GameTile[] = named.map((game) => ({
     kind: 'game',
     id: game.game_id,
     game,
@@ -55,11 +61,11 @@ export function timeTiles(
     recency: playedRecency(game, now),
   }));
   const restSeconds = rest.reduce((total, game) => total + playtimeOf(game), 0);
-  if (rest.length) {
-    tiles.push({ kind: 'others', id: 'others', count: rest.length, seconds: restSeconds });
-  }
   return {
     tiles,
+    others: rest.length
+      ? { kind: 'others', id: 'others', count: rest.length, seconds: restSeconds }
+      : null,
     seconds: named.reduce((total, game) => total + playtimeOf(game), restSeconds),
     launched: launched.length,
   };

@@ -85,6 +85,71 @@ describe('Time', () => {
     ]);
   });
 
+  it('labels the tile under the pointer, and on a touch screen the one tapped', async () => {
+    const { harness, screen } = await open();
+    const label = () =>
+      [...screen.querySelectorAll('[data-tile-label] span')].map((each) => each.textContent.trim());
+    const point = async (name: string, type: string, pointerType: string) => {
+      tile(screen, name).dispatchEvent(new PointerEvent(type, { pointerType }));
+      await harness.fixture.whenStable();
+    };
+
+    expect(screen.querySelector('[data-tile-label]')).toBeNull();
+    await point('Portal 2', 'pointerenter', 'mouse');
+    expect(label()).toEqual(['Portal 2', '2 h']);
+    await point('Portal 2', 'pointerleave', 'mouse');
+    expect(screen.querySelector('[data-tile-label]')).toBeNull();
+
+    // A finger has no hover: its tap leaves the label until something else is picked.
+    const tap = async (name: string) => {
+      await point(name, 'pointerenter', 'touch');
+      await point(name, 'pointerdown', 'touch');
+      await point(name, 'pointerleave', 'touch');
+      tile(screen, name).click();
+      await harness.fixture.whenStable();
+    };
+    await tap('Elden Ring');
+    expect(label()).toEqual(['Elden Ring', '50 h']);
+    await tap('Portal 2');
+    expect(label()).toEqual(['Portal 2', '2 h']);
+    // A mouse that comes and goes does not bring the tapped one back.
+    await point('Elden Ring', 'pointerenter', 'mouse');
+    await point('Elden Ring', 'pointerleave', 'mouse');
+    expect(screen.querySelector('[data-tile-label]')).toBeNull();
+  });
+
+  it('drops the label of the tile tapped once the band is picked', async () => {
+    const games = Array.from({ length: 32 }, (_, rank) =>
+      game(`Game ${rank + 1}`, { playtime_seconds: (100 - rank) * HOUR }),
+    );
+    const { harness, screen } = await open(games);
+
+    tile(screen, 'Game 1').dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch' }));
+    tile(screen, 'Game 1').click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-tile-label]')).not.toBeNull();
+
+    tile(screen, '2 autres jeux').click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-tile-label]')).toBeNull();
+  });
+
+  it('writes the label of a tile as tall as the map inside it, where the map does not cut it', async () => {
+    const { harness, screen } = await open();
+
+    // Hades holds two thirds of the time: its tile takes the whole height on the left.
+    tile(screen, 'Hades').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    await harness.fixture.whenStable();
+    const label = screen.querySelector<HTMLElement>('[data-tile-label]')!;
+    expect(label.style.top).toBe('0%');
+    expect(label.style.bottom).toBe('');
+    // Picked, it grows away from the side it touches, and from its middle along the height it
+    // fills: either way would be cut.
+    expect(tile(screen, 'Hades').style.transformOrigin).toBe('left center');
+    // A name keeps to two lines, so the label is never taller than the room it was given.
+    expect(label.querySelector('[data-label-name]')?.classList).toContain('line-clamp-2');
+  });
+
   it('says more of the most played game, then of the tile pressed', async () => {
     const { harness, screen } = await open();
 
@@ -105,15 +170,18 @@ describe('Time', () => {
     );
   });
 
-  it('puts the launched games past the thirteenth in one tile, which leads to the library', async () => {
-    const games = Array.from({ length: 15 }, (_, rank) =>
+  it('puts the launched games past the thirtieth under the map, which leads to the library', async () => {
+    const games = Array.from({ length: 32 }, (_, rank) =>
       game(`Game ${rank + 1}`, { playtime_seconds: (100 - rank) * HOUR }),
     );
     const { harness, screen } = await open(games);
 
     const tiles = screen.querySelectorAll('[data-tile]');
-    expect(tiles).toHaveLength(14);
-    expect(tiles[13]?.getAttribute('data-tile')).toBe('others');
+    expect(tiles).toHaveLength(31);
+    expect(tiles[30]?.getAttribute('data-tile')).toBe('others');
+    expect(tiles[30]?.hasAttribute('data-recency')).toBe(false);
+    expect(text(screen, '[data-tile="others"] [data-tile-name]')).toBe('+ 2 autres jeux');
+    expect(screen.textContent).toContain('Les autres jeux sont réunis sous la carte');
     tile(screen, '2 autres jeux').click();
     await harness.fixture.whenStable();
 
