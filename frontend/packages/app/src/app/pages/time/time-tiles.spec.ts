@@ -18,30 +18,34 @@ function game(name: string, playtime: number, values: Partial<LibraryGame> = {})
 const NOW = Date.parse('2026-11-24T12:00:00Z');
 
 describe('the tiles of the Time tab', () => {
-  it('names the most played games and puts the other launched ones in one more tile', () => {
+  it('names the thirty most played games and keeps the other launched ones apart', () => {
     const games = [
-      ...Array.from({ length: 15 }, (_, rank) => game(`Game ${rank + 1}`, (20 - rank) * 3600)),
+      ...Array.from({ length: 32 }, (_, rank) => game(`Game ${rank + 1}`, (40 - rank) * 3600)),
       game('Never launched', 0),
     ];
 
     const map = timeTiles(games, 'en', NOW)!;
 
-    expect(map.tiles).toHaveLength(14);
-    expect(map.tiles[0]).toMatchObject({ kind: 'game', seconds: 20 * 3600 });
-    expect(map.tiles.at(-1)).toEqual({
+    expect(map.tiles).toHaveLength(30);
+    expect(map.tiles.every((tile) => tile.kind === 'game')).toBe(true);
+    expect(map.tiles[0]).toMatchObject({ seconds: 40 * 3600 });
+    expect(map.others).toEqual({
       kind: 'others',
       id: 'others',
       count: 2,
-      seconds: (7 + 6) * 3600,
+      seconds: (10 + 9) * 3600,
     });
-    expect(map.launched).toBe(15);
-    expect(map.seconds).toBe(map.tiles.reduce((total, tile) => total + tile.seconds, 0));
+    expect(map.launched).toBe(32);
+    expect(map.seconds).toBe(
+      map.tiles.reduce((total, tile) => total + tile.seconds, map.others!.seconds),
+    );
   });
 
-  it('needs no tile for the others when every launched game is named', () => {
+  it('has no others when every launched game is named', () => {
     const map = timeTiles([game('Hades', 7200), game('Celeste', 3600)], 'en', NOW)!;
 
-    expect(map.tiles.map((tile) => tile.kind)).toEqual(['game', 'game']);
+    expect(map.tiles).toHaveLength(2);
+    expect(map.others).toBeNull();
   });
 
   it('colours each game by its last session', () => {
@@ -54,7 +58,7 @@ describe('the tiles of the Time tab', () => {
       NOW,
     )!;
 
-    expect(map.tiles.map((tile) => tile.kind === 'game' && tile.recency)).toEqual([1, 4]);
+    expect(map.tiles.map((tile) => tile.recency)).toEqual([1, 4]);
   });
 
   it('draws nothing under two launched games', () => {

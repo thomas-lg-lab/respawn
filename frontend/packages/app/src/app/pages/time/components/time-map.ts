@@ -13,7 +13,7 @@ import {
 import { TranslocoDirective } from '@jsverse/transloco';
 import { formatCount, saidPlaytime } from '@app/format/format';
 import { treemap } from '@app/games/time-map';
-import type { TimeTile } from '../time-tiles';
+import type { GameTile, OthersTile } from '../time-tiles';
 
 /** The drawing's size until it is measured: about what a wide screen gives it. */
 const ASSUMED = { width: 1100, height: 560 };
@@ -27,9 +27,11 @@ const SECOND_LINE = 24;
 const LARGE = 150;
 
 /**
- * The time map, full size: a tile per game, as large as its playtime and coloured by its
- * last session, the other launched games in one more. A tile is a button: pressing it tells
- * the screen, which says more of it. A tile names its game and its time when it has room.
+ * The time map, full size: a tile per named game, as large as its playtime and coloured by
+ * its last session, and the other launched games in a band under the tiles, not drawn to
+ * scale (the long tail would otherwise take most of the drawing). A tile, and the band, is a
+ * button: pressing it tells the screen, which says more of it. A tile names its game and its
+ * time when it has room.
  */
 @Component({
   selector: 'rs-time-map',
@@ -37,7 +39,8 @@ const LARGE = 150;
   templateUrl: './time-map.html',
 })
 export class TimeMap {
-  readonly tiles = input.required<readonly TimeTile[]>();
+  readonly tiles = input.required<readonly GameTile[]>();
+  readonly others = input.required<OthersTile | null>();
   readonly selected = input.required<string>();
   readonly language = input.required<string>();
   readonly picked = output<string>();
@@ -50,12 +53,8 @@ export class TimeMap {
 
   protected readonly placed = computed(() => {
     const { width, height } = this.size();
-    const tiles = this.tiles();
-    // The cut needs the heaviest first, but the buttons keep the order they were given, so
-    // that the tile of the others comes last to the keyboard too.
-    const heaviest = [...tiles].sort((a, b) => b.seconds - a.seconds);
-    const cut = treemap(heaviest, (tile) => tile.seconds, width / height);
-    cut.sort((a, b) => tiles.indexOf(a.item) - tiles.indexOf(b.item));
+    // The tiles come heaviest first, as the cut needs them.
+    const cut = treemap(this.tiles(), (tile) => tile.seconds, width / height);
     return cut.map((tile) => {
       const across = (tile.width / 100) * width;
       const down = (tile.height / 100) * height;
@@ -70,15 +69,20 @@ export class TimeMap {
         large,
         wraps: large || down >= NAMED.height + SECOND_LINE + (timed ? TIMED.height : 0),
         time: saidPlaytime(tile.item.seconds, this.language()),
-        others:
-          tile.item.kind === 'others'
-            ? {
-                one: new Intl.PluralRules(this.language()).select(tile.item.count) === 'one',
-                count: formatCount(tile.item.count, this.language()),
-              }
-            : null,
       };
     });
+  });
+
+  protected readonly band = computed(() => {
+    const others = this.others();
+    const language = this.language();
+    return others
+      ? {
+          one: new Intl.PluralRules(language).select(others.count) === 'one',
+          count: formatCount(others.count, language),
+          time: saidPlaytime(others.seconds, language),
+        }
+      : null;
   });
 
   constructor() {

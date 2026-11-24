@@ -105,15 +105,18 @@ describe('Time', () => {
     );
   });
 
-  it('puts the launched games past the thirteenth in one tile, which leads to the library', async () => {
-    const games = Array.from({ length: 15 }, (_, rank) =>
+  it('puts the launched games past the thirtieth under the map, which leads to the library', async () => {
+    const games = Array.from({ length: 32 }, (_, rank) =>
       game(`Game ${rank + 1}`, { playtime_seconds: (100 - rank) * HOUR }),
     );
     const { harness, screen } = await open(games);
 
     const tiles = screen.querySelectorAll('[data-tile]');
-    expect(tiles).toHaveLength(14);
-    expect(tiles[13]?.getAttribute('data-tile')).toBe('others');
+    expect(tiles).toHaveLength(31);
+    expect(tiles[30]?.getAttribute('data-tile')).toBe('others');
+    expect(tiles[30]?.hasAttribute('data-recency')).toBe(false);
+    expect(text(screen, '[data-tile="others"] [data-tile-name]')).toBe('+ 2 autres jeux');
+    expect(screen.textContent).toContain('Les autres jeux sont réunis sous la carte');
     tile(screen, '2 autres jeux').click();
     await harness.fixture.whenStable();
 
