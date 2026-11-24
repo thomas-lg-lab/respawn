@@ -8,7 +8,7 @@
     <!-- The tests of the host and of the solution as a whole (the architecture rules); a module's
          tests live in the module. Starts the real app in-process, against a real PostgreSQL. -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <!-- Reads the compiled assemblies to check which project depends on which. -->
     <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
     <PackageReference Include="xunit" Version="2.9.3" />
