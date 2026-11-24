@@ -85,6 +85,28 @@ describe('Time', () => {
     ]);
   });
 
+  it('labels the tile under the pointer, and on a touch screen the one tapped', async () => {
+    const { harness, screen } = await open();
+    const label = () =>
+      [...screen.querySelectorAll('[data-tile-label] span')].map((each) => each.textContent.trim());
+    const point = async (name: string, type: string, pointerType: string) => {
+      tile(screen, name).dispatchEvent(new PointerEvent(type, { pointerType }));
+      await harness.fixture.whenStable();
+    };
+
+    expect(screen.querySelector('[data-tile-label]')).toBeNull();
+    await point('Portal 2', 'pointerenter', 'mouse');
+    expect(label()).toEqual(['Portal 2', '2 h']);
+    await point('Portal 2', 'pointerleave', 'mouse');
+    expect(screen.querySelector('[data-tile-label]')).toBeNull();
+
+    // A finger has no hover: its tap leaves the label until another tile is tapped.
+    await point('Elden Ring', 'pointerenter', 'touch');
+    await point('Elden Ring', 'pointerdown', 'touch');
+    await point('Elden Ring', 'pointerleave', 'touch');
+    expect(label()).toEqual(['Elden Ring', '50 h']);
+  });
+
   it('says more of the most played game, then of the tile pressed', async () => {
     const { harness, screen } = await open();
 

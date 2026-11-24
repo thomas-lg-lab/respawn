@@ -73,6 +73,44 @@ export class TimeMap {
     });
   });
 
+  /** The tile under the pointer or the focus; the one tapped last, on a touch screen. */
+  private readonly pointed = signal<string | null>(null);
+  private readonly touched = signal<string | null>(null);
+
+  /**
+   * Where the label of the tile pointed at goes, in percent of the drawing: centred on the
+   * tile unless that would cross a side, and on whichever side of it has more room.
+   */
+  protected readonly label = computed(() => {
+    const id = this.pointed() ?? this.touched();
+    const tile = this.placed().find((each) => each.item.id === id);
+    if (!tile) return null;
+    const centre = tile.x + tile.width / 2;
+    const below = tile.y + tile.height / 2 <= 50;
+    return {
+      tile,
+      centred: centre >= 25 && centre <= 75,
+      left: centre > 75 ? null : centre < 25 ? tile.x : centre,
+      right: centre > 75 ? 100 - tile.x - tile.width : null,
+      top: below ? tile.y + tile.height : null,
+      bottom: below ? null : 100 - tile.y,
+    };
+  });
+
+  /** A mouse or a pen points; a finger has no hover, and its tap keeps the label instead. */
+  protected point(id: string, event?: PointerEvent): void {
+    if (event?.pointerType === 'touch') return;
+    this.pointed.set(id);
+  }
+
+  protected unpoint(id: string): void {
+    if (this.pointed() === id) this.pointed.set(null);
+  }
+
+  protected touch(id: string, event: PointerEvent): void {
+    if (event.pointerType === 'touch') this.touched.set(id);
+  }
+
   protected readonly band = computed(() => {
     const others = this.others();
     const language = this.language();

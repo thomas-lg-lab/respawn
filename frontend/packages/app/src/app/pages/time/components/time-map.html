@@ -10,12 +10,13 @@
       @let name = tile.item.game.name || t('unnamed');
       @let time = t('playtime.' + tile.time.key, { count: tile.time.count });
       <!-- The gap between two tiles is one side of each, and a tile keeps four pixels at
-         least: two of gap, two that still show its colour. Only a tile that writes something
+         least: two of gap (a transparent border: the map shows through), two that still show
+         its colour. Only a tile that writes something
          is padded: a border box never shrinks under its padding, so a padded small tile
          would grow over its neighbours. -->
       <button
         type="button"
-        class="absolute flex min-h-1 min-w-1 flex-col items-start justify-end gap-0.5 overflow-hidden border-r-2 border-b-2 border-bg text-left hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:inset-ring-3 aria-pressed:inset-ring-text"
+        class="absolute flex min-h-1 min-w-1 flex-col items-start justify-end gap-0.5 overflow-hidden border-r-2 border-b-2 border-transparent bg-clip-padding text-left transition-[scale,box-shadow] duration-hover ease-out hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:z-10 aria-pressed:scale-(--rs-pop) aria-pressed:shadow-raised"
         [class.px-3]="tile.named || tile.timed"
         [class.py-2]="tile.named || tile.timed"
         [class.bg-recency-1]="tile.item.recency === 1"
@@ -35,6 +36,11 @@
         [attr.data-tile]="tile.item.id"
         [attr.data-recency]="tile.item.recency"
         (click)="picked.emit(tile.item.id)"
+        (pointerenter)="point(tile.item.id, $event)"
+        (pointerleave)="unpoint(tile.item.id)"
+        (pointerdown)="touch(tile.item.id, $event)"
+        (focus)="point(tile.item.id)"
+        (blur)="unpoint(tile.item.id)"
       >
         @if (tile.named) {
           <span
@@ -49,11 +55,34 @@
           >
         }
         @if (tile.timed) {
-          <span class="type-caption font-semibold tabular-nums" aria-hidden="true" data-tile-time>{{
-            time
-          }}</span>
+          <span
+            class="type-caption font-semibold whitespace-nowrap tabular-nums"
+            aria-hidden="true"
+            data-tile-time
+            >{{ time }}</span
+          >
         }
       </button>
+    }
+    <!-- What a small tile has no room to write: shown for the tile under the pointer or the
+         focus, and on a touch screen for the tile tapped last. Beside the tile, on the side
+         with more room, so the drawing never cuts it. The button already says the same. -->
+    @if (label(); as at) {
+      <div
+        class="pointer-events-none absolute z-10 m-1.5 flex max-w-64 flex-col rounded-card border border-line bg-surface px-3 py-1.5 text-text"
+        [class.-translate-x-1/2]="at.centred"
+        [style.left.%]="at.left"
+        [style.right.%]="at.right"
+        [style.top.%]="at.top"
+        [style.bottom.%]="at.bottom"
+        aria-hidden="true"
+        data-tile-label
+      >
+        <span class="type-card-title">{{ at.tile.item.game.name || t('unnamed') }}</span>
+        <span class="type-caption font-semibold tabular-nums">{{
+          t('playtime.' + at.tile.time.key, { count: at.tile.time.count })
+        }}</span>
+      </div>
     }
   </div>
   @if (others(); as rest) {
@@ -63,7 +92,7 @@
       <!-- Not to scale: the long tail as a band, so the tiles keep the drawing. -->
       <button
         type="button"
-        class="flex h-11 shrink-0 items-center justify-between gap-3 bg-surface-2 px-3 text-left text-text hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:inset-ring-3 aria-pressed:inset-ring-text"
+        class="flex h-11 shrink-0 items-center justify-between gap-3 bg-surface-2 px-3 text-left text-text hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:outline-2 aria-pressed:-outline-offset-6 aria-pressed:outline-text"
         [attr.aria-pressed]="rest.id === selected()"
         [attr.aria-label]="name + ', ' + time"
         data-tile="others"
@@ -72,9 +101,12 @@
         <span class="truncate type-card-title" aria-hidden="true" data-tile-name>{{
           t('othersBand', { others: name })
         }}</span>
-        <span class="type-caption font-semibold tabular-nums" aria-hidden="true" data-tile-time>{{
-          time
-        }}</span>
+        <span
+          class="type-caption font-semibold whitespace-nowrap tabular-nums"
+          aria-hidden="true"
+          data-tile-time
+          >{{ time }}</span
+        >
       </button>
     }
   }

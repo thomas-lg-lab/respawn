@@ -72,6 +72,7 @@
   --spacing-lift: var(--rs-lift);
 
   --transition-duration-hover: var(--rs-duration-hover);
+  --shadow-raised: var(--rs-shadow-raised);
 }
 
 /*
