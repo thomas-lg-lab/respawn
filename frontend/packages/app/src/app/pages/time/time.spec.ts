@@ -111,7 +111,9 @@ describe('Time', () => {
     );
     const { harness, screen } = await open(games);
 
-    expect(screen.querySelectorAll('[data-tile]')).toHaveLength(14);
+    const tiles = screen.querySelectorAll('[data-tile]');
+    expect(tiles).toHaveLength(14);
+    expect(tiles[13]?.getAttribute('data-tile')).toBe('others');
     tile(screen, '2 autres jeux').click();
     await harness.fixture.whenStable();
 

@@ -48,7 +48,7 @@
             @if (said.others; as others) {
               {{ t(others.one ? 'time.othersOne' : 'time.othersMany', { count: others.count }) }}
             } @else if (said.tile.kind === 'game') {
-              {{ said.tile.game.name ?? t('time.unnamed') }}
+              {{ said.tile.game.name || t('time.unnamed') }}
             }
           </h2>
           <p class="tabular-nums" data-share>

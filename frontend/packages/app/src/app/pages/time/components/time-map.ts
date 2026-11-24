@@ -50,8 +50,13 @@ export class TimeMap {
 
   protected readonly placed = computed(() => {
     const { width, height } = this.size();
-    const heaviest = [...this.tiles()].sort((a, b) => b.seconds - a.seconds);
-    return treemap(heaviest, (tile) => tile.seconds, width / height).map((tile) => {
+    const tiles = this.tiles();
+    // The cut needs the heaviest first, but the buttons keep the order they were given, so
+    // that the tile of the others comes last to the keyboard too.
+    const heaviest = [...tiles].sort((a, b) => b.seconds - a.seconds);
+    const cut = treemap(heaviest, (tile) => tile.seconds, width / height);
+    cut.sort((a, b) => tiles.indexOf(a.item) - tiles.indexOf(b.item));
+    return cut.map((tile) => {
       const across = (tile.width / 100) * width;
       const down = (tile.height / 100) * height;
       const named = across >= NAMED.width && down >= NAMED.height;

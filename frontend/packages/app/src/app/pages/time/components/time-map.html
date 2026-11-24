@@ -12,11 +12,15 @@
         ? t(tile.others.one ? 'othersOne' : 'othersMany', { count: tile.others.count })
         : (tile.item.kind === 'game' && tile.item.game.name) || t('unnamed');
     @let time = t('playtime.' + tile.time.key, { count: tile.time.count });
-    <!-- The gap between two tiles is one side of each, and a tile keeps two pixels at
-         least: the smallest share still shows its colour. -->
+    <!-- The gap between two tiles is one side of each, and a tile keeps four pixels at
+         least: two of gap, two that still show its colour. Only a tile that writes something
+         is padded: a border box never shrinks under its padding, so a padded small tile
+         would grow over its neighbours. -->
     <button
       type="button"
-      class="absolute flex min-h-0.5 min-w-0.5 flex-col items-start justify-end gap-0.5 overflow-hidden border-r-2 border-b-2 border-bg px-3 py-2 text-left hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:shadow-[inset_0_0_0_4px_currentColor]"
+      class="absolute flex min-h-1 min-w-1 flex-col items-start justify-end gap-0.5 overflow-hidden border-r-2 border-b-2 border-bg text-left hover:brightness-110 focus-visible:-outline-offset-4 aria-pressed:shadow-[inset_0_0_0_4px_currentColor]"
+      [class.px-3]="tile.named || tile.timed"
+      [class.py-2]="tile.named || tile.timed"
       [class.bg-surface-2]="tile.others"
       [class.text-text]="tile.others"
       [class.bg-recency-1]="tile.item.kind === 'game' && tile.item.recency === 1"
