@@ -181,6 +181,34 @@ describe('the blocks of the home', () => {
     expect(ids).not.toContain('id-G01');
   });
 
+  it('maps the most played game of each colour, in place of the least played', () => {
+    const now = Date.parse('2026-11-23T12:00:00Z');
+    const days = (count: number) => new Date(now - count * 24 * 3600 * 1000).toISOString();
+    // Fourteen old games played long, then three played lately and little.
+    const old = Array.from({ length: 14 }, (_, index) =>
+      game(`Old${String(index).padStart(2, '0')}`, {
+        playtime_seconds: 100 * 3600 - index,
+        last_played_at: days(800),
+      }),
+    );
+    const week = game('Week', { playtime_seconds: 3 * 3600, last_played_at: days(3) });
+    const weekLess = game('WeekLess', { playtime_seconds: 3600, last_played_at: days(2) });
+    const month = game('Month', { playtime_seconds: 2 * 3600, last_played_at: days(40) });
+
+    const mapped = timeMap([...old, week, weekLess, month], 'en', now);
+
+    expect(mapped).toHaveLength(13);
+    expect(new Set(mapped.map((tile) => tile.recency))).toEqual(new Set([1, 2, 4]));
+    // The most played of each colour, not every game of it, and still the most played first.
+    expect(mapped.map((tile) => tile.id)).toContain('id-Week');
+    expect(mapped.map((tile) => tile.id)).not.toContain('id-WeekLess');
+    expect(mapped.at(-2)?.id).toBe('id-Week');
+    expect(mapped.at(-1)?.id).toBe('id-Month');
+    // The two least played of the old ones made the room.
+    expect(mapped.map((tile) => tile.id)).not.toContain('id-Old13');
+    expect(mapped.map((tile) => tile.id)).not.toContain('id-Old12');
+  });
+
   it('maps nothing under two launched games', () => {
     expect(timeMap([celeste, hades, unknown], 'en', Date.now())).toEqual([]);
     expect(timeMap([], 'en', Date.now())).toEqual([]);
