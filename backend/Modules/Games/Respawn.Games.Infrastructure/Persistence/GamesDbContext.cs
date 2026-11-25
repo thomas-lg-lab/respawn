@@ -152,7 +152,7 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
                 table.HasCheckConstraint("ck_monthly_playtime_figures", "playtime_seconds >= 0 AND sessions >= 0");
                 table.HasCheckConstraint("ck_monthly_playtime_month", "EXTRACT(DAY FROM month) = 1");
             });
-            // An account's months in order; a year's rows are replaced together, by their snapshot.
+            // An account's months in order; a year's rows are replaced together, by account and by month.
             month.HasKey(m => new { m.LinkedAccountId, m.Month, m.StoreEntryId });
             month.HasIndex(m => m.SnapshotId);
             month.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(m => m.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);

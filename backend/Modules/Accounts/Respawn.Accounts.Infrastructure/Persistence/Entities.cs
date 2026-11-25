@@ -4,7 +4,7 @@ using Respawn.Accounts;
 namespace Respawn.Accounts.Infrastructure.Persistence;
 
 /// <summary>An account. ASP.NET Core Identity owns the password hash, the failed-attempt count and the
-/// lockout; the e-mail is lower-cased, and empty for an account created from a provider that sends
+/// lockout; the e-mail is lower-cased, and null for an account created from a provider that sends
 /// none.</summary>
 public sealed class AppUser : IdentityUser<Guid>
 {

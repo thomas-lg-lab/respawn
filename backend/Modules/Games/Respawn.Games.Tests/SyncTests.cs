@@ -253,6 +253,8 @@ public sealed class SyncTests
         Assert.Equal(0, await TurnAsync(app));
         clock.Advance(TimeSpan.FromMinutes(1));
         Assert.Equal(1, await TurnAsync(app));
+        // The same trouble, lasting: said once.
+        Assert.Equal(1, app.Logs.Count("could not be read (unavailable)"));
 
         // Asked for by hand meanwhile: the answer is the sync, failed, not an error of the request.
         clock.Advance(TimeSpan.FromMinutes(5));
@@ -265,6 +267,7 @@ public sealed class SyncTests
         steam.Unreachable = false;
         clock.Advance(TimeSpan.FromMinutes(55));
         Assert.Equal(1, await TurnAsync(app));
+        Assert.Equal(1, app.Logs.Count("is read again"));
         clock.Advance(TimeSpan.FromHours(2));
         Assert.Equal(0, await TurnAsync(app));
 
