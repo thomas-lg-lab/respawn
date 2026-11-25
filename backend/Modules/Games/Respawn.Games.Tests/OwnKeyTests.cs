@@ -212,10 +212,11 @@ public sealed class OwnKeyTests
     }
 
     [Theory]
-    [InlineData("not a key")]
-    [InlineData("key-with-dashes")]
-    [InlineData("   ")]
-    public async Task What_is_not_a_steam_key_is_refused_before_it_is_kept(string key)
+    [InlineData("not a key", HttpStatusCode.BadRequest, "invalid_key")]
+    [InlineData("key-with-dashes", HttpStatusCode.BadRequest, "invalid_key")]
+    // Nothing but spaces is no key at all: the request itself is refused.
+    [InlineData("   ", HttpStatusCode.UnprocessableEntity, "invalid_request")]
+    public async Task What_is_not_a_steam_key_is_refused_before_it_is_kept(string key, HttpStatusCode status, string code)
     {
         var steam = new FakeSteam();
         await using var app = await StartAsync(steam);
@@ -224,7 +225,7 @@ public sealed class OwnKeyTests
 
         var refusal = await browser.PutAsJsonAsync($"/api/v1/linked-accounts/{account}/key", new { key }).RefusalAsync();
 
-        Assert.Contains(refusal, new (HttpStatusCode, string?)[] { (HttpStatusCode.BadRequest, "invalid_key"), (HttpStatusCode.UnprocessableEntity, "invalid_request") });
+        Assert.Equal((status, code), refusal);
         Assert.False(await HasOwnKeyAsync(browser));
         Assert.Empty(steam.Requests);
     }

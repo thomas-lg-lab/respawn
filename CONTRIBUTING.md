@@ -146,8 +146,8 @@ The rules, checked by `ArchitectureTests`:
 - No empty project: a module or a layer is created when it has something to hold.
 
 A new module adds its three projects and its test project under `backend/Modules/<Name>/`, an `Add<Name>()`
-in `Respawn.Host/Modules/`, its assemblies and its schema to `ArchitectureTests`, and its tables to the list
-`Respawn.Testing` empties before each test. A module's tests live in the module;
+in `Respawn.Host/Modules/`, and its assemblies and its schema to `ArchitectureTests`; `Respawn.Testing`
+empties every table of its schema before each test. A module's tests live in the module;
 what only they need (a fake of an outside service) stays there, not in `Respawn.Testing`. A port belongs to the module that uses it;
 an adapter that lives in its own project (a connector to an outside source) only references that module's core.
 

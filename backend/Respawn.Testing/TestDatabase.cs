@@ -96,14 +96,28 @@ internal static class TestDatabase
         }
     }
 
+    /// <summary>Empties every table of the modules' schemas, whatever they are: a table a module adds is
+    /// emptied without being named here. The migrations' history stays.</summary>
     public static void Truncate()
     {
         using var connection = Open(Url);
-        Execute(
-            connection,
-            "TRUNCATE accounts.users, accounts.groups, accounts.group_memberships, accounts.sessions, accounts.external_identities, "
-            + "accounts.settings, accounts.user_claims, accounts.user_tokens, "
-            + "games.games, games.store_entries, games.linked_accounts, games.raw_snapshots, games.observations, games.ownerships, games.sync_runs CASCADE");
+        var tables = new List<string>();
+        using (var listed = new NpgsqlCommand(
+            "SELECT format('%I.%I', schemaname, tablename) FROM pg_tables "
+            + "WHERE schemaname NOT IN ('pg_catalog', 'information_schema', 'public') AND tablename <> '__EFMigrationsHistory'",
+            connection))
+        using (var reader = listed.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                tables.Add(reader.GetString(0));
+            }
+        }
+
+        if (tables.Count > 0)
+        {
+            Execute(connection, $"TRUNCATE {string.Join(", ", tables)} CASCADE");
+        }
     }
 
     /// <summary>Runs a statement on the tests' database: what an administrator's route will do later.</summary>

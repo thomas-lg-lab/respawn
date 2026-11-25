@@ -88,6 +88,73 @@ public sealed class AccountsTests
     }
 
     [Fact]
+    public async Task A_session_ends_at_its_age()
+    {
+        var clock = new Clock();
+        await using var app = await TestApp.StartAsync(
+            new() { ["RESPAWN_SESSION_DAYS"] = "2" },
+            services => services.AddSingleton<TimeProvider>(clock));
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+
+        clock.Now += TimeSpan.FromDays(2) - TimeSpan.FromMinutes(1);
+        Assert.Equal(HttpStatusCode.OK, await browser.GetAsync("/api/v1/me").StatusAsync());
+
+        // Using it did not make it last longer.
+        clock.Now += TimeSpan.FromMinutes(2);
+        Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await browser.GetAsync("/api/v1/me").RefusalAsync());
+    }
+
+    [Fact]
+    public async Task An_e_mail_already_used_is_refused()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var first = app.Browser();
+        await first.RegisterAsync();
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+
+        using var second = app.Browser();
+        Assert.Equal(
+            (HttpStatusCode.Conflict, "account_exists"),
+            await second.RegisterAsync(" First@Example.org ", "Second").RefusalAsync());
+    }
+
+    [Fact]
+    public async Task Local_sign_in_can_be_turned_off()
+    {
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        await browser.RegisterAsync();
+        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('local_sign_in_enabled', 'false')");
+
+        using var other = app.Browser();
+        Assert.False((await other.GetAsync("/api/v1/config").JsonAsync()).GetProperty("local_sign_in").GetBoolean());
+        Assert.Equal(
+            (HttpStatusCode.Forbidden, "local_sign_in_disabled"),
+            await other.LoginAsync("first@example.org", TestApp.Password).RefusalAsync());
+        // The session opened before stays.
+        Assert.Equal(HttpStatusCode.OK, await browser.GetAsync("/api/v1/me").StatusAsync());
+    }
+
+    [Theory]
+    [InlineData("text/plain", "{}", HttpStatusCode.UnsupportedMediaType)]
+    [InlineData("application/json", "{ not json", HttpStatusCode.UnprocessableEntity)]
+    public async Task A_body_that_is_not_the_one_expected_is_refused_in_the_format_of_the_api(
+        string type, string body, HttpStatusCode status)
+    {
+        await using var app = await TestApp.StartAsync();
+        using var browser = app.Browser();
+        using var content = new StringContent(body, System.Text.Encoding.UTF8, type);
+
+        var answer = await browser.PostAsync("/api/v1/auth/login", content);
+
+        Assert.Equal(status, answer.StatusCode);
+        var error = (await answer.JsonAsync()).GetProperty("error");
+        Assert.False(string.IsNullOrEmpty(error.GetProperty("code").GetString()));
+        Assert.False(string.IsNullOrEmpty(error.GetProperty("message").GetString()));
+    }
+
+    [Fact]
     public async Task Repeated_failures_lock_the_account()
     {
         await using var app = await TestApp.StartAsync();
@@ -269,9 +336,9 @@ public sealed class AccountsTests
         await using var app = await TestApp.StartAsync(new()
         {
             ["RESPAWN_AUTH_RATE_LIMIT"] = "2/minute",
-            ["RESPAWN_TRUSTED_PROXIES"] = "10.0.0.0/24",
+            ["RESPAWN_TRUSTED_PROXIES"] = "198.51.100.0/24",
         });
-        app.Peer = IPAddress.Parse("10.0.0.1");
+        app.Peer = IPAddress.Parse("198.51.100.1");
         using var browser = app.Browser();
         Assert.Equal(
             [HttpStatusCode.Unauthorized, HttpStatusCode.Unauthorized, HttpStatusCode.Unauthorized],
@@ -288,17 +355,17 @@ public sealed class AccountsTests
     {
         // Behind a proxy the app was not told about, the shared rate limit must not stay silent.
         const string warning = "RESPAWN_TRUSTED_PROXIES does not list";
-        await using var app = await TestApp.StartAsync(new() { ["RESPAWN_TRUSTED_PROXIES"] = "10.0.0.1" });
+        await using var app = await TestApp.StartAsync(new() { ["RESPAWN_TRUSTED_PROXIES"] = "198.51.100.1" });
         using var browser = app.Browser();
 
         // A listed proxy, then no proxy at all: nothing to report.
-        app.Peer = IPAddress.Parse("10.0.0.1");
+        app.Peer = IPAddress.Parse("198.51.100.1");
         await LoginCodesAsync(browser, ["203.0.113.1"]);
         app.Peer = IPAddress.Parse("203.0.113.200");
         await LoginCodesAsync(browser, [null]);
         Assert.Equal(0, app.Logs.Count(warning));
 
-        app.Peer = IPAddress.Parse("10.0.0.9");
+        app.Peer = IPAddress.Parse("198.51.100.9");
         await LoginCodesAsync(browser, ["203.0.113.1", "203.0.113.2", "198.51.100.7, 203.0.113.3"]);
         Assert.Equal(1, app.Logs.Count(warning));
     }
@@ -335,5 +402,13 @@ public sealed class AccountsTests
             verified.Add(providedPassword);
             return _hasher.VerifyHashedPassword(user, hashedPassword, providedPassword);
         }
+    }
+
+    /// <summary>A clock a test moves.</summary>
+    private sealed class Clock : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => Now;
     }
 }
