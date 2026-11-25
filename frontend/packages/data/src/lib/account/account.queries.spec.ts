@@ -71,6 +71,29 @@ describe('AccountQueries', () => {
     expect(await me.catch((thrown: unknown) => thrown)).toMatchObject({ code: 'not_signed_in' });
   });
 
+  it('forgets what was read for an account when another one is signed in', async () => {
+    client.setQueryData(accountKeys.me, ACCOUNT);
+    client.setQueryData(['library', 'stats'], { games: 3 });
+    const other = { ...ACCOUNT, id: '0b9f6c1e-2d3a-4e5f-8a7b-9c0d1e2f3a4b' };
+
+    const me = client.fetchQuery({ ...queries.me(), staleTime: 0 });
+    (await request('/api/v1/me')).flush(other);
+
+    expect(await me).toEqual(other);
+    expect(client.getQueryData(['library', 'stats'])).toBeUndefined();
+  });
+
+  it('keeps what was read for the account while it is still the one signed in', async () => {
+    client.setQueryData(accountKeys.me, ACCOUNT);
+    client.setQueryData(['library', 'stats'], { games: 3 });
+
+    const me = client.fetchQuery({ ...queries.me(), staleTime: 0 });
+    (await request('/api/v1/me')).flush(ACCOUNT);
+    await me;
+
+    expect(client.getQueryData(['library', 'stats'])).toEqual({ games: 3 });
+  });
+
   it('fails with the code of the API when it cannot say who is signed in', async () => {
     const me = client.fetchQuery(queries.me());
     (await request('/api/v1/me')).flush(...refuse('database_unavailable', 503));

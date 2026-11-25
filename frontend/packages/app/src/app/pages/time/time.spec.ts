@@ -1,5 +1,5 @@
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { LibraryGame } from '@respawn/data';
+import { type LibraryGame, TEST_LINKED_ACCOUNT } from '@respawn/data';
 import { ACCOUNT, api, configureApp } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
@@ -49,6 +49,8 @@ describe('Time', () => {
     const arrived = harness.navigateByUrl('/time');
     await server.answer('/me', ACCOUNT);
     await arrived;
+    // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.
+    await server.answer('/linked-accounts', { accounts: [TEST_LINKED_ACCOUNT] });
     if (games) {
       await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
       await harness.fixture.whenStable();

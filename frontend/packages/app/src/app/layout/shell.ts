@@ -13,6 +13,7 @@ import { filter } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import {
   AccountQueries,
+  LinkedAccountQueries,
   PROVIDER_OUTCOME,
   providerOutcome,
   providerSignInAddress,
@@ -48,6 +49,9 @@ const SAME_PATH: IsActiveMatchOptions = {
  * the screen under it; on a phone the tabs are a bar at the foot of the window. It is where the menu's requests meet what answers them: the settings, shown at
  * once and kept on the account, the providers to link, and the sign-out. A link through a
  * provider comes back to the screen it started from, and what came of it is said here.
+ *
+ * It also keeps the linked accounts in view, whatever the screen: that is where the end of a
+ * sync is learnt, and the library a screen shows must not wait for the home to learn it.
  */
 @Component({
   selector: 'rs-shell',
@@ -67,6 +71,7 @@ const SAME_PATH: IsActiveMatchOptions = {
 })
 export class Shell {
   private readonly queries = inject(AccountQueries);
+  private readonly linkedAccounts = inject(LinkedAccountQueries);
   private readonly router = inject(Router);
 
   protected readonly display = inject(DisplaySettings);
@@ -111,6 +116,10 @@ export class Shell {
 
   constructor() {
     saidOnce(inject(Location), this.router, PROVIDER_OUTCOME);
+
+    // Watched here and shown by the screens that need them: asked again when the window is
+    // back in front and while a sync is awaited, on the library and the time map too.
+    injectQuery(() => this.linkedAccounts.list());
 
     // A warning about a pick speaks of the screen it was made on: the next one starts clear.
     this.router.events

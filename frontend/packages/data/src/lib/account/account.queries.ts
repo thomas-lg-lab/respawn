@@ -39,10 +39,13 @@ export function saysNoSession(failure: unknown): boolean {
  * read for the account stays behind for the next one, and the cache says "nobody".
  */
 export function closeSession(client: QueryClient): void {
-  client.removeQueries({
-    predicate: (query) => query.queryHash !== hashKey(accountKeys.me),
-  });
+  client.removeQueries({ predicate: notWhoIsSignedIn });
   client.setQueryData(accountKeys.me, null);
+}
+
+/** Everything the cache holds but who is signed in: what was read for that account. */
+function notWhoIsSignedIn(query: { queryHash: string }): boolean {
+  return query.queryHash !== hashKey(accountKeys.me);
 }
 
 /** The refusals that mean the sign-in page offered what the instance no longer does. */
@@ -66,13 +69,20 @@ export class AccountQueries {
    * The signed-in account, or `null`: "nobody is signed in" is an answer here, not a
    * failure. Kept until a sign-in or a sign-out changes it, and asked again each time the
    * window is back in front: the session may have ended meanwhile, in another tab or by age.
+   * It may also be another account's, signed in from another tab: what was read for the one
+   * before is then forgotten, and the screens in view ask again.
    */
   me() {
     return queryOptions({
       queryKey: accountKeys.me,
       queryFn: async (): Promise<Account | null> => {
         try {
-          return await this.api.get<Account>('/me');
+          const account = await this.api.get<Account>('/me');
+          const known = this.client.getQueryData<Account | null>(accountKeys.me);
+          if (known && known.id !== account.id) {
+            void this.client.resetQueries({ predicate: notWhoIsSignedIn });
+          }
+          return account;
         } catch (failure) {
           // With an account in the cache, "not signed in" is news: the session ended, and
           // the refusal goes on to the server state, which closes it like any other.

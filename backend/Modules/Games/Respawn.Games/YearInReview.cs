@@ -13,7 +13,8 @@ namespace Respawn.Games;
 /// sessions, the store's tags) can be read from it again later.</param>
 /// <param name="Exists">False when the store has no review of that year: not made yet, or nothing to
 /// review. Its months are then empty; once the year is settled
-/// (<see cref="YearInReviewSchedule.Settled"/>) it is kept as a year with nothing played.</param>
+/// (<see cref="YearInReviewSchedule.Settled"/>), and when the store shows the account's library, it is
+/// kept as a year with nothing played.</param>
 /// <param name="Months">What was played, per month and per game. A game not played in a month is left
 /// out of it.</param>
 public sealed record YearReading(
@@ -62,8 +63,9 @@ public static class YearInReviewSchedule
     /// year appears around its end, and a store that did not answer is not asked at every turn.</summary>
     public static readonly TimeSpan RetryAfter = TimeSpan.FromDays(1);
 
-    /// <summary>From when a store with no review of a year is taken at its word: nothing was played that
-    /// year on that account (it did not exist yet, or was not used). Steam makes its reviews in December;
+    /// <summary>From when a store with no review of a year is taken at its word, for an account whose
+    /// library it shows: nothing was played that year on that account (it did not exist yet, or was not
+    /// used). Steam makes its reviews in December;
     /// a month after the year ended, one that is still missing will not come. Before that, the year is
     /// asked again.</summary>
     public static DateTimeOffset Settled(int year) => new(year + 1, 2, 1, 0, 0, 0, TimeSpan.Zero);

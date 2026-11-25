@@ -80,7 +80,8 @@ public sealed class LibraryController(ILibraryService library, IYearReviewServic
         "Playtime per calendar year (UTC), the earliest first. A year is counted from the store's own review "
         + "(source review: Steam's Year in Review, every month of it, from 2022 on) when every linked account has "
         + "one, and otherwise from the daily readings (source readings: the growth of the totals, from the "
-        + "first reading on). first_day and last_day say the days a year covers, and whole whether that is all of it. "
+        + "first reading on). A year before the first reading is counted from the reviews of the accounts that "
+        + "have one. first_day and last_day say the days a year covers, and whole whether that is all of it. "
         + "A review counts every game played, owned or not; the readings count the games of the library.")]
     [ProducesResponseType<LibraryYearsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]

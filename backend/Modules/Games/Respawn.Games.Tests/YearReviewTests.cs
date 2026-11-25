@@ -117,7 +117,7 @@ public sealed class YearReviewTests
         using var browser = app.Browser();
         var account = await LinkAsync(app, browser);
 
-        // Linked a moment ago: due at once.
+        // Its first sync ended: due at once.
         Assert.Equal([account], await DueAsync(app));
         Assert.Equal(1, await TurnAsync(app));
         Assert.Equal(
@@ -198,7 +198,8 @@ public sealed class YearReviewTests
         };
         await using var app = await StartAsync(steam, clock);
         using var browser = app.Browser();
-        var account = await LinkAsync(app, browser);
+        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
+        var account = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
 
         // The first year fails: the next ones are not asked, and nothing is kept.
         YearImport? import;
@@ -276,7 +277,55 @@ public sealed class YearReviewTests
     }
 
     [Fact]
-    public async Task A_year_is_the_reviews_only_when_every_linked_account_has_one()
+    public async Task A_store_that_shows_nothing_of_an_account_is_not_taken_at_its_word()
+    {
+        var clock = new TestClock { Now = Now };
+        var reviews = new Dictionary<int, string>();
+        var steam = new FakeSteam { BodyFor = address => ReviewFor(address, reviews) };
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
+        var account = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
+
+        // Never synced: nothing says yet whether Steam shows this account.
+        Assert.Empty(await DueAsync(app));
+
+        // A profile made private: no library, and no review either. No year is kept as not played,
+        // settled as they all are.
+        await SyncedAsync(app, account, SyncOutcome.NothingVisible);
+        Assert.Equal([account], await DueAsync(app));
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Equal(4, steam.Requests.Count);
+        Assert.Empty(await KeptYearsAsync(app));
+
+        // The profile is opened: the next day, what Steam has is imported, and what it still has not
+        // is nothing played.
+        clock.NextDay();
+        await SyncedAsync(app, account, SyncOutcome.Succeeded);
+        reviews[2024] = FakeSteam.Recorded("year-in-review-2024.json");
+        Assert.Equal(1, await TurnAsync(app));
+        int[] all = [2022, 2023, 2024, 2025];
+        Assert.Equal(all, await KeptYearsAsync(app));
+    }
+
+    [Fact]
+    public async Task An_empty_answer_counts_only_with_the_access_that_read_the_library()
+    {
+        var clock = new TestClock { Now = Now };
+        var steam = new FakeSteam { BodyFor = address => ReviewFor(address, []) };
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        // The last sync read the library with the owner's own key, which is gone since: what the
+        // instance's key is answered says nothing of the account.
+        await SyncedAsync(app, account, SyncOutcome.Succeeded, ownCredential: true);
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Empty(await KeptYearsAsync(app));
+    }
+
+    [Fact]
+    public async Task A_year_before_the_readings_is_counted_from_the_accounts_that_have_a_review()
     {
         var clock = new TestClock { Now = Now };
         var steam = new FakeSteam { BodyFor = address => ReviewFor(address, new() { [2024] = FakeSteam.Recorded("year-in-review-2024.json") }) };
@@ -284,22 +333,23 @@ public sealed class YearReviewTests
         using var browser = app.Browser();
         var first = await LinkAsync(app, browser);
         Assert.Equal(1, await TurnAsync(app));
-        Assert.Equal(
-            [
-                (2022, 0L, "review", "2022-01-01", "2022-12-31", true),
-                (2023, 0L, "review", "2023-01-01", "2023-12-31", true),
-                (2024, 11700L, "review", "2024-01-01", "2024-12-31", true),
-                (2025, 0L, "review", "2025-01-01", "2025-12-31", true),
-            ],
-            await YearsAsync(browser));
+        (int, long, string, string, string, bool)[] alone =
+        [
+            (2022, 0L, "review", "2022-01-01", "2022-12-31", true),
+            (2023, 0L, "review", "2023-01-01", "2023-12-31", true),
+            (2024, 11700L, "review", "2024-01-01", "2024-12-31", true),
+            (2025, 0L, "review", "2025-01-01", "2025-12-31", true),
+        ];
+        Assert.Equal(alone, await YearsAsync(browser));
 
-        // A second Steam account, not imported yet: 2024 is no longer whole, and no reading covers it.
+        // A second Steam account whose reviews are not there, not yet or never (a key refused, a
+        // profile Steam does not show): nothing else can tell these years, the first account's stay.
         var owner = await OwnerAsync(app, first);
-        await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", "76561190000000002", null, default));
-        Assert.Empty(await YearsAsync(browser));
+        var second = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", "76561190000000002", null, default))).Id;
+        Assert.Equal(alone, await YearsAsync(browser));
 
-        // Once it is, the two reviews add up, and a year neither has a review of is there at zero: one
-        // account with none does not hide the others' years.
+        // Once they are, the two reviews add up.
+        await SyncedAsync(app, second, SyncOutcome.Succeeded);
         Assert.Equal(1, await TurnAsync(app));
         Assert.Equal(
             [
@@ -309,6 +359,30 @@ public sealed class YearReviewTests
                 (2025, 0L, "review", "2025-01-01", "2025-12-31", true),
             ],
             await YearsAsync(browser));
+    }
+
+    [Fact]
+    public async Task A_year_the_readings_reach_is_the_reviews_only_when_every_linked_account_has_one()
+    {
+        // February 2027: the review of 2026 is there for one account, and the readings started in 2026.
+        var clock = new TestClock { Now = new DateTimeOffset(2027, 2, 10, 6, 0, 0, TimeSpan.Zero) };
+        var steam = new FakeSteam
+        {
+            BodyFor = address => ReviewFor(address, new() { [2026] = Review(2026, (new DateOnly(2026, 3, 1), 620, 7200, 2)) }),
+        };
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        var first = await LinkAsync(app, browser);
+        await RecordAsync(app, first, new DateTimeOffset(2026, 11, 1, 6, 0, 0, TimeSpan.Zero), 90);
+        await RecordAsync(app, first, new DateTimeOffset(2026, 11, 2, 6, 0, 0, TimeSpan.Zero), 150);
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Contains((2026, 7200L, "review", "2026-01-01", "2026-12-31", true), await YearsAsync(browser));
+
+        // A second account with no review of 2026: part from a review and part from readings would not
+        // count the same games, so the year is the readings', from the first one.
+        var owner = await OwnerAsync(app, first);
+        await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", "76561190000000002", null, default));
+        Assert.Contains((2026, 3600L, "readings", "2026-11-01", "2026-12-31", false), await YearsAsync(browser));
     }
 
     [Fact]
@@ -394,10 +468,30 @@ public sealed class YearReviewTests
 
     private static IYearReviewSource Source(TestApp app) => app.Services.GetRequiredService<IYearReviewSource>();
 
+    /// <summary>A Steam account linked to a new owner, its first sync ended: Steam shows its library.</summary>
     private static async Task<Guid> LinkAsync(TestApp app, HttpClient browser)
     {
         var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        return (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
+        var account = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
+        await SyncedAsync(app, account, SyncOutcome.Succeeded);
+        return account;
+    }
+
+    /// <summary>A sync of the account that ended now, as the schedule would keep it, Steam not asked.</summary>
+    private static async Task SyncedAsync(TestApp app, Guid account, SyncOutcome outcome, bool ownCredential = false)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
+        await scope.ServiceProvider.GetRequiredService<ISyncRunStore>().AddAsync(
+            new SyncRun(Guid.CreateVersion7(), account, SyncTrigger.Scheduled, now, now, outcome, OwnCredential: ownCredential),
+            default);
+    }
+
+    private static async Task<int[]> KeptYearsAsync(TestApp app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        return await db.YearReviews.AsNoTracking().Select(review => review.Year).OrderBy(year => year).ToArrayAsync();
     }
 
     private static async Task<Guid> OwnerAsync(TestApp app, Guid linkedAccount)
