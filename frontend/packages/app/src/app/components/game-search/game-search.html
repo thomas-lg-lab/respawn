@@ -1,0 +1,119 @@
+<!-- Placed against the header on a phone, where the field and its suggestions take its whole
+     width, and against the field itself once there is room. -->
+<div
+  class="wide:relative"
+  role="search"
+  data-search
+  (focusin)="entered()"
+  (focusout)="left($event)"
+  (keydown)="key($event)"
+  *transloco="let t; prefix: 'search'"
+>
+  <button
+    type="button"
+    class="flex size-touch items-center justify-center rounded-thumb wide:hidden"
+    data-search-open
+    [aria-label]="t('open')"
+    (click)="unfold()"
+  >
+    <svg lucideSearch class="size-5" [strokeWidth]="2" aria-hidden="true"></svg>
+  </button>
+
+  <div
+    class="absolute inset-0 z-10 items-center gap-1 bg-bg px-4 wide:static wide:flex wide:bg-transparent wide:px-0"
+    [class.hidden]="!unfolded()"
+    [class.flex]="unfolded()"
+  >
+    <rs-search-field
+      class="min-w-0 flex-1"
+      [label]="t('label')"
+      [placeholder]="t('placeholder')"
+      [popup]="listId"
+      [expanded]="shown()"
+      [active]="activeId()"
+      [(value)]="typed"
+    >
+      @if (typed()) {
+        <button
+          type="button"
+          class="flex size-8 shrink-0 items-center justify-center rounded-thumb text-muted transition-colors duration-hover hover:bg-surface-2 hover:text-text"
+          data-search-clear
+          [aria-label]="t('clear')"
+          (click)="clear()"
+        >
+          <svg lucideX class="size-4" [strokeWidth]="2" aria-hidden="true"></svg>
+        </button>
+      } @else {
+        <kbd
+          class="me-1 hidden shrink-0 rounded-thumb border border-control-line px-1.5 py-0.5 type-caption font-medium whitespace-nowrap text-muted wide:inline"
+          aria-hidden="true"
+          >{{ t('shortcut') }}</kbd
+        >
+      }
+    </rs-search-field>
+    <button
+      type="button"
+      class="min-h-touch shrink-0 rounded-thumb px-2 type-control font-semibold wide:hidden"
+      data-search-close
+      (click)="close()"
+    >
+      {{ t('close') }}
+    </button>
+  </div>
+
+  @if (shown()) {
+    <!-- A press here must not take the focus off the field: the search would close under it. -->
+    <div
+      class="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-control-line bg-surface shadow-raised wide:mt-2 wide:rounded-thumb wide:border"
+      data-search-panel
+      (mousedown)="$event.preventDefault()"
+    >
+      <div role="listbox" [id]="listId" [attr.aria-label]="t('suggestions')">
+        @for (row of suggestions(); track row.id; let index = $index) {
+          <button
+            type="button"
+            role="option"
+            tabindex="-1"
+            class="flex min-h-row w-full items-center gap-3 px-3 text-left transition-colors duration-hover hover:bg-surface-2 aria-selected:bg-surface-2"
+            data-suggestion
+            [id]="row.id"
+            [attr.aria-selected]="index === active()"
+            (click)="ask(row.title)"
+          >
+            <rs-cover class="w-6 shrink-0 rounded-thumb" aria-hidden="true" [hue]="row.hue" />
+            <span class="min-w-0 truncate" data-title
+              >{{ row.cut.before
+              }}<mark class="bg-transparent font-semibold text-accent-text">{{
+                row.cut.found
+              }}</mark
+              >{{ row.cut.after }}</span
+            >
+            <span class="ms-auto type-caption whitespace-nowrap text-muted tabular-nums" data-time>
+              @if (row.time === 'never' || row.time === 'unknown') {
+                {{ t(row.time) }}
+              } @else {
+                {{ t(row.time.key, { count: row.time.count }) }}
+              }
+            </span>
+          </button>
+        }
+      </div>
+      @if (suggestions().length) {
+        <div class="border-t border-line p-1">
+          <button
+            type="button"
+            class="flex min-h-touch w-full items-center rounded-thumb px-2 text-left type-control font-medium transition-colors duration-hover hover:bg-surface-2"
+            data-search-all
+            (click)="ask(asked())"
+          >
+            {{ t(all().one ? 'seeOne' : 'seeMany', { count: all().count }) }}
+          </button>
+        </div>
+      } @else {
+        <p class="px-3 py-3.5 text-muted" role="status" data-search-none>
+          {{ t('none', { title: asked() }) }}
+        </p>
+      }
+    </div>
+  }
+</div>

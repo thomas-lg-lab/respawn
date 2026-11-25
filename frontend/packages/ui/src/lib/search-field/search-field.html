@@ -4,7 +4,13 @@
   type="search"
   autocomplete="off"
   [attr.aria-label]="label()"
+  [attr.role]="popup() ? 'combobox' : null"
+  [attr.aria-autocomplete]="popup() ? 'list' : null"
+  [attr.aria-controls]="popup() ?? null"
+  [attr.aria-expanded]="popup() ? expanded() : null"
+  [attr.aria-activedescendant]="active() ?? null"
   [placeholder]="placeholder()"
   [value]="value()"
   (input)="value.set(control.value)"
 />
+<ng-content />

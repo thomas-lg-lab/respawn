@@ -1,8 +1,9 @@
+import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { type LibraryGame } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, api, button, start, type } from '@app/testing/app-testing';
+import { ACCOUNT, api, button, start } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
 import './library';
@@ -26,8 +27,12 @@ function library(): LibraryGame[] {
 
 describe('Library', () => {
   /** Opens the library, signed in; the API answers with these games unless told not to. */
-  async function open(games: LibraryGame[] | null = library(), language: Language = 'fr') {
-    const { harness, server, arrived } = await start('/library', language);
+  async function open(
+    games: LibraryGame[] | null = library(),
+    language: Language = 'fr',
+    address = '/library',
+  ) {
+    const { harness, server, arrived } = await start(address, language);
     await server.answer('/me', ACCOUNT);
     await arrived;
     // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.
@@ -110,12 +115,10 @@ describe('Library', () => {
     expect(text(row(screen, 'Pokémon'), '[data-last-played]')).toBe('—');
   });
 
-  it('searches by title, and counts what each filter would keep of it', async () => {
-    const { harness, screen } = await open();
+  it('keeps the title its address asks for, and counts what each filter would keep of it', async () => {
+    const { screen } = await open(library(), 'fr', '/library?q=po');
 
-    type(screen.querySelector('input[type="search"]')!, 'po');
-    await harness.fixture.whenStable();
-
+    expect(text(screen, '[data-searched]')).toBe('Recherche : « po »');
     expect(names(screen)).toEqual(['Portal 2', 'Pokémon']);
     expect(text(screen, '[data-filter="all"]')).toBe('Tous 2');
     expect(text(screen, '[data-filter="launched"]')).toBe('Lancés 1');
@@ -149,15 +152,19 @@ describe('Library', () => {
     expect(names(screen)).toEqual(['Celeste', 'Hades', 'Pokémon', 'Portal 2']);
   });
 
-  it('says that no game matches, the search still there to change', async () => {
-    const { harness, screen } = await open();
-
-    type(screen.querySelector('input[type="search"]')!, 'zelda');
-    await harness.fixture.whenStable();
+  it('says that no game matches, and lists every game again once the search is cleared', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=zelda&sort=name');
 
     expect(text(screen, '[data-no-match]')).toBe('Aucun jeu ne correspond.');
     expect(screen.querySelector('table')).toBeNull();
-    expect(screen.querySelector('input[type="search"]')).not.toBeNull();
+
+    button(screen, 'Effacer la recherche').click();
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toHaveLength(4);
+    expect(screen.querySelector('[data-searched]')).toBeNull();
+    // Only the title left the address.
+    expect(TestBed.inject(Location).path()).toBe('/library?sort=name');
   });
 
   it('shows a long list a step at a time, and starts over when the list changes', async () => {
@@ -177,7 +184,8 @@ describe('Library', () => {
     expect(names(screen)).toHaveLength(230);
     expect(screen.querySelector('[data-more]')).toBeNull();
 
-    type(screen.querySelector('input[type="search"]')!, 'game');
+    // Another title is searched from the header: the address changes, the screen stays.
+    await harness.navigateByUrl('/library?q=game');
     await harness.fixture.whenStable();
     expect(names(screen)).toHaveLength(100);
   });
@@ -217,7 +225,7 @@ describe('Library', () => {
     expect(text(screen, '[data-empty]')).toContain('Aucun jeu ici pour l’instant.');
     expect(screen.querySelector('main a[rsButton]')?.getAttribute('href')).toBe('/');
     expect(screen.querySelector('[data-owned]')).toBeNull();
-    expect(screen.querySelector('input[type="search"]')).toBeNull();
+    expect(screen.querySelector('rs-library-toolbar')).toBeNull();
   });
 
   it('says that the games are on their way', async () => {

@@ -135,6 +135,22 @@
       "done": "The account is unlinked, and what was read from it is forgotten."
     }
   },
+  "search": {
+    "label": "Search a game",
+    "placeholder": "Search a game",
+    "shortcut": "Ctrl K",
+    "open": "Search a game",
+    "close": "Close",
+    "clear": "Clear what is typed",
+    "suggestions": "Suggested games",
+    "none": "No game matches “{{ title }}”.",
+    "seeOne": "See {{ count }} game in the library",
+    "seeMany": "See the {{ count }} games in the library",
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min",
+    "never": "Never launched",
+    "unknown": "—"
+  },
   "nav": {
     "label": "Main navigation",
     "home": "Home",
@@ -222,11 +238,6 @@
       "minutes": "{{ count }} min"
     },
     "unnamed": "Unnamed game",
-    "search": {
-      "label": "Search a game",
-      "placeholder": "A title",
-      "submit": "Search"
-    },
     "resume": {
       "name": "Resume",
       "label": "Resume · last session {{ ago }}",
@@ -283,10 +294,8 @@
       "text": "No game here yet. The home says where your library stands.",
       "home": "Go to the home"
     },
-    "search": {
-      "label": "Search a game",
-      "placeholder": "A title"
-    },
+    "searched": "Search: “{{ title }}”",
+    "clearSearch": "Clear the search",
     "filter": {
       "label": "Filter",
       "all": "All",

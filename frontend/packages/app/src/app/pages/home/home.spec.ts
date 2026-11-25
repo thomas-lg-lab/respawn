@@ -697,22 +697,25 @@ describe('Home', () => {
       expect(names(screen, 'picks').sort()).toEqual(['Celeste', 'Jeu sans nom']);
     });
 
-    it('leads to the Library with the title that was searched', async () => {
+    it('leads to the Library with the title searched in the header', async () => {
       const { harness, server, screen } = await open([account()], { games: played() });
 
-      type(screen.querySelector<HTMLInputElement>('[data-search] input')!, ' portal ');
-      button(screen, 'Chercher').click();
+      const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+      type(search, ' portal ');
+      await harness.fixture.whenStable();
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       await harness.fixture.whenStable();
 
       expect(title(screen)).toBe('Bibliothèque');
       expect(names(screen, 'game')).toEqual(['Portal 2']);
       // The games were already read for the home: they are not asked again.
       server.http.expectNone(`/api/v1${GAMES}`);
-      // The title is in the field, and off the address.
-      expect(screen.querySelector<HTMLInputElement>('rs-library-toolbar input')?.value).toBe(
-        'portal',
+      // The title is said above the list, and stays on the address; the field is free again.
+      expect(screen.querySelector('[data-searched]')?.textContent.trim()).toBe(
+        'Recherche : « portal »',
       );
-      expect(TestBed.inject(Location).path()).toBe('/library');
+      expect(search.value).toBe('');
+      expect(TestBed.inject(Location).path()).toBe('/library?q=portal');
     });
 
     it('says that the games could not be read, and asks again on request', async () => {

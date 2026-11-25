@@ -37,7 +37,7 @@
   --rs-warn-bg: light-dark(#fff1dc, #2b2113);
   --rs-warn-line: light-dark(#ebcb96, #5a4320);
 
-  /* Colour: the active tab, the pressed pill. */
+  /* Colour: the pressed pill. */
   --rs-inverse: var(--rs-text);
   --rs-on-inverse: var(--rs-bg);
 

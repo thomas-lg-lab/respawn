@@ -8,7 +8,7 @@
     justify-content: center;
     width: var(--rs-size-avatar);
     height: var(--rs-size-avatar);
-    border-radius: var(--rs-radius-pill);
+    border-radius: var(--rs-radius-thumb);
     background-color: var(--rs-accent);
     color: var(--rs-on-accent);
     font-weight: 600;

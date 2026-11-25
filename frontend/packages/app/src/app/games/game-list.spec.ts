@@ -5,7 +5,9 @@ import {
   isMissing,
   kept,
   longestPlaytime,
+  foundIn,
   matching,
+  suggested,
   sorted,
   steamLaunchAddress,
 } from '@app/games/game-list';
@@ -55,6 +57,53 @@ describe('library view', () => {
     expect(names(matching(ALL, '  PORT '))).toEqual(['Portal 2']);
     expect(matching(ALL, '   ')).toHaveLength(4);
     expect(matching(ALL, 'zelda')).toEqual([]);
+  });
+
+  it('cuts a title around what was typed, whatever the case and the accents', () => {
+    expect(foundIn('Slay the Spire', 'THE')).toEqual({
+      before: 'Slay ',
+      found: 'the',
+      after: ' Spire',
+    });
+    expect(foundIn('Pokémon', 'poke')).toEqual({ before: '', found: 'Poké', after: 'mon' });
+    // An accent written apart stays with its letter.
+    expect(foundIn('Poke\u0301mon', 'poke')).toEqual({
+      before: '',
+      found: 'Poke\u0301',
+      after: 'mon',
+    });
+    expect(foundIn('Pokémon', 'émo')).toEqual({ before: 'Pok', found: 'émo', after: 'n' });
+    expect(foundIn('Hades', 'zelda')).toBeNull();
+    expect(foundIn('Hades', '  ')).toBeNull();
+  });
+
+  it('suggests the titles that start with what was typed, then a word that does, then the rest', () => {
+    const games = [
+      game('The Witness', { playtime_seconds: 900000 }),
+      game('Shadow of the Tomb Raider', { playtime_seconds: 600000 }),
+      game('Into the Breach', { playtime_seconds: 300000 }),
+      game('Thief', { playtime_seconds: 60 }),
+      game('Thumper'),
+    ];
+
+    // "th" starts two titles and a word of the others; the most played first among each.
+    expect(names(suggested(games, 'th', 'en'))).toEqual([
+      'The Witness',
+      'Thief',
+      'Thumper',
+      'Shadow of the Tomb Raider',
+      'Into the Breach',
+    ]);
+    // "he" starts nothing: it is only held, and the playtime alone orders.
+    expect(names(suggested(games, 'he', 'en'))).toEqual([
+      'The Witness',
+      'Shadow of the Tomb Raider',
+      'Into the Breach',
+    ]);
+    expect(names(suggested(games, 'to', 'en'))).toEqual([
+      'Shadow of the Tomb Raider',
+      'Into the Breach',
+    ]);
   });
 
   it('keeps what a filter asks for', () => {

@@ -2,18 +2,12 @@ import type { Location } from '@angular/common';
 import type { Router } from '@angular/router';
 import { PROVIDER_OUTCOME, STEAM_LINK_OUTCOME } from '@respawn/data';
 
-/** The title the home asks the Library to look for, written on the address that leads there. */
-export const LIBRARY_SEARCH = 'q';
-
-/**
- * Every word an address carries for one arrival: what came of a navigation through another
- * site, or what one screen asks of the next.
- */
-const SAID_ONCE: readonly string[] = [PROVIDER_OUTCOME, STEAM_LINK_OUTCOME, LIBRARY_SEARCH];
+/** Every word an address carries for one arrival: what came of a navigation through another site. */
+const SAID_ONCE: readonly string[] = [PROVIDER_OUTCOME, STEAM_LINK_OUTCOME];
 
 /**
  * Takes off the browser's address a word written on it for one arrival (the outcome of a
- * navigation through another site, a search another screen asked for): the screen has read it
+ * navigation through another site): the screen has read it
  * and says it, and a reload, a bookmark or a copy of the address must not say it again.
  *
  * Only the address the browser shows changes, in place: no navigation happens, so the screen

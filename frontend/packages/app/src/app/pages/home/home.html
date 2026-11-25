@@ -83,8 +83,6 @@
         />
       }
 
-      <rs-game-search (searched)="search($event)" />
-
       @if (resumed(); as game) {
         <rs-resume [game]="game" [language]="currentLanguage()" [now]="now()" />
       }

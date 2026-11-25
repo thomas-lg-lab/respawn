@@ -1,7 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { LucideCheck, LucideLogOut, LucideSettings, LucideUserRound } from '@lucide/angular';
+import { LucideCheck, LucideLogOut, LucideSettings } from '@lucide/angular';
 import type { Account } from '@respawn/data';
 import { Avatar, Button, Disclosure, DisclosurePanel, DisclosureTrigger } from '@respawn/ui';
 import type { Character, Theme } from '@respawn/util';
@@ -42,7 +42,6 @@ export interface LinkableProvider {
     LucideCheck,
     LucideLogOut,
     LucideSettings,
-    LucideUserRound,
   ],
   templateUrl: './account-menu.html',
 })

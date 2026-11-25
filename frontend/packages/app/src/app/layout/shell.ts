@@ -13,6 +13,7 @@ import { filter } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import {
   AccountQueries,
+  LibraryQueries,
   LinkedAccountQueries,
   PROVIDER_OUTCOME,
   providerOutcome,
@@ -22,7 +23,9 @@ import { Banner, Logo, Tab } from '@respawn/ui';
 import { type Character, DisplaySettings, type Theme } from '@respawn/util';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { AccountMenu, type LinkableProvider } from '@app/components/account-menu/account-menu';
+import { GameSearch } from '@app/components/game-search/game-search';
 import { failureKey } from '@app/errors/failure-message';
+import { LIBRARY_SEARCH } from '@app/games/game-list';
 import { type Language, LanguageSetting } from '@app/i18n/language';
 import { saidOnce, withoutSaidOnce } from '@app/session/said-once';
 
@@ -45,9 +48,11 @@ const SAME_PATH: IsActiveMatchOptions = {
 };
 
 /**
- * The frame of the signed-in screens: the header, with the tabs and the account menu, and
- * the screen under it; on a phone the tabs are a bar at the foot of the window. It is where the menu's requests meet what answers them: the settings, shown at
- * once and kept on the account, the providers to link, and the sign-out. A link through a
+ * The frame of the signed-in screens: the header, with the tabs, the search and the account
+ * menu, and the screen under it; on a phone the tabs are a bar at the foot of the window. It
+ * is where the menu's requests meet what answers them: the settings, shown at once and kept
+ * on the account, the providers to link, and the sign-out; and where a title that was
+ * searched leads to the Library. A link through a
  * provider comes back to the screen it started from, and what came of it is said here.
  *
  * It also keeps the linked accounts in view, whatever the screen: that is where the end of a
@@ -64,6 +69,7 @@ const SAME_PATH: IsActiveMatchOptions = {
     Logo,
     Tab,
     AccountMenu,
+    GameSearch,
   ],
   // As tall as the window at least, so the bar of tabs has a foot to stick to.
   host: { class: 'flex min-h-dvh flex-col' },
@@ -72,6 +78,7 @@ const SAME_PATH: IsActiveMatchOptions = {
 export class Shell {
   private readonly queries = inject(AccountQueries);
   private readonly linkedAccounts = inject(LinkedAccountQueries);
+  private readonly library = inject(LibraryQueries);
   private readonly router = inject(Router);
 
   protected readonly display = inject(DisplaySettings);
@@ -90,6 +97,16 @@ export class Shell {
     enabled: this.menuOpened(),
   }));
 
+  /**
+   * The games the search suggests from, asked once its field is first used: a screen that
+   * shows the library has read them already, and they are not asked twice.
+   */
+  protected readonly searchOpened = signal(false);
+  protected readonly games = injectQuery(() => ({
+    ...this.library.games(),
+    enabled: this.searchOpened(),
+  }));
+
   /** The address of the screen, as the last navigation left it. */
   private readonly address = signal(this.router.url);
 
@@ -103,8 +120,7 @@ export class Shell {
 
   /**
    * The providers: the ones linked already, and the others to link, each coming back to this
-   * screen, without what its address said for one arrival (the word of a previous link, a
-   * search the home asked for).
+   * screen, without what its address said for one arrival (the word of a previous link).
    */
   protected readonly providers = computed<LinkableProvider[]>(() => {
     const back = withoutSaidOnce(this.router, this.address());
@@ -146,6 +162,11 @@ export class Shell {
   protected pickCharacter(character: Character): void {
     this.display.setCharacter(character);
     this.saveSettings();
+  }
+
+  /** A title was asked for: the Library looks for it, and says so on its address. */
+  protected search(title: string): void {
+    void this.router.navigate(['/library'], { queryParams: { [LIBRARY_SEARCH]: title } });
   }
 
   protected signOut(): void {

@@ -5,8 +5,13 @@
   (openChange)="$event && opened.emit()"
   *transloco="let t; prefix: 'account'"
 >
-  <button rsButton rsDisclosureTrigger variant="icon" [aria-label]="t('menu')">
-    <svg lucideUserRound class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+  <!-- The account's own square, as the panel shows it: no outline, the touch target around it. -->
+  <button
+    rsDisclosureTrigger
+    class="flex size-touch items-center justify-center rounded-thumb transition-opacity duration-hover hover:opacity-85"
+    [aria-label]="t('menu')"
+  >
+    <rs-avatar [name]="account().display_name" />
   </button>
 
   <section

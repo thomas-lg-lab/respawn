@@ -18,11 +18,10 @@ import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
 import { timeTiles } from '@app/games/time-tiles';
 import { LanguageSetting } from '@app/i18n/language';
-import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
+import { saidOnce } from '@app/session/said-once';
 import { Activity } from './components/activity';
 import { Figures } from './components/figures';
 import { FirstSync } from './components/first-sync';
-import { GameSearch } from './components/game-search';
 import { NoAccount } from './components/no-account';
 import { PlayedRecently } from './components/played-recently';
 import { RandomPicks } from './components/random-picks';
@@ -64,8 +63,8 @@ const READ_ANYWAY = ['sync_in_progress', 'too_many_requests'];
 type View = 'loading' | 'unavailable' | SyncView;
 
 /**
- * The first screen after sign-in: the library at a glance once a linked account was read (a
- * search, the game to resume, the ones played lately, the figures, the years, where the time
+ * The first screen after sign-in: the library at a glance once a linked account was read (the
+ * game to resume, the ones played lately, the figures, the years, where the time
  * went and its map, a draw among the never launched, the activity), and until then the way there, said state by state: link an
  * account, wait for its first reading, or learn why that reading brought no game. This is
  * where the states meet the API: the linked accounts and their syncs, "sync now", the
@@ -87,7 +86,6 @@ type View = 'loading' | 'unavailable' | SyncView;
     Activity,
     Figures,
     FirstSync,
-    GameSearch,
     NoAccount,
     PlayedRecently,
     RandomPicks,
@@ -310,13 +308,6 @@ export class Home {
 
   protected dismissStale(): void {
     this.staleDismissed.set(true);
-  }
-
-  /** A title was asked for: the Library looks for it. */
-  protected search(title: string): void {
-    void this.router.navigate(['/library'], {
-      queryParams: title ? { [LIBRARY_SEARCH]: title } : {},
-    });
   }
 
   protected drawAgain(): void {

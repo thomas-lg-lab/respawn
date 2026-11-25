@@ -1,27 +1,44 @@
 @layer components {
+  /* The box is the host: the icon, what is typed, then what the screen put inside. */
   :host {
-    position: relative;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: var(--rs-size-touch);
+    padding-inline: 0.875rem 0.375rem;
+    border: 1px solid var(--rs-control-line);
+    border-radius: var(--rs-radius-thumb);
+    background-color: var(--rs-surface);
+    color: var(--rs-muted);
+    transition-property: border-color, box-shadow;
+    transition-duration: var(--rs-duration-hover);
+  }
+
+  /* The focus is the box's to show: its line takes the focus colour and thickens. */
+  :host(:focus-within) {
+    border-color: var(--rs-focus);
+    box-shadow: 0 0 0 1px var(--rs-focus);
   }
 
   .icon {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0.875rem;
+    flex-shrink: 0;
     width: var(--rs-size-icon);
     height: var(--rs-size-icon);
-    margin-block: auto;
-    color: var(--rs-muted);
-    pointer-events: none;
   }
 
   input {
-    width: 100%;
-    height: var(--rs-size-touch);
-    padding-inline: 2.625rem 0.875rem;
-    border: 1px solid var(--rs-control-line);
-    border-radius: var(--rs-radius-pill);
-    background-color: var(--rs-surface);
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    background-color: transparent;
     color: var(--rs-text);
+  }
+  input:focus-visible {
+    outline: none;
+  }
+  /* The browser's own way to clear: the screen brings its own, or none. */
+  input::-webkit-search-cancel-button {
+    display: none;
   }
 }

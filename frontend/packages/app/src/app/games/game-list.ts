@@ -46,6 +46,69 @@ export function matching(games: readonly LibraryGame[], typed: string): LibraryG
   return needle ? games.filter((game) => plain(game.name ?? '').includes(needle)) : [...games];
 }
 
+/** Whether a title holds what was typed at the start of one of its words. */
+function startsWord(title: string, needle: string): boolean {
+  for (let at = title.indexOf(needle); at !== -1; at = title.indexOf(needle, at + 1)) {
+    if (at === 0 || !/[\p{L}\p{N}]/u.test(title.charAt(at - 1))) return true;
+  }
+  return false;
+}
+
+/**
+ * The games a search suggests for what was typed, the closest first: a title that starts with
+ * it, then one a word of which does, then any that holds it; among those as close, the most
+ * played first. "he" is more likely the start of a title than the end of "The".
+ */
+export function suggested(
+  games: readonly LibraryGame[],
+  typed: string,
+  language: string,
+): LibraryGame[] {
+  const needle = plain(typed.trim());
+  const distance = (game: LibraryGame) => {
+    const title = plain(game.name ?? '');
+    return title.startsWith(needle) ? 0 : startsWord(title, needle) ? 1 : 2;
+  };
+  // The sort keeps the order of what it cannot tell apart: the playtime's, then the title's.
+  return sorted(matching(games, typed), 'playtime', language).sort(
+    (a, b) => distance(a) - distance(b),
+  );
+}
+
+/** The title the Library is searched for, written on its address: the header's search leads there. */
+export const LIBRARY_SEARCH = 'q';
+
+/** A title cut around what was typed, to show where it was found. */
+export interface FoundTitle {
+  readonly before: string;
+  readonly found: string;
+  readonly after: string;
+}
+
+/**
+ * Where a title holds what was typed, found the way `matching` finds it: whatever the case
+ * and the accents. `null` when it does not, or when nothing was typed.
+ */
+export function foundIn(title: string, typed: string): FoundTitle | null {
+  const needle = plain(typed.trim());
+  if (!needle) return null;
+
+  for (let start = 0; start < title.length; start++) {
+    // An accent written apart belongs to the letter before it: a find never starts on one.
+    if (!plain(title.charAt(start)) || !plain(title.slice(start)).startsWith(needle)) continue;
+
+    let end = start + 1;
+    while (plain(title.slice(start, end)).length < needle.length) end++;
+    while (end < title.length && !plain(title.charAt(end))) end++;
+    return {
+      before: title.slice(0, start),
+      found: title.slice(start, end),
+      after: title.slice(end),
+    };
+  }
+  return null;
+}
+
 /** The games a filter keeps. */
 export function kept(games: readonly LibraryGame[], filter: LibraryFilter): LibraryGame[] {
   return games.filter(KEEPS[filter]);
