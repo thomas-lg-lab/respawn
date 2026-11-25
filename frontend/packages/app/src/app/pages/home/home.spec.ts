@@ -6,10 +6,12 @@ import {
   type LibraryGame,
   type LibraryHistory,
   type LibraryStats,
+  type LibraryYears,
   type LinkedAccount,
   type SyncRun,
   TEST_LIBRARY_HISTORY as NO_HISTORY,
   TEST_LIBRARY_STATS as STATS,
+  TEST_LIBRARY_YEARS as NO_YEARS,
   TEST_LINKED_ACCOUNT,
   TEST_SYNC_RUN,
 } from '@respawn/data';
@@ -50,6 +52,7 @@ function neverRead(last: Partial<SyncRun> | null, linkedAt = new Date()): Linked
 const SYNC = `/linked-accounts/${TEST_LINKED_ACCOUNT.id}/sync`;
 const GAMES = '/library?sort=name&offset=0&limit=500';
 const HISTORY = '/library/history';
+const YEARS = '/library/years';
 
 let made = 0;
 
@@ -109,17 +112,19 @@ function played(): LibraryGame[] {
 }
 
 /**
- * The library as the home asks for it once an account was read: its figures, its games and
- * its history.
+ * The library as the home asks for it once an account was read: its figures, its games, its
+ * history and its years.
  */
 async function library(
   server: Server,
   stats: LibraryStats,
   games: LibraryGame[] = [],
   history: LibraryHistory = NO_HISTORY,
+  years: LibraryYears = NO_YEARS,
 ): Promise<void> {
   await server.answer('/library/stats', stats);
   await server.answer(HISTORY, history);
+  await server.answer(YEARS, years);
   await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
 }
 
@@ -131,6 +136,7 @@ describe('Home', () => {
     stats: LibraryStats | null = STATS,
     games: LibraryGame[] = [],
     history: LibraryHistory = NO_HISTORY,
+    years: LibraryYears = NO_YEARS,
   ) {
     configureApp('fr');
     const harness = await RouterTestingHarness.create();
@@ -139,7 +145,7 @@ describe('Home', () => {
     await server.answer('/me', ACCOUNT);
     await server.answer('/linked-accounts', { accounts });
     const read = accounts.some((each) => each.sync.last_succeeded_at);
-    if (read && stats) await library(server, stats, games, history);
+    if (read && stats) await library(server, stats, games, history, years);
     await arrived;
     await harness.fixture.whenStable();
     return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
@@ -367,6 +373,7 @@ describe('Home', () => {
     await server.home([account()]);
     await server.refuse('/library/stats', 503, 'database_unavailable');
     await server.answer(HISTORY, NO_HISTORY);
+    await server.answer(YEARS, NO_YEARS);
     await server.answer(GAMES, { total: 0, offset: 0, limit: 500, games: [] });
     await arrived;
     await harness.fixture.whenStable();
@@ -715,6 +722,7 @@ describe('Home', () => {
       await server.home([account()]);
       await server.answer('/library/stats', STATS);
       await server.answer(HISTORY, NO_HISTORY);
+      await server.answer(YEARS, NO_YEARS);
       await server.refuse(GAMES, 503, 'database_unavailable');
       await arrived;
       await harness.fixture.whenStable();
@@ -759,6 +767,30 @@ describe('Home', () => {
         each.textContent.replace(/\s+/g, ' ').trim(),
       );
 
+    /** The years as the API counts them from the two days of readings below: 2026, about 4 h. */
+    const synced = (): LibraryYears => ({
+      years: [
+        {
+          year: 2026,
+          seconds: 3 * 3600 + 55 * 60,
+          source: 'readings',
+          first_day: '2026-11-18',
+          last_day: '2026-11-28',
+          whole: false,
+        },
+      ],
+    });
+
+    /** A year of Steam's Year in Review: the whole of it. */
+    const reviewed = (year: number, seconds: number): LibraryYears['years'][number] => ({
+      year,
+      seconds,
+      source: 'review',
+      first_day: `${year}-01-01`,
+      last_day: `${year}-12-31`,
+      whole: true,
+    });
+
     /** Two days of readings over the small library, and a game that left it since. */
     function readings(games: LibraryGame[]): LibraryHistory {
       const id = (name: string) => games.find((each) => each.name === name)!.game_id;
@@ -781,15 +813,101 @@ describe('Home', () => {
 
     it('shows the time played per year, and says since when it is counted', async () => {
       const games = played();
-      const { screen } = await open([account()], '/', STATS, games, readings(games));
+      const { screen } = await open([account()], '/', STATS, games, readings(games), synced());
 
       expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
       expect(text(screen, '[data-year="2026"] .label')).toBe('2026');
       // The year of the first sync is not whole.
       expect(screen.querySelector('[data-year="2026"]')?.hasAttribute('data-open')).toBe(true);
       expect(text(screen, '[data-years-since]')).toBe(
-        'Compté jour par jour depuis le 18 nov. 2026, la première synchronisation. Une année en pointillés n’est pas entière.',
+        '2026 : compté jour par jour à chaque synchronisation, depuis le 18 nov. 2026.',
       );
+      expect(text(screen, '[data-years-open]')).toBe('Une année en pointillés n’est pas entière.');
+      expect(screen.querySelector('[data-years-reviewed]')).toBeNull();
+    });
+
+    it('draws the years of Steam’s Year in Review whole, before those of the syncs', async () => {
+      const games = played();
+      const { screen } = await open([account()], '/', STATS, games, readings(games), {
+        years: [reviewed(2024, 300 * 3600), reviewed(2025, 0), ...synced().years],
+      });
+
+      expect(all(screen, '[data-years] .label')).toEqual(['2024', '2025', '2026']);
+      expect(text(screen, '[data-year="2024"] .said')).toBe('300 h');
+      expect(screen.querySelector('[data-year="2024"]')?.hasAttribute('data-open')).toBe(false);
+      expect(screen.querySelector('[data-year="2025"]')?.hasAttribute('data-open')).toBe(false);
+      expect(text(screen, '[data-years-reviewed]')).toBe(
+        '2024–2025 : d’après la rétrospective annuelle de Steam, mois par mois.',
+      );
+      expect(text(screen, '[data-years-since]')).toBe(
+        '2026 : compté jour par jour à chaque synchronisation, depuis le 18 nov. 2026.',
+      );
+    });
+
+    it('names in each caption only the years it speaks of', async () => {
+      const games = played();
+      // 2023 has no review for every account and comes before the first sync: it is not drawn.
+      // 2027 is reviewed, between two years of the syncs.
+      const { screen } = await open([account()], '/', STATS, games, readings(games), {
+        years: [
+          reviewed(2022, 3600),
+          reviewed(2024, 7200),
+          ...synced().years,
+          reviewed(2027, 3600),
+          { ...synced().years[0]!, year: 2028, first_day: '2028-01-01', last_day: '2028-03-01' },
+        ],
+      });
+
+      expect(all(screen, '[data-years] .label')).toEqual(['2022', '2024', '2026', '2027', '2028']);
+      expect(text(screen, '[data-years-reviewed]')).toBe(
+        '2022, 2024, 2027 : d’après la rétrospective annuelle de Steam, mois par mois.',
+      );
+      expect(text(screen, '[data-years-since]')).toBe(
+        '2026, 2028 : compté jour par jour à chaque synchronisation, depuis le 18 nov. 2026.',
+      );
+    });
+
+    it('says nothing of the syncs or of a dashed year when every year is reviewed', async () => {
+      const games = played();
+      const { screen } = await open([account()], '/', STATS, games, readings(games), {
+        years: [reviewed(2025, 3600)],
+      });
+
+      expect(text(screen, '[data-years-reviewed]')).toBe(
+        '2025 : d’après la rétrospective annuelle de Steam, mois par mois.',
+      );
+      expect(screen.querySelector('[data-years-since]')).toBeNull();
+      expect(screen.querySelector('[data-years-open]')).toBeNull();
+    });
+
+    it('says that the years could not be read, keeps the activity, and asks again', async () => {
+      configureApp('fr');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      const games = played();
+      await server.answer('/library/stats', STATS);
+      await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
+      await server.answer(HISTORY, readings(games));
+      await server.refuse(YEARS, 503, 'database_unavailable');
+      await arrived;
+      await harness.fixture.whenStable();
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      expect(text(screen, '[data-history-refused]')).toBe(
+        'La base de données ne répond pas. Réessayez dans un instant.',
+      );
+      expect(screen.querySelector('[data-years]')).toBeNull();
+      expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+
+      screen.querySelector<HTMLButtonElement>('[data-history-retry]')!.click();
+      await server.answer(YEARS, synced());
+      await harness.fixture.whenStable();
+
+      expect(screen.querySelector('[data-history-refused]')).toBeNull();
+      expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
     });
 
     it('lists the latest days played, the latest first, each game with its time', async () => {
@@ -838,6 +956,7 @@ describe('Home', () => {
       await server.answer('/library/stats', STATS);
       await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
       await server.refuse(HISTORY, 503, 'database_unavailable');
+      await server.answer(YEARS, synced());
       await arrived;
       await harness.fixture.whenStable();
       const screen = harness.fixture.nativeElement as HTMLElement;
@@ -847,12 +966,44 @@ describe('Home', () => {
       );
       expect(text(screen, '[data-ranking] h2')).toBe('Où est passé le temps');
       expect(screen.querySelector('[data-activity]')).toBeNull();
+      // The years do not depend on the history: they are drawn all the same.
+      expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
 
       screen.querySelector<HTMLButtonElement>('[data-history-retry]')!.click();
       await server.answer(HISTORY, readings(games));
       await harness.fixture.whenStable();
 
       expect(screen.querySelector('[data-history-refused]')).toBeNull();
+      expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+    });
+
+    it('asks both again when the history and the years could not be read', async () => {
+      configureApp('fr');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      const games = played();
+      await server.answer('/library/stats', STATS);
+      await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
+      await server.refuse(HISTORY, 503, 'database_unavailable');
+      await server.refuse(YEARS, 503, 'database_unavailable');
+      await arrived;
+      await harness.fixture.whenStable();
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      expect(screen.querySelectorAll('[data-history-refused]')).toHaveLength(1);
+      expect(screen.querySelector('[data-years]')).toBeNull();
+      expect(screen.querySelector('[data-activity]')).toBeNull();
+
+      screen.querySelector<HTMLButtonElement>('[data-history-retry]')!.click();
+      await server.answer(HISTORY, readings(games));
+      await server.answer(YEARS, synced());
+      await harness.fixture.whenStable();
+
+      expect(screen.querySelector('[data-history-refused]')).toBeNull();
+      expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
       expect(all(screen, '[data-activity] h3')).toHaveLength(2);
     });
 
@@ -864,10 +1015,11 @@ describe('Home', () => {
       screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
       (await server.request(SYNC)).flush(succeeded());
       await server.home([account()]);
-      await library(server, STATS, games, readings(games));
+      await library(server, STATS, games, readings(games), synced());
       await harness.fixture.whenStable();
 
       expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+      expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
     });
 
     it('shows the blocks made of the games while the history is awaited', async () => {
@@ -881,6 +1033,7 @@ describe('Home', () => {
       await server.answer('/library/stats', STATS);
       await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
       const history = await server.request(HISTORY);
+      const years = await server.request(YEARS);
       await arrived;
       const screen = harness.fixture.nativeElement as HTMLElement;
 
@@ -890,12 +1043,15 @@ describe('Home', () => {
       );
       expect(screen.querySelector('[data-picks]')).not.toBeNull();
       expect(screen.querySelector('[data-history-awaited]')).not.toBeNull();
+      expect(screen.querySelector('[data-years-awaited]')).not.toBeNull();
       expect(screen.querySelector('[data-activity]')).toBeNull();
 
       history.flush(readings(games));
+      years.flush(synced());
       await harness.fixture.whenStable();
 
       expect(screen.querySelector('[data-history-awaited]')).toBeNull();
+      expect(screen.querySelector('[data-years-awaited]')).toBeNull();
       expect(screen.querySelector('[data-years]')).not.toBeNull();
       expect(all(screen, '[data-activity] h3')).toHaveLength(2);
     });
@@ -914,6 +1070,7 @@ describe('Home', () => {
       await server.home([account()]);
       await server.answer('/library/stats', STATS);
       await server.answer(HISTORY, told);
+      await server.answer(YEARS, NO_YEARS);
       const asked = await server.request(GAMES);
 
       // Not `whenStable`: the games are still awaited, on purpose.
@@ -936,15 +1093,21 @@ describe('Home', () => {
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       const games = played();
-      await library(server, STATS, games, readings(games));
+      await library(server, STATS, games, readings(games), {
+        years: [reviewed(2025, 3600), ...synced().years],
+      });
       await arrived;
       await harness.fixture.whenStable();
       const screen = harness.fixture.nativeElement as HTMLElement;
 
       expect(text(screen, '[data-years] h2')).toBe('Playtime per year');
-      expect(text(screen, '[data-years-since]')).toBe(
-        'Counted day by day since Nov 18, 2026, the first sync. A dashed year is not whole.',
+      expect(text(screen, '[data-years-reviewed]')).toBe(
+        '2025: from Steam’s Year in Review, month by month.',
       );
+      expect(text(screen, '[data-years-since]')).toBe(
+        '2026: counted day by day at each sync, from Nov 18, 2026.',
+      );
+      expect(text(screen, '[data-years-open]')).toBe('A dashed year is not whole.');
       expect(text(screen, '[data-activity] h2')).toBe('Activity');
       expect(all(screen, '[data-activity] h3')[0]).toBe('Saturday, November 21');
       expect(all(screen, '[data-day="2026-11-21"] [data-total]')).toEqual(['142 h in all']);

@@ -1,7 +1,13 @@
 import { Service, inject } from '@angular/core';
 import { queryOptions } from '@tanstack/angular-query';
 import { Api } from '../api/api';
-import type { Library, LibraryGame, LibraryHistory, LibraryStats } from '../models/models';
+import type {
+  Library,
+  LibraryGame,
+  LibraryHistory,
+  LibraryStats,
+  LibraryYears,
+} from '../models/models';
 
 /** The keys of what the cache holds about the library: all of it under `['library']`. */
 export const libraryKeys = {
@@ -9,13 +15,14 @@ export const libraryKeys = {
   games: ['library', 'games'] as const,
   stats: ['library', 'stats'] as const,
   history: ['library', 'history'] as const,
+  years: ['library', 'years'] as const,
 };
 
 /** The most games the API gives in one answer. */
 const PAGE = 500;
 
 /**
- * The server state of the library: its games, its figures and its history. All change only when a sync
+ * The server state of the library: its games, its figures, its history and its years. All change only when a sync
  * ends, and whatever learns that one did marks them stale (`libraryKeys.everything`); they
  * are not asked again on their own in between.
  */
@@ -64,6 +71,19 @@ export class LibraryQueries {
     return queryOptions({
       queryKey: libraryKeys.history,
       queryFn: () => this.api.get<LibraryHistory>('/library/history'),
+      staleTime: Infinity,
+      retry: false,
+    });
+  }
+
+  /**
+   * What was played year by year: from Steam's Year in Review for the years it covers, and
+   * from the syncs for the others. A review imported meanwhile shows at the next sync.
+   */
+  years() {
+    return queryOptions({
+      queryKey: libraryKeys.years,
+      queryFn: () => this.api.get<LibraryYears>('/library/years'),
       staleTime: Infinity,
       retry: false,
     });

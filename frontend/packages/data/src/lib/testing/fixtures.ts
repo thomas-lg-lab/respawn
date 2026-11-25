@@ -1,6 +1,7 @@
 import type {
   Account,
   LibraryHistory,
+  LibraryYears,
   LibraryStats,
   LinkedAccount,
   SyncRun,
@@ -54,4 +55,18 @@ export const TEST_LIBRARY_STATS: LibraryStats = {
 export const TEST_LIBRARY_HISTORY: LibraryHistory = {
   tracking_since: TEST_LIBRARY_STATS.tracking_since,
   days: [],
+};
+
+/** Years that have nothing yet: the library was first read, and no review was imported. */
+export const TEST_LIBRARY_YEARS: LibraryYears = {
+  years: [
+    {
+      year: 2026,
+      seconds: 0,
+      source: 'readings',
+      first_day: '2026-11-18',
+      last_day: '2026-11-18',
+      whole: false,
+    },
+  ],
 };

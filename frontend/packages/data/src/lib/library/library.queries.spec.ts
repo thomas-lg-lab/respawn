@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query';
 import type { LibraryGame } from '../models/models';
-import { TEST_LIBRARY_HISTORY, TEST_LIBRARY_STATS } from '../testing/fixtures';
+import { TEST_LIBRARY_HISTORY, TEST_LIBRARY_STATS, TEST_LIBRARY_YEARS } from '../testing/fixtures';
 import { LibraryQueries, libraryKeys } from './library.queries';
 
 function game(index: number): LibraryGame {
@@ -106,5 +106,16 @@ describe('LibraryQueries', () => {
 
   it('holds the history with the rest of the library, so a sync that ends marks it stale', () => {
     expect(queries.history().queryKey.slice(0, 1)).toEqual([...libraryKeys.everything]);
+  });
+
+  it('reads the years', async () => {
+    const years = client.fetchQuery(queries.years());
+    (await request('/api/v1/library/years')).flush(TEST_LIBRARY_YEARS);
+
+    expect(await years).toEqual(TEST_LIBRARY_YEARS);
+  });
+
+  it('holds the years with the rest of the library, so a sync that ends marks them stale', () => {
+    expect(queries.years().queryKey.slice(0, 1)).toEqual([...libraryKeys.everything]);
   });
 });
