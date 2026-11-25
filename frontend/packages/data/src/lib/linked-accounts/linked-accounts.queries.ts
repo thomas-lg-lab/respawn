@@ -51,7 +51,9 @@ export class LinkedAccountQueries {
   /**
    * The linked accounts, each with the state of its sync. Asked again every few seconds
    * while a sync is awaited (`awaitsSync`: never for ever), and that is where the end of one
-   * is learnt: the library it read is then stale.
+   * is learnt: the library it read is then stale. The end of a sync is a change from the
+   * answer before, so something must keep asking for as long as a library is shown: the
+   * shell does, on every screen.
    */
   list() {
     return queryOptions({

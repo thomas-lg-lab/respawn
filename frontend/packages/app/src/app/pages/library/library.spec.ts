@@ -1,5 +1,7 @@
+import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { LibraryGame } from '@respawn/data';
+import { type LibraryGame, TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data';
+import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, api, button, configureApp, type } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
@@ -52,6 +54,8 @@ describe('Library', () => {
     const arrived = harness.navigateByUrl('/library');
     await server.answer('/me', ACCOUNT);
     await arrived;
+    // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.
+    await server.answer('/linked-accounts', { accounts: [TEST_LINKED_ACCOUNT] });
     // Left unanswered, the request keeps the app busy: the spec answers it, then waits.
     if (games) {
       await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
@@ -80,6 +84,22 @@ describe('Library', () => {
     expect(names(screen)).toEqual(['Portal 2', 'Hades', 'Celeste', 'Pokémon']);
     expect(text(screen, '[data-shown]')).toBe('4 jeux affichés sur 4');
     expect(screen.querySelector('[data-more]')).toBeNull();
+  });
+
+  it('reads the games again once a sync ended, learnt on this screen', async () => {
+    const { harness, server, screen } = await open();
+
+    // The window is back in front, say: the accounts are asked again, and a sync ended since.
+    void TestBed.inject(QueryClient).invalidateQueries({ queryKey: ['linked-accounts'] });
+    const last = { ...TEST_SYNC_RUN, id: '6a1d2e3f-4b5c-4d6e-8f70-1a2b3c4d5e6f' };
+    await server.answer('/linked-accounts', {
+      accounts: [{ ...TEST_LINKED_ACCOUNT, sync: { ...TEST_LINKED_ACCOUNT.sync, last } }],
+    });
+    const games = [...library(), game('Outer Wilds')];
+    await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toContain('Outer Wilds');
   });
 
   it('says a playtime, the last two weeks and the last session of a game', async () => {

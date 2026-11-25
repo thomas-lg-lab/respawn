@@ -12,6 +12,7 @@ public sealed class YearReviewService(
     ICatalogue catalogue,
     IYearReviewStore reviews,
     ILibraryStore library,
+    ISyncRunStore runs,
     IEnumerable<IYearReviewSource> sources,
     YearInReviewGate gate,
     TimeProvider clock) : IYearReviewService
@@ -26,10 +27,15 @@ public sealed class YearReviewService(
         }
 
         var readable = sources.Select(source => source.Source).ToHashSet(StringComparer.Ordinal);
+        var accounts = await linkedAccounts.ListAllAsync(ct);
+        var synced = await runs.FindLatestAsync([.. accounts.Select(account => account.Id)], ct);
         var due = new List<LinkedAccount>();
-        foreach (var account in await linkedAccounts.ListAllAsync(ct))
+        foreach (var account in accounts)
         {
-            if (!readable.Contains(account.Source) || gate.TriedAt(account.Id) > now - YearInReviewSchedule.RetryAfter)
+            // Not before its first sync ended: that is what says whether the store shows this account.
+            if (!readable.Contains(account.Source)
+                || synced.GetValueOrDefault(account.Id)?.Last is null
+                || gate.TriedAt(account.Id) > now - YearInReviewSchedule.RetryAfter)
             {
                 continue;
             }
@@ -76,6 +82,12 @@ public sealed class YearReviewService(
                 return new YearImport(imported, notThere, SourceError.NotConfigured, "the key given on this account cannot be read: " + ex.Message);
             }
 
+            // A store that shows nothing of an account answers no review either, as it answers no
+            // library: its word that a year has none is taken only when the last sync, made with the
+            // same access, read a library.
+            var shown = await runs.FindLatestAsync(account.Id, ct) is { Outcome: SyncOutcome.Succeeded } last
+                && last.OwnCredential == credential is not null;
+
             foreach (var year in YearInReviewSchedule.Years(now).Where(year => !kept.Contains(year)))
             {
                 YearReading reading;
@@ -94,14 +106,15 @@ public sealed class YearReviewService(
                     return new YearImport(imported, notThere, SourceError.Unreadable, "the connector does not take this account: " + ex.Message);
                 }
 
-                if (!reading.Exists && now < YearInReviewSchedule.Settled(year))
+                if (!reading.Exists && (!shown || now < YearInReviewSchedule.Settled(year)))
                 {
                     notThere.Add(year);
                     continue;
                 }
 
-                // A review, or none of a year that is settled: nothing was played that year on this
-                // account, which the other accounts of the owner must not wait for.
+                // A review, or none of a settled year of an account the store shows: nothing was
+                // played that year on this account, which the other accounts of the owner must not
+                // wait for.
 
                 try
                 {
@@ -136,11 +149,17 @@ public sealed class YearReviewService(
             return [];
         }
 
-        // A year is the reviews' when every linked account has one of it: otherwise part of the time
-        // would be counted from a review and part from readings, which do not count the same games.
+        var entries = await library.ListAsync(ownerId, ct);
+        DateOnly? firstReading = entries.Count > 0 ? DateOnly.FromDateTime(entries.Min(entry => entry.FirstSeenAt).UtcDateTime) : null;
+
+        // A year the readings reach is the reviews' when every linked account has one of it: otherwise
+        // part of the time would be counted from a review and part from readings, which do not count
+        // the same games. A year before the first reading has the reviews only: it is counted from
+        // the accounts that have one, so that an account whose reviews cannot be read hides nothing
+        // of the others.
         var kept = (await reviews.ListOwnerYearsAsync(ownerId, ct)).ToLookup(pair => pair.Year, pair => pair.LinkedAccountId);
         var reviewed = kept
-            .Where(year => accounts.All(account => year.Contains(account.Id)))
+            .Where(year => firstReading is not { } reached || year.Key < reached.Year || accounts.All(account => year.Contains(account.Id)))
             .Select(year => year.Key)
             .ToHashSet();
 
@@ -163,10 +182,8 @@ public sealed class YearReviewService(
         }
 
         // The readings, from the first one to today, for the years no review covers.
-        var entries = await library.ListAsync(ownerId, ct);
-        if (entries.Count > 0)
+        if (firstReading is { } since)
         {
-            var since = DateOnly.FromDateTime(entries.Min(entry => entry.FirstSeenAt).UtcDateTime);
             var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
             var played = (await library.ListPlayedAsync(ownerId, since, today, ct))
                 .ToLookup(day => day.Date.Year, day => day.Playtime);
