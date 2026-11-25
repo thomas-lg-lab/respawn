@@ -3,12 +3,13 @@ import { kept, sorted } from '@app/games/game-list';
 import { type Recency, playedRecency } from '@app/games/time-map';
 
 /**
- * What the Time tab draws: the most played games, each a tile as large as its playtime, and
- * the other launched games together under them, so that the whole of the time is there
- * without the long tail taking most of the drawing.
+ * What the time map draws, on the Time tab and in the home's preview alike: the most played
+ * games, each a tile as large as its playtime, and the other launched games together under
+ * them, so that the whole of the time is there without the long tail taking most of the
+ * drawing. The preview is this map at a glance: the same tiles, smaller and unnamed.
  */
 
-/** How many games the Time tab names: more than the home's preview, which has less room. */
+/** How many games the map has a tile for. */
 export const NAMED = 30;
 
 /** One of the most played games, coloured by its last session. */

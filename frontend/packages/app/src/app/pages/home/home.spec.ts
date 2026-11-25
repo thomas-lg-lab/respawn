@@ -560,6 +560,9 @@ describe('Home', () => {
     it('draws the time map of the most played games, coloured by their last session', async () => {
       const { screen } = await open([account()], { games: played() });
 
+      // Every launched game has a tile: no band of others.
+      expect(screen.querySelector('[data-time-map] [data-others]')).toBeNull();
+
       const tiles = [...screen.querySelectorAll('[data-time-map] [data-game]')];
       // Elden Ring and Portal 2 were played these two weeks, Hades over a year ago.
       expect(tiles.map((tile) => tile.getAttribute('data-recency')).sort()).toEqual([
@@ -570,7 +573,26 @@ describe('Home', () => {
       expect(text(screen, '[data-time-map] h2')).toBe('La carte du temps');
       expect(screen.querySelector('[data-time-link]')?.getAttribute('href')).toBe('/time');
       expect(text(screen, '[data-time-map] p')).toBe(
-        '3 jeux, les plus joués et le plus joué de chaque couleur : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
+        'Les 3 jeux les plus joués : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
+      );
+    });
+
+    it('draws the map of the Time tab: its thirty games in its order, the others in a band', async () => {
+      const games = Array.from({ length: 32 }, (_, rank) =>
+        game(`Jeu ${rank + 1}`, { playtime_seconds: (40 - rank) * 3600 }),
+      );
+      const { screen } = await open([account()], { games });
+
+      const tiles = [...screen.querySelectorAll('[data-time-map] [data-game]')];
+      expect(tiles.map((tile) => tile.getAttribute('data-game'))).toEqual(
+        games.slice(0, 30).map((each) => each.game_id),
+      );
+      // The most played at the top left.
+      expect((tiles[0] as HTMLElement).style.left).toBe('0%');
+      expect((tiles[0] as HTMLElement).style.top).toBe('0%');
+      expect(screen.querySelector('[data-time-map] [data-others]')).not.toBeNull();
+      expect(text(screen, '[data-time-map] p')).toBe(
+        'Les 30 jeux les plus joués, les autres dans la bande du bas : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
       );
     });
 

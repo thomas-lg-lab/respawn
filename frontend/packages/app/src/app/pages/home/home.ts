@@ -16,6 +16,7 @@ import { Banner, Button, Label, Skeleton } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
+import { timeTiles } from '@app/games/time-tiles';
 import { LanguageSetting } from '@app/i18n/language';
 import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
 import { Activity } from './components/activity';
@@ -40,7 +41,6 @@ import {
   neverLaunched,
   playedRecently,
   ranking,
-  timeMap,
 } from './library-blocks';
 import {
   type SyncView,
@@ -197,9 +197,9 @@ export class Home {
     ranking(this.games.data() ?? [], this.language.current()),
   );
 
-  /** The most played games, as the time map draws them; none under two launched games. */
+  /** The time map, as the Time tab draws it; none under two launched games. */
   protected readonly map = computed(() =>
-    timeMap(this.games.data() ?? [], this.language.current(), this.now()),
+    timeTiles(this.games.data() ?? [], this.language.current(), this.now()),
   );
 
   /** The games a draw is made among. */

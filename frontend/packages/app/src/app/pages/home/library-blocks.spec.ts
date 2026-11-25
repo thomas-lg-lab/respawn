@@ -6,7 +6,6 @@ import {
   neverLaunched,
   playedRecently,
   ranking,
-  timeMap,
 } from './library-blocks';
 
 function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
@@ -138,80 +137,6 @@ describe('the blocks of the home', () => {
 
   it('names every launched game when there are few, with nothing left to sum up', () => {
     expect(ranking(games, 'en').others).toEqual({ count: 0, seconds: 0 });
-  });
-
-  it('maps the most played games, each with its playtime and coloured by its last session', () => {
-    const now = Date.parse('2026-11-23T12:00:00Z');
-    const undated = game('Undated', { playtime_seconds: 7200 });
-
-    const mapped = timeMap([...games, undated], 'en', now);
-
-    // Never launched or unknown: not on the map. The most played first.
-    expect(mapped.map(({ id, seconds }) => ({ id, seconds }))).toEqual([
-      { id: 'id-Hades', seconds: 360000 },
-      { id: 'id-Portal 2', seconds: 7200 },
-      { id: 'id-Undated', seconds: 7200 },
-      { id: 'id-Tunic', seconds: 600 },
-    ]);
-    // Two weeks at most, then three months, a year, and older; older too when no store says.
-    const byId = new Map(mapped.map((each) => [each.id, each.recency]));
-    expect(byId.get('id-Hades')).toBe(1);
-    expect(byId.get('id-Portal 2')).toBe(1);
-    expect(byId.get('id-Tunic')).toBe(4);
-    expect(byId.get('id-Undated')).toBe(4);
-  });
-
-  it('maps among the latest a game of the two weeks whose last session no store dates', () => {
-    const lately = game('Lately', { playtime_seconds: 36000, recent_playtime_seconds: 7200 });
-
-    const mapped = timeMap([hades, lately], 'en', Date.now());
-
-    expect(mapped.find((each) => each.id === 'id-Lately')?.recency).toBe(1);
-  });
-
-  it('maps thirteen games at most, the most played', () => {
-    const many = Array.from({ length: 15 }, (_, index) =>
-      game(`G${String(index).padStart(2, '0')}`, { playtime_seconds: 1000 + index }),
-    );
-
-    const ids = timeMap(many, 'en', Date.now()).map((tile) => tile.id);
-
-    expect(ids).toHaveLength(13);
-    expect(ids).not.toContain('id-G00');
-    expect(ids).not.toContain('id-G01');
-  });
-
-  it('maps the most played game of each colour, in place of the least played', () => {
-    const now = Date.parse('2026-11-23T12:00:00Z');
-    const days = (count: number) => new Date(now - count * 24 * 3600 * 1000).toISOString();
-    // Fourteen old games played long, then three played lately and little.
-    const old = Array.from({ length: 14 }, (_, index) =>
-      game(`Old${String(index).padStart(2, '0')}`, {
-        playtime_seconds: 100 * 3600 - index,
-        last_played_at: days(800),
-      }),
-    );
-    const week = game('Week', { playtime_seconds: 3 * 3600, last_played_at: days(3) });
-    const weekLess = game('WeekLess', { playtime_seconds: 3600, last_played_at: days(2) });
-    const month = game('Month', { playtime_seconds: 2 * 3600, last_played_at: days(40) });
-
-    const mapped = timeMap([...old, week, weekLess, month], 'en', now);
-
-    expect(mapped).toHaveLength(13);
-    expect(new Set(mapped.map((tile) => tile.recency))).toEqual(new Set([1, 2, 4]));
-    // The most played of each colour, not every game of it, and still the most played first.
-    expect(mapped.map((tile) => tile.id)).toContain('id-Week');
-    expect(mapped.map((tile) => tile.id)).not.toContain('id-WeekLess');
-    expect(mapped.at(-2)?.id).toBe('id-Week');
-    expect(mapped.at(-1)?.id).toBe('id-Month');
-    // The two least played of the old ones made the room.
-    expect(mapped.map((tile) => tile.id)).not.toContain('id-Old13');
-    expect(mapped.map((tile) => tile.id)).not.toContain('id-Old12');
-  });
-
-  it('maps nothing under two launched games', () => {
-    expect(timeMap([celeste, hades, unknown], 'en', Date.now())).toEqual([]);
-    expect(timeMap([], 'en', Date.now())).toEqual([]);
   });
 
   it('draws among the games never launched that a store still lists', () => {

@@ -146,10 +146,10 @@
             }
           </div>
         }
-        @if (awaited || map().length || picks().length || history.data()) {
+        @if (awaited || map() || picks().length || history.data()) {
           <div class="grid grid-cols-1 items-start gap-4 wide:grid-cols-2">
-            @if (map().length) {
-              <rs-time-map-preview class="last:odd:wide:col-span-2" [games]="map()" />
+            @if (map(); as drawn) {
+              <rs-time-map-preview class="last:odd:wide:col-span-2" [map]="drawn" />
             }
             @if (picks().length) {
               <rs-random-picks

@@ -248,7 +248,8 @@
     },
     "timeMap": {
       "title": "La carte du temps",
-      "caption": "{{ count }} jeux, les plus joués et le plus joué de chaque couleur : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente."
+      "caption": "Les {{ count }} jeux les plus joués : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.",
+      "captionOthers": "Les {{ count }} jeux les plus joués, les autres dans la bande du bas : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente."
     },
     "picks": {
       "title": "Jamais lancés, au hasard",
