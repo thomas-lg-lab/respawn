@@ -8,7 +8,7 @@ import { failureKey } from '@app/errors/failure-message';
 import { formatAgo, formatCount, isOne, saidPlaytime } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
 import { TimeMap } from './components/time-map';
-import { type TimeTile, timeTiles } from './time-tiles';
+import { type TimeTile, timeTiles } from '@app/games/time-tiles';
 
 const RECENCIES = [1, 2, 3, 4] as const;
 

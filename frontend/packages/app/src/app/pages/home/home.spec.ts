@@ -570,7 +570,25 @@ describe('Home', () => {
       expect(text(screen, '[data-time-map] h2')).toBe('La carte du temps');
       expect(screen.querySelector('[data-time-link]')?.getAttribute('href')).toBe('/time');
       expect(text(screen, '[data-time-map] p')).toBe(
-        '3 jeux, les plus joués et le plus joué de chaque couleur : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
+        'Les 3 jeux les plus joués : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
+      );
+    });
+
+    it('draws the tiles of the Time tab: its thirty games, in its order', async () => {
+      const games = Array.from({ length: 32 }, (_, rank) =>
+        game(`Jeu ${rank + 1}`, { playtime_seconds: (40 - rank) * 3600 }),
+      );
+      const { screen } = await open([account()], { games });
+
+      const tiles = [...screen.querySelectorAll('[data-time-map] [data-game]')];
+      expect(tiles.map((tile) => tile.getAttribute('data-game'))).toEqual(
+        games.slice(0, 30).map((each) => each.game_id),
+      );
+      // The most played at the top left.
+      expect((tiles[0] as HTMLElement).style.left).toBe('0%');
+      expect((tiles[0] as HTMLElement).style.top).toBe('0%');
+      expect(text(screen, '[data-time-map] p')).toBe(
+        'Les 30 jeux les plus joués : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
       );
     });
 

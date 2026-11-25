@@ -13,7 +13,7 @@ import {
 import { TranslocoDirective } from '@jsverse/transloco';
 import { formatCount, isOne, saidPlaytime } from '@app/format/format';
 import { treemap } from '@app/games/time-map';
-import type { GameTile, OthersTile } from '../time-tiles';
+import type { GameTile, OthersTile } from '@app/games/time-tiles';
 
 /** The drawing's size until it is measured: about what a wide screen gives it. */
 const ASSUMED = { width: 1100, height: 560 };

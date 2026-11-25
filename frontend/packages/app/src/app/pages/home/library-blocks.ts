@@ -1,10 +1,9 @@
 import type { LibraryGame } from '@respawn/data';
 import { isMissing, kept, sorted } from '@app/games/game-list';
-import { MAPPED, type Recency, playedRecency } from '@app/games/time-map';
 
 /**
  * What the home's blocks make of the games the browser holds: the one to resume, the ones
- * played lately, where the time went, its map and a draw among the never launched. None of it asks
+ * played lately, where the time went and a draw among the never launched. None of it asks
  * the API, and each says only what a store gave: totals, the last two weeks, the last session.
  */
 
@@ -76,44 +75,6 @@ export function ranking(games: readonly LibraryGame[], language: string): Rankin
     seconds,
     others: { count: launched.length - top.length, seconds: seconds - played(top) },
   };
-}
-
-/** A game on the time map preview: what its tile is sized by, and its colour. */
-export interface MapGame {
-  readonly id: string;
-  readonly seconds: number;
-  readonly recency: Recency;
-}
-
-/**
- * The time map preview: the most played games, the most played first, each with its playtime
- * and how long before `now` it was last played. The most played game of each colour is among
- * them, in place of the least played ones: the games played longest are seldom the ones played
- * lately, and a map of them alone would be all of one cold colour. None when fewer than two
- * games were launched: one tile alone would say nothing.
- */
-export function timeMap(games: readonly LibraryGame[], language: string, now: number): MapGame[] {
-  const launched = sorted(kept(games, 'launched'), 'playtime', language).map((game) => ({
-    id: game.game_id,
-    seconds: game.playtime_seconds ?? 0,
-    recency: playedRecency(game, now),
-  }));
-  if (launched.length < 2) return [];
-
-  // The first of each colour, in the order of playtime, then the most played of the others.
-  const colours = new Set<Recency>();
-  const chosen = new Set<MapGame>();
-  for (const game of launched) {
-    if (!colours.has(game.recency)) {
-      colours.add(game.recency);
-      chosen.add(game);
-    }
-  }
-  for (const game of launched) {
-    if (chosen.size >= MAPPED) break;
-    chosen.add(game);
-  }
-  return launched.filter((game) => chosen.has(game));
 }
 
 /**
