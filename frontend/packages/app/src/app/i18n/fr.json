@@ -254,9 +254,8 @@
     "years": {
       "title": "Temps de jeu par année",
       "reviewed": "{{ years }} : d’après la rétrospective annuelle de Steam, mois par mois.",
-      "since": "{{ years }} : compté jour par jour à chaque synchronisation, depuis le {{ date }}.",
-      "dashed": "Une année en pointillés n’est pas entière.",
-      "open": "Année incomplète"
+      "since": "{{ years }} : compté jour par jour, à chaque synchronisation.",
+      "pending": "{{ years }} : compté en partie seulement, montré une fois l’année entière connue."
     },
     "activity": {
       "title": "Activité",
@@ -380,7 +379,6 @@
       },
       "bar": "Barre segmentée",
       "chart": "Histogramme",
-      "chartOpen": "Pas encore entier",
       "hours": "{{ count }} h",
       "banners": "Bandeaux",
       "status": "Synchronisation en cours : vos jeux restent affichés.",

@@ -64,8 +64,8 @@ export class Foundations {
   protected readonly hoursScale = 200;
   protected readonly yearsScale = 888;
   protected readonly years = [
-    { label: '2025', hours: 888, open: false },
-    { label: '2026', hours: 612, open: true },
+    { label: '2024', hours: 612 },
+    { label: '2025', hours: 888 },
   ];
   protected readonly person = 'Élodie';
   private readonly games = 1276;

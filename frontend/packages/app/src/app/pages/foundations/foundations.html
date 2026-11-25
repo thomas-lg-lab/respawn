@@ -70,14 +70,9 @@
           <span class="type-caption text-muted">{{ t('components.chart') }}</span>
           <rs-column-chart>
             @for (year of years; track year.label) {
-              <rs-chart-column
-                [label]="year.label"
-                [value]="year.hours"
-                [max]="yearsScale"
-                [open]="year.open"
-                [openLabel]="t('components.chartOpen')"
-                >{{ t('components.hours', { count: year.hours }) }}</rs-chart-column
-              >
+              <rs-chart-column [label]="year.label" [value]="year.hours" [max]="yearsScale">{{
+                t('components.hours', { count: year.hours })
+              }}</rs-chart-column>
             }
           </rs-column-chart>
         </div>

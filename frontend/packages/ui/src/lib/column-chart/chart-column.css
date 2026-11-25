@@ -27,21 +27,10 @@
     border-radius: var(--rs-radius-thumb) var(--rs-radius-thumb) 0 0;
     background-color: var(--rs-accent-text);
   }
-  /* Not whole yet: the outline of what it is so far. */
-  :host([data-open]) .bar {
-    border: 2px dashed var(--rs-accent-text);
-    border-bottom: 0;
-    background-color: transparent;
-  }
 
   .label {
     color: var(--rs-muted);
     font-variant-numeric: tabular-nums;
     @apply type-caption;
-  }
-
-  /* What the outline says to the eye, for who does not see it. */
-  .open-word {
-    @apply sr-only;
   }
 }

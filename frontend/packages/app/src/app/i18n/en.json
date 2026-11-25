@@ -254,9 +254,8 @@
     "years": {
       "title": "Playtime per year",
       "reviewed": "{{ years }}: from Steam’s Year in Review, month by month.",
-      "since": "{{ years }}: counted day by day at each sync, from {{ date }}.",
-      "dashed": "A dashed year is not whole.",
-      "open": "Not a whole year"
+      "since": "{{ years }}: counted day by day, at each sync.",
+      "pending": "{{ years }}: counted in part only, shown once the whole year is known."
     },
     "activity": {
       "title": "Activity",
@@ -380,7 +379,6 @@
       },
       "bar": "Segmented bar",
       "chart": "Column chart",
-      "chartOpen": "Not whole yet",
       "hours": "{{ count }} h",
       "banners": "Banners",
       "status": "Sync in progress: your games stay on screen.",

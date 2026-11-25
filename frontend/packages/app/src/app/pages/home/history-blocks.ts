@@ -13,31 +13,45 @@ const DAYS = 5;
 /** How many games a day names; the others are counted under them. */
 const NAMED = 4;
 
-/** A year of the chart. */
+/** A year of the chart: a whole one. */
 export interface PlayedYear {
   readonly year: number;
   readonly seconds: number;
-  /** Counted from Steam's Year in Review: the whole year, month by month. */
+  /** Counted from Steam's Year in Review, month by month; otherwise from the syncs. */
   readonly reviewed: boolean;
-  /** Not a whole year: the one the first sync fell in, the one still running. */
-  readonly open: boolean;
-  /** The first day counted, as the API writes it: `YYYY-MM-DD`. */
-  readonly firstDay: string;
+}
+
+/** What the chart draws, and the years it leaves out. */
+export interface PlayedYears {
+  /** The whole years, the earliest first. None while no whole year has time. */
+  readonly years: readonly PlayedYear[];
+  /**
+   * Every year counted only in part, the earliest first: the one still running, the one just
+   * over while its review is awaited, one a linked account has no review of. Left out of the
+   * chart, where a part of it would read as the whole.
+   */
+  readonly pending: readonly number[];
 }
 
 /**
- * The years to draw, the earliest first, as the API counts them: from the reviews, then from
- * the syncs. None while nothing was played in any of them: there is nothing to draw.
+ * The years the chart draws, as the API counts them: only the whole ones, from the reviews or,
+ * should a store's review ever be missing, from a year the syncs covered entirely. A year
+ * counted only from the first sync, or up to today, is not drawn, but named. Nothing at all
+ * while nothing was played in any year.
  */
-export function playedYears(told: LibraryYears): PlayedYear[] {
-  if (!told.years.some((each) => each.seconds > 0)) return [];
-  return told.years.map((each) => ({
-    year: each.year,
-    seconds: each.seconds,
-    reviewed: each.source === 'review',
-    open: !each.whole,
-    firstDay: each.first_day,
-  }));
+export function playedYears(told: LibraryYears): PlayedYears {
+  if (!told.years.some((each) => each.seconds > 0)) return { years: [], pending: [] };
+  const whole = told.years.filter((each) => each.whole);
+  return {
+    years: whole.some((each) => each.seconds > 0)
+      ? whole.map((each) => ({
+          year: each.year,
+          seconds: each.seconds,
+          reviewed: each.source === 'review',
+        }))
+      : [],
+    pending: told.years.filter((each) => !each.whole).map((each) => each.year),
+  };
 }
 
 /** A game of a day of the activity. */
