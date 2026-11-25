@@ -145,6 +145,7 @@
     "clear": "Clear what is typed",
     "suggestions": "Suggested games",
     "none": "No game matches “{{ title }}”.",
+    "unreadable": "Your games could not be read. Enter still searches the library.",
     "seeOne": "See {{ count }} game in the library",
     "seeMany": "See the {{ count }} games in the library",
     "hours": "{{ count }} h",

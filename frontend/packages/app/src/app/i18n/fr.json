@@ -145,6 +145,7 @@
     "clear": "Effacer ce qui est tapé",
     "suggestions": "Jeux proposés",
     "none": "Aucun jeu ne correspond à « {{ title }} ».",
+    "unreadable": "Vos jeux n’ont pas pu être lus. Entrée cherche quand même dans la bibliothèque.",
     "seeOne": "Voir {{ count }} jeu dans la bibliothèque",
     "seeMany": "Voir les {{ count }} jeux dans la bibliothèque",
     "hours": "{{ count }} h",

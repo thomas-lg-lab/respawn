@@ -26,6 +26,30 @@ class WithSuggestions {
 }
 
 describe('SearchField', () => {
+  it('takes a press on its box, beside what is typed, for a press on the field', async () => {
+    const fixture = TestBed.createComponent(WithSuggestions);
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const input = element.querySelector('input')!;
+
+    for (const beside of [
+      element.querySelector('rs-search-field')!,
+      element.querySelector('kbd')!,
+    ]) {
+      input.blur();
+      const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+      beside.dispatchEvent(press);
+
+      // The focus is not taken away, and comes to the field.
+      expect(press.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(input);
+    }
+
+    const typed = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    input.dispatchEvent(typed);
+    expect(typed.defaultPrevented).toBe(false);
+  });
+
   it('is a plain search field while it has no list of suggestions', async () => {
     const fixture = TestBed.createComponent(Host);
     await fixture.whenStable();

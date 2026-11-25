@@ -147,6 +147,15 @@ describe('Library', () => {
 
     expect(names(screen)).toEqual(['Hades']);
     expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('true');
+
+    // Clearing the search asks for nothing new: a filter picked meanwhile stays.
+    pill(screen, 'launched').click();
+    await harness.fixture.whenStable();
+    button(screen, 'Effacer la recherche').click();
+    await harness.fixture.whenStable();
+
+    expect(pill(screen, 'launched').getAttribute('aria-pressed')).toBe('true');
+    expect(names(screen)).toEqual(['Portal 2', 'Hades']);
   });
 
   it('takes a title made of spaces or of signs for no search', async () => {

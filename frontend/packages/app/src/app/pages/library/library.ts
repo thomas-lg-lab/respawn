@@ -67,11 +67,12 @@ export class Library {
   );
   /**
    * Back to every game whenever another title is searched: the search comes from the header,
-   * and a filter left on would hide the very game that was asked for.
+   * and a filter left on would hide the very game that was asked for. Clearing the search
+   * asks for nothing new: the filter stays.
    */
   protected readonly filter = linkedSignal<string, LibraryFilter>({
     source: this.search,
-    computation: () => 'all',
+    computation: (title, before) => (title ? 'all' : (before?.value ?? 'all')),
   });
   protected readonly sort = signal<LibrarySort>('last_played');
   /** How many steps of the list are shown: back to one whenever the list changes. */

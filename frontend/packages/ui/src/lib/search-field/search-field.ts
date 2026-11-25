@@ -12,6 +12,7 @@ import { LucideSearch } from '@lucide/angular';
  */
 @Component({
   selector: 'rs-search-field',
+  host: { '(mousedown)': 'pressed($event)' },
   imports: [LucideSearch],
   templateUrl: './search-field.html',
   styleUrl: './search-field.css',
@@ -29,6 +30,19 @@ export class SearchField {
   readonly active = input<string>();
 
   private readonly box = viewChild.required<ElementRef<HTMLInputElement>>('control');
+
+  /**
+   * A press on the box beside what is typed (the icon, the margin, a hint) is a press on the
+   * field: the focus stays in it, or comes to it. What the screen put inside that can itself
+   * be pressed keeps its own.
+   */
+  protected pressed(event: MouseEvent): void {
+    const on = event.target;
+    if (on instanceof HTMLInputElement) return;
+    if (on instanceof Element && on.closest('button, a')) return;
+    event.preventDefault();
+    this.focus();
+  }
 
   focus(): void {
     this.box().nativeElement.focus();

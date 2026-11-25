@@ -24,11 +24,15 @@
   </button>
 
   <!-- Folded, it is still there, cut down to nothing from the right and out of reach: it
-       unfolds from the side its button is on, and folds back the same way. -->
+       unfolds from the side its button is on, and folds back the same way. It is within reach
+       as soon as it unfolds, for the field to take the focus at once, and out of reach only
+       once folded back: the delay is on that way alone. A press on its own margin keeps the
+       focus where it is. -->
   <div
-    class="absolute inset-0 z-10 flex items-center gap-1 bg-bg px-4 transition-[clip-path,visibility] duration-200 ease-out data-[unfolded=false]:invisible data-[unfolded=false]:[clip-path:inset(0_0_0_100%)] data-[unfolded=true]:[clip-path:inset(0)] wide:px-10 roomy:static roomy:bg-transparent roomy:px-0 roomy:transition-none roomy:data-[unfolded=false]:visible roomy:data-[unfolded=false]:[clip-path:none] roomy:data-[unfolded=true]:[clip-path:none]"
+    class="absolute inset-0 z-10 flex items-center gap-1 bg-bg px-4 [transition:clip-path_var(--rs-duration-overlay)_ease-out] data-[unfolded=false]:invisible data-[unfolded=false]:[transition:clip-path_var(--rs-duration-overlay)_ease-out,visibility_0s_linear_var(--rs-duration-overlay)] data-[unfolded=false]:[clip-path:inset(0_0_0_100%)] data-[unfolded=true]:[clip-path:inset(0)] wide:px-10 roomy:static roomy:bg-transparent roomy:px-0 roomy:transition-none roomy:data-[unfolded=false]:visible roomy:data-[unfolded=false]:[clip-path:none] roomy:data-[unfolded=true]:[clip-path:none]"
     data-search-bar
     [attr.data-unfolded]="unfolded()"
+    (mousedown)="pressed($event)"
   >
     <!-- A container: the hint at the shortcut is only drawn when the field has room for it. -->
     <rs-search-field
@@ -70,16 +74,20 @@
     </button>
   </div>
 
-  @if (shown()) {
+  @if (shown() || failed()) {
     <!-- Under the header over its whole width, or under the field where there is one: as wide
          as it at least, and wide enough for a title when it is short. A press here must not
          take the focus off the field: the search would close under it. -->
     <div
-      class="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-control-line bg-surface shadow-overlay roomy:right-0 roomy:left-auto roomy:mt-2 roomy:w-88 roomy:max-w-[calc(100cqw-2rem)] roomy:min-w-full roomy:rounded-thumb roomy:border"
+      class="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-control-line bg-surface shadow-overlay animate-overlay-in roomy:right-0 roomy:left-auto roomy:mt-2 roomy:w-88 roomy:max-w-[calc(100cqw-2rem)] roomy:min-w-full roomy:rounded-thumb roomy:border"
       data-search-panel
       (mousedown)="$event.preventDefault()"
     >
-      @if (suggestions().length) {
+      @if (failed()) {
+        <p class="px-3 py-3.5 text-muted" role="status" data-search-unreadable>
+          {{ t('unreadable') }}
+        </p>
+      } @else if (suggestions().length) {
         <div role="listbox" [id]="listId" [attr.aria-label]="t('suggestions')">
           @for (row of suggestions(); track row.id; let index = $index) {
             <button

@@ -54,6 +54,8 @@ interface Suggestion {
 export class GameSearch {
   /** The games of the library; none while they are not read yet. */
   readonly games = input<readonly LibraryGame[]>();
+  /** The games could not be read: said under the field, since nothing can be suggested. */
+  readonly unreadable = input(false);
   readonly language = input.required<string>();
 
   /**
@@ -116,6 +118,10 @@ export class GameSearch {
   });
 
   protected readonly shown = computed(() => this.focused() && this.found() !== null);
+  /** Enough was typed for suggestions, and the games they would come from could not be read. */
+  protected readonly failed = computed(
+    () => this.focused() && this.unreadable() && letters(this.asked()) >= SUGGESTS_FROM,
+  );
   /** A list of suggestions is shown: there is none to show when no game was found. */
   protected readonly listed = computed(() => this.shown() && this.suggestions().length > 0);
 
@@ -128,16 +134,25 @@ export class GameSearch {
     this.listed() ? this.suggestions()[this.active()]?.id : undefined,
   );
 
-  /** The focus came into the search; the games are only needed once it is in the field. */
+  /**
+   * The focus came into the field or what it suggests; the games are only needed once it is in
+   * the field. On the button that unfolds the field, the search is still closed.
+   */
   protected entered(event: FocusEvent): void {
+    if (event.target === this.opener().nativeElement) return;
     this.focused.set(true);
     if (event.target instanceof HTMLInputElement) this.opened.emit();
   }
 
-  /** The focus left for another part of the page, or for nothing: the search closes. */
+  /**
+   * The focus left for another part of the page, or for nothing: the search closes. Not when
+   * it is the window that lost the focus: the visitor went to look at something else and
+   * comes back to the search as it was.
+   */
   protected left(event: FocusEvent): void {
     const next = event.relatedTarget;
     if (next instanceof Node && this.host.contains(next)) return;
+    if (next === null && !document.hasFocus()) return;
     this.focused.set(false);
     this.active.set(-1);
     // What was typed stays, and is there again when the field is asked for.
@@ -147,6 +162,8 @@ export class GameSearch {
   protected key(event: KeyboardEvent): void {
     // A text being composed keeps its keys: Enter picks a candidate, Escape gives it up.
     if (event.isComposing || event.keyCode === 229) return;
+    // The button that unfolds the field has its own: the search is closed while it has the focus.
+    if (event.target === this.opener().nativeElement) return;
 
     const count = this.suggestions().length;
     switch (event.key) {
@@ -181,13 +198,15 @@ export class GameSearch {
 
   /**
    * Ctrl+K, or ⌘K on an Apple machine: the focus goes to the field, from anywhere in the app.
-   * That key alone with K, so the browser's and the system's other shortcuts stay theirs; the
-   * key is the one where K is on a Latin keyboard, whatever the layout writes with it.
+   * That key alone with K, so the browser's and the system's other shortcuts stay theirs. K
+   * is the letter the key writes; where the layout writes no Latin letter with it (Cyrillic,
+   * Greek), it is the key where K is on a Latin keyboard.
    */
   protected shortcut(event: KeyboardEvent): void {
     const held = APPLE ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
     if (!held || event.altKey || event.shiftKey) return;
-    if (event.code !== 'KeyK' && event.key.toLowerCase() !== 'k') return;
+    const letter = /^[a-z]$/i.test(event.key) ? event.key.toLowerCase() : null;
+    if (letter === null ? event.code !== 'KeyK' : letter !== 'k') return;
 
     event.preventDefault();
     this.unfold();
@@ -202,6 +221,11 @@ export class GameSearch {
     this.unfolded.set(true);
     this.changes.detectChanges();
     this.field().focus();
+  }
+
+  /** A press on the bar's own margin keeps the focus where it is: it asks for nothing. */
+  protected pressed(event: MouseEvent): void {
+    if (event.target === event.currentTarget) event.preventDefault();
   }
 
   protected clear(): void {

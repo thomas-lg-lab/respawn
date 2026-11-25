@@ -27,12 +27,14 @@ function library(): LibraryGame[] {
   template: `<rs-game-search
     language="fr"
     [games]="games()"
+    [unreadable]="unreadable()"
     (searched)="asked.push($event)"
     (opened)="opened.push(true)"
   />`,
 })
 class Host {
   readonly games = signal<LibraryGame[] | undefined>(library());
+  readonly unreadable = signal(false);
   readonly asked: string[] = [];
   readonly opened: boolean[] = [];
 }
@@ -300,7 +302,17 @@ describe('GameSearch', () => {
     await fixture.whenStable();
     expect(document.activeElement).not.toBe(input);
 
-    // The key where K is, whatever the layout writes with it.
+    // Another Latin letter on the key where K is (Colemak writes "e" there) is another shortcut.
+    const other = new KeyboardEvent('keydown', {
+      key: 'e',
+      code: 'KeyK',
+      ctrlKey: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(other);
+    expect(other.defaultPrevented).toBe(false);
+
+    // The key where K is, where the layout writes no Latin letter with it.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'к', code: 'KeyK', ctrlKey: true }));
     await fixture.whenStable();
     expect(document.activeElement).toBe(input);
@@ -336,6 +348,67 @@ describe('GameSearch', () => {
 
     expect(bar.getAttribute('data-unfolded')).toBe('false');
     expect(document.activeElement).toBe(opener);
+  });
+
+  it('stays as it is while the window itself is left', async () => {
+    const { fixture, element, input, search } = await create();
+    const bar = element.querySelector('[data-search-bar]')!;
+    element.querySelector<HTMLButtonElement>('[data-search-open]')!.click();
+    await search('ha');
+
+    const away = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    await fixture.whenStable();
+    away.mockRestore();
+
+    expect(bar.getAttribute('data-unfolded')).toBe('true');
+    expect(element.querySelector('[data-search-panel]')).not.toBeNull();
+  });
+
+  it('suggests nothing while the focus is on its button, the field folded over what was typed', async () => {
+    const { fixture, element, input, host, search } = await create();
+    const opener = element.querySelector<HTMLButtonElement>('[data-search-open]')!;
+
+    opener.click();
+    await search('ha');
+    input.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }),
+    );
+    await fixture.whenStable();
+
+    // The focus comes back on the button: the search is still closed, and its keys are not the search's.
+    opener.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    opener.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    opener.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await fixture.whenStable();
+
+    expect(element.querySelector('[data-search-panel]')).toBeNull();
+    expect(input.value).toBe('ha');
+    expect(host.asked).toEqual([]);
+  });
+
+  it('says that the games could not be read, where it would have suggested some', async () => {
+    const { fixture, element, host, search } = await create(null);
+    host.unreadable.set(true);
+    await fixture.whenStable();
+
+    await search('h');
+    expect(element.querySelector('[data-search-panel]')).toBeNull();
+
+    await search('ha');
+    expect(said(element, '[data-search-unreadable]')).toEqual([
+      'Vos jeux n’ont pas pu être lus. Entrée cherche quand même dans la bibliothèque.',
+    ]);
+  });
+
+  it('leaves a press on the margin of its bar without effect on the focus', async () => {
+    const { element } = await create();
+    const bar = element.querySelector('[data-search-bar]')!;
+
+    const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    bar.dispatchEvent(press);
+
+    expect(press.defaultPrevented).toBe(true);
   });
 
   it('folds back once a title was asked for', async () => {
