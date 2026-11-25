@@ -52,6 +52,15 @@ export type LibraryHistory = Schemas['LibraryHistoryResponse'];
 /** A day something was played, and the games it was. */
 export type HistoryDay = Schemas['HistoryDayResponse'];
 
+/**
+ * What was played year by year (`GET /api/v1/library/years`): the years Steam's Year in Review
+ * covers, whole, then the years from the first sync on, counted day by day.
+ */
+export type LibraryYears = Schemas['LibraryYearsResponse'];
+
+/** A year of it: its time, where it was counted from, and the days it covers. */
+export type LibraryYear = Schemas['YearResponse'];
+
 /** The linked store accounts (`GET /api/v1/linked-accounts`). */
 export type LinkedAccounts = Schemas['LinkedAccountsResponse'];
 

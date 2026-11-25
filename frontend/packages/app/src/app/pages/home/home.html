@@ -115,20 +115,20 @@
       }
 
       <!-- The blocks go two by two on a wide screen; one left alone on its row takes it. A block made
-           of the history holds its place while it is awaited, and is not drawn when it could
-           not be read; the ones made of the games do not wait for it. -->
+           of the library's past (the years, the activity) holds its place while it is awaited,
+           and is not drawn when it could not be read; the ones made of the games do not wait
+           for it. -->
       @if (games.data()) {
-        @let since = history.data()?.tracking_since;
         @let awaited = history.isPending();
-        @if (awaited || (years().length && since) || ranked().top.length) {
+        @let yearsAwaited = pastYears.isPending();
+        @if (yearsAwaited || years().length || ranked().top.length) {
           <div class="grid grid-cols-1 items-start gap-4 wide:grid-cols-2">
-            @if (awaited) {
-              <rs-skeleton class="h-40 only:wide:col-span-2" data-history-awaited />
-            } @else if (years().length && since) {
+            @if (yearsAwaited) {
+              <rs-skeleton class="h-40 only:wide:col-span-2" data-years-awaited />
+            } @else if (years().length) {
               <rs-years
                 class="only:wide:col-span-2"
                 [years]="years()"
-                [since]="since"
                 [language]="currentLanguage()"
               />
             }
@@ -155,7 +155,7 @@
               />
             }
             @if (awaited) {
-              <div class="last:odd:wide:col-span-2" role="status">
+              <div class="last:odd:wide:col-span-2" role="status" data-history-awaited>
                 <rs-skeleton class="h-40" />
                 <span class="sr-only">{{ t('home.loading') }}</span>
               </div>
@@ -169,16 +169,16 @@
             }
           </div>
         }
-        @if (history.isError()) {
+        @if (history.isError() || pastYears.isError()) {
           <rs-banner tone="warn" role="alert" data-history-refused>{{
-            t(failureKey(history.error()))
+            t(failureKey(history.error() ?? pastYears.error()))
           }}</rs-banner>
           <button
             rsButton
             type="button"
             class="self-start"
             data-history-retry
-            (click)="history.refetch()"
+            (click)="retryPast()"
           >
             {{ t('home.retry') }}
           </button>

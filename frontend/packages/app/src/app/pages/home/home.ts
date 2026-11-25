@@ -149,11 +149,26 @@ export class Home {
     enabled: this.view() === 'ready',
   }));
 
-  /** The time played each year; none while nothing was played since the first sync. */
+  /**
+   * What was played year by year, asked with the rest: Steam's Year in Review for the years it
+   * covers, the syncs for the others.
+   */
+  protected readonly pastYears = injectQuery(() => ({
+    ...this.library.years(),
+    enabled: this.view() === 'ready',
+  }));
+
+  /** The years to draw; none while nothing was played in any of them. */
   protected readonly years = computed(() => {
-    const history = this.history.data();
-    return history ? playedYears(history, this.history.dataUpdatedAt()) : [];
+    const past = this.pastYears.data();
+    return past ? playedYears(past) : [];
   });
+
+  /** Asks again what could not be read of the library's past. */
+  protected retryPast(): void {
+    if (this.history.isError()) void this.history.refetch();
+    if (this.pastYears.isError()) void this.pastYears.refetch();
+  }
 
   /**
    * The latest days something was played, each game as the library names it. While the games

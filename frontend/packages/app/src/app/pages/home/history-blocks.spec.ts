@@ -1,4 +1,4 @@
-import type { LibraryGame, LibraryHistory } from '@respawn/data';
+import type { LibraryGame, LibraryHistory, LibraryYear, LibraryYears } from '@respawn/data';
 import { activity, playedYears } from './history-blocks';
 
 function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
@@ -18,69 +18,43 @@ const day = (date: string, ...played: [string, number][]) => ({
   games: played.map(([name, seconds]) => ({ game_id: `id-${name}`, seconds })),
 });
 
-const at = (moment: string) => Date.parse(moment);
-
 describe('the blocks of the home made of the history', () => {
   describe('the years', () => {
-    it('adds up each year, from the one of the first sync to the current one', () => {
-      const history: LibraryHistory = {
-        tracking_since: '2026-11-18T10:05:00Z',
-        days: [
-          day('2026-11-20', ['a', 3600], ['b', 1800]),
-          day('2026-12-31', ['a', 600]),
-          day('2027-01-01', ['a', 7200]),
-          day('2029-02-03', ['b', 60]),
+    const year = (
+      at: number,
+      seconds: number,
+      source: LibraryYear['source'],
+      firstDay = `${at}-01-01`,
+      whole = true,
+    ): LibraryYear => ({
+      year: at,
+      seconds,
+      source,
+      first_day: firstDay,
+      last_day: `${at}-12-31`,
+      whole,
+    });
+
+    it('draws the reviewed years whole, then the years of the syncs as they are counted', () => {
+      const told: LibraryYears = {
+        years: [
+          year(2024, 11700, 'review'),
+          // Reviewed, with nothing played: it is there all the same.
+          year(2025, 0, 'review'),
+          year(2026, 3600, 'readings', '2026-11-18', false),
         ],
       };
 
-      expect(playedYears(history, at('2029-03-01T00:00:00Z'))).toEqual([
-        { year: 2026, seconds: 6000, open: true },
-        { year: 2027, seconds: 7200, open: false },
-        // Nothing played that year: it is there all the same.
-        { year: 2028, seconds: 0, open: false },
-        { year: 2029, seconds: 60, open: true },
+      expect(playedYears(told)).toEqual([
+        { year: 2024, seconds: 11700, reviewed: true, open: false, firstDay: '2024-01-01' },
+        { year: 2025, seconds: 0, reviewed: true, open: false, firstDay: '2025-01-01' },
+        { year: 2026, seconds: 3600, reviewed: false, open: true, firstDay: '2026-11-18' },
       ]);
     });
 
-    it('goes on to a year nothing was played in yet', () => {
-      const history: LibraryHistory = {
-        tracking_since: '2026-11-18T10:05:00Z',
-        days: [day('2026-11-20', ['a', 3600])],
-      };
-
-      expect(playedYears(history, at('2027-01-02T00:00:00Z'))).toEqual([
-        { year: 2026, seconds: 3600, open: true },
-        { year: 2027, seconds: 0, open: true },
-      ]);
-    });
-
-    it('counts a year in UTC, as the days are', () => {
-      const history: LibraryHistory = {
-        tracking_since: '2026-12-31T23:30:00Z',
-        days: [day('2027-01-01', ['a', 3600])],
-      };
-
-      expect(playedYears(history, at('2027-01-01T00:30:00Z')).map((each) => each.year)).toEqual([
-        2026, 2027,
-      ]);
-    });
-
-    it('keeps a year the history has when the clock is behind it', () => {
-      const history: LibraryHistory = {
-        tracking_since: '2026-12-30T10:00:00Z',
-        days: [day('2027-01-01', ['a', 3600])],
-      };
-
-      expect(playedYears(history, at('2026-12-31T23:59:00Z')).map((each) => each.year)).toEqual([
-        2026, 2027,
-      ]);
-    });
-
-    it('has none while nothing was played since the first sync, or no sync was', () => {
-      expect(playedYears({ tracking_since: '2026-11-18T10:05:00Z', days: [] }, Date.now())).toEqual(
-        [],
-      );
-      expect(playedYears({ tracking_since: null, days: [] }, Date.now())).toEqual([]);
+    it('has none while nothing was played in any year, or nothing was read', () => {
+      expect(playedYears({ years: [year(2026, 0, 'readings', '2026-11-18', false)] })).toEqual([]);
+      expect(playedYears({ years: [] })).toEqual([]);
     });
   });
 

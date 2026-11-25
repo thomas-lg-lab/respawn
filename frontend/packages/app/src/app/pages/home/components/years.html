@@ -13,7 +13,15 @@
       >
     }
   </rs-column-chart>
-  <p class="type-caption text-muted" data-years-since>
-    {{ t('years.since', { date: sinceDate() }) }}
-  </p>
+  <div class="flex flex-col gap-1 type-caption text-muted">
+    @if (reviewed(); as span) {
+      <p data-years-reviewed>{{ t('years.reviewed', { years: span }) }}</p>
+    }
+    @if (since(); as date) {
+      <p data-years-since>{{ t('years.since', { date }) }}</p>
+    }
+    @if (someOpen()) {
+      <p data-years-open>{{ t('years.dashed') }}</p>
+    }
+  </div>
 </rs-card>
