@@ -21,27 +21,27 @@ export interface PlayedYear {
   readonly reviewed: boolean;
 }
 
-/** What the chart draws, and the year it waits for. */
+/** What the chart draws, and the years it leaves out. */
 export interface PlayedYears {
-  /** The whole years, the earliest first. None while nothing was played in any. */
+  /** The whole years, the earliest first. None while no whole year has time. */
   readonly years: readonly PlayedYear[];
   /**
-   * The latest year counted only in part (the one still running, or the one just over while
-   * its review is awaited): left out of the chart, where a part of it would read as the whole.
-   * Null when there is none.
+   * Every year counted only in part, the earliest first: the one still running, the one just
+   * over while its review is awaited, one a linked account has no review of. Left out of the
+   * chart, where a part of it would read as the whole.
    */
-  readonly pending: number | null;
+  readonly pending: readonly number[];
 }
 
 /**
  * The years the chart draws, as the API counts them: only the whole ones, from the reviews or,
  * should a store's review ever be missing, from a year the syncs covered entirely. A year
- * counted only from the first sync, or up to today, is not drawn: Steam's review brings it
- * whole once it is over.
+ * counted only from the first sync, or up to today, is not drawn, but named. Nothing at all
+ * while nothing was played in any year.
  */
 export function playedYears(told: LibraryYears): PlayedYears {
+  if (!told.years.some((each) => each.seconds > 0)) return { years: [], pending: [] };
   const whole = told.years.filter((each) => each.whole);
-  const partial = told.years.filter((each) => !each.whole);
   return {
     years: whole.some((each) => each.seconds > 0)
       ? whole.map((each) => ({
@@ -50,7 +50,7 @@ export function playedYears(told: LibraryYears): PlayedYears {
           reviewed: each.source === 'review',
         }))
       : [],
-    pending: partial.at(-1)?.year ?? null,
+    pending: told.years.filter((each) => !each.whole).map((each) => each.year),
   };
 }
 

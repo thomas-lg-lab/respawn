@@ -816,7 +816,7 @@ describe('Home', () => {
       };
     }
 
-    it('draws only the whole years, and says when the current one comes', async () => {
+    it('draws only the whole years, and names the one counted in part', async () => {
       const games = played();
       const { screen } = await open([account()], '/', STATS, games, readings(games), past());
 
@@ -828,14 +828,39 @@ describe('Home', () => {
         '2025 : d’après la rétrospective annuelle de Steam, mois par mois.',
       );
       expect(text(screen, '[data-years-pending]')).toBe(
-        '2026 arrivera entière avec la rétrospective annuelle de Steam, début 2027.',
+        '2026 : compté en partie seulement, montré une fois l’année entière connue.',
       );
       expect(screen.querySelector('[data-years-since]')).toBeNull();
     });
 
-    it('draws no year while only the current one has time', async () => {
+    it('draws no card while only the current year has time', async () => {
       const games = played();
       const { screen } = await open([account()], '/', STATS, games, readings(games), synced());
+
+      expect(screen.querySelector('[data-years]')).toBeNull();
+    });
+
+    it('names every year counted in part, the first sync’s as well as the running one', async () => {
+      const games = played();
+      const { screen } = await open([account()], '/', STATS, games, readings(games), {
+        years: [
+          reviewed(2025, 3600),
+          ...synced().years,
+          { ...synced().years[0]!, year: 2027, first_day: '2027-01-01', last_day: '2027-01-05' },
+        ],
+      });
+
+      expect(all(screen, '[data-years] .label')).toEqual(['2025']);
+      expect(text(screen, '[data-years-pending]')).toBe(
+        '2026–2027 : compté en partie seulement, montré une fois l’année entière connue.',
+      );
+    });
+
+    it('shows no years while nothing was played in any', async () => {
+      const games = played();
+      const { screen } = await open([account()], '/', STATS, games, readings(games), {
+        years: [reviewed(2025, 0), { ...synced().years[0]!, seconds: 0 }],
+      });
 
       expect(screen.querySelector('[data-years]')).toBeNull();
     });
@@ -860,7 +885,7 @@ describe('Home', () => {
         '2023 : compté jour par jour, à chaque synchronisation.',
       );
       expect(text(screen, '[data-years-pending]')).toBe(
-        '2026 arrivera entière avec la rétrospective annuelle de Steam, début 2027.',
+        '2026 : compté en partie seulement, montré une fois l’année entière connue.',
       );
     });
 
@@ -1102,7 +1127,7 @@ describe('Home', () => {
         '2025: from Steam’s Year in Review, month by month.',
       );
       expect(text(screen, '[data-years-pending]')).toBe(
-        '2026 comes whole with Steam’s Year in Review, early in 2027.',
+        '2026: counted in part only, shown once the whole year is known.',
       );
       expect(text(screen, '[data-activity] h2')).toBe('Activity');
       expect(all(screen, '[data-activity] h3')[0]).toBe('Saturday, November 21');

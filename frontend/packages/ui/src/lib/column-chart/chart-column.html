@@ -1,11 +1,7 @@
 <span class="said"><ng-content /></span>
 <span class="track" aria-hidden="true">
-  <!-- Nothing is no bar at all: an open one would still draw its outline. -->
   @if (height(); as tall) {
     <span class="bar" [style.height.%]="tall"></span>
   }
 </span>
 <span class="label">{{ label() }}</span>
-@if (open() && openLabel(); as word) {
-  <span class="open-word">{{ word }}</span>
-}

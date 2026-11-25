@@ -158,10 +158,10 @@ export class Home {
     enabled: this.view() === 'ready',
   }));
 
-  /** The whole years to draw, and the one still counted in part, left out. */
+  /** The whole years to draw, and those counted only in part, left out. */
   protected readonly years = computed(() => {
     const past = this.pastYears.data();
-    return past ? playedYears(past) : { years: [], pending: null };
+    return past ? playedYears(past) : { years: [], pending: [] };
   });
 
   /** Asks again what could not be read of the library's past. */

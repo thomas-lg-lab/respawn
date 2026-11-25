@@ -22,8 +22,8 @@ export function yearRuns(years: readonly number[]): string {
 
 /**
  * The time played year by year, whole years only: those Steam's Year in Review covers, and any
- * the syncs covered entirely. Each caption names the years it speaks of; the year still counted
- * in part is not drawn, and a line says when it comes.
+ * the syncs covered entirely. Each caption names the years it speaks of; a year counted only in
+ * part is not drawn, and a line names it. With no whole year to draw, that line alone.
  */
 @Component({
   selector: 'rs-years',
@@ -32,8 +32,8 @@ export function yearRuns(years: readonly number[]): string {
 })
 export class Years {
   readonly years = input.required<readonly PlayedYear[]>();
-  /** The year left out because it is counted only in part; null when there is none. */
-  readonly pending = input<number | null>(null);
+  /** The years left out because they are counted only in part. */
+  readonly pending = input<readonly number[]>([]);
   readonly language = input.required<string>();
 
   /** The reviewed years, as runs; null when none is. */
@@ -46,6 +46,12 @@ export class Years {
   protected readonly synced = computed(() => {
     const synced = this.years().filter((each) => !each.reviewed);
     return synced.length ? yearRuns(synced.map((each) => each.year)) : null;
+  });
+
+  /** The years left out, as runs; null when none is. */
+  protected readonly left = computed(() => {
+    const pending = this.pending();
+    return pending.length ? yearRuns(pending) : null;
   });
 
   /** A full bar is the most played year. */
