@@ -35,7 +35,7 @@ describe('the blocks of the home made of the history', () => {
       whole,
     });
 
-    it('draws the reviewed years whole, then the years of the syncs as they are counted', () => {
+    it('draws only the whole years, and leaves out the one counted in part', () => {
       const told: LibraryYears = {
         years: [
           year(2024, 11700, 'review'),
@@ -45,16 +45,32 @@ describe('the blocks of the home made of the history', () => {
         ],
       };
 
-      expect(playedYears(told)).toEqual([
-        { year: 2024, seconds: 11700, reviewed: true, open: false, firstDay: '2024-01-01' },
-        { year: 2025, seconds: 0, reviewed: true, open: false, firstDay: '2025-01-01' },
-        { year: 2026, seconds: 3600, reviewed: false, open: true, firstDay: '2026-11-18' },
-      ]);
+      expect(playedYears(told)).toEqual({
+        years: [
+          { year: 2024, seconds: 11700, reviewed: true },
+          { year: 2025, seconds: 0, reviewed: true },
+        ],
+        pending: 2026,
+      });
     });
 
-    it('has none while nothing was played in any year, or nothing was read', () => {
-      expect(playedYears({ years: [year(2026, 0, 'readings', '2026-11-18', false)] })).toEqual([]);
-      expect(playedYears({ years: [] })).toEqual([]);
+    it('draws a year the syncs covered entirely, should no review come', () => {
+      expect(playedYears({ years: [year(2027, 7200, 'readings')] })).toEqual({
+        years: [{ year: 2027, seconds: 7200, reviewed: false }],
+        pending: null,
+      });
+    });
+
+    it('has none while no whole year has time, or nothing was read', () => {
+      expect(playedYears({ years: [year(2026, 3600, 'readings', '2026-11-18', false)] })).toEqual({
+        years: [],
+        pending: 2026,
+      });
+      expect(playedYears({ years: [year(2025, 0, 'review')] })).toEqual({
+        years: [],
+        pending: null,
+      });
+      expect(playedYears({ years: [] })).toEqual({ years: [], pending: null });
     });
   });
 

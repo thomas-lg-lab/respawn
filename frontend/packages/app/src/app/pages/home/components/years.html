@@ -7,8 +7,6 @@
         [label]="column.label"
         [value]="column.seconds"
         [max]="scale()"
-        [open]="column.open"
-        [openLabel]="t('years.open')"
         >{{ t('time.' + column.time.key, { count: column.time.count }) }}</rs-chart-column
       >
     }
@@ -17,11 +15,11 @@
     @if (reviewed(); as span) {
       <p data-years-reviewed>{{ t('years.reviewed', { years: span }) }}</p>
     }
-    @if (synced(); as synced) {
-      <p data-years-since>{{ t('years.since', synced) }}</p>
+    @if (synced(); as span) {
+      <p data-years-since>{{ t('years.since', { years: span }) }}</p>
     }
-    @if (someOpen()) {
-      <p data-years-open>{{ t('years.paler') }}</p>
+    @if (pending(); as year) {
+      <p data-years-pending>{{ t('years.pending', { year, next: year + 1 }) }}</p>
     }
   </div>
 </rs-card>

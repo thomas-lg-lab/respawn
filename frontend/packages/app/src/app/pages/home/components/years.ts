@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Card, ChartColumn, ColumnChart } from '@respawn/ui';
-import { formatDate, saidPlaytime } from '@app/format/format';
+import { saidPlaytime } from '@app/format/format';
 import type { PlayedYear } from '../history-blocks';
 
 /**
@@ -21,9 +21,9 @@ export function yearRuns(years: readonly number[]): string {
 }
 
 /**
- * The time played year by year: the years Steam's Year in Review covers, whole, and the years
- * counted day by day at each sync. Each caption names the years it speaks of, and a year that is
- * not whole is drawn paler (the one the first sync fell in, the one still running).
+ * The time played year by year, whole years only: those Steam's Year in Review covers, and any
+ * the syncs covered entirely. Each caption names the years it speaks of; the year still counted
+ * in part is not drawn, and a line says when it comes.
  */
 @Component({
   selector: 'rs-years',
@@ -32,6 +32,8 @@ export function yearRuns(years: readonly number[]): string {
 })
 export class Years {
   readonly years = input.required<readonly PlayedYear[]>();
+  /** The year left out because it is counted only in part; null when there is none. */
+  readonly pending = input<number | null>(null);
   readonly language = input.required<string>();
 
   /** The reviewed years, as runs; null when none is. */
@@ -40,19 +42,11 @@ export class Years {
     return reviewed.length ? yearRuns(reviewed.map((each) => each.year)) : null;
   });
 
-  /** The years the syncs count, as runs, and the first day they count; null when none is theirs. */
+  /** The whole years the syncs counted, as runs; null when none is theirs. */
   protected readonly synced = computed(() => {
     const synced = this.years().filter((each) => !each.reviewed);
-    const first = synced.at(0);
-    return first
-      ? {
-          years: yearRuns(synced.map((each) => each.year)),
-          date: formatDate(first.firstDay, this.language()),
-        }
-      : null;
+    return synced.length ? yearRuns(synced.map((each) => each.year)) : null;
   });
-
-  protected readonly someOpen = computed(() => this.years().some((each) => each.open));
 
   /** A full bar is the most played year. */
   protected readonly scale = computed(() =>
