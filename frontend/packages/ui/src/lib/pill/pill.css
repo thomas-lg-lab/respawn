@@ -5,33 +5,56 @@
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
-    justify-content: center;
     min-height: var(--rs-size-touch);
-    padding-inline: 1rem;
-    border: 1px solid var(--rs-control-line);
-    border-radius: var(--rs-radius-pill);
     background-color: transparent;
-    color: var(--rs-text);
     font-weight: 500;
-    transition-property: background-color, color, border-color, translate;
     transition-duration: var(--rs-duration-hover);
     @apply type-control;
-  }
-  :host(:hover) {
-    background-color: var(--rs-surface-2);
-  }
-  :host(:active) {
-    translate: 0 1px;
   }
   :host(:disabled) {
     pointer-events: none;
     opacity: 0.5;
   }
 
+  /* A block of its own. */
+  :host([data-variant='block']) {
+    justify-content: center;
+    padding-inline: 1rem;
+    border: 1px solid var(--rs-control-line);
+    border-radius: var(--rs-radius-pill);
+    color: var(--rs-text);
+    transition-property: background-color, color, border-color, translate;
+  }
+  :host([data-variant='block']:hover) {
+    background-color: var(--rs-surface-2);
+  }
+  :host([data-variant='block']:active) {
+    translate: 0 1px;
+  }
   /* Pressed: the inverse colours, under the pointer too. */
-  :host([aria-pressed='true']) {
+  :host([data-variant='block'][aria-pressed='true']) {
     border-color: var(--rs-inverse);
     background-color: var(--rs-inverse);
     color: var(--rs-on-inverse);
+  }
+
+  /* Words on the rule of a row. */
+  :host([data-variant='line']) {
+    color: var(--rs-muted);
+    white-space: nowrap;
+    transition-property: color, box-shadow;
+  }
+  :host([data-variant='line']:hover) {
+    color: var(--rs-text);
+  }
+  /* The ring inside: the row these stand in scrolls, and would cut one drawn around. */
+  :host([data-variant='line']:focus-visible) {
+    outline-offset: -2px;
+  }
+  /* On: the text's own colour, and a line that sits on the rule of the row. */
+  :host([data-variant='line'][aria-pressed='true']) {
+    box-shadow: inset 0 -2px 0 var(--rs-text);
+    color: var(--rs-text);
+    font-weight: 600;
   }
 }

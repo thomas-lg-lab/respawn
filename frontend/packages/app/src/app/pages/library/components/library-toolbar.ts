@@ -1,6 +1,6 @@
 import { Component, computed, input, model, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { FilterTab, SearchField, Select } from '@respawn/ui';
+import { Pill, SearchField, Select } from '@respawn/ui';
 import { formatCount } from '@app/format/format';
 import { FILTERS, type LibraryFilter, type LibrarySort, SORTS } from '@app/games/game-list';
 
@@ -11,7 +11,7 @@ import { FILTERS, type LibraryFilter, type LibrarySort, SORTS } from '@app/games
  */
 @Component({
   selector: 'rs-library-toolbar',
-  imports: [TranslocoDirective, FilterTab, SearchField, Select],
+  imports: [TranslocoDirective, Pill, SearchField, Select],
   templateUrl: './library-toolbar.html',
 })
 export class LibraryToolbar {
