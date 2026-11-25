@@ -149,6 +149,52 @@ public sealed class ArchitectureTests
     }
 
     [Fact]
+    public void A_core_and_the_shared_kernel_bring_no_package()
+    {
+        // Not a list of what is refused, which a new library would not be on: nothing but the
+        // runtime's own assemblies.
+        foreach (var assembly in Modules.Select(module => module.Core).Append(Kernel))
+        {
+            Assert.All(
+                assembly.GetReferencedAssemblies().Select(reference => reference.Name!),
+                name => Assert.True(
+                    name.StartsWith("System.", StringComparison.Ordinal),
+                    $"{assembly.GetName().Name} references {name}: a core and the shared kernel bring no package"));
+        }
+    }
+
+    [Fact]
+    public void A_module_has_one_database_context()
+    {
+        foreach (var module in Modules)
+        {
+            Assert.Single(module.Outbound.GetTypes(), IsDatabaseContext);
+            Assert.DoesNotContain(module.Assemblies.Except([module.Outbound]).SelectMany(assembly => assembly.GetTypes()), IsDatabaseContext);
+        }
+    }
+
+    [Fact]
+    public void Every_project_of_the_solution_is_known_here_and_none_is_empty()
+    {
+        // A project the host does not bring (one only a test references, say) would be checked by
+        // nothing; and a project with no type is a layer made before it had something to hold.
+        Assembly[] known = [.. Modules.SelectMany(module => module.Assemblies), Kernel, Persistence, Composition];
+        var names = known.Select(assembly => assembly.GetName().Name!).ToArray();
+
+        var solution = File.ReadAllText(Path.Combine(Root(), "Respawn.slnx"));
+        var projects = System.Text.RegularExpressions.Regex.Matches(solution, @"Path=""[^""]*?([^/""]+)\.csproj""")
+            .Select(match => match.Groups[1].Value)
+            .Where(name => !name.EndsWith(".Tests", StringComparison.Ordinal) && name != "Respawn.Testing")
+            .ToArray();
+
+        Assert.NotEmpty(projects);
+        Assert.Empty(projects.Except(names));
+        Assert.All(known, assembly => Assert.Contains(
+            assembly.GetTypes(),
+            type => !type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false)));
+    }
+
+    [Fact]
     public async Task A_module_keeps_its_tables_in_its_own_schema()
     {
         // Read from the database the migrations made: every module has its schema, with its own
@@ -180,6 +226,33 @@ public sealed class ArchitectureTests
         Assert.True(
             result.IsSuccessful,
             $"{assembly.GetName().Name} must not depend on these: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
+
+    private static bool IsDatabaseContext(Type type)
+    {
+        for (var parent = type.BaseType; parent is not null; parent = parent.BaseType)
+        {
+            if (parent.FullName == "Microsoft.EntityFrameworkCore.DbContext")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>The checkout the tests run in: the folder that holds the solution.</summary>
+    private static string Root()
+    {
+        for (var folder = new DirectoryInfo(AppContext.BaseDirectory); folder is not null; folder = folder.Parent)
+        {
+            if (File.Exists(Path.Combine(folder.FullName, "Respawn.slnx")))
+            {
+                return folder.FullName;
+            }
+        }
+
+        throw new InvalidOperationException("the tests do not run inside a checkout: Respawn.slnx was not found");
     }
 
     private static string[] References(Assembly assembly) =>

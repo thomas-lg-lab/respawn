@@ -140,12 +140,11 @@ The rules, checked by `ArchitectureTests`:
 - Each module owns one PostgreSQL schema, one `DbContext` and its migrations (`accounts` for Accounts, `games`
   for Games).
 - The host holds no database driver: the connection is `Respawn.Persistence`'s, which knows no module.
+- No empty project: a module or a layer is created when it has something to hold. And every project of
+  the solution is one the rules know.
 - A connector to an outside source is a project of its own in its module (`Respawn.<Module>.<Source>`). It
   references the module's core and nothing else of the app: not the database, not the shared kernel, not
   another connector.
-
-One more rule, which no test checks: no empty project. A module or a layer is created when it has something
-to hold.
 
 A new module adds its three projects and its test project under `backend/Modules/<Name>/`, an `Add<Name>()`
 in `Respawn.Host/Modules/`, and its assemblies and its schema to `ArchitectureTests`; `Respawn.Testing`

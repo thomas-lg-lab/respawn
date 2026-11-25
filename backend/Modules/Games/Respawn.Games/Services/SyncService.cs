@@ -17,11 +17,7 @@ public sealed class SyncService(
 {
     public async Task<SyncRun> SyncNowAsync(Guid ownerId, Guid linkedAccountId, CancellationToken ct)
     {
-        if (await linkedAccounts.FindByIdAsync(linkedAccountId, ct) is not { } account || account.OwnerId != ownerId)
-        {
-            throw new GamesException(GamesError.UnknownLinkedAccount);
-        }
-
+        var account = await linkedAccounts.OwnedAsync(ownerId, linkedAccountId, ct);
         if (!gate.TryEnter(account.Id))
         {
             throw new GamesException(GamesError.SyncInProgress);
