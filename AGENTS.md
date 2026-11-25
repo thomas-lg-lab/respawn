@@ -34,7 +34,9 @@
   and `Modules/Games`, the same three projects: the catalogue (a game as one record whatever the store), the
   linked store accounts, the sources' answers kept untouched, ownership and playtime, and the sync (what is
   due and what a run becomes are the core's, `SyncService`; the timer that asks every few minutes is an
-  inbound adapter, `SyncScheduler` in `.Api`; tests set the clock and run a turn by hand); and its connectors, one
+  inbound adapter, `SyncScheduler` in `.Api`; tests set the clock and run a turn by hand), and the import of a
+  store's yearly reviews, apart from the sync and never needed by it (`YearReviewService`, and
+  `YearReviewScheduler` in `.Api`); and its connectors, one
   project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API), tested
   against recorded answers under `Recorded/`, never against the source.
   One test project per module (`Modules/<Name>/Respawn.<Name>.Tests`), `Respawn.Tests` for the host and the

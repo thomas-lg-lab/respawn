@@ -52,7 +52,8 @@ and where your time went.
 
 - **Your Steam library, read every day** by the app itself, with the instance's Steam Web API key or one you
   give (kept encrypted, never shown). Each reading is kept, and the history is built from them: no game is
-  ever taken out behind your back, one the store stops listing is only flagged.
+  ever taken out behind your back, one the store stops listing is only flagged. The years before the first
+  reading come from Steam's Year in Review, from 2022 on.
 - **The home**: the game to resume, with "Launch in Steam", the ones played lately, your playtime, the last
   two weeks and the games never launched, the time played per year, the most played and their time map,
   three never launched drawn at random, and the latest days played.
@@ -68,8 +69,7 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next**: take a game the store no longer lists out of the library, and import the years before the
-   first sync from Steam's Year in Review.
+1. **Next**: take a game the store no longer lists out of the library.
 2. **Covers and durations** through IGDB, and with them the backlog in hours; a first try at searching your
    own backlog by what you feel like playing.
 3. **Statuses and ratings** for each game.
@@ -229,6 +229,7 @@ part of the API.
 | `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 | `GET /api/v1/library/stats` | The same library in figures: games, launched and never launched, missing (flagged on every entry), total and recent playtime, games played lately, and `tracking_since`, the earliest reading that listed one of them. What a store said was played lately stops counting once the store's window has passed since that reading (Steam: two weeks), here and in the library |
 | `GET /api/v1/library/history` | What was played day by day since `tracking_since`: for each day, the games played and their `seconds`, the earliest day first. A store gives totals and no history, so a day's time is the growth of those totals between two readings in a row, dated by the later one (UTC); the total a game had at its first reading is not split over time, and days and games with nothing played are left out. `from` and `to` (`YYYY-MM-DD`, both included) ask for a part of it |
+| `GET /api/v1/library/years` | What was played year by year (UTC), the earliest first: for each year its `seconds`, its `source`, the days it covers (`first_day`, `last_day`) and `whole`, whether that is all of it. A year is counted from the store's own review (`review`: Steam's Year in Review, every month of it, from 2022 on) when every linked account has one, and otherwise from the daily readings (`readings`, from the first reading on). A review counts every game played, owned or not; the readings count the games of the library |
 
 Errors always have the same shape, whatever answered:
 
@@ -274,7 +275,23 @@ was played, and when) is the difference between two of them: a day that was not 
 - `GET /api/v1/linked-accounts` says where each account's sync stands. A profile that shows nothing does not
   move `last_succeeded_at`, so an old date there is the sign that something stopped working.
 
-The schedule lives in the app's process, which is one more reason the app runs as one replica.
+### The years before the first reading
+
+A store that keeps its own review of a year gives the past the readings cannot: Steam's Year in Review, what
+was played per month and per game, from 2022 on. The app imports it once per year and linked account, with
+the key that reads the library, on a schedule of its own: every fifteen minutes it looks for the linked
+accounts that miss a year, so a newly linked account gets its past within minutes.
+
+- **The year just over** comes in once Steam has made its review, around the year's end; until then it is
+  asked again a day later. From February on, a year Steam still has no review of is kept as a year with
+  nothing played.
+- **A failure** (no key, a key refused, Steam not answering) waits a day too, and never touches the daily
+  sync: the review comes from a call Steam does not document, which may close without notice.
+- Each answer is kept as it came, like a reading. Unlinking an account forgets its reviews with the rest.
+- `GET /api/v1/library/years` counts a year from the reviews only when every linked account has one, and
+  says of each year whether it is whole. The home draws the whole years and names the others.
+
+Both schedules live in the app's process, which is one more reason the app runs as one replica.
 
 A breaking change to these routes means a new version beside `/api/v1`, not a change to it.
 
