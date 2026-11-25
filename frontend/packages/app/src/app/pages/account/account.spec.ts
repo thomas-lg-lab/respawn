@@ -1,9 +1,8 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { RouterTestingHarness } from '@angular/router/testing';
 import { type LinkedAccount } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
-import { ACCOUNT, api, configureApp, field, type } from '@app/testing/app-testing';
+import { ACCOUNT, api, field, start, type } from '@app/testing/app-testing';
 import '../../layout/shell';
 import './account';
 
@@ -25,10 +24,7 @@ function linked(values: Partial<LinkedAccount> = {}): LinkedAccount {
 describe('Account', () => {
   /** Opens the account screen, signed in, with these accounts linked. */
   async function open(accounts: LinkedAccount[], path = '/account') {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl(path);
+    const { harness, server, arrived } = await start(path);
     await server.answer('/me', ACCOUNT);
     await server.home(accounts);
     await arrived;
@@ -78,10 +74,7 @@ describe('Account', () => {
       sync: { running: false, last: null, last_succeeded_at: null },
     });
     // Not `open`: the screen is not at rest while the reading it asked for is on its way.
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/account?steam_link=linked');
+    const { harness, server, arrived } = await start('/account?steam_link=linked');
     await server.answer('/me', ACCOUNT);
     await server.home([unread]);
     await arrived;
@@ -302,10 +295,7 @@ describe('Account', () => {
   });
 
   it('says that the accounts could not be told, and asks again on request', async () => {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/account');
+    const { harness, server, arrived } = await start('/account');
     await server.answer('/me', ACCOUNT);
     await server.refuse('/linked-accounts', 503, 'database_unavailable');
     await arrived;

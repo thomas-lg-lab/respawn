@@ -10,7 +10,7 @@
   <h1 class="max-w-[16em] type-page-title">{{ t(prefix + 'title') }}</h1>
   @if (kind() === 'failed') {
     <p class="max-w-[36em] text-muted" role="alert" data-sync-reason>
-      {{ t(reason() ?? 'home.syncErrors.unknown') }} {{ t('home.syncFailed.kept') }}
+      {{ t(reason() ?? 'sync.errors.unknown') }} {{ t('home.syncFailed.kept') }}
     </p>
   } @else {
     <p class="max-w-[36em] text-muted" role="alert">{{ t('home.nothingVisible.text') }}</p>

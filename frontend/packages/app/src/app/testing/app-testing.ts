@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import type { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { type Routes, provideRouter } from '@angular/router';
+import { Router, type Routes, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import type { LinkedAccount, SignInOptions } from '@respawn/data';
 import { routes } from '@app/app.routes';
 import { provideAccountSettings } from '@app/session/account-settings';
@@ -44,6 +45,34 @@ export function configureApp(
       ...extra,
     ],
   });
+}
+
+/**
+ * The app on its way to an address. The navigation only ends once the API answered what the
+ * guards and the screen asked on the way: the spec plays those answers, then awaits `arrived`.
+ */
+export async function start(path: string, language: Language = 'fr', screens: Routes = routes) {
+  configureApp(language, [], screens);
+  const harness = await RouterTestingHarness.create();
+  const server = api();
+  const arrived = harness.navigateByUrl(path);
+  return { harness, server, arrived, screen: harness.fixture.nativeElement as HTMLElement };
+}
+
+/**
+ * Goes to an address, `exchanges` playing what the API answers on the way, and waits for the
+ * screen to settle: for a spec that leaves no request unanswered.
+ */
+export async function visit(
+  path: string,
+  exchanges: (server: ReturnType<typeof api>) => Promise<void>,
+  screens: Routes = routes,
+) {
+  const { harness, server, arrived, screen } = await start(path, 'fr', screens);
+  await exchanges(server);
+  await arrived;
+  await harness.fixture.whenStable();
+  return { harness, server, screen, router: TestBed.inject(Router) };
 }
 
 /** The API as the tests play it: wait for a request, then answer or refuse it. */

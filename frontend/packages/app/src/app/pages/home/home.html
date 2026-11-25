@@ -2,10 +2,10 @@
   <!-- What came of linking Steam: the API sent the browser back here with its word. -->
   @if (cameBack; as outcome) {
     @if (outcome === 'linked') {
-      <rs-banner role="status" data-steam-link="linked">{{ t('home.steamLink.linked') }}</rs-banner>
+      <rs-banner role="status" data-steam-link="linked">{{ t('steamLink.linked') }}</rs-banner>
     } @else {
       <rs-banner tone="warn" role="alert" [attr.data-steam-link]="outcome">{{
-        t('home.steamLink.' + outcome)
+        t('steamLink.' + outcome)
       }}</rs-banner>
     }
   }
@@ -29,7 +29,7 @@
       <h1 class="type-page-title">{{ t('home.title') }}</h1>
       <rs-banner tone="warn" role="alert">{{ t(failureKey(accounts.error())) }}</rs-banner>
       <button rsButton type="button" class="self-start" (click)="accounts.refetch()">
-        {{ t('home.retry') }}
+        {{ t('app.retry') }}
       </button>
     }
     @case ('no-account') {
@@ -103,7 +103,7 @@
           data-figures-retry
           (click)="stats.refetch()"
         >
-          {{ t('home.retry') }}
+          {{ t('app.retry') }}
         </button>
       } @else {
         <div class="grid grid-cols-1 gap-3 wide:grid-cols-3" role="status">
@@ -185,7 +185,7 @@
             data-history-retry
             (click)="retryPast()"
           >
-            {{ t('home.retry') }}
+            {{ t('app.retry') }}
           </button>
         }
       } @else if (games.isError()) {
@@ -199,7 +199,7 @@
           data-games-retry
           (click)="games.refetch()"
         >
-          {{ t('home.retry') }}
+          {{ t('app.retry') }}
         </button>
       } @else {
         <div class="grid grid-cols-1 gap-4 wide:grid-cols-2" role="status">

@@ -1,36 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { RouterTestingHarness } from '@angular/router/testing';
 import { type LibraryGame } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, api, button, configureApp, type } from '@app/testing/app-testing';
+import { ACCOUNT, api, button, start, type } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
 import './library';
+import { ago, game } from '@app/testing/games';
 
 const FIRST_PAGE = '/library?sort=name&offset=0&limit=500';
-
-let made = 0;
-
-function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
-  return {
-    game_id: `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`,
-    name,
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    entries: [],
-    ...values,
-  };
-}
-
-/** Noon, that many days back on the calendar: a clock change cannot move it to another day. */
-function ago(days: number): string {
-  const moment = new Date();
-  moment.setDate(moment.getDate() - days);
-  moment.setHours(12, 0, 0, 0);
-  return moment.toISOString();
-}
 
 /** A small library, as the API gives it: by title. */
 function library(): LibraryGame[] {
@@ -49,10 +27,7 @@ function library(): LibraryGame[] {
 describe('Library', () => {
   /** Opens the library, signed in; the API answers with these games unless told not to. */
   async function open(games: LibraryGame[] | null = library(), language: Language = 'fr') {
-    configureApp(language);
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/library');
+    const { harness, server, arrived } = await start('/library', language);
     await server.answer('/me', ACCOUNT);
     await arrived;
     // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.

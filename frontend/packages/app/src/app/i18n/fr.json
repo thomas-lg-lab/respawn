@@ -1,6 +1,7 @@
 {
   "app": {
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "retry": "Réessayer"
   },
   "settings": {
     "language": "Langue",
@@ -99,7 +100,8 @@
       "title": "Comptes de jeu",
       "text": "Les comptes de boutiques où respawn lit vos jeux et votre temps de jeu, une fois par jour.",
       "none": "Aucun compte de jeu n’est encore lié.",
-      "another": "Lier un autre compte Steam"
+      "another": "Lier un autre compte Steam",
+      "first": "Lier mon compte Steam"
     },
     "sources": {
       "steam": "Steam"
@@ -139,23 +141,33 @@
     "library": "Bibliothèque",
     "time": "Temps"
   },
+  "steamLink": {
+    "linked": "Votre compte Steam est lié.",
+    "linked_elsewhere": "Ce compte Steam est déjà lié à un autre compte.",
+    "failed": "Le lien avec Steam n’a pas abouti. Réessayez.",
+    "unavailable": "Steam ne répond pas. Réessayez dans un instant."
+  },
+  "sync": {
+    "tooSoon": "Une synchronisation vient d’être demandée. Réessayez dans une minute.",
+    "errors": {
+      "not_configured": "Cette instance n’a pas de clé d’API Steam : elle est à ajouter par son administrateur.",
+      "refused": "Steam a refusé la clé d’API de l’instance : elle est à vérifier par son administrateur.",
+      "refused_own_key": "Steam a refusé votre clé d’API.",
+      "unavailable": "Steam ne répond pas.",
+      "unreadable": "La réponse de Steam n’a pas pu être lue.",
+      "unknown": "La synchronisation avec Steam a échoué."
+    }
+  },
   "home": {
     "label": "Partie en cours",
     "title": "Accueil",
     "loading": "Chargement de votre bibliothèque…",
-    "retry": "Réessayer",
     "noAccount": {
       "label": "Nouvelle partie",
       "title": "Aucun compte de jeu lié",
       "text": "Liez votre compte Steam pour retrouver vos jeux et votre temps de jeu. La connexion se fait chez Steam : respawn ne voit jamais votre mot de passe et ne modifie rien.",
       "link": "Lier mon compte Steam",
       "note": "Lecture seule : respawn lit la liste de vos jeux et vos temps de jeu, rien d’autre."
-    },
-    "steamLink": {
-      "linked": "Votre compte Steam est lié.",
-      "linked_elsewhere": "Ce compte Steam est déjà lié à un autre compte.",
-      "failed": "Le lien avec Steam n’a pas abouti. Réessayez.",
-      "unavailable": "Steam ne répond pas. Réessayez dans un instant."
     },
     "firstSync": {
       "label": "Chargement de la partie",
@@ -183,20 +195,11 @@
       "retry": "Synchroniser à nouveau",
       "note": "Votre compte Steam reste lié. respawn ne lit que la liste de vos jeux et vos temps de jeu."
     },
-    "syncErrors": {
-      "not_configured": "Cette instance n’a pas de clé d’API Steam : elle est à ajouter par son administrateur.",
-      "refused": "Steam a refusé la clé d’API de l’instance : elle est à vérifier par son administrateur.",
-      "refused_own_key": "Steam a refusé votre clé d’API.",
-      "unavailable": "Steam ne répond pas.",
-      "unreadable": "La réponse de Steam n’a pas pu être lue.",
-      "unknown": "La synchronisation avec Steam a échoué."
-    },
     "sync": {
       "now": "Synchroniser maintenant",
       "retry": "Réessayer",
       "dismiss": "Masquer",
       "running": "Synchronisation avec Steam en cours. Vous pouvez continuer à parcourir.",
-      "tooSoon": "Une synchronisation vient d’être demandée. Réessayez dans une minute.",
       "last": "Dernière synchronisation réussie : {{ date }}",
       "kept": "Vos jeux restent affichés tels qu’à la dernière synchronisation réussie.",
       "nothingVisible": "Steam ne montre plus aucun jeu : le détail des jeux de votre profil est peut-être devenu privé. Vos jeux restent affichés tels qu’à la dernière synchronisation réussie.",

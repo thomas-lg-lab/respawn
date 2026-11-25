@@ -144,21 +144,21 @@ describe('accountInView', () => {
 describe('syncErrorKey', () => {
   it('names the sentence of why a run failed', () => {
     expect(syncErrorKey(run({ outcome: 'failed', error: 'unavailable' }))).toBe(
-      'home.syncErrors.unavailable',
+      'sync.errors.unavailable',
     );
   });
 
   it('tells a refused key of the user from the instance’s', () => {
     const refused = run({ outcome: 'failed', error: 'refused' });
 
-    expect(syncErrorKey(refused)).toBe('home.syncErrors.refused');
-    expect(syncErrorKey({ ...refused, own_key: true })).toBe('home.syncErrors.refused_own_key');
+    expect(syncErrorKey(refused)).toBe('sync.errors.refused');
+    expect(syncErrorKey({ ...refused, own_key: true })).toBe('sync.errors.refused_own_key');
   });
 
   it('gives the general sentence to a reason it does not know', () => {
     expect(syncErrorKey(run({ outcome: 'failed', error: 'something_new' }))).toBe(
-      'home.syncErrors.unknown',
+      'sync.errors.unknown',
     );
-    expect(syncErrorKey(null)).toBe('home.syncErrors.unknown');
+    expect(syncErrorKey(null)).toBe('sync.errors.unknown');
   });
 });

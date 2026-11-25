@@ -1,10 +1,8 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { RouterTestingHarness } from '@angular/router/testing';
 import { Api, accountKeys } from '@respawn/data';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, SIGN_IN_OPTIONS, api, button, configureApp } from '@app/testing/app-testing';
+import { ACCOUNT, api, button, SIGN_IN_OPTIONS, visit } from '@app/testing/app-testing';
 // The screens are chunks the router fetches when first shown. Here the first fetch of one is
 // slow enough to outlast a test, so they are loaded up front: a navigation then finds them.
 import './layout/shell';
@@ -17,26 +15,6 @@ type Server = ReturnType<typeof api>;
 
 /** The screens as an address reaches them: the guards, the frame and the screen together. */
 describe('routes', () => {
-  /**
-   * Goes to an address. The navigation only ends once the API answered what the guards and
-   * the screen asked on the way, which `exchanges` plays.
-   */
-  async function visit(path: string, exchanges: (server: Server) => Promise<void>) {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl(path);
-    await exchanges(server);
-    await arrived;
-    await harness.fixture.whenStable();
-    return {
-      harness,
-      server,
-      router: TestBed.inject(Router),
-      screen: harness.fixture.nativeElement as HTMLElement,
-    };
-  }
-
   /** Signed in, with no store account linked: the home asks which ones are as it opens. */
   const signedIn = async (server: Server) => {
     await server.answer('/me', ACCOUNT);
