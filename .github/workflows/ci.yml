@@ -112,7 +112,7 @@ jobs:
         run: npm test
 
   # Build, runtime contract test and Trivy gate on every PR; edge and sha-* from main; X.Y.Z and latest from a release
-  # tag. The contract test starts the image as the cluster runs it: non-root, read-only root filesystem, no secret
+  # tag. The contract test starts the image as a cluster would run it: non-root, read-only root filesystem, no secret
   # and no database, and it must still answer /healthz. Then with a database that comes up late: /api/v1/config
   # answers 503 until it is there, and /api/v1/me stays closed to a forged Remote-User header.
   image:
@@ -125,7 +125,7 @@ jobs:
       attestations: write
     uses: thomas-lg-lab/.github/.github/workflows/container-image.yml@35e66e4e8cf3abc1ca49e81e43543c077b64ff64 # v2.5.0
     with:
-      # A new edge is followed at once by the lab: Renovate bumps the digest in the deployment repository.
+      # A new edge is followed at once where it is deployed: Renovate bumps the digest in the deployment repository.
       lab-update: true
       contract-test: true
       contract-protected-path: /api/v1/me
