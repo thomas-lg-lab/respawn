@@ -15,7 +15,8 @@ public sealed class AccountOptions
     public IReadOnlyList<OidcProvider> OidcProviders { get; init; } = [];
 }
 
-/// <summary>Instance settings an administrator changes at run time, by their stored key.</summary>
+/// <summary>Instance settings kept in the database, by their stored key: read at each request, so a
+/// change needs no restart. No route writes them yet.</summary>
 public static class InstanceFlags
 {
     public const string LocalSignIn = "local_sign_in_enabled";

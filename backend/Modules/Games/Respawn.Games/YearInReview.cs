@@ -124,8 +124,7 @@ public sealed class YearInReviewGate
 
 /// <summary>How the import of one linked account's reviews ended.</summary>
 /// <param name="Imported">The years imported by this run, those kept with nothing played included.</param>
-/// <param name="NotThere">The years the store has no review of yet, asked again later.</param>
 /// <param name="Error">Why the store could not be read, when it could not: the years after the one that
 /// failed are left for the next attempt.</param>
 /// <param name="Detail">What happened, in the connector's words, when it failed. Never a secret.</param>
-public sealed record YearImport(IReadOnlyList<int> Imported, IReadOnlyList<int> NotThere, SourceError? Error = null, string? Detail = null);
+public sealed record YearImport(IReadOnlyList<int> Imported, SourceError? Error = null, string? Detail = null);
