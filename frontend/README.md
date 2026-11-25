@@ -48,7 +48,8 @@ is not a call but a navigation to the API, which comes back with its outcome on 
 signing in writes it, signing out empties the cache.
 
 The session can also end without a sign-out (its age, another tab). The front learns it two ways: the account
-is asked again each time the window comes back in front, and any request the API refuses with `not_signed_in`
+is asked again each time the window comes back in front, and any request refused with `not_signed_in`, or
+with a 401 that is not the API's (something in front of it turned the request away),
 closes the session in the cache (`serverState()` in `packages/data`, the `QueryClient` the app is given),
 which then calls what the app gave it: a navigation to the sign-in (`session/session.providers.ts`). No
 component watches for it. When the account asked again is another one (signed in from another tab), what was

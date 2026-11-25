@@ -20,8 +20,8 @@ Each test project runs in a database of its own, beside the `respawn` database t
 projects run side by side, and each empties its tables. `RESPAWN_TEST_DATABASE_URL` gives the server and a base
 name ending in `_test` (anything else is refused); a project puts its own name in it, so `respawn_test` gives
 `respawn_accounts_test`, `respawn_games_test` and `respawn_host_test`. The tests create these databases when they are missing (and
-two more for the connection tests, also ending in `_test`), so the account needs the right to create databases
-and roles.
+three more, also ending in `_test`: two for the connection tests, with a role, and one for the test of an
+upgrade of the accounts), so the account needs the right to create databases and roles.
 
 ## The tools, kept running
 
@@ -114,17 +114,17 @@ and adapters around it.
 
 | Project | Holds | May reference |
 | --- | --- | --- |
-| `Respawn.Host` | composition only: `Program.cs`, the HTTP pipeline, one `Add<Module>()` per module, the front's files | everything, but no database driver; nothing references it |
+| `Respawn.Host` | composition only: `Program.cs`, the HTTP pipeline, one `Add<Module>()` per module, the front's files | everything, but no database driver; nothing references it but the tests |
 | `Respawn.Persistence` | the database connection: opened on first use, every module's schema migrated then, a rotated password followed | the shared kernel; no module |
-| `Respawn.SharedKernel` | what modules and the host agree on: the error format, the database contracts | nothing, not even a package |
+| `Respawn.SharedKernel` | what modules and the host agree on: the error format, the database contracts, and what a navigation may come back to (a path of the app, never another site) | nothing, not even a package |
 | `Modules/Accounts/Respawn.Accounts` | the core: use cases and the ports they need | nothing; no package |
 | `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, sessions | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie, the sign-in through a provider (ASP.NET Core's OpenID Connect handler) | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
-| `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, and the ports they need | nothing; no package |
+| `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, the sync, the import of a store's yearly reviews, and the ports they need | nothing; no package |
 | `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core, and the encryption of the store keys users give (libsodium) | its core, the shared kernel |
-| `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` | its core only |
-| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, the schedule of the sync (a timer in the app's process), and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` and `IYearReviewSource` | its core only |
+| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, the schedules of the sync and of the import of the yearly reviews (two timers in the app's process), and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Respawn.Tests` | the tests of the host and of the solution as a whole: the runtime contract, the database connection, the architecture rules | everything |
 | `Respawn.Testing` | what every test project shares: the app started in-process, the test database; not a test project | the host |
@@ -143,7 +143,9 @@ The rules, checked by `ArchitectureTests`:
 - A connector to an outside source is a project of its own in its module (`Respawn.<Module>.<Source>`). It
   references the module's core and nothing else of the app: not the database, not the shared kernel, not
   another connector.
-- No empty project: a module or a layer is created when it has something to hold.
+
+One more rule, which no test checks: no empty project. A module or a layer is created when it has something
+to hold.
 
 A new module adds its three projects and its test project under `backend/Modules/<Name>/`, an `Add<Name>()`
 in `Respawn.Host/Modules/`, its assemblies and its schema to `ArchitectureTests`, and its tables to the list
