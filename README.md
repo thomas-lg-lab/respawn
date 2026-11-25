@@ -137,7 +137,7 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
 
 Numbers are whole numbers of 1 or more. `RESPAWN_COOKIE_SECURE` is `true` or `false` (`1`, `yes`, `on` and
-`0`, `no`, `off` are read too). A value that cannot be read is refused by name, not replaced by its default.
+`0`, `no`, `off` are read too). A value that cannot be read is refused by name, not replaced by its default: the app does not start, and its log says which.
 
 A URI connection string accepts the options `sslmode`, `sslrootcert`, `connect_timeout` and `application_name`;
 any other is refused, so a typo is not silently ignored. Without `connect_timeout`, a connection attempt is given

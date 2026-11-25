@@ -125,6 +125,22 @@
         }
       }
     },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Sign out of this browser",
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/oidc/{provider}": {
       "get": {
         "tags": [
@@ -152,10 +168,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Found",
-            "content": {
-              "application/json": { }
-            }
+            "description": "Found"
           }
         }
       }
@@ -187,26 +200,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Found",
-            "content": {
-              "application/json": { }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/logout": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Sign out of this browser",
-        "responses": {
-          "204": {
-            "description": "No Content",
-            "content": {
-              "application/json": { }
-            }
+            "description": "Found"
           }
         }
       }

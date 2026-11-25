@@ -39,7 +39,7 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
             return true;
         }
 
-        if (DatabaseUnavailableException.Explains(exception))
+        if (DatabaseFailures.MeanUnavailable(exception))
         {
             await ApiErrors.WriteAsync(context, 503, "database_unavailable", "The database is not available yet.");
             return true;

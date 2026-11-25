@@ -175,10 +175,10 @@ public sealed class DatabaseTests
     {
         // What a new connection gets between a password rotation on the server and its arrival here.
         var refused = new PostgresException("password authentication failed", "FATAL", "FATAL", PostgresErrorCodes.InvalidPassword);
-        Assert.True(DatabaseUnavailableException.Explains(new InvalidOperationException("wrapped", refused)));
+        Assert.True(DatabaseFailures.MeanUnavailable(new InvalidOperationException("wrapped", refused)));
 
         var query = new PostgresException("syntax error", "ERROR", "ERROR", PostgresErrorCodes.SyntaxError);
-        Assert.False(DatabaseUnavailableException.Explains(query));
+        Assert.False(DatabaseFailures.MeanUnavailable(query));
     }
 
     private sealed class BrokenMigrator : ISchemaMigrator
