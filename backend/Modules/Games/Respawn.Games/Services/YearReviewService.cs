@@ -70,7 +70,6 @@ public sealed class YearReviewService(
             gate.Tried(account.Id, now);
             var kept = await reviews.ListYearsAsync(account.Id, ct);
             var imported = new List<int>();
-            var notThere = new List<int>();
 
             string? credential;
             try
@@ -79,7 +78,7 @@ public sealed class YearReviewService(
             }
             catch (CredentialException ex)
             {
-                return new YearImport(imported, notThere, SourceError.NotConfigured, "the key given on this account cannot be read: " + ex.Message);
+                return new YearImport(imported, SourceError.NotConfigured, "the key given on this account cannot be read: " + ex.Message);
             }
 
             // A store that shows nothing of an account answers no review either, as it answers no
@@ -99,16 +98,16 @@ public sealed class YearReviewService(
                 {
                     // The years after it wait for the next attempt: a store that refused or did not
                     // answer for one year would most likely say the same for the next.
-                    return new YearImport(imported, notThere, ex.Error, ex.Message);
+                    return new YearImport(imported, ex.Error, ex.Message);
                 }
                 catch (ArgumentException ex)
                 {
-                    return new YearImport(imported, notThere, SourceError.Unreadable, "the connector does not take this account: " + ex.Message);
+                    return new YearImport(imported, SourceError.Unreadable, "the connector does not take this account: " + ex.Message);
                 }
 
                 if (!reading.Exists && (!shown || now < YearInReviewSchedule.Settled(year)))
                 {
-                    notThere.Add(year);
+                    // Asked again at the next attempt.
                     continue;
                 }
 
@@ -122,13 +121,13 @@ public sealed class YearReviewService(
                 }
                 catch (ArgumentException ex)
                 {
-                    return new YearImport(imported, notThere, SourceError.Unreadable, "the review could not be recorded: " + ex.Message);
+                    return new YearImport(imported, SourceError.Unreadable, "the review could not be recorded: " + ex.Message);
                 }
 
                 imported.Add(year);
             }
 
-            return new YearImport(imported, notThere);
+            return new YearImport(imported);
         }
         catch (GamesException ex) when (ex.Error == GamesError.UnknownLinkedAccount)
         {
