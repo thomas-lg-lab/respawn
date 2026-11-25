@@ -64,7 +64,7 @@ describe('AccountMenu', () => {
     const { element } = await create();
 
     expect(element.querySelector('[data-account-name]')?.textContent).toBe('First');
-    // On lines of their own: a long address is cut, never the role.
+    // The role stands beside the name: a long name or address is cut, never the role.
     expect(email(element)).toBe('first@example.org');
     expect(element.querySelector('[data-account-email]')?.getAttribute('title')).toBe(
       'first@example.org',

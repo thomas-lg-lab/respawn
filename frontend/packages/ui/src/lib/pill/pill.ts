@@ -5,8 +5,10 @@ import { Component, booleanAttribute, input } from '@angular/core';
  * position of a segmented choice. `line` is one filter of a row of them above the list it
  * narrows: words, and a line under the one that is on. A row of these weighs no more than a
  * line of text, which leaves the eye to the list; the row and its rule are the screen's layout.
+ * `segment` is one position of a choice whose positions share one track: a `segmented`
+ * pill group draws the track, and the position that is on fills its part of it.
  */
-export type PillVariant = 'block' | 'line';
+export type PillVariant = 'block' | 'line' | 'segment';
 
 /**
  * A pill: a filter, a wish, or one position of a segmented choice. It is a toggle: its

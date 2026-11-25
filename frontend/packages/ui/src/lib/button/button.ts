@@ -2,9 +2,10 @@ import { Component, ElementRef, effect, inject, input, isDevMode } from '@angula
 
 /**
  * `primary` is the one filled action of a screen, `outlined` every other, `icon` a round
- * button that holds an icon and nothing else.
+ * button that holds an icon and nothing else, `row` one line of a list of actions (a menu):
+ * as wide as the list, its words at the start, and no outline of its own.
  */
-export type ButtonVariant = 'primary' | 'outlined' | 'icon';
+export type ButtonVariant = 'primary' | 'outlined' | 'icon' | 'row';
 
 /**
  * `pill` everywhere but in a form, where a button is a `field`: as wide and as round as the

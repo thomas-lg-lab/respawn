@@ -1,7 +1,13 @@
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { LucideCheck, LucideLogOut, LucideSettings } from '@lucide/angular';
+import {
+  LucideCheck,
+  LucideChevronRight,
+  LucideLink,
+  LucideLogOut,
+  LucideSettings,
+} from '@lucide/angular';
 import type { Account } from '@respawn/data';
 import { Avatar, Button, Disclosure, DisclosurePanel, DisclosureTrigger } from '@respawn/ui';
 import type { Character, Theme } from '@respawn/util';
@@ -20,9 +26,9 @@ export interface LinkableProvider {
 }
 
 /**
- * The account menu of the header: who is signed in, the way to the account screen, the
- * settings of the interface, the providers the account may also sign in with, and the way
- * out. A disclosure, not a menu of actions: its button says whether the panel is open, and
+ * The account menu of the header: who is signed in, the settings of the interface, the
+ * providers the account may also sign in with, then the way to the account screen and the
+ * way out. A disclosure, not a menu of actions: its button says whether the panel is open, and
  * the panel holds ordinary controls.
  *
  * It only shows what it is given and says what was asked: the shell decides what a pick or
@@ -40,6 +46,8 @@ export interface LinkableProvider {
     DisclosureTrigger,
     SettingsChoices,
     LucideCheck,
+    LucideChevronRight,
+    LucideLink,
     LucideLogOut,
     LucideSettings,
   ],

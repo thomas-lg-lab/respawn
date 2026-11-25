@@ -112,6 +112,13 @@
   /* A tile picked on the time map: a little larger, above its neighbours. */
   --rs-pop: 1.04;
   --rs-shadow-raised: 0 8px 24px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.45));
+  /* A panel that opens over the page (a menu, suggestions): a close shadow that draws its
+     edge, and a wide one that darkens what it covers. */
+  --rs-shadow-overlay:
+    0 2px 6px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.5)),
+    0 20px 56px light-dark(rgb(0 0 0 / 0.24), rgb(0 0 0 / 0.8));
+  /* How it arrives: from a little higher and smaller, once. */
+  --rs-duration-overlay: 140ms;
   --rs-duration-pulse: 1.4s;
   --rs-duration-blink: 1s;
   --rs-blink-count: 5;

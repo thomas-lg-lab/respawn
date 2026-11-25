@@ -72,6 +72,15 @@
 
   --transition-duration-hover: var(--rs-duration-hover);
   --shadow-raised: var(--rs-shadow-raised);
+  --shadow-overlay: var(--rs-shadow-overlay);
+  --animate-overlay-in: rs-overlay-in var(--rs-duration-overlay) ease-out;
+}
+@keyframes rs-overlay-in {
+  from {
+    translate: 0 calc(var(--rs-lift) * -1);
+    scale: 0.98;
+    opacity: 0;
+  }
 }
 
 /*

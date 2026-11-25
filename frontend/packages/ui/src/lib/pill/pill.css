@@ -57,4 +57,31 @@
     color: var(--rs-text);
     font-weight: 600;
   }
+
+  /* One position of a track: the track is the group's, this fills its part of it when on. */
+  :host([data-variant='segment']) {
+    position: relative;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: calc(var(--rs-size-touch) - 0.5rem);
+    padding-inline: 0.875rem;
+    border-radius: var(--rs-radius-pill);
+    color: var(--rs-muted);
+    white-space: nowrap;
+    transition-property: background-color, color;
+  }
+  /* The track's own padding is part of what a finger may land on: the touch target stays whole. */
+  :host([data-variant='segment'])::before {
+    position: absolute;
+    inset-block: -0.25rem;
+    inset-inline: 0;
+    content: '';
+  }
+  :host([data-variant='segment']:hover) {
+    color: var(--rs-text);
+  }
+  :host([data-variant='segment'][aria-pressed='true']) {
+    background-color: var(--rs-inverse);
+    color: var(--rs-on-inverse);
+  }
 }
