@@ -12,7 +12,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Card } from '@respawn/ui';
-import { mixed, treemap } from '@app/games/time-map';
+import { flippedBy, treemap } from '@app/games/time-map';
 import type { MapGame } from '../library-blocks';
 
 /** The drawing's width over its height until it is measured: about what a phone gives it. */
@@ -20,7 +20,7 @@ const RATIO = 2.6;
 
 /**
  * The time map at a glance: the most played games as tiles, each as large as its playtime
- * and coloured by its last session, scattered over the drawing (`mixed`). A drawing only, with what it shows said under it: no
+ * and coloured by its last session, not ranked from one corner to the other (`flippedBy`). A drawing only, with what it shows said under it: no
  * tile names its game, and the ranking names the first of them only. The whole card leads to
  * the Time tab, where the map is drawn in full.
  *
@@ -41,9 +41,10 @@ export class TimeMapPreview {
 
   protected readonly tiles = computed(() =>
     treemap(
-      mixed(this.games(), (game) => game.id),
+      this.games(),
       (game) => game.seconds,
       this.ratio(),
+      flippedBy((game) => game.id),
     ),
   );
 

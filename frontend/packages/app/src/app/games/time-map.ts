@@ -19,18 +19,20 @@ export interface Tile<T> {
 
 /**
  * Cuts the map into one tile per item, each as large as its weight's share of their sum.
- * The items are placed in the order they come (`mixed` scatters them); the ones whose weight
- * is not above zero get no tile.
+ * The items come heaviest first; the ones whose weight is not above zero get no tile.
  * `ratio` is the map's width over its height, so that a tile is cut along its longer side
  * as it is drawn.
  *
  * The cut: the items are split in two where the first part comes closest under half of the
- * sum, the rectangle is split in the same proportion, and each part is cut again.
+ * sum, the rectangle is split in the same proportion, and each part is cut again. The heavier
+ * part goes to the left or the top, unless `flipped` says so of the part's heaviest item: it
+ * then goes to the right or the bottom. The tiles keep the order of the items.
  */
 export function treemap<T>(
   items: readonly T[],
   weight: (item: T) => number,
   ratio: number,
+  flipped: (heaviest: T) => boolean = () => false,
 ): Tile<T>[] {
   const tiles: Tile<T>[] = [];
   const weighed = items
@@ -54,12 +56,15 @@ export function treemap<T>(
       split++;
     }
     const share = first / sum;
+    const flip = flipped(head.item);
     if (width * ratio >= height) {
-      cut(part.slice(0, split), x, y, width * share, height);
-      cut(part.slice(split), x + width * share, y, width * (1 - share), height);
+      const [heavy, light] = [width * share, width * (1 - share)];
+      cut(part.slice(0, split), flip ? x + light : x, y, heavy, height);
+      cut(part.slice(split), flip ? x : x + heavy, y, light, height);
     } else {
-      cut(part.slice(0, split), x, y, width, height * share);
-      cut(part.slice(split), x, y + height * share, width, height * (1 - share));
+      const [heavy, light] = [height * share, height * (1 - share)];
+      cut(part.slice(0, split), x, flip ? y + light : y, width, heavy);
+      cut(part.slice(split), x, flip ? y : y + heavy, width, light);
     }
   };
 
@@ -68,16 +73,13 @@ export function treemap<T>(
 }
 
 /**
- * The items in an order that looks drawn at random and is the same at every visit: by a hash of
- * each one's key. Given to the cut, it scatters the tiles over the map, the large and the small,
- * the cold and the warm, rather than ranking them from one corner to the other. The order only
- * changes when the items do, so a map read again does not jump.
+ * Which cuts of the map put their heavier part to the right or the bottom: half of them, by a
+ * hash of the key of the part's heaviest item. The tiles are then no longer ranked from one
+ * corner to the other, while the large ones stay together and the small ones too. The same
+ * at every visit: it only changes when the games do, so a map read again does not jump.
  */
-export function mixed<T>(items: readonly T[], key: (item: T) => string): T[] {
-  return items
-    .map((item) => ({ item, rank: hash(key(item)) }))
-    .sort((a, b) => a.rank - b.rank)
-    .map((each) => each.item);
+export function flippedBy<T>(key: (item: T) => string): (heaviest: T) => boolean {
+  return (heaviest) => hash(key(heaviest)) % 2 === 1;
 }
 
 /** FNV-1a on 32 bits: enough to spread a few dozen ids, and the same in every browser. */

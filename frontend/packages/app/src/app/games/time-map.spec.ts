@@ -1,5 +1,5 @@
 import type { LibraryGame } from '@respawn/data';
-import { mixed, playedRecency, recency, treemap } from './time-map';
+import { flippedBy, playedRecency, recency, treemap } from './time-map';
 
 const weight = (value: number) => value;
 const area = (tile: { width: number; height: number }) => (tile.width * tile.height) / 100;
@@ -80,17 +80,32 @@ describe('the time map', () => {
   });
 });
 
-describe('mixed', () => {
-  const ids = Array.from({ length: 13 }, (_, index) => `game-${index}`);
+describe('flipped cuts', () => {
+  const weight = (value: number) => value;
 
-  it('keeps every item, in an order of its own', () => {
-    const order = mixed(ids, (id) => id);
+  it('puts the heavier part on the other side when told, and keeps every tile and its size', () => {
+    const plain = treemap([60, 40], weight, 2);
+    const flipped = treemap([60, 40], weight, 2, () => true);
 
-    expect([...order].sort()).toEqual([...ids].sort());
-    expect(order).not.toEqual(ids);
+    expect(plain.map(({ x, width }) => [x, width])).toEqual([
+      [0, 60],
+      [60, 40],
+    ]);
+    expect(flipped.map(({ x, width }) => [x, width])).toEqual([
+      [40, 60],
+      [0, 40],
+    ]);
+    // The tiles keep the order of the items.
+    expect(flipped.map((tile) => tile.item)).toEqual([60, 40]);
   });
 
-  it('gives the same order whatever order the items come in', () => {
-    expect(mixed([...ids].reverse(), (id) => id)).toEqual(mixed(ids, (id) => id));
+  it('flips about half of the cuts, the same ones at every visit', () => {
+    const ids = Array.from({ length: 40 }, (_, index) => `game-${index}`);
+    const flip = flippedBy((id: string) => id);
+    const flips = ids.filter(flip).length;
+
+    expect(flips).toBeGreaterThan(10);
+    expect(flips).toBeLessThan(30);
+    expect(ids.map(flip)).toEqual(ids.map(flippedBy((id: string) => id)));
   });
 });

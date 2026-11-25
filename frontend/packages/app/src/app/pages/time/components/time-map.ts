@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { formatCount, isOne, saidPlaytime } from '@app/format/format';
-import { mixed, treemap } from '@app/games/time-map';
+import { flippedBy, treemap } from '@app/games/time-map';
 import type { GameTile, OthersTile } from '../time-tiles';
 
 /** The drawing's size until it is measured: about what a wide screen gives it. */
@@ -60,14 +60,14 @@ export class TimeMap {
 
   protected readonly placed = computed(() => {
     const { width, height } = this.size();
-    // Scattered over the drawing, the same way at every visit; in the page, and so for the
-    // keyboard and a screen reader, still the most played first.
-    const rank = new Map(this.tiles().map((tile, index) => [tile.id, index]));
+    // The tiles come heaviest first, as the cut needs them, and stay in that order in the page
+    // (for the keyboard and a screen reader) wherever the flipped cuts put them.
     const cut = treemap(
-      mixed(this.tiles(), (tile) => tile.id),
+      this.tiles(),
       (tile) => tile.seconds,
       width / height,
-    ).sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
+      flippedBy((tile) => tile.id),
+    );
     return cut.map((tile) => {
       const across = (tile.width / 100) * width;
       const down = (tile.height / 100) * height;
