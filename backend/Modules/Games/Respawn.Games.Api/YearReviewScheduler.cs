@@ -24,6 +24,10 @@ internal sealed class YearReviewScheduler(IServiceScopeFactory scopes, TimeProvi
     /// <summary>Why the last look failed, to say it once and not at every turn.</summary>
     private string? _lastFailure;
 
+    /// <summary>Why each account's last import failed, to say a trouble that lasts once and not every
+    /// day. Turns run one after the other: no lock.</summary>
+    private readonly Dictionary<Guid, string> _failing = [];
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(Period, clock);
@@ -86,12 +90,22 @@ internal sealed class YearReviewScheduler(IServiceScopeFactory scopes, TimeProvi
                 ended++;
                 if (import.Error is { } error)
                 {
-                    // Once a day at most for an account: the next attempt waits that long.
-                    logger.LogWarning(
-                        "year in review: linked account {Account} could not be read ({Error}), {Imported} year(s) imported before: {Detail}",
-                        account, SyncWords.Of(error), import.Imported.Count, import.Detail);
+                    // Said when it starts or changes, not at each day's attempt.
+                    var reason = $"{SyncWords.Of(error)}: {import.Detail}";
+                    if (_failing.GetValueOrDefault(account) != reason)
+                    {
+                        logger.LogWarning(
+                            "year in review: linked account {Account} could not be read ({Reason}); asked again each day",
+                            account, reason);
+                        _failing[account] = reason;
+                    }
                 }
-                else if (import.Imported.Count > 0)
+                else if (_failing.Remove(account))
+                {
+                    logger.LogInformation("year in review: linked account {Account} is read again", account);
+                }
+
+                if (import.Imported.Count > 0)
                 {
                     logger.LogInformation(
                         "year in review: linked account {Account}: {Years} imported", account, string.Join(", ", import.Imported));

@@ -68,7 +68,11 @@ public sealed class YearReviewTests
         var stray = await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadYearAsync(SteamId, 2024, null, default));
         Assert.Equal(SourceError.Unreadable, stray.Error);
 
-        steam.Body = "{\"response\":{\"stats\":{\"year\":2024,\"playtime_stats\":{\"months\":[{\"rtime_month\":\"x\"}]}}}}";
+        steam.Body = "{\"response\":{\"stats\":{\"year\":2024,\"playtime_stats\":{\"months\":[{\"rtime_month\":\"x\",\"appid\":[]}]}}}}";
+        Assert.Equal(SourceError.Unreadable, (await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadYearAsync(SteamId, 2024, null, default))).Error);
+
+        // A total with no month of it: not a year with nothing played.
+        steam.Body = "{\"response\":{\"stats\":{\"year\":2024,\"playtime_stats\":{\"total_stats\":{\"total_playtime_seconds\":3600}}}}}";
         Assert.Equal(SourceError.Unreadable, (await Assert.ThrowsAsync<SourceException>(() => Source(app).ReadYearAsync(SteamId, 2024, null, default))).Error);
 
         // Not a SteamID: nothing is asked.
@@ -78,9 +82,35 @@ public sealed class YearReviewTests
     }
 
     [Fact]
+    public async Task What_cannot_be_placed_is_skipped_rather_than_costing_the_year()
+    {
+        // Every field of Steam's messages is optional: a month with no date, a game with no id or no
+        // figures, a game with no session count.
+        var steam = new FakeSteam
+        {
+            Body = """
+                {"response":{"stats":{"year":2024,"playtime_stats":{"months":[
+                  {"stats":{"total_playtime_seconds":60}},
+                  {"rtime_month":1706774400,"appid":[
+                    {"stats":{"total_playtime_seconds":60}},
+                    {"appid":70,"rtime_first_played":1706774400},
+                    {"appid":620,"stats":{"total_playtime_seconds":600}}]}]}}}}
+                """,
+        };
+        await using var app = await StartAsync(steam, new TestClock { Now = Now });
+
+        var reading = await Source(app).ReadYearAsync(SteamId, 2024, null, default);
+
+        Assert.Equal(
+            [("620", new DateOnly(2024, 2, 1), 600L, 0)],
+            reading.Months.Select(month => (month.ExternalId, month.Month, (long)month.Playtime.TotalSeconds, month.Sessions)).ToArray());
+    }
+
+    [Fact]
     public async Task A_linked_account_gets_the_years_steam_reviewed_and_the_others_on_a_later_day()
     {
-        var clock = new TestClock { Now = Now };
+        // January: the review of the last year may still come; the years before are settled.
+        var clock = new TestClock { Now = new DateTimeOffset(2026, 1, 10, 6, 0, 0, TimeSpan.Zero) };
         var reviews = new Dictionary<int, string> { [2024] = FakeSteam.Recorded("year-in-review-2024.json") };
         var steam = new FakeSteam { BodyFor = address => ReviewFor(address, reviews) };
         await using var app = await StartAsync(steam, clock);
@@ -97,8 +127,11 @@ public sealed class YearReviewTests
         await using (var scope = app.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-            var review = Assert.Single(await db.YearReviews.AsNoTracking().ToListAsync());
-            Assert.Equal((account, 2024), (review.LinkedAccountId, review.Year));
+            // 2022 and 2023 have no review and are settled: kept, with nothing played. 2025 may still come.
+            var kept = await db.YearReviews.AsNoTracking().OrderBy(r => r.Year).ToListAsync();
+            Assert.Equal([2022, 2023, 2024], kept.Select(r => r.Year));
+            Assert.All(kept, r => Assert.Equal(account, r.LinkedAccountId));
+            var review = kept[2];
 
             // The answer kept whole, as a snapshot of the account.
             var snapshot = await db.RawSnapshots.AsNoTracking().SingleAsync(s => s.Id == review.SnapshotId);
@@ -108,6 +141,7 @@ public sealed class YearReviewTests
             // Its months, by store entry; the games the catalogue did not know are in it now, unnamed.
             var entries = await db.StoreEntries.AsNoTracking().ToDictionaryAsync(e => e.Id);
             var months = await db.MonthlyPlaytime.AsNoTracking().ToListAsync();
+            Assert.Equal(3, await db.RawSnapshots.AsNoTracking().CountAsync(s => s.Kind == "year-in-review"));
             Assert.Equal(
                 [("220", "2024-01", 3600L, 2), ("620", "2024-01", 5400L, 3), ("620", "2024-03", 1800L, 1), ("70", "2024-03", 900L, 1)],
                 months
@@ -132,13 +166,17 @@ public sealed class YearReviewTests
         Assert.Equal([account], await DueAsync(app));
         Assert.Equal(1, await TurnAsync(app));
         Assert.Equal(
-            ["2022", "2023", "2024", "2025", "2022", "2023", "2025"],
+            ["2022", "2023", "2024", "2025", "2025"],
             steam.Requests.Select(request => Year(request.Address)).ToArray());
         await using (var scope = app.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-            Assert.Equal([2024, 2025], await db.YearReviews.AsNoTracking().Select(r => r.Year).OrderBy(year => year).ToListAsync());
+            Assert.Equal([2022, 2023, 2024, 2025], await db.YearReviews.AsNoTracking().Select(r => r.Year).OrderBy(year => year).ToListAsync());
         }
+
+        // Nothing left to ask.
+        clock.NextDay();
+        Assert.Empty(await DueAsync(app));
     }
 
     [Fact]
@@ -189,7 +227,8 @@ public sealed class YearReviewTests
         await using (var scope = app.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-            Assert.Equal([2023], await db.YearReviews.AsNoTracking().Select(r => r.Year).ToListAsync());
+            Assert.Equal([2022, 2023, 2024, 2025], await db.YearReviews.AsNoTracking().Select(r => r.Year).OrderBy(year => year).ToListAsync());
+            Assert.Single(await db.MonthlyPlaytime.AsNoTracking().ToListAsync());
         }
     }
 
@@ -216,10 +255,13 @@ public sealed class YearReviewTests
             await YearsAsync(browser));
 
         // The reviews: 2024 with its 3 h 15 min, Half-Life counted though the library does not own it, and
-        // 2025 reviewed with nothing played. 2022 and 2023 were not reviewed: they are not there.
+        // 2025 reviewed with nothing played. Steam has none of 2022 and 2023, which are settled: nothing
+        // was played on that account then.
         Assert.Equal(1, await TurnAsync(app));
         Assert.Equal(
             [
+                (2022, 0L, "review", "2022-01-01", "2022-12-31", true),
+                (2023, 0L, "review", "2023-01-01", "2023-12-31", true),
                 (2024, 11700L, "review", "2024-01-01", "2024-12-31", true),
                 (2025, 0L, "review", "2025-01-01", "2025-12-31", true),
                 (2026, 3600L, "readings", "2026-11-01", "2026-11-28", false),
@@ -242,16 +284,31 @@ public sealed class YearReviewTests
         using var browser = app.Browser();
         var first = await LinkAsync(app, browser);
         Assert.Equal(1, await TurnAsync(app));
-        Assert.Equal([(2024, 11700L, "review", "2024-01-01", "2024-12-31", true)], await YearsAsync(browser));
+        Assert.Equal(
+            [
+                (2022, 0L, "review", "2022-01-01", "2022-12-31", true),
+                (2023, 0L, "review", "2023-01-01", "2023-12-31", true),
+                (2024, 11700L, "review", "2024-01-01", "2024-12-31", true),
+                (2025, 0L, "review", "2025-01-01", "2025-12-31", true),
+            ],
+            await YearsAsync(browser));
 
         // A second Steam account, not imported yet: 2024 is no longer whole, and no reading covers it.
         var owner = await OwnerAsync(app, first);
         await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", "76561190000000002", null, default));
         Assert.Empty(await YearsAsync(browser));
 
-        // Once it is, the two reviews add up.
+        // Once it is, the two reviews add up, and a year neither has a review of is there at zero: one
+        // account with none does not hide the others' years.
         Assert.Equal(1, await TurnAsync(app));
-        Assert.Equal([(2024, 23400L, "review", "2024-01-01", "2024-12-31", true)], await YearsAsync(browser));
+        Assert.Equal(
+            [
+                (2022, 0L, "review", "2022-01-01", "2022-12-31", true),
+                (2023, 0L, "review", "2023-01-01", "2023-12-31", true),
+                (2024, 23400L, "review", "2024-01-01", "2024-12-31", true),
+                (2025, 0L, "review", "2025-01-01", "2025-12-31", true),
+            ],
+            await YearsAsync(browser));
     }
 
     [Fact]

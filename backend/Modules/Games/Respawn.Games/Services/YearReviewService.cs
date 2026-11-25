@@ -94,11 +94,14 @@ public sealed class YearReviewService(
                     return new YearImport(imported, notThere, SourceError.Unreadable, "the connector does not take this account: " + ex.Message);
                 }
 
-                if (!reading.Exists)
+                if (!reading.Exists && now < YearInReviewSchedule.Settled(year))
                 {
                     notThere.Add(year);
                     continue;
                 }
+
+                // A review, or none of a year that is settled: nothing was played that year on this
+                // account, which the other accounts of the owner must not wait for.
 
                 try
                 {
@@ -190,9 +193,10 @@ public sealed class YearReviewService(
         return [.. years.Values.OrderBy(year => year.Year)];
     }
 
-    /// <summary>One year's review, kept with its answer in one transaction. A game the catalogue does
-    /// not know gets a record of its own, with no name: a review names no game, and the next reading of
-    /// the library names those still owned.</summary>
+    /// <summary>One year's review, kept with its answer in one transaction (an answer with no review
+    /// is kept the same way, with no month). A game the catalogue does not know gets a record of its
+    /// own, with no name: a review names no game, and the next reading of the library names those still
+    /// owned.</summary>
     private Task RecordAsync(LinkedAccount account, int year, YearReading reading, CancellationToken ct)
     {
         var months = Months(year, reading);

@@ -60,32 +60,50 @@ internal sealed class SteamYearReviewSource(SteamClient steam) : IYearReviewSour
                 throw new SourceException(SourceError.Unreadable, $"Steam answered the review of another year than {year}");
             }
 
+            // Every field of Steam's messages is optional, and an empty one is left out of the answer:
+            // what cannot be placed (a month with no date, a game with no id or no figures) is skipped,
+            // rather than costing the whole year.
             var items = new List<MonthItem>();
             if (playtime.TryGetProperty("months", out var months))
             {
                 foreach (var month in months.EnumerateArray())
                 {
-                    var start = Month(Number(month.GetProperty("rtime_month")));
+                    if (!month.TryGetProperty("rtime_month", out var dated) || !month.TryGetProperty("appid", out var games))
+                    {
+                        continue;
+                    }
+
+                    var start = Month(Number(dated));
                     if (start.Year != year)
                     {
                         throw new SourceException(SourceError.Unreadable, $"Steam's review of {year} holds a month of {start.Year}");
                     }
 
-                    if (!month.TryGetProperty("appid", out var games))
-                    {
-                        continue;
-                    }
-
                     foreach (var game in games.EnumerateArray())
                     {
-                        var figures = game.GetProperty("stats");
+                        if (!game.TryGetProperty("appid", out var appId) || !game.TryGetProperty("stats", out var figures))
+                        {
+                            continue;
+                        }
+
                         items.Add(new MonthItem(
-                            Number(game.GetProperty("appid")).ToString(CultureInfo.InvariantCulture),
+                            Number(appId).ToString(CultureInfo.InvariantCulture),
                             start,
                             TimeSpan.FromSeconds(figures.TryGetProperty("total_playtime_seconds", out var seconds) ? Number(seconds) : 0),
-                            figures.TryGetProperty("total_sessions", out var sessions) ? (int)Number(sessions) : 0));
+                            figures.TryGetProperty("total_sessions", out var sessions) ? (int)Math.Min(Number(sessions), int.MaxValue) : 0));
                     }
                 }
+            }
+
+            // A review that says time was played and gives no month of it is not a year with nothing
+            // played: a review kept private, or not finished, may look like that. Refused, and asked
+            // again the next day, rather than kept as zero for good.
+            if (items.Count == 0
+                && playtime.TryGetProperty("total_stats", out var total)
+                && total.TryGetProperty("total_playtime_seconds", out var played)
+                && Number(played) > 0)
+            {
+                throw new SourceException(SourceError.Unreadable, $"Steam's review of {year} gives a total and no month");
             }
 
             return (true, items);
