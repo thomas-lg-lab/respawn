@@ -44,8 +44,7 @@
 - **Architecture is checked.** A module never references another module, its infrastructure or its tables; an inbound
   adapter never references its module's infrastructure; a core references no framework; a connector references
   its module's core only; each module owns one
-  PostgreSQL schema and its migrations. `ArchitectureTests` fails otherwise. No empty project either, which no
-  test checks; CONTRIBUTING.md
+  PostgreSQL schema and its migrations; no empty project. `ArchitectureTests` fails otherwise; CONTRIBUTING.md
   says how to add a module.
 - **The public API is a contract.** Routes live under `/api/v1`; a breaking change means a new version. The front
   uses only these routes. Errors are always `{"error": {"code", "message"}}`.
