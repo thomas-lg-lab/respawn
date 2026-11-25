@@ -11,8 +11,9 @@ namespace Respawn.Games;
 /// <param name="TakenAt">When the source answered.</param>
 /// <param name="Payload">The answer as received, kept whole: what the months do not use (streaks, first
 /// sessions, the store's tags) can be read from it again later.</param>
-/// <param name="Exists">False when the store has no review of that year (yet): a year not over, or not
-/// generated. Its months are then empty, and nothing is imported.</param>
+/// <param name="Exists">False when the store has no review of that year: not made yet, or nothing to
+/// review. Its months are then empty; once the year is settled
+/// (<see cref="YearInReviewSchedule.Settled"/>) it is kept as a year with nothing played.</param>
 /// <param name="Months">What was played, per month and per game. A game not played in a month is left
 /// out of it.</param>
 public sealed record YearReading(
@@ -60,6 +61,12 @@ public static class YearInReviewSchedule
     /// <summary>How long after an attempt the years still missing are asked again: a review of the last
     /// year appears around its end, and a store that did not answer is not asked at every turn.</summary>
     public static readonly TimeSpan RetryAfter = TimeSpan.FromDays(1);
+
+    /// <summary>From when a store with no review of a year is taken at its word: nothing was played that
+    /// year on that account (it did not exist yet, or was not used). Steam makes its reviews in December;
+    /// a month after the year ended, one that is still missing will not come. Before that, the year is
+    /// asked again.</summary>
+    public static DateTimeOffset Settled(int year) => new(year + 1, 2, 1, 0, 0, 0, TimeSpan.Zero);
 
     /// <summary>The years a review is asked for at that moment: from the first to the last one over.</summary>
     public static IEnumerable<int> Years(DateTimeOffset now)
@@ -114,8 +121,8 @@ public sealed class YearInReviewGate
 }
 
 /// <summary>How the import of one linked account's reviews ended.</summary>
-/// <param name="Imported">The years imported by this run.</param>
-/// <param name="NotThere">The years the store has no review of yet.</param>
+/// <param name="Imported">The years imported by this run, those kept with nothing played included.</param>
+/// <param name="NotThere">The years the store has no review of yet, asked again later.</param>
 /// <param name="Error">Why the store could not be read, when it could not: the years after the one that
 /// failed are left for the next attempt.</param>
 /// <param name="Detail">What happened, in the connector's words, when it failed. Never a secret.</param>
