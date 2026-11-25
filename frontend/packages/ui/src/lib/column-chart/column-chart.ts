@@ -26,7 +26,7 @@ export class ColumnChart {}
  * One column of a `rs-column-chart`: a bar as tall as `value` is of `max`, the value in
  * words above it (projected) and what it measures under it. The bar is a drawing, hidden
  * from screen readers: the column is read by its words. `open` is a value that is not whole
- * yet, a year still running: drawn hatched, and said by `openLabel` to who does not
+ * yet, a year still running: drawn paler, and said by `openLabel` to who does not
  * see the drawing. A value of zero draws no bar.
  */
 @Component({

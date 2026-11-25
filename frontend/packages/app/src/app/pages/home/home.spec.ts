@@ -822,7 +822,7 @@ describe('Home', () => {
       expect(text(screen, '[data-years-since]')).toBe(
         '2026 : compté jour par jour à chaque synchronisation, depuis le 18 nov. 2026.',
       );
-      expect(text(screen, '[data-years-open]')).toBe('Une année hachurée n’est pas entière.');
+      expect(text(screen, '[data-years-open]')).toBe('Une année plus pâle n’est pas entière.');
       expect(screen.querySelector('[data-years-reviewed]')).toBeNull();
     });
 
@@ -867,7 +867,7 @@ describe('Home', () => {
       );
     });
 
-    it('says nothing of the syncs or of a hatched year when every year is reviewed', async () => {
+    it('says nothing of the syncs or of a paler year when every year is reviewed', async () => {
       const games = played();
       const { screen } = await open([account()], '/', STATS, games, readings(games), {
         years: [reviewed(2025, 3600)],
@@ -1107,7 +1107,7 @@ describe('Home', () => {
       expect(text(screen, '[data-years-since]')).toBe(
         '2026: counted day by day at each sync, from Nov 18, 2026.',
       );
-      expect(text(screen, '[data-years-open]')).toBe('A hatched year is not whole.');
+      expect(text(screen, '[data-years-open]')).toBe('A paler year is not whole.');
       expect(text(screen, '[data-activity] h2')).toBe('Activity');
       expect(all(screen, '[data-activity] h3')[0]).toBe('Saturday, November 21');
       expect(all(screen, '[data-day="2026-11-21"] [data-total]')).toEqual(['142 h in all']);
