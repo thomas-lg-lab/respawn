@@ -107,6 +107,24 @@ public sealed class HostTests
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode); // nothing was written
     }
 
+    [Fact]
+    public async Task An_error_is_logged_without_the_words_of_the_request()
+    {
+        using var logs = new LogCollector();
+        using var factory = new LoggerFactory([logs]);
+        var handler = new ApiExceptionHandler(factory.CreateLogger<ApiExceptionHandler>());
+        var context = new DefaultHttpContext();
+        context.Request.Method = "GET";
+        context.Request.Path = "/api/v1/x" + (char)10 + "2026-01-01T00:00:00Z crit: a forged line";
+        context.Response.Body = new MemoryStream();
+
+        Assert.True(await handler.TryHandleAsync(context, new InvalidOperationException("boom"), CancellationToken.None));
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.Contains("unhandled error in no endpoint", logs.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("forged", logs.Text, StringComparison.Ordinal);
+    }
+
     private static IConfiguration Configuration(string name, string value) =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [name] = value }).Build();
 
