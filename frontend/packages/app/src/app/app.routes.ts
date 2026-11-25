@@ -1,4 +1,5 @@
 import type { Routes } from '@angular/router';
+import { devRoutes } from './dev-routes';
 import { signedInOnly, signedOutOnly } from './session/session.guards';
 
 /**
@@ -12,11 +13,7 @@ export const routes: Routes = [
     canActivate: [signedOutOnly],
     loadComponent: () => import('./pages/sign-in/sign-in').then((m) => m.SignIn),
   },
-  {
-    // The proof of the design tokens and of the base components: no data, so no session.
-    path: 'foundations',
-    loadComponent: () => import('./pages/foundations/foundations').then((m) => m.Foundations),
-  },
+  ...devRoutes,
   {
     path: '',
     canActivate: [signedInOnly],

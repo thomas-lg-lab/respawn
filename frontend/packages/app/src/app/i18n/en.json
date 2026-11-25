@@ -387,7 +387,15 @@
       "banners": "Banners",
       "status": "Sync in progress: your games stay on screen.",
       "warning": "Sync failed. Your games stay on screen as they were yesterday.",
-      "avatar": "Avatar"
+      "avatar": "Avatar",
+      "tabs": "Tabs",
+      "search": "Search field",
+      "searchHint": "A title",
+      "select": "Select",
+      "sortBy": "Sort by",
+      "disclosure": "Disclosure",
+      "open": "Show the panel",
+      "panel": "A panel that closes on Escape or a click outside."
     },
     "form": {
       "label": "Form",
@@ -395,6 +403,16 @@
       "nameHint": "The name other members will see.",
       "email": "E-mail",
       "submit": "Form button"
+    },
+    "library": {
+      "label": "The library’s blocks",
+      "heroLetter": "H",
+      "heroLabel": "Resume",
+      "heroTitle": "Hades",
+      "tileCaption": "Playtime",
+      "tileNote": "across 12 games",
+      "covers": "Covers, waiting for their artwork",
+      "skeleton": "Something on its way"
     }
   }
 }
