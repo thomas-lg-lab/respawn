@@ -79,7 +79,7 @@ describe('ColumnChart', () => {
     expect(columns[1]?.querySelector('[aria-hidden] .open-word')).toBeNull();
   });
 
-  it('draws no bar for nothing, not even the outline of an open one', async () => {
+  it('draws no bar for nothing, not even a hatched one for an open one', async () => {
     const fixture = TestBed.createComponent(Host);
     await fixture.whenStable();
     const columns = [...(fixture.nativeElement as HTMLElement).querySelectorAll('rs-chart-column')];

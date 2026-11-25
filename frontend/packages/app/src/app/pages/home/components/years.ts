@@ -22,8 +22,8 @@ export function yearRuns(years: readonly number[]): string {
 
 /**
  * The time played year by year: the years Steam's Year in Review covers, whole, and the years
- * counted day by day at each sync. Each caption names the years it speaks of, and an outline
- * draws a year that is not whole (the one the first sync fell in, the one still running).
+ * counted day by day at each sync. Each caption names the years it speaks of, and a year that is
+ * not whole is drawn hatched (the one the first sync fell in, the one still running).
  */
 @Component({
   selector: 'rs-years',

@@ -255,7 +255,7 @@
       "title": "Playtime per year",
       "reviewed": "{{ years }}: from Steam’s Year in Review, month by month.",
       "since": "{{ years }}: counted day by day at each sync, from {{ date }}.",
-      "dashed": "A dashed year is not whole.",
+      "hatched": "A hatched year is not whole.",
       "open": "Not a whole year"
     },
     "activity": {
