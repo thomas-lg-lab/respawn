@@ -24,8 +24,9 @@
     [class.hidden]="!unfolded()"
     [class.flex]="unfolded()"
   >
+    <!-- A container: the hint at the shortcut is only drawn when the field has room for it. -->
     <rs-search-field
-      class="min-w-0 flex-1"
+      class="@container min-w-0 flex-1"
       [label]="t('label')"
       [placeholder]="t('placeholder')"
       [popup]="listId"
@@ -45,7 +46,7 @@
         </button>
       } @else {
         <kbd
-          class="me-1 hidden shrink-0 rounded-thumb border border-control-line px-1.5 py-0.5 type-caption font-medium whitespace-nowrap text-muted wide:inline"
+          class="me-1 hidden shrink-0 rounded-thumb border border-control-line px-1.5 py-0.5 type-caption font-medium whitespace-nowrap text-muted wide:@min-[15rem]:inline"
           aria-hidden="true"
           >{{ t('shortcut') }}</kbd
         >
@@ -62,9 +63,10 @@
   </div>
 
   @if (shown()) {
-    <!-- A press here must not take the focus off the field: the search would close under it. -->
+    <!-- As wide as the field at least, and wide enough for a title when the field is short. A
+         press here must not take the focus off the field: the search would close under it. -->
     <div
-      class="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-control-line bg-surface shadow-raised wide:mt-2 wide:rounded-thumb wide:border"
+      class="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-control-line bg-surface shadow-raised wide:right-0 wide:left-auto wide:mt-2 wide:w-88 wide:max-w-[calc(100cqw-2rem)] wide:min-w-full wide:rounded-thumb wide:border"
       data-search-panel
       (mousedown)="$event.preventDefault()"
     >
