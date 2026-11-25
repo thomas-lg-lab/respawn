@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<ISyncRunStore, EfSyncRunStore>();
         services.AddScoped<ICatalogue, EfCatalogue>();
         services.AddScoped<ILibraryStore, EfLibraryStore>();
+        services.AddScoped<IYearReviewStore, EfYearReviewStore>();
 
         return services;
     }

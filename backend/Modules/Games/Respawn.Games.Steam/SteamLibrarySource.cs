@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Net;
-using System.Text;
 using System.Text.Json;
 using Respawn.Games.Ports;
 
@@ -14,8 +12,7 @@ namespace Respawn.Games.Steam;
 /// The answer is handed over untouched, beside what it says of each game. Steam counts playtime in
 /// minutes and dates in seconds since 1970; a field it leaves out is not said, and stays null.
 /// </summary>
-internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOptions> options, TimeProvider clock)
-    : ILibrarySource
+internal sealed class SteamLibrarySource(SteamClient steam) : ILibrarySource
 {
     public const string HttpClientName = "steam";
 
@@ -34,10 +31,6 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
     /// <summary>How long Steam has to answer, body included.</summary>
     public static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
-    /// <summary>Steam answers in UTF-8, whatever the answer's headers say; bytes that are not UTF-8 are
-    /// refused rather than replaced.</summary>
-    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-
     public string Source => "steam";
 
     /// <summary>Steam's <c>playtime_2weeks</c>: the last two weeks.</summary>
@@ -47,114 +40,18 @@ internal sealed class SteamLibrarySource(IHttpClientFactory http, Func<SteamOpti
 
     public async Task<LibraryReading> ReadLibraryAsync(string externalId, string? credential, CancellationToken ct)
     {
-        // A SteamID as Steam writes it: the 17 digits of its 64-bit form. Nothing else goes in the address.
-        if (externalId is not { Length: 17 } || !externalId.All(char.IsAsciiDigit))
-        {
-            throw new ArgumentException("a Steam account is named by its 17-digit SteamID", nameof(externalId));
-        }
-
-        // The owner's own key when one is handed over, the instance's otherwise.
-        var key = credential?.Trim()
-            ?? options().Resolve()
-            ?? throw new SourceException(SourceError.NotConfigured, "the instance has no Steam Web API key");
-        if (!SteamOptions.IsKey(key))
-        {
-            // Never sent anywhere, and never quoted.
-            throw new SourceException(
-                SourceError.NotConfigured,
-                credential is null
-                    ? "what the instance was given as its Steam Web API key is not one: a key is letters and digits"
-                    : "what was given as a Steam Web API key is not one: a key is letters and digits");
-        }
+        SteamClient.CheckSteamId(externalId);
 
         // Everything the account owns: the games' names, the free games it played or added to its
         // library, and the games Steam leaves out of its own lists by default.
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
+        var (body, takenAt) = await steam.GetAsync(
             $"IPlayerService/GetOwnedGames/v1/?steamid={externalId}&include_appinfo=true&include_played_free_games=true"
-                + "&include_free_sub=true&skip_unvetted_apps=false&format=json");
-        request.Headers.Add(KeyHeader, key);
-
-        byte[] bytes;
-        DateTimeOffset takenAt;
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        patience.CancelAfter(Patience);
-        try
-        {
-            using var client = http.CreateClient(HttpClientName);
-            using var answer = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, patience.Token);
-            takenAt = clock.GetUtcNow();
-            if (answer.StatusCode != HttpStatusCode.OK)
-            {
-                throw Refusal(answer.StatusCode, own: credential is not null);
-            }
-
-            bytes = await BodyAsync(answer, patience.Token);
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested
-            && ex is HttpRequestException or IOException or OperationCanceledException)
-        {
-            // No connection, an answer cut short, or Steam taking too long. A caller that gave up is
-            // not a failure of Steam: its cancellation goes through as it is.
-            throw new SourceException(SourceError.Unavailable, "Steam did not answer", ex);
-        }
-
-        string body;
-        try
-        {
-            body = Utf8.GetString(bytes);
-        }
-        catch (DecoderFallbackException ex)
-        {
-            throw new SourceException(SourceError.Unreadable, "Steam's answer is not text", ex);
-        }
+                + "&include_free_sub=true&skip_unvetted_apps=false&format=json",
+            credential,
+            ct);
 
         var (items, complete) = Games(body);
         return new LibraryReading(Kind, takenAt, body, items, complete);
-    }
-
-    /// <summary>The bytes of an answer, read here rather than by the client: an answer too large is
-    /// refused as unreadable, and the charset its headers name is never trusted.</summary>
-    private static async Task<byte[]> BodyAsync(HttpResponseMessage answer, CancellationToken ct)
-    {
-        if (answer.Content.Headers.ContentLength > MaxAnswerBytes)
-        {
-            throw TooLarge();
-        }
-
-        await using var stream = await answer.Content.ReadAsStreamAsync(ct);
-        using var kept = new MemoryStream();
-        var buffer = new byte[81920];
-        int read;
-        while ((read = await stream.ReadAsync(buffer, ct)) > 0)
-        {
-            if (kept.Length + read > MaxAnswerBytes)
-            {
-                throw TooLarge();
-            }
-
-            kept.Write(buffer, 0, read);
-        }
-
-        return kept.ToArray();
-
-        static SourceException TooLarge() =>
-            new(SourceError.Unreadable, $"Steam's answer is larger than {MaxAnswerBytes / (1024 * 1024)} MB");
-    }
-
-    private static SourceException Refusal(HttpStatusCode status, bool own)
-    {
-        var code = (int)status;
-        return status switch
-        {
-            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
-                new SourceException(
-                    SourceError.Refused,
-                    own ? $"Steam refused the key given on this account ({code})" : $"Steam refused the instance's key ({code})"),
-            HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout or >= HttpStatusCode.InternalServerError =>
-                new SourceException(SourceError.Unavailable, $"Steam asked to come back later ({code})"),
-            _ => new SourceException(SourceError.Unreadable, $"Steam answered {code}"),
-        };
     }
 
     /// <summary>The games an answer lists, and whether it lists them all. A profile whose game details

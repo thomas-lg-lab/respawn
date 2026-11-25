@@ -596,6 +596,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/years": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the signed-in account played, year by year
+         * @description Playtime per calendar year (UTC), the earliest first. A year is counted from the store's own review (source review: Steam's Year in Review, every month of it, from 2022 on) when every linked account has one, and otherwise from the daily readings (source readings: the growth of the totals, from the first reading on). first_day and last_day say the days a year covers, and whole whether that is all of it. A review counts every game played, owned or not; the readings count the games of the library.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LibraryYearsResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/linked-accounts": {
         parameters: {
             query?: never;
@@ -1098,6 +1146,9 @@ export interface components {
             /** Format: date-time */
             tracking_since: null | string;
         };
+        LibraryYearsResponse: {
+            years: components["schemas"]["YearResponse"][];
+        };
         LinkedAccountResponse: {
             /** Format: uuid */
             id: string;
@@ -1165,6 +1216,18 @@ export interface components {
             display_name: string;
             is_admin: boolean;
             settings: null | components["schemas"]["SettingsResponse"];
+        };
+        YearResponse: {
+            /** Format: int32 */
+            year: number;
+            /** Format: int64 */
+            seconds: number;
+            source: string;
+            /** Format: date */
+            first_day: string;
+            /** Format: date */
+            last_day: string;
+            whole: boolean;
         };
     };
     responses: never;

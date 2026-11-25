@@ -5,16 +5,18 @@ namespace Respawn.Games.Steam;
 
 public static class DependencyInjection
 {
-    /// <summary>The Steam connector, behind <see cref="ILibrarySource"/>. Nothing is read here: the
-    /// key is looked for when a library is asked for. The host says where the key comes from and
-    /// registers a <see cref="TimeProvider"/>.</summary>
+    /// <summary>The Steam connector, behind <see cref="ILibrarySource"/> and <see cref="IYearReviewSource"/>.
+    /// Nothing is read here: the key is looked for when Steam is asked something. The host says where the
+    /// key comes from and registers a <see cref="TimeProvider"/>.</summary>
     public static IServiceCollection AddSteamConnector(
         this IServiceCollection services, Func<IServiceProvider, SteamOptions> options)
     {
-        services.AddSingleton<ILibrarySource>(provider => new SteamLibrarySource(
+        services.AddSingleton(provider => new SteamClient(
             provider.GetRequiredService<IHttpClientFactory>(),
             () => options(provider),
             provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<ILibrarySource>(provider => new SteamLibrarySource(provider.GetRequiredService<SteamClient>()));
+        services.AddSingleton<IYearReviewSource>(provider => new SteamYearReviewSource(provider.GetRequiredService<SteamClient>()));
         services
             .AddHttpClient(SteamLibrarySource.HttpClientName, client =>
             {

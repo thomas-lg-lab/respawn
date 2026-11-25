@@ -63,6 +63,8 @@ internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountSt
         // In the order the foreign keys allow: what points to a snapshot before the snapshots, and
         // the account last. Nothing here is deleted along with something else by the database.
         await db.SyncRuns.Where(r => r.LinkedAccountId == id).ExecuteDeleteAsync(ct);
+        await db.MonthlyPlaytime.Where(m => m.LinkedAccountId == id).ExecuteDeleteAsync(ct);
+        await db.YearReviews.Where(r => r.LinkedAccountId == id).ExecuteDeleteAsync(ct);
         await db.Ownerships.Where(o => o.LinkedAccountId == id).ExecuteDeleteAsync(ct);
         await db.Observations
             .Where(o => db.RawSnapshots.Any(s => s.Id == o.SnapshotId && s.LinkedAccountId == id))
@@ -277,6 +279,57 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         }
 
         await db.SaveChangesAsync(ct);
+    }
+}
+
+internal sealed class EfYearReviewStore(GamesDbContext db) : IYearReviewStore
+{
+    public async Task<IReadOnlySet<int>> ListYearsAsync(Guid linkedAccountId, CancellationToken ct) =>
+        (await db.YearReviews.AsNoTracking().Where(r => r.LinkedAccountId == linkedAccountId).Select(r => r.Year).ToListAsync(ct))
+            .ToHashSet();
+
+    public async Task RecordAsync(Guid linkedAccountId, int year, Guid snapshotId, IReadOnlyCollection<MonthPlayed> months, CancellationToken ct)
+    {
+        var (first, next) = (new DateOnly(year, 1, 1), new DateOnly(year + 1, 1, 1));
+        await db.MonthlyPlaytime
+            .Where(m => m.LinkedAccountId == linkedAccountId && m.Month >= first && m.Month < next)
+            .ExecuteDeleteAsync(ct);
+        await db.YearReviews.Where(r => r.LinkedAccountId == linkedAccountId && r.Year == year).ExecuteDeleteAsync(ct);
+
+        db.YearReviews.Add(new YearReviewRow { LinkedAccountId = linkedAccountId, Year = year, SnapshotId = snapshotId });
+        db.MonthlyPlaytime.AddRange(months.Select(month => new MonthlyPlaytimeRow
+        {
+            LinkedAccountId = linkedAccountId,
+            StoreEntryId = month.StoreEntryId,
+            Month = month.Month,
+            PlaytimeSeconds = (long)month.Playtime.TotalSeconds,
+            Sessions = month.Sessions,
+            SnapshotId = snapshotId,
+        }));
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<(Guid LinkedAccountId, int Year)>> ListOwnerYearsAsync(Guid ownerId, CancellationToken ct) =>
+        [
+            .. (await (
+                from review in db.YearReviews.AsNoTracking()
+                join account in db.LinkedAccounts on review.LinkedAccountId equals account.Id
+                where account.OwnerId == ownerId
+                select new { review.LinkedAccountId, review.Year })
+                .ToListAsync(ct))
+                .Select(row => (row.LinkedAccountId, row.Year)),
+        ];
+
+    public async Task<IReadOnlyList<PlayedMonth>> ListPlayedAsync(Guid ownerId, CancellationToken ct)
+    {
+        var rows = await (
+            from month in db.MonthlyPlaytime.AsNoTracking()
+            join account in db.LinkedAccounts on month.LinkedAccountId equals account.Id
+            where account.OwnerId == ownerId
+            join entry in db.StoreEntries on month.StoreEntryId equals entry.Id
+            select new { month.LinkedAccountId, month.Month, entry.GameId, month.PlaytimeSeconds, month.Sessions })
+            .ToListAsync(ct);
+        return [.. rows.Select(row => new PlayedMonth(row.LinkedAccountId, row.Month, row.GameId, TimeSpan.FromSeconds(row.PlaytimeSeconds), row.Sessions))];
     }
 }
 

@@ -95,6 +95,41 @@ public interface ILibraryStore
     Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct);
 }
 
+public interface IYearReviewStore
+{
+    /// <summary>The years of a linked account whose review is kept.</summary>
+    Task<IReadOnlySet<int>> ListYearsAsync(Guid linkedAccountId, CancellationToken ct);
+
+    /// <summary>Keeps the review of a year: which snapshot it is, and what it says per month and per game.
+    /// A year kept already is replaced whole.</summary>
+    Task RecordAsync(Guid linkedAccountId, int year, Guid snapshotId, IReadOnlyCollection<MonthPlayed> months, CancellationToken ct);
+
+    /// <summary>The years kept for each of an owner's linked accounts.</summary>
+    Task<IReadOnlyList<(Guid LinkedAccountId, int Year)>> ListOwnerYearsAsync(Guid ownerId, CancellationToken ct);
+
+    /// <summary>What an owner played per month and per game, from every review kept of their linked
+    /// accounts, in no order. A game they no longer own is in it: a review counts what was played.</summary>
+    Task<IReadOnlyList<PlayedMonth>> ListPlayedAsync(Guid ownerId, CancellationToken ct);
+}
+
+/// <summary>A store's review of a year of an account, read by a connector: what it played per month.</summary>
+public interface IYearReviewSource
+{
+    /// <summary>The store it reads, as linked accounts name it (<see cref="LinkedAccount.Source"/>).</summary>
+    string Source { get; }
+
+    /// <summary>Reads the review of one year. A year the store has no review of is a reading that says
+    /// so (<see cref="YearReading.Exists"/>), not a failure.</summary>
+    /// <param name="externalId">The account, as the store names it.</param>
+    /// <param name="year">The year.</param>
+    /// <param name="credential">The owner's own access, when they gave one; the instance's otherwise.
+    /// One given is the only one tried, as for <see cref="ILibrarySource"/>.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">The store could not be read.</exception>
+    /// <exception cref="ArgumentException">Not an account id of this store.</exception>
+    Task<YearReading> ReadYearAsync(string externalId, int year, string? credential, CancellationToken ct);
+}
+
 /// <summary>A store's libraries, read by a connector: an outbound adapter in a project of its own,
 /// which knows the store and nothing of the catalogue.</summary>
 public interface ILibrarySource

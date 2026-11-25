@@ -177,6 +177,40 @@ public sealed record HistoryDayResponse(DateOnly Date, IReadOnlyList<HistoryGame
 /// <param name="Seconds">What was played of it that day, added up over its entries; more than zero.</param>
 public sealed record HistoryGameResponse(Guid GameId, long Seconds);
 
+/// <summary>What was played year by year, the earliest first.</summary>
+/// <param name="Years">The years something could be counted for: those a review covers, then each year
+/// from the first reading to today. Empty while nothing was read.</param>
+public sealed record LibraryYearsResponse(IReadOnlyList<YearResponse> Years)
+{
+    public static LibraryYearsResponse From(IReadOnlyList<PlayedYear> years) =>
+        new([.. years.Select(YearResponse.From)]);
+}
+
+/// <param name="Year">The calendar year, in UTC.</param>
+/// <param name="Seconds">What was played from first_day to last_day.</param>
+/// <param name="Source">review: the store's review of the year, every month of it, every game played,
+/// owned or not. readings: the growth of the library's totals between two daily readings, from the first
+/// reading on; what a game's total was at its first reading is not in it.</param>
+/// <param name="FirstDay">The first day counted.</param>
+/// <param name="LastDay">The last day counted: the year's last, or today.</param>
+/// <param name="Whole">True when first_day and last_day are the year's first and last days.</param>
+public sealed record YearResponse(int Year, long Seconds, string Source, DateOnly FirstDay, DateOnly LastDay, bool Whole)
+{
+    public static YearResponse From(PlayedYear year) =>
+        new(
+            year.Year,
+            (long)year.Playtime.TotalSeconds,
+            year.Source switch
+            {
+                YearSource.Review => "review",
+                YearSource.Readings => "readings",
+                _ => throw new ArgumentOutOfRangeException(nameof(year), year.Source, null),
+            },
+            year.From,
+            year.To,
+            year.Whole);
+}
+
 /// <param name="Id">The sync.</param>
 /// <param name="LinkedAccountId">The store account that was read.</param>
 /// <param name="Trigger">Why it ran: scheduled (the reading of the day) or manual (it was asked for).</param>

@@ -21,6 +21,9 @@ internal static class GamesModule
         services.AddScoped<ICredentialService, CredentialService>();
         // The syncs on their way: one for the app, which is one replica.
         services.AddSingleton<SyncGate>();
+        // The import of the stores' yearly reviews, apart from the sync.
+        services.AddScoped<IYearReviewService, YearReviewService>();
+        services.AddSingleton<YearInReviewGate>();
         services.AddGamesInfrastructure(provider => RespawnSettings.Encryption(provider.GetRequiredService<IConfiguration>()));
         services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));
