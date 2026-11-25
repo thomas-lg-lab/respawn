@@ -552,7 +552,7 @@ describe('Home', () => {
       expect(text(screen, '[data-time-map] h2')).toBe('La carte du temps');
       expect(screen.querySelector('[data-time-link]')?.getAttribute('href')).toBe('/time');
       expect(text(screen, '[data-time-map] p')).toBe(
-        'Les 3 jeux les plus joués, dont le plus joué de chaque couleur : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
+        '3 jeux, les plus joués et le plus joué de chaque couleur : une case à la mesure du temps de jeu, d’autant plus chaude que la dernière session est récente.',
       );
     });
 
