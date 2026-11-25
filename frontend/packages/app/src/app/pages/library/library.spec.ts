@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { type LibraryGame, PROVIDER_OUTCOME } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, api, button, start } from '@app/testing/app-testing';
+import { ACCOUNT, api, button, start, type } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
 import './library';
@@ -156,6 +156,23 @@ describe('Library', () => {
 
     expect(pill(screen, 'launched').getAttribute('aria-pressed')).toBe('true');
     expect(names(screen)).toEqual(['Portal 2', 'Hades']);
+  });
+
+  it('shows every game that bears a title searched again, a filter left on since', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=hades');
+    pill(screen, 'never').click();
+    await harness.fixture.whenStable();
+    expect(names(screen)).toEqual([]);
+
+    // The same title, asked again in the header: the address does not change.
+    const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+    type(search, 'hades');
+    await harness.fixture.whenStable();
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toEqual(['Hades']);
+    expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('takes a title made of spaces or of signs for no search', async () => {

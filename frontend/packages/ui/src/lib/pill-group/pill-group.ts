@@ -12,7 +12,8 @@ let created = 0;
  *     </rs-pill-group>
  *
  * `segmented` is for the positions of one choice where room is short: the label and the
- * pills share a line, and the pills (`variant="segment"`) one track.
+ * pills share a line, and the pills one track. The pills draw themselves as its positions:
+ * nothing is to be set on them.
  */
 @Component({
   selector: 'rs-pill-group',

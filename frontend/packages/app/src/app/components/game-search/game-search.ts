@@ -13,7 +13,7 @@ import {
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideSearch, LucideX } from '@lucide/angular';
 import type { LibraryGame } from '@respawn/data';
-import { Cover, SearchField } from '@respawn/ui';
+import { Button, Cover, SearchField } from '@respawn/ui';
 import { formatCount, isOne, type SaidPlaytime, saidPlaytime } from '@app/format/format';
 import { coverHue, type FoundTitle, foundIn, letters, suggested } from '@app/games/game-list';
 
@@ -47,7 +47,7 @@ interface Suggestion {
  */
 @Component({
   selector: 'rs-game-search',
-  imports: [TranslocoDirective, Cover, SearchField, LucideSearch, LucideX],
+  imports: [TranslocoDirective, Button, Cover, SearchField, LucideSearch, LucideX],
   host: { '(document:keydown)': 'shortcut($event)' },
   templateUrl: './game-search.html',
 })
@@ -169,11 +169,12 @@ export class GameSearch {
     switch (event.key) {
       case 'ArrowDown':
         if (!count) return;
-        this.active.update((active) => (active + 1) % count);
+        // Past the last one, back to what was typed: no suggestion chosen.
+        this.active.update((active) => (active + 1 < count ? active + 1 : -1));
         break;
       case 'ArrowUp':
         if (!count) return;
-        this.active.update((active) => (active <= 0 ? count : active) - 1);
+        this.active.update((active) => (active < 0 ? count : active) - 1);
         break;
       case 'Enter': {
         // Enter on a button of the search is that button's own click.

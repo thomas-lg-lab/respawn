@@ -74,7 +74,9 @@
     font-weight: 500;
     text-align: start;
   }
-  :host([data-variant='row']:hover) {
+  /* Under the pointer, or the one the arrow keys are on when the list is one of options. */
+  :host([data-variant='row']:hover),
+  :host([data-variant='row'][aria-selected='true']) {
     background-color: var(--rs-surface-2);
   }
 }

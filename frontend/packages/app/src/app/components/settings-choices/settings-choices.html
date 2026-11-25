@@ -4,7 +4,6 @@
       <!-- A language is named in itself, so its name is read in that language. -->
       <button
         rsPill
-        variant="segment"
         [pressed]="choice === language()"
         [attr.data-language-choice]="choice"
         [attr.lang]="choice"
@@ -19,7 +18,6 @@
     @for (choice of themes; track choice) {
       <button
         rsPill
-        variant="segment"
         [pressed]="choice === theme()"
         [attr.data-theme-choice]="choice"
         (click)="themePicked.emit(choice)"
@@ -33,7 +31,6 @@
     @for (choice of characters; track choice) {
       <button
         rsPill
-        variant="segment"
         [pressed]="choice === character()"
         [attr.data-character-choice]="choice"
         (click)="characterPicked.emit(choice)"

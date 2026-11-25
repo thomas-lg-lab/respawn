@@ -15,8 +15,8 @@ class Host {}
 @Component({
   imports: [Pill, PillGroup],
   template: `<rs-pill-group segmented label="Theme">
-    <button rsPill variant="segment" pressed>Dark</button>
-    <button rsPill variant="segment">Light</button>
+    <button rsPill pressed>Dark</button>
+    <button rsPill>Light</button>
   </rs-pill-group>`,
 })
 class SegmentedHost {}
@@ -32,6 +32,7 @@ describe('PillGroup', () => {
     expect(label?.textContent).toBe('Theme');
     expect(group.querySelectorAll('button[aria-pressed]')).toHaveLength(2);
     expect(group.hasAttribute('data-segmented')).toBe(false);
+    expect(group.querySelector('button')?.getAttribute('data-variant')).toBe('block');
   });
 
   it('says when its pills share one track', async () => {
@@ -41,5 +42,9 @@ describe('PillGroup', () => {
 
     expect(group.hasAttribute('data-segmented')).toBe(true);
     expect(group.getAttribute('role')).toBe('group');
+    // Its pills are its positions without being told.
+    expect(
+      [...group.querySelectorAll('button')].map((pill) => pill.getAttribute('data-variant')),
+    ).toEqual(['segment', 'segment']);
   });
 });

@@ -385,6 +385,9 @@
       "outlined": "Bouton secondaire",
       "disabled": "Indisponible",
       "sync": "Synchroniser",
+      "rows": "Lignes d’un menu",
+      "rowFirst": "Mon compte",
+      "rowSecond": "Se déconnecter",
       "pills": "Pastilles",
       "lines": "Pastilles en rangée de filtres",
       "filters": {

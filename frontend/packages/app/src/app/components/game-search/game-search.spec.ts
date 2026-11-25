@@ -146,7 +146,18 @@ describe('GameSearch', () => {
     await press('Enter');
     expect(host.asked).toEqual(['Hades II']);
 
-    // From the first, up goes to the last; a letter more and no suggestion is chosen.
+    // The arrows pass through what was typed: down past the last one, or up from the first,
+    // no suggestion is chosen and Enter asks for what was typed.
+    await search('ha');
+    await press('ArrowDown');
+    await press('ArrowUp');
+    expect(element.querySelector('[data-suggestion][aria-selected="true"]')).toBeNull();
+    for (let pressed = 0; pressed < 6; pressed++) await press('ArrowDown');
+    expect(element.querySelector('[data-suggestion][aria-selected="true"]')).toBeNull();
+    await press('Enter');
+    expect(host.asked).toEqual(['Hades II', 'ha']);
+
+    // From what was typed, up goes to the last; a letter more and no suggestion is chosen.
     await search('ha');
     await press('ArrowUp');
     expect(element.querySelector('[data-suggestion][aria-selected="true"]')?.textContent).toContain(
@@ -156,7 +167,7 @@ describe('GameSearch', () => {
     expect(element.querySelector('[data-suggestion][aria-selected="true"]')).toBeNull();
 
     element.querySelector<HTMLButtonElement>('[data-suggestion]')!.click();
-    expect(host.asked).toEqual(['Hades II', 'Hades']);
+    expect(host.asked).toEqual(['Hades II', 'ha', 'Hades']);
   });
 
   it('leads to every game found from the foot of the suggestions', async () => {

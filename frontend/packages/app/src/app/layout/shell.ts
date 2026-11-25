@@ -164,9 +164,15 @@ export class Shell {
     this.saveSettings();
   }
 
-  /** A title was asked for: the Library looks for it, and says so on its address. */
+  /**
+   * A title was asked for: the Library looks for it, and says so on its address. Asked again
+   * for the title it already shows, it still hears it, and shows every game that bears it.
+   */
   protected search(title: string): void {
-    void this.router.navigate(['/library'], { queryParams: { [LIBRARY_SEARCH]: title } });
+    void this.router.navigate(['/library'], {
+      queryParams: { [LIBRARY_SEARCH]: title },
+      onSameUrlNavigation: 'reload',
+    });
   }
 
   protected signOut(): void {

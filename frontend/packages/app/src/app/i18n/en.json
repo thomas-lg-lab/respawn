@@ -385,6 +385,9 @@
       "outlined": "Secondary button",
       "disabled": "Unavailable",
       "sync": "Sync",
+      "rows": "Lines of a menu",
+      "rowFirst": "My account",
+      "rowSecond": "Sign out",
       "pills": "Pills",
       "lines": "Pills as a row of filters",
       "filters": {

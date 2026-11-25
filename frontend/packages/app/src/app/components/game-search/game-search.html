@@ -89,13 +89,14 @@
           {{ t('unreadable') }}
         </p>
       } @else if (suggestions().length) {
-        <div role="listbox" [id]="listId" [attr.aria-label]="t('suggestions')">
+        <div class="p-1" role="listbox" [id]="listId" [attr.aria-label]="t('suggestions')">
           @for (row of suggestions(); track row.id; let index = $index) {
             <button
+              rsButton
+              variant="row"
               type="button"
               role="option"
               tabindex="-1"
-              class="flex min-h-row w-full items-center gap-3 px-3 text-left transition-colors duration-hover hover:bg-surface-2 aria-selected:bg-surface-2"
               data-suggestion
               [id]="row.id"
               [attr.aria-selected]="index === active()"
@@ -123,12 +124,7 @@
           }
         </div>
         <div class="border-t border-line p-1">
-          <button
-            type="button"
-            class="flex min-h-touch w-full items-center rounded-thumb px-2 text-left type-control font-medium transition-colors duration-hover hover:bg-surface-2"
-            data-search-all
-            (click)="ask(asked())"
-          >
+          <button rsButton variant="row" type="button" data-search-all (click)="ask(asked())">
             {{ t(all().one ? 'seeOne' : 'seeMany', { count: all().count }) }}
           </button>
         </div>

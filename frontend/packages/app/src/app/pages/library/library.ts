@@ -1,7 +1,7 @@
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter as only, map } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
@@ -65,15 +65,7 @@ export class Library {
     this.route.queryParamMap.pipe(map((asked) => searched(asked.get(LIBRARY_SEARCH)))),
     { initialValue: searched(this.route.snapshot.queryParamMap.get(LIBRARY_SEARCH)) },
   );
-  /**
-   * Back to every game whenever another title is searched: the search comes from the header,
-   * and a filter left on would hide the very game that was asked for. Clearing the search
-   * asks for nothing new: the filter stays.
-   */
-  protected readonly filter = linkedSignal<string, LibraryFilter>({
-    source: this.search,
-    computation: (title, before) => (title ? 'all' : (before?.value ?? 'all')),
-  });
+  protected readonly filter = signal<LibraryFilter>('all');
   protected readonly sort = signal<LibrarySort>('last_played');
   /** How many steps of the list are shown: back to one whenever the list changes. */
   private readonly steps = linkedSignal({ source: this.search, computation: () => 1 });
@@ -99,6 +91,22 @@ export class Library {
 
   /** A full bar is the most played game of the library, whatever is searched or filtered. */
   protected readonly scale = computed(() => longestPlaytime(this.games.data() ?? []));
+
+  constructor() {
+    // Back to every game whenever a title is searched, the one already shown too: the search
+    // comes from the header, and a filter left on would hide the very game that was asked
+    // for. Clearing the search asks for nothing new: the filter stays.
+    this.router.events
+      .pipe(
+        only((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        if (!this.search()) return;
+        this.filter.set('all');
+        this.steps.set(1);
+      });
+  }
 
   /**
    * The whole library again: the title leaves the address, whatever else it says stays. Not
