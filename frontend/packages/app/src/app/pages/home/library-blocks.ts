@@ -87,17 +87,33 @@ export interface MapGame {
 
 /**
  * The time map preview: the most played games, the most played first, each with its playtime
- * and how long before `now` it was last played. None when fewer than two games were launched:
- * one tile alone would say nothing.
+ * and how long before `now` it was last played. The most played game of each colour is among
+ * them, in place of the least played ones: the games played longest are seldom the ones played
+ * lately, and a map of them alone would be all of one cold colour. None when fewer than two
+ * games were launched: one tile alone would say nothing.
  */
 export function timeMap(games: readonly LibraryGame[], language: string, now: number): MapGame[] {
-  const mapped = sorted(kept(games, 'launched'), 'playtime', language).slice(0, MAPPED);
-  if (mapped.length < 2) return [];
-  return mapped.map((game) => ({
+  const launched = sorted(kept(games, 'launched'), 'playtime', language).map((game) => ({
     id: game.game_id,
     seconds: game.playtime_seconds ?? 0,
     recency: playedRecency(game, now),
   }));
+  if (launched.length < 2) return [];
+
+  // The first of each colour, in the order of playtime, then the most played of the others.
+  const colours = new Set<Recency>();
+  const chosen = new Set<MapGame>();
+  for (const game of launched) {
+    if (!colours.has(game.recency)) {
+      colours.add(game.recency);
+      chosen.add(game);
+    }
+  }
+  for (const game of launched) {
+    if (chosen.size >= MAPPED) break;
+    chosen.add(game);
+  }
+  return launched.filter((game) => chosen.has(game));
 }
 
 /**
