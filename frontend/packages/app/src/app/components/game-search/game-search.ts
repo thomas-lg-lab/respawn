@@ -1,10 +1,9 @@
 import {
-  afterNextRender,
+  ChangeDetectorRef,
   Component,
   computed,
   ElementRef,
   inject,
-  Injector,
   input,
   linkedSignal,
   output,
@@ -16,12 +15,15 @@ import { LucideSearch, LucideX } from '@lucide/angular';
 import type { LibraryGame } from '@respawn/data';
 import { Cover, SearchField } from '@respawn/ui';
 import { formatCount, isOne, type SaidPlaytime, saidPlaytime } from '@app/format/format';
-import { coverHue, type FoundTitle, foundIn, suggested } from '@app/games/game-list';
+import { coverHue, type FoundTitle, foundIn, letters, suggested } from '@app/games/game-list';
 
 /** How many letters before games are suggested: one alone names half of a library. */
 const SUGGESTS_FROM = 2;
 /** How many games are suggested: the others are a search of the Library away. */
 const SUGGESTED = 5;
+
+/** The key that goes with K: Command on an Apple machine, where Ctrl+K edits the line. */
+const APPLE = /Mac|iPhone|iPad/.test(navigator.platform);
 
 let created = 0;
 
@@ -38,8 +40,8 @@ interface Suggestion {
 /**
  * The search of the header: a title, and from two letters the games of the library that hold
  * it, those that start with it first. A suggestion, or the Enter key, asks for a title; where that
- * leads is the shell's. On a phone it is a button, and the field takes the header once asked
- * for. Ctrl+K (⌘K) brings the focus to it from anywhere.
+ * leads is the shell's. Where the header has no room for a field it is a button, and the field
+ * unfolds over the header once asked for, then folds back when the search is left or done. Ctrl+K (⌘K on an Apple machine) brings the focus to it from anywhere.
  *
  * It only shows the games it is given: the shell reads them once the field is first used.
  */
@@ -62,18 +64,21 @@ export class GameSearch {
    * suggestion chosen and the foot of the list still lead to the Library searched.
    */
   readonly searched = output<string>();
-  /** The field took the focus: the games will be needed. */
+  /** The field itself took the focus: the games will be needed. */
   readonly opened = output<void>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly injector = inject(Injector);
+  private readonly changes = inject(ChangeDetectorRef);
   private readonly field = viewChild.required(SearchField);
+  private readonly opener = viewChild.required<ElementRef<HTMLButtonElement>>('opener');
+
+  protected readonly apple = APPLE;
 
   protected readonly listId = `rs-game-search-${++created}`;
   protected readonly typed = signal('');
   /** The focus is in the search: what it suggests is shown. */
   private readonly focused = signal(false);
-  /** On a phone, the field was asked for and stands over the header. */
+  /** Where the search is a button, the field was asked for and stands over the header. */
   protected readonly unfolded = signal(false);
 
   protected readonly asked = computed(() => this.typed().trim());
@@ -82,7 +87,7 @@ export class GameSearch {
   private readonly found = computed(() => {
     const games = this.games();
     const asked = this.asked();
-    if (!games || asked.length < SUGGESTS_FROM) return null;
+    if (!games || letters(asked) < SUGGESTS_FROM) return null;
     return suggested(games, asked, this.language());
   });
 
@@ -111,15 +116,22 @@ export class GameSearch {
   });
 
   protected readonly shown = computed(() => this.focused() && this.found() !== null);
+  /** A list of suggestions is shown: there is none to show when no game was found. */
+  protected readonly listed = computed(() => this.shown() && this.suggestions().length > 0);
 
-  /** The suggestion the arrow keys are on: none until one is pressed, and after each letter. */
+  /**
+   * The suggestion the arrow keys are on: none until one is pressed, after each letter, and
+   * once the focus left.
+   */
   protected readonly active = linkedSignal({ source: this.suggestions, computation: () => -1 });
-  protected readonly activeId = computed(() => this.suggestions()[this.active()]?.id);
+  protected readonly activeId = computed(() =>
+    this.listed() ? this.suggestions()[this.active()]?.id : undefined,
+  );
 
-  protected entered(): void {
-    if (this.focused()) return;
+  /** The focus came into the search; the games are only needed once it is in the field. */
+  protected entered(event: FocusEvent): void {
     this.focused.set(true);
-    this.opened.emit();
+    if (event.target instanceof HTMLInputElement) this.opened.emit();
   }
 
   /** The focus left for another part of the page, or for nothing: the search closes. */
@@ -127,10 +139,15 @@ export class GameSearch {
     const next = event.relatedTarget;
     if (next instanceof Node && this.host.contains(next)) return;
     this.focused.set(false);
-    if (!this.asked()) this.unfolded.set(false);
+    this.active.set(-1);
+    // What was typed stays, and is there again when the field is asked for.
+    this.unfolded.set(false);
   }
 
   protected key(event: KeyboardEvent): void {
+    // A text being composed keeps its keys: Enter picks a candidate, Escape gives it up.
+    if (event.isComposing || event.keyCode === 229) return;
+
     const count = this.suggestions().length;
     switch (event.key) {
       case 'ArrowDown':
@@ -145,13 +162,15 @@ export class GameSearch {
         // Enter on a button of the search is that button's own click.
         if (event.target instanceof HTMLButtonElement) return;
         const title = this.suggestions()[this.active()]?.title ?? this.asked();
-        if (!title) return;
+        // Nothing the search reads was typed: nothing to look for.
+        if (!letters(title)) return;
         this.ask(title);
         break;
       }
       case 'Escape':
-        // What was typed goes first, the focus staying for another title; then the search itself.
-        if (this.typed()) this.typed.set('');
+        // What was typed goes first, the focus in the field for another title (the button it
+        // was on may leave with what was typed); then the search itself.
+        if (this.typed()) this.clear();
         else this.close();
         break;
       default:
@@ -160,19 +179,29 @@ export class GameSearch {
     event.preventDefault();
   }
 
-  /** Ctrl+K, or ⌘K: the focus goes to the field, from anywhere in the app. */
+  /**
+   * Ctrl+K, or ⌘K on an Apple machine: the focus goes to the field, from anywhere in the app.
+   * That key alone with K, so the browser's and the system's other shortcuts stay theirs; the
+   * key is the one where K is on a Latin keyboard, whatever the layout writes with it.
+   */
   protected shortcut(event: KeyboardEvent): void {
-    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.key.toLowerCase() !== 'k') {
-      return;
-    }
+    const held = APPLE ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+    if (!held || event.altKey || event.shiftKey) return;
+    if (event.code !== 'KeyK' && event.key.toLowerCase() !== 'k') return;
+
     event.preventDefault();
     this.unfold();
   }
 
-  /** Shows the field, on a phone too, and gives it the focus once it is drawn. */
+  /**
+   * Shows the field, on a phone too, and gives it the focus. The field is drawn at once
+   * rather than at the next render: a phone only brings its keyboard up for a focus given
+   * while the press is still being handled.
+   */
   protected unfold(): void {
     this.unfolded.set(true);
-    afterNextRender(() => this.field().focus(), { injector: this.injector });
+    this.changes.detectChanges();
+    this.field().focus();
   }
 
   protected clear(): void {
@@ -185,12 +214,21 @@ export class GameSearch {
     this.close();
   }
 
-  /** Empties the search and lets go of the focus: nothing is suggested any more. */
+  /**
+   * Empties the search and lets go of the focus: nothing is suggested any more. On a phone the
+   * focus goes back to the button that opened the field, drawn again first; where there is no
+   * such button to see, it is let go.
+   */
   protected close(): void {
     this.typed.set('');
     this.unfolded.set(false);
     this.focused.set(false);
+    this.active.set(-1);
+    this.changes.detectChanges();
+
+    this.opener().nativeElement.focus();
     const focus = document.activeElement;
+    if (focus === this.opener().nativeElement) return;
     if (focus instanceof HTMLElement && this.host.contains(focus)) focus.blur();
   }
 }

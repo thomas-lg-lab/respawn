@@ -7,6 +7,7 @@ import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
 import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
+import { withoutSaidOnce } from '@app/session/said-once';
 import { formatCount, isOne } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
 import { GameTable } from './components/game-table';
@@ -17,6 +18,7 @@ import {
   type LibrarySort,
   filterCounts,
   kept,
+  letters,
   longestPlaytime,
   matching,
   sorted,
@@ -24,6 +26,11 @@ import {
 
 /** How many games a "show more" adds: a list of a thousand rows is not drawn at once. */
 const STEP = 100;
+
+/** The title an address asks for, or none when it is made of nothing the search reads. */
+function searched(asked: string | null): string {
+  return asked !== null && letters(asked) > 0 ? asked.trim() : '';
+}
 
 /**
  * The library as a list: every game of the linked accounts, filtered and sorted here, in the
@@ -51,13 +58,21 @@ export class Library {
 
   /**
    * What is searched: the title on the address, which the header's search wrote there. It
-   * stays on it, so a reload or a copy of the address shows the same games.
+   * stays on it, so a reload or a copy of the address shows the same games. A title made of
+   * nothing the search reads (spaces, signs) is no search.
    */
   protected readonly search = toSignal(
-    this.route.queryParamMap.pipe(map((asked) => asked.get(LIBRARY_SEARCH) ?? '')),
-    { initialValue: this.route.snapshot.queryParamMap.get(LIBRARY_SEARCH) ?? '' },
+    this.route.queryParamMap.pipe(map((asked) => searched(asked.get(LIBRARY_SEARCH)))),
+    { initialValue: searched(this.route.snapshot.queryParamMap.get(LIBRARY_SEARCH)) },
   );
-  protected readonly filter = signal<LibraryFilter>('all');
+  /**
+   * Back to every game whenever another title is searched: the search comes from the header,
+   * and a filter left on would hide the very game that was asked for.
+   */
+  protected readonly filter = linkedSignal<string, LibraryFilter>({
+    source: this.search,
+    computation: () => 'all',
+  });
   protected readonly sort = signal<LibrarySort>('last_played');
   /** How many steps of the list are shown: back to one whenever the list changes. */
   private readonly steps = linkedSignal({ source: this.search, computation: () => 1 });
@@ -84,13 +99,16 @@ export class Library {
   /** A full bar is the most played game of the library, whatever is searched or filtered. */
   protected readonly scale = computed(() => longestPlaytime(this.games.data() ?? []));
 
-  /** The whole library again: the title leaves the address, whatever else it says stays. */
+  /**
+   * The whole library again: the title leaves the address, whatever else it says stays. Not
+   * the words it carried for one arrival, which the router still holds: they were said.
+   */
   protected clearSearch(): void {
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { [LIBRARY_SEARCH]: null },
-      queryParamsHandling: 'merge',
-    });
+    const there = this.router.parseUrl(withoutSaidOnce(this.router, this.router.url));
+    there.queryParams = Object.fromEntries(
+      Object.entries(there.queryParams).filter(([word]) => word !== LIBRARY_SEARCH),
+    );
+    void this.router.navigateByUrl(there);
   }
 
   protected pickFilter(filter: LibraryFilter): void {

@@ -6,6 +6,7 @@ import {
   kept,
   longestPlaytime,
   foundIn,
+  letters,
   matching,
   suggested,
   sorted,
@@ -57,6 +58,29 @@ describe('library view', () => {
     expect(names(matching(ALL, '  PORT '))).toEqual(['Portal 2']);
     expect(matching(ALL, '   ')).toHaveLength(4);
     expect(matching(ALL, 'zelda')).toEqual([]);
+  });
+
+  it('counts the letters a search is read with', () => {
+    expect(letters('  Poké ')).toBe(4);
+    expect(letters('^^')).toBe(0);
+    expect(letters('   ')).toBe(0);
+    // An accent written apart is not a letter more.
+    expect(letters('e\u0301')).toBe(1);
+  });
+
+  it('cuts a title at the start of a word when what was typed is there, and leaves a sign out', () => {
+    expect(foundIn('Smooth Theory', 'th')).toEqual({
+      before: 'Smooth ',
+      found: 'Th',
+      after: 'eory',
+    });
+    expect(foundIn('WALL·E', 'wall')).toEqual({ before: '', found: 'WALL', after: '·E' });
+    expect(foundIn('WALL·E', 'e')).toEqual({ before: 'WALL·', found: 'E', after: '' });
+  });
+
+  it('suggests nothing for a search made of signs alone', () => {
+    expect(suggested(ALL, '^^', 'en')).toEqual([]);
+    expect(suggested(ALL, '  ', 'en')).toEqual([]);
   });
 
   it('cuts a title around what was typed, whatever the case and the accents', () => {

@@ -215,16 +215,155 @@ describe('GameSearch', () => {
     expect(document.activeElement).not.toBe(input);
   });
 
-  it('closes when the focus leaves it, what was typed still there', async () => {
+  it('suggests nothing for a search made of signs the titles are not read with', async () => {
+    const { element, host, search, press } = await create();
+
+    await search('^^');
+    expect(element.querySelector('[data-search-panel]')).toBeNull();
+
+    await press('Enter');
+    expect(host.asked).toEqual([]);
+  });
+
+  it('says no list is shown when no game was found', async () => {
+    const { element, input, search } = await create();
+
+    await search('zelda');
+
+    expect(element.querySelector('[role="listbox"]')).toBeNull();
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('forgets the suggestion the arrows chose once the focus left', async () => {
+    const { fixture, input, host, search, press } = await create();
+
+    await search('ha');
+    await press('ArrowDown');
+    await press('ArrowDown');
+    input.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }),
+    );
+    await fixture.whenStable();
+    expect(input.hasAttribute('aria-activedescendant')).toBe(false);
+
+    input.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    await fixture.whenStable();
+    await press('Enter');
+
+    expect(host.asked).toEqual(['ha']);
+  });
+
+  it('leaves its keys to a text being composed', async () => {
+    const { fixture, input, host, search } = await create();
+
+    await search('ha');
+    for (const key of ['ArrowDown', 'Enter', 'Escape']) {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, isComposing: true }),
+      );
+    }
+    await fixture.whenStable();
+
+    expect(host.asked).toEqual([]);
+    expect(input.value).toBe('ha');
+  });
+
+  it('keeps the focus in the field when Escape is pressed on the button that clears it', async () => {
     const { fixture, element, input, search } = await create();
 
     await search('ha');
+    const clear = element.querySelector<HTMLButtonElement>('[data-search-clear]')!;
+    clear.focus();
+    clear.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    await fixture.whenStable();
+
+    expect(input.value).toBe('');
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('takes Ctrl+K alone: another key held with it leaves the shortcut to the browser', async () => {
+    const { fixture, input } = await create();
+
+    for (const held of [{ shiftKey: true }, { altKey: true }, { metaKey: true }]) {
+      const event = new KeyboardEvent('keydown', {
+        key: 'k',
+        code: 'KeyK',
+        ctrlKey: true,
+        cancelable: true,
+        ...held,
+      });
+      document.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    }
+    await fixture.whenStable();
+    expect(document.activeElement).not.toBe(input);
+
+    // The key where K is, whatever the layout writes with it.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'к', code: 'KeyK', ctrlKey: true }));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('asks for the games once the field itself has the focus, not its button', async () => {
+    const { fixture, element, input, host } = await create();
+
+    element
+      .querySelector('[data-search-open]')!
+      .dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    await fixture.whenStable();
+    expect(host.opened).toEqual([]);
+
+    input.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(host.opened).toEqual([true]);
+  });
+
+  it('unfolds its field from its button with the focus in it, and folds it back when closed', async () => {
+    const { fixture, element, input } = await create();
+    const bar = element.querySelector('[data-search-bar]')!;
+    const opener = element.querySelector<HTMLButtonElement>('[data-search-open]')!;
+    expect(bar.getAttribute('data-unfolded')).toBe('false');
+
+    opener.click();
+    // At once, while the press is still handled: a phone brings its keyboard up for that only.
+    expect(bar.getAttribute('data-unfolded')).toBe('true');
+    expect(document.activeElement).toBe(input);
+    expect(opener.classList).toContain('invisible');
+
+    element.querySelector<HTMLButtonElement>('[data-search-close]')!.click();
+    await fixture.whenStable();
+
+    expect(bar.getAttribute('data-unfolded')).toBe('false');
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('folds back once a title was asked for', async () => {
+    const { element, host, search, press } = await create();
+    const bar = element.querySelector('[data-search-bar]')!;
+
+    element.querySelector<HTMLButtonElement>('[data-search-open]')!.click();
+    await search('half');
+    await press('Enter');
+
+    expect(host.asked).toEqual(['half']);
+    expect(bar.getAttribute('data-unfolded')).toBe('false');
+  });
+
+  it('closes and folds back when the focus leaves it, what was typed still there', async () => {
+    const { fixture, element, input, search } = await create();
+    const bar = element.querySelector('[data-search-bar]')!;
+
+    element.querySelector<HTMLButtonElement>('[data-search-open]')!.click();
+    await search('ha');
+    expect(bar.getAttribute('data-unfolded')).toBe('true');
     input.dispatchEvent(
       new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }),
     );
     await fixture.whenStable();
 
     expect(element.querySelector('[data-search-panel]')).toBeNull();
+    expect(bar.getAttribute('data-unfolded')).toBe('false');
     expect(input.value).toBe('ha');
   });
 });

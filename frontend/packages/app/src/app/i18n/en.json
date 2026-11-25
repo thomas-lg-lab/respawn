@@ -139,6 +139,7 @@
     "label": "Search a game",
     "placeholder": "Search a game",
     "shortcut": "Ctrl K",
+    "shortcutApple": "⌘K",
     "open": "Search a game",
     "close": "Close",
     "clear": "Clear what is typed",

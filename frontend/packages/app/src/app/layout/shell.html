@@ -1,5 +1,5 @@
 <header class="border-b border-line">
-  <!-- The search is placed against this row on a phone: its field then covers the row. -->
+  <!-- The search is placed against this row where it is a button: its field then covers the row. -->
   <div class="relative mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 wide:gap-5 wide:px-10">
     <!-- The logo gives way first when the row is short: down to its icon. -->
     <a class="me-auto w-48 min-w-8 rounded-thumb wide:me-0" routerLink="/"><rs-logo /></a>
@@ -23,7 +23,7 @@
     </nav>
 
     <rs-game-search
-      class="wide:ms-auto wide:max-w-110 wide:min-w-28 wide:flex-[1_1_16rem]"
+      class="wide:ms-auto roomy:max-w-110 roomy:min-w-28 roomy:flex-[1_1_16rem]"
       [games]="games.data()"
       [language]="language.current()"
       (opened)="searchOpened.set(true)"

@@ -96,6 +96,13 @@
     @slot;
   }
 }
+/* The header alone has a second one: from 960px it holds the search as a field beside the
+   tabs; under it the search is a button, and its field unfolds over the header. */
+@custom-variant roomy {
+  @container app (min-width: 960px) {
+    @slot;
+  }
+}
 
 /* A raised element, a little larger than its neighbours (`aria-pressed:scale-pop`). Tailwind
    has no theme key for a scale: the utility is written here, on its token. */

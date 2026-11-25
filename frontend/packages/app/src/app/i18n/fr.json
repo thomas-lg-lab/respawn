@@ -139,6 +139,7 @@
     "label": "Rechercher un jeu",
     "placeholder": "Rechercher un jeu",
     "shortcut": "Ctrl K",
+    "shortcutApple": "⌘K",
     "open": "Rechercher un jeu",
     "close": "Fermer",
     "clear": "Effacer ce qui est tapé",

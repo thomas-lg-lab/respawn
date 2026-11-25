@@ -46,10 +46,23 @@ export function matching(games: readonly LibraryGame[], typed: string): LibraryG
   return needle ? games.filter((game) => plain(game.name ?? '').includes(needle)) : [...games];
 }
 
+/** A letter or a figure: what a word is made of. */
+const IN_WORD = /[\p{L}\p{N}]/u;
+/** A mark that goes with the letter before it, when an accent is written apart. */
+const MARK = /\p{M}/u;
+
+/**
+ * How many letters a search is made of, as `matching` reads it: without the case, the accents
+ * and the signs it ignores. None means the search asks for nothing.
+ */
+export function letters(typed: string): number {
+  return [...plain(typed.trim())].length;
+}
+
 /** Whether a title holds what was typed at the start of one of its words. */
 function startsWord(title: string, needle: string): boolean {
   for (let at = title.indexOf(needle); at !== -1; at = title.indexOf(needle, at + 1)) {
-    if (at === 0 || !/[\p{L}\p{N}]/u.test(title.charAt(at - 1))) return true;
+    if (at === 0 || !IN_WORD.test(title.charAt(at - 1))) return true;
   }
   return false;
 }
@@ -57,7 +70,8 @@ function startsWord(title: string, needle: string): boolean {
 /**
  * The games a search suggests for what was typed, the closest first: a title that starts with
  * it, then one a word of which does, then any that holds it; among those as close, the most
- * played first. "he" is more likely the start of a title than the end of "The".
+ * played first. "he" is more likely the start of a title than the end of "The". None when the
+ * search asks for nothing: only signs that `matching` ignores.
  */
 export function suggested(
   games: readonly LibraryGame[],
@@ -65,6 +79,8 @@ export function suggested(
   language: string,
 ): LibraryGame[] {
   const needle = plain(typed.trim());
+  if (!needle) return [];
+
   const distance = (game: LibraryGame) => {
     const title = plain(game.name ?? '');
     return title.startsWith(needle) ? 0 : startsWord(title, needle) ? 1 : 2;
@@ -87,26 +103,33 @@ export interface FoundTitle {
 
 /**
  * Where a title holds what was typed, found the way `matching` finds it: whatever the case
- * and the accents. `null` when it does not, or when nothing was typed.
+ * and the accents. At the start of a word when it is there, since that is what ranked the
+ * title first; else where it first is. `null` when the title does not hold it, or when nothing
+ * was typed.
  */
 export function foundIn(title: string, typed: string): FoundTitle | null {
   const needle = plain(typed.trim());
   if (!needle) return null;
 
+  let first: FoundTitle | null = null;
   for (let start = 0; start < title.length; start++) {
-    // An accent written apart belongs to the letter before it: a find never starts on one.
+    // A find never starts on what the search ignores: an accent written apart, a sign.
     if (!plain(title.charAt(start)) || !plain(title.slice(start)).startsWith(needle)) continue;
 
     let end = start + 1;
     while (plain(title.slice(start, end)).length < needle.length) end++;
-    while (end < title.length && !plain(title.charAt(end))) end++;
-    return {
+    // An accent written apart stays with its letter.
+    while (end < title.length && MARK.test(title.charAt(end))) end++;
+
+    const found = {
       before: title.slice(0, start),
       found: title.slice(start, end),
       after: title.slice(end),
     };
+    if (start === 0 || !IN_WORD.test(title.charAt(start - 1))) return found;
+    first ??= found;
   }
-  return null;
+  return first;
 }
 
 /** The games a filter keeps. */

@@ -1,28 +1,34 @@
-<!-- Placed against the header on a phone, where the field and its suggestions take its whole
-     width, and against the field itself once there is room. -->
+<!-- A field beside the tabs where the header has room for it (`roomy:`). Under that it is a
+     button, and the field unfolds over the whole header when asked for, then folds back: it and
+     its suggestions are placed against the header. -->
 <div
-  class="wide:relative"
+  class="roomy:relative"
   role="search"
   data-search
-  (focusin)="entered()"
+  (focusin)="entered($event)"
   (focusout)="left($event)"
   (keydown)="key($event)"
   *transloco="let t; prefix: 'search'"
 >
+  <!-- Out of reach while the field stands over it. -->
   <button
+    #opener
     type="button"
-    class="flex size-touch items-center justify-center rounded-thumb wide:hidden"
+    class="flex size-touch items-center justify-center rounded-thumb roomy:hidden"
     data-search-open
+    [class.invisible]="unfolded()"
     [aria-label]="t('open')"
     (click)="unfold()"
   >
     <svg lucideSearch class="size-5" [strokeWidth]="2" aria-hidden="true"></svg>
   </button>
 
+  <!-- Folded, it is still there, cut down to nothing from the right and out of reach: it
+       unfolds from the side its button is on, and folds back the same way. -->
   <div
-    class="absolute inset-0 z-10 items-center gap-1 bg-bg px-4 wide:static wide:flex wide:bg-transparent wide:px-0"
-    [class.hidden]="!unfolded()"
-    [class.flex]="unfolded()"
+    class="absolute inset-0 z-10 flex items-center gap-1 bg-bg px-4 transition-[clip-path,visibility] duration-200 ease-out data-[unfolded=false]:invisible data-[unfolded=false]:[clip-path:inset(0_0_0_100%)] data-[unfolded=true]:[clip-path:inset(0)] wide:px-10 roomy:static roomy:bg-transparent roomy:px-0 roomy:transition-none roomy:data-[unfolded=false]:visible roomy:data-[unfolded=false]:[clip-path:none] roomy:data-[unfolded=true]:[clip-path:none]"
+    data-search-bar
+    [attr.data-unfolded]="unfolded()"
   >
     <!-- A container: the hint at the shortcut is only drawn when the field has room for it. -->
     <rs-search-field
@@ -30,7 +36,7 @@
       [label]="t('label')"
       [placeholder]="t('placeholder')"
       [popup]="listId"
-      [expanded]="shown()"
+      [expanded]="listed()"
       [active]="activeId()"
       [(value)]="typed"
     >
@@ -40,22 +46,24 @@
           class="flex size-8 shrink-0 items-center justify-center rounded-thumb text-muted transition-colors duration-hover hover:bg-surface-2 hover:text-text"
           data-search-clear
           [aria-label]="t('clear')"
+          (mousedown)="$event.preventDefault()"
           (click)="clear()"
         >
           <svg lucideX class="size-4" [strokeWidth]="2" aria-hidden="true"></svg>
         </button>
       } @else {
         <kbd
-          class="me-1 hidden shrink-0 rounded-thumb border border-control-line px-1.5 py-0.5 type-caption font-medium whitespace-nowrap text-muted wide:@min-[15rem]:inline"
+          class="me-1 hidden shrink-0 rounded-thumb border border-control-line px-1.5 py-0.5 type-caption font-medium whitespace-nowrap text-muted roomy:@min-[15rem]:inline"
           aria-hidden="true"
-          >{{ t('shortcut') }}</kbd
+          >{{ t(apple ? 'shortcutApple' : 'shortcut') }}</kbd
         >
       }
     </rs-search-field>
     <button
       type="button"
-      class="min-h-touch shrink-0 rounded-thumb px-2 type-control font-semibold wide:hidden"
+      class="min-h-touch shrink-0 rounded-thumb px-2 type-control font-semibold roomy:hidden"
       data-search-close
+      (mousedown)="$event.preventDefault()"
       (click)="close()"
     >
       {{ t('close') }}
@@ -63,44 +71,48 @@
   </div>
 
   @if (shown()) {
-    <!-- As wide as the field at least, and wide enough for a title when the field is short. A
-         press here must not take the focus off the field: the search would close under it. -->
+    <!-- Under the header over its whole width, or under the field where there is one: as wide
+         as it at least, and wide enough for a title when it is short. A press here must not
+         take the focus off the field: the search would close under it. -->
     <div
-      class="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-control-line bg-surface shadow-overlay wide:right-0 wide:left-auto wide:mt-2 wide:w-88 wide:max-w-[calc(100cqw-2rem)] wide:min-w-full wide:rounded-thumb wide:border"
+      class="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-control-line bg-surface shadow-raised roomy:right-0 roomy:left-auto roomy:mt-2 roomy:w-88 roomy:max-w-[calc(100cqw-2rem)] roomy:min-w-full roomy:rounded-thumb roomy:border"
       data-search-panel
       (mousedown)="$event.preventDefault()"
     >
-      <div role="listbox" [id]="listId" [attr.aria-label]="t('suggestions')">
-        @for (row of suggestions(); track row.id; let index = $index) {
-          <button
-            type="button"
-            role="option"
-            tabindex="-1"
-            class="flex min-h-row w-full items-center gap-3 px-3 text-left transition-colors duration-hover hover:bg-surface-2 aria-selected:bg-surface-2"
-            data-suggestion
-            [id]="row.id"
-            [attr.aria-selected]="index === active()"
-            (click)="ask(row.title)"
-          >
-            <rs-cover class="w-6 shrink-0 rounded-thumb" aria-hidden="true" [hue]="row.hue" />
-            <span class="min-w-0 truncate" data-title
-              >{{ row.cut.before
-              }}<mark class="bg-transparent font-semibold text-accent-text">{{
-                row.cut.found
-              }}</mark
-              >{{ row.cut.after }}</span
-            >
-            <span class="ms-auto type-caption whitespace-nowrap text-muted tabular-nums" data-time>
-              @if (row.time === 'never' || row.time === 'unknown') {
-                {{ t(row.time) }}
-              } @else {
-                {{ t(row.time.key, { count: row.time.count }) }}
-              }
-            </span>
-          </button>
-        }
-      </div>
       @if (suggestions().length) {
+        <div role="listbox" [id]="listId" [attr.aria-label]="t('suggestions')">
+          @for (row of suggestions(); track row.id; let index = $index) {
+            <button
+              type="button"
+              role="option"
+              tabindex="-1"
+              class="flex min-h-row w-full items-center gap-3 px-3 text-left transition-colors duration-hover hover:bg-surface-2 aria-selected:bg-surface-2"
+              data-suggestion
+              [id]="row.id"
+              [attr.aria-selected]="index === active()"
+              (click)="ask(row.title)"
+            >
+              <rs-cover class="w-6 shrink-0 rounded-thumb" aria-hidden="true" [hue]="row.hue" />
+              <span class="min-w-0 truncate" data-title
+                >{{ row.cut.before
+                }}<mark class="bg-transparent font-semibold text-accent-text">{{
+                  row.cut.found
+                }}</mark
+                >{{ row.cut.after }}</span
+              >
+              <span
+                class="ms-auto type-caption whitespace-nowrap text-muted tabular-nums"
+                data-time
+              >
+                @if (row.time === 'never' || row.time === 'unknown') {
+                  {{ t(row.time) }}
+                } @else {
+                  {{ t(row.time.key, { count: row.time.count }) }}
+                }
+              </span>
+            </button>
+          }
+        </div>
         <div class="border-t border-line p-1">
           <button
             type="button"

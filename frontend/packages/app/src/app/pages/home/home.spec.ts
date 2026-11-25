@@ -701,6 +701,8 @@ describe('Home', () => {
       const { harness, server, screen } = await open([account()], { games: played() });
 
       const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+      // The focus in the field is what makes the shell want the games.
+      search.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
       type(search, ' portal ');
       await harness.fixture.whenStable();
       search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));

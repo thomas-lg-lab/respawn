@@ -33,13 +33,10 @@
     color: var(--rs-text);
   }
 
-  /* The current screen: the cursor lit, under the pointer too. It blinks a few times when the
-     screen arrives, then stays lit, like the prompt of a label. */
+  /* The current screen: the cursor lit, under the pointer too. It does not blink: the header
+     stays still while the screens change under it. */
   :host([aria-current='page']) {
     --cursor: var(--rs-accent-text);
     color: var(--rs-text);
-  }
-  :host([aria-current='page'])::before {
-    animation: rs-blink var(--rs-duration-blink) steps(2, start) var(--rs-blink-count);
   }
 }

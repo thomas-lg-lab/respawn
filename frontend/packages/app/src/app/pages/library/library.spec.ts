@@ -1,6 +1,6 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { type LibraryGame } from '@respawn/data';
+import { type LibraryGame, PROVIDER_OUTCOME } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, api, button, start } from '@app/testing/app-testing';
@@ -134,6 +134,46 @@ describe('Library', () => {
     expect(names(screen)).toEqual(['Celeste', 'Pokémon']);
     expect(pill(screen, 'never').getAttribute('aria-pressed')).toBe('true');
     expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('goes back to every game when another title is searched, whatever filter was on', async () => {
+    const { harness, screen } = await open();
+    pill(screen, 'never').click();
+    await harness.fixture.whenStable();
+
+    // Asked from the header: a game that was played, which "never launched" would hide.
+    await harness.navigateByUrl('/library?q=hades');
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toEqual(['Hades']);
+    expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('takes a title made of spaces or of signs for no search', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=%20');
+    expect(screen.querySelector('[data-searched]')).toBeNull();
+    expect(names(screen)).toHaveLength(4);
+
+    await harness.navigateByUrl('/library?q=%5E%5E');
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-searched]')).toBeNull();
+    expect(names(screen)).toHaveLength(4);
+  });
+
+  it('does not say again the word of a link when the search is cleared', async () => {
+    const { harness, screen } = await open(
+      library(),
+      'fr',
+      `/library?q=po&${PROVIDER_OUTCOME}=linked`,
+    );
+    // Said once: the word left the address the browser shows, the title stayed.
+    expect(TestBed.inject(Location).path()).toBe('/library?q=po');
+
+    button(screen, 'Effacer la recherche').click();
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Location).path()).toBe('/library');
+    expect(screen.querySelector('rs-banner')).toBeNull();
   });
 
   it('sorts by playtime or by title', async () => {
