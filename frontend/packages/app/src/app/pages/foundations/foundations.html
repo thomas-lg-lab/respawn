@@ -1,5 +1,6 @@
-<div class="flex flex-col gap-4.5" *transloco="let t; prefix: 'foundations'">
+<main class="flex flex-col gap-4.5" *transloco="let t; prefix: 'foundations'">
   <div class="flex flex-col gap-2">
+    <rs-logo class="w-40" />
     <p rsLabel main>{{ t('label') }}</p>
     <h1 class="type-page-title">{{ t('title') }}</h1>
     <p class="max-w-prose text-muted">{{ t('intro') }}</p>
@@ -100,6 +101,59 @@
         </div>
 
         <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.tabs') }}</span>
+          <nav class="flex gap-1" [attr.aria-label]="t('components.tabs')">
+            <a rsTab href="#tabs" aria-current="page">{{ t('components.filters.all') }}</a>
+            <a rsTab href="#tabs">{{ t('components.filters.recent') }}</a>
+          </nav>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.search') }}</span>
+          <rs-search-field
+            [label]="t('components.search')"
+            [placeholder]="t('components.searchHint')"
+            [(value)]="search"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.select') }}</span>
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-2 type-control">
+              {{ t('components.sortBy') }}
+              <select rsSelect>
+                @for (choice of filters; track choice) {
+                  <option [value]="choice">{{ t('components.filters.' + choice) }}</option>
+                }
+              </select>
+            </label>
+            <label class="flex items-center gap-1 type-control text-muted">
+              {{ t('components.sortBy') }}
+              <select rsSelect quiet>
+                @for (choice of filters; track choice) {
+                  <option [value]="choice">{{ t('components.filters.' + choice) }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.disclosure') }}</span>
+          <div class="relative" rsDisclosure>
+            <button rsButton rsDisclosureTrigger type="button">{{ t('components.open') }}</button>
+            <section
+              rsDisclosurePanel
+              class="absolute top-full left-0 z-10 mt-2 w-64 rounded-card border border-control-line bg-surface p-4"
+              [attr.aria-label]="t('components.disclosure')"
+            >
+              {{ t('components.panel') }}
+            </section>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
           <span class="type-caption text-muted">{{ t('components.avatar') }}</span>
           <div class="flex items-center gap-3">
             <rs-avatar [name]="person" />
@@ -139,4 +193,37 @@
       </form>
     </section>
   </rs-card>
-</div>
+
+  <rs-card>
+    <section class="flex flex-col gap-5" aria-labelledby="library-label">
+      <h2 rsLabel id="library-label">{{ t('library.label') }}</h2>
+
+      <rs-hero [hue]="heroHue" [letter]="t('library.heroLetter')">
+        <p rsLabel main class="relative">{{ t('library.heroLabel') }}</p>
+        <p class="relative type-hero">{{ t('library.heroTitle') }}</p>
+      </rs-hero>
+
+      <div class="grid grid-cols-1 gap-3 wide:grid-cols-3">
+        <rs-stat-tile
+          [caption]="t('library.tileCaption')"
+          [figure]="t('components.hours', { count: hours })"
+          [note]="t('library.tileNote')"
+        >
+          <rs-segmented-bar class="my-1" [value]="hours" [max]="hoursScale" />
+        </rs-stat-tile>
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('library.covers') }}</span>
+          <div class="flex gap-2">
+            @for (hue of hues; track hue) {
+              <rs-cover class="w-12" aria-hidden="true" [hue]="hue" />
+            }
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('library.skeleton') }}</span>
+          <rs-skeleton class="h-18" />
+        </div>
+      </div>
+    </section>
+  </rs-card>
+</main>

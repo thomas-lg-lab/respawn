@@ -387,7 +387,15 @@
       "banners": "Bandeaux",
       "status": "Synchronisation en cours : vos jeux restent affichés.",
       "warning": "Synchronisation impossible. Vos jeux restent affichés tels qu’hier.",
-      "avatar": "Avatar"
+      "avatar": "Avatar",
+      "tabs": "Onglets",
+      "search": "Champ de recherche",
+      "searchHint": "Un titre",
+      "select": "Liste de choix",
+      "sortBy": "Trier par",
+      "disclosure": "Panneau dépliant",
+      "open": "Afficher le panneau",
+      "panel": "Un panneau qui se ferme avec Échap ou un clic à côté."
     },
     "form": {
       "label": "Formulaire",
@@ -395,6 +403,16 @@
       "nameHint": "Le nom que les autres membres verront.",
       "email": "E-mail",
       "submit": "Bouton de formulaire"
+    },
+    "library": {
+      "label": "Les blocs de la bibliothèque",
+      "heroLetter": "H",
+      "heroLabel": "Reprendre",
+      "heroTitle": "Hades",
+      "tileCaption": "Temps de jeu",
+      "tileNote": "sur 12 jeux",
+      "covers": "Jaquettes, en attendant leur image",
+      "skeleton": "Quelque chose arrive"
     }
   }
 }

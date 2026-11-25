@@ -9,12 +9,24 @@ import {
   Card,
   ChartColumn,
   ColumnChart,
+  Cover,
+  Disclosure,
+  DisclosurePanel,
+  DisclosureTrigger,
+  Hero,
   Label,
+  Logo,
   Pill,
   PillGroup,
+  SearchField,
   SegmentedBar,
+  Select,
+  Skeleton,
+  StatTile,
+  Tab,
   TextField,
 } from '@respawn/ui';
+import { formatCount } from '@app/format/format';
 import { DisplaySettings } from '@respawn/util';
 import { SettingsChoices } from '@app/components/settings-choices/settings-choices';
 import { fieldErrorKey } from '@app/forms/field-error';
@@ -24,9 +36,10 @@ const FILTERS = ['all', 'recent', 'never'] as const;
 type Filter = (typeof FILTERS)[number];
 
 /**
- * The proof of the foundations: the type styles and the base components, with the three
- * settings that change them. Not a screen of the app: it has its own address, which nothing
- * links to, and needs no session.
+ * The proof of the foundations: the type styles and every base component of `@respawn/ui`,
+ * with the three settings that change them. Not a screen of the app: it is in the development
+ * build only (`dev-routes.ts`), at an address nothing links to, and needs no session. A base
+ * component added to `@respawn/ui` is shown here too.
  */
 @Component({
   selector: 'rs-foundations',
@@ -40,10 +53,21 @@ type Filter = (typeof FILTERS)[number];
     Card,
     ChartColumn,
     ColumnChart,
+    Cover,
+    Disclosure,
+    DisclosurePanel,
+    DisclosureTrigger,
+    Hero,
     Label,
+    Logo,
     Pill,
     PillGroup,
+    SearchField,
     SegmentedBar,
+    Select,
+    Skeleton,
+    StatTile,
+    Tab,
     TextField,
     SettingsChoices,
     LucideRefreshCw,
@@ -69,11 +93,12 @@ export class Foundations {
   ];
   protected readonly person = 'Élodie';
   private readonly games = 1276;
+  protected readonly heroHue = 270;
+  protected readonly hues = [24, 150, 270];
+  protected readonly search = signal('');
 
   /** Grouped as the language groups its digits. */
-  protected readonly gamesCount = computed(() =>
-    new Intl.NumberFormat(this.language.current()).format(this.games),
-  );
+  protected readonly gamesCount = computed(() => formatCount(this.games, this.language.current()));
 
   // A form that sends nothing: leave a field empty, or submit, to see the error state.
   protected readonly sample = form(

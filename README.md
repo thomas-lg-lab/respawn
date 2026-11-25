@@ -320,8 +320,8 @@ that is neither a file nor under `/api`, `/healthz` or `/docs`, so the front rou
 on the same one. The document is written with a nonce of its own at each answer, which the content
 security policy needs to let the front's component styles through and nothing else. Its settings (the theme: the system's, dark or light; the character of the labels; the
 language) are kept on the account, and in the browser, which shows them from the first frame; a sign-in brings the account's. Its types come from `frontend/openapi.json`, a copy of the
-description the API serves, which the CI compares with the build. `/foundations` shows the type styles and
-the base components, with no session.
+description the API serves, which the CI compares with the build. `/foundations`, in the development
+build only, shows the type styles and every base component.
 
 A module owns one PostgreSQL schema and its migrations, and never reads another module's tables. These rules
 are tests: the build fails when a project references what it should not.
