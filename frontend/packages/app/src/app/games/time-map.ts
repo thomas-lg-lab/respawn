@@ -19,7 +19,8 @@ export interface Tile<T> {
 
 /**
  * Cuts the map into one tile per item, each as large as its weight's share of their sum.
- * The items come heaviest first; the ones whose weight is not above zero get no tile.
+ * The items are placed in the order they come (`mixed` scatters them); the ones whose weight
+ * is not above zero get no tile.
  * `ratio` is the map's width over its height, so that a tile is cut along its longer side
  * as it is drawn.
  *
@@ -64,6 +65,29 @@ export function treemap<T>(
 
   cut(weighed, 0, 0, 100, 100);
   return tiles;
+}
+
+/**
+ * The items in an order that looks drawn at random and is the same at every visit: by a hash of
+ * each one's key. Given to the cut, it scatters the tiles over the map, the large and the small,
+ * the cold and the warm, rather than ranking them from one corner to the other. The order only
+ * changes when the items do, so a map read again does not jump.
+ */
+export function mixed<T>(items: readonly T[], key: (item: T) => string): T[] {
+  return items
+    .map((item) => ({ item, rank: hash(key(item)) }))
+    .sort((a, b) => a.rank - b.rank)
+    .map((each) => each.item);
+}
+
+/** FNV-1a on 32 bits: enough to spread a few dozen ids, and the same in every browser. */
+function hash(text: string): number {
+  let value = 0x811c9dc5;
+  for (let index = 0; index < text.length; index++) {
+    value ^= text.charCodeAt(index);
+    value = Math.imul(value, 0x01000193);
+  }
+  return value >>> 0;
 }
 
 /** How long ago a game was played, as the map colours it: 1 the latest, 4 the oldest. */

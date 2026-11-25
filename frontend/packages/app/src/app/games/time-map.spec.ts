@@ -1,5 +1,5 @@
 import type { LibraryGame } from '@respawn/data';
-import { playedRecency, recency, treemap } from './time-map';
+import { mixed, playedRecency, recency, treemap } from './time-map';
 
 const weight = (value: number) => value;
 const area = (tile: { width: number; height: number }) => (tile.width * tile.height) / 100;
@@ -77,5 +77,20 @@ describe('the time map', () => {
     expect(playedRecency(game({ recent_playtime_seconds: 1800 }), now)).toBe(1);
     expect(playedRecency(game({}), now)).toBe(4);
     expect(playedRecency(game({ last_played_at: '2026-06-01T12:00:00Z' }), now)).toBe(3);
+  });
+});
+
+describe('mixed', () => {
+  const ids = Array.from({ length: 13 }, (_, index) => `game-${index}`);
+
+  it('keeps every item, in an order of its own', () => {
+    const order = mixed(ids, (id) => id);
+
+    expect([...order].sort()).toEqual([...ids].sort());
+    expect(order).not.toEqual(ids);
+  });
+
+  it('gives the same order whatever order the items come in', () => {
+    expect(mixed([...ids].reverse(), (id) => id)).toEqual(mixed(ids, (id) => id));
   });
 });
