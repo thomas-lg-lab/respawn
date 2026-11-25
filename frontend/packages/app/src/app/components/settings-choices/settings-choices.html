@@ -1,5 +1,5 @@
 <ng-container *transloco="let t; prefix: 'settings'">
-  <rs-pill-group [label]="t('language')">
+  <rs-pill-group segmented [label]="t('language')">
     @for (choice of languages; track choice) {
       <!-- A language is named in itself, so its name is read in that language. -->
       <button
@@ -14,7 +14,7 @@
     }
   </rs-pill-group>
 
-  <rs-pill-group [label]="t('theme')">
+  <rs-pill-group segmented [label]="t('theme')">
     @for (choice of themes; track choice) {
       <button
         rsPill
@@ -27,7 +27,7 @@
     }
   </rs-pill-group>
 
-  <rs-pill-group [label]="t('character')">
+  <rs-pill-group segmented [label]="t('character')">
     @for (choice of characters; track choice) {
       <button
         rsPill

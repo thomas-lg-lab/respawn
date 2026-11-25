@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { type LinkedAccount } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { ACCOUNT, api, field, start, type } from '@app/testing/app-testing';
+import { game } from '@app/testing/games';
 import '../../layout/shell';
 import './account';
 
@@ -292,6 +293,35 @@ describe('Account', () => {
 
     expect(screen.querySelector('[data-unlink-warning]')).toBeNull();
     expect(screen.querySelector('[data-linked-account]')).not.toBeNull();
+  });
+
+  it('reads the games for the header’s search once its field is used, not before', async () => {
+    const { harness, server, screen } = await open([linked()]);
+    const games = '/library?sort=name&offset=0&limit=500';
+    const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+
+    // This screen shows no game, and the focus passing on the search's button asks for none.
+    screen
+      .querySelector('[data-search-open]')!
+      .dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    await harness.fixture.whenStable();
+    server.http.expectNone(`/api/v1${games}`);
+
+    search.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    await server.answer(games, {
+      total: 2,
+      offset: 0,
+      limit: 500,
+      games: [game('Portal 2'), game('Celeste')],
+    });
+    type(search, 'po');
+    await harness.fixture.whenStable();
+
+    expect(
+      [...screen.querySelectorAll('[data-suggestion] [data-title]')].map((each) =>
+        each.textContent.trim(),
+      ),
+    ).toEqual(['Portal 2']);
   });
 
   it('says that the accounts could not be told, and asks again on request', async () => {

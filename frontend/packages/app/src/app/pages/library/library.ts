@@ -1,21 +1,30 @@
-import { Location } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import {
+  ActivatedRoute,
+  NavigationEnd,
+  NavigationStart,
+  Router,
+  RouterLink,
+} from '@angular/router';
+import { map } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
 import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
+import { withoutSaidOnce } from '@app/session/said-once';
 import { formatCount, isOne } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
-import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
 import { GameTable } from './components/game-table';
 import { LibraryToolbar } from './components/library-toolbar';
 import {
+  LIBRARY_SEARCH,
   type LibraryFilter,
   type LibrarySort,
   filterCounts,
   kept,
+  letters,
   longestPlaytime,
   matching,
   sorted,
@@ -24,9 +33,15 @@ import {
 /** How many games a "show more" adds: a list of a thousand rows is not drawn at once. */
 const STEP = 100;
 
+/** The title an address asks for, or none when it is made of nothing the search reads. */
+function searched(asked: string | null): string {
+  return asked !== null && letters(asked) > 0 ? asked.trim() : '';
+}
+
 /**
- * The library as a list: every game of the linked accounts, searched by title, filtered and
- * sorted here, in the browser, which holds the whole of it. The home says how the library
+ * The library as a list: every game of the linked accounts, filtered and sorted here, in the
+ * browser, which holds the whole of it, and narrowed to the title the header's search asked
+ * for. The home says how the library
  * gets there and where its sync stands; this screen only shows what was read.
  */
 @Component({
@@ -36,6 +51,8 @@ const STEP = 100;
 })
 export class Library {
   private readonly queries = inject(LibraryQueries);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly language = inject(LanguageSetting);
 
   protected readonly failureKey = failureKey;
@@ -46,16 +63,18 @@ export class Library {
   protected readonly now = computed(() => this.games.dataUpdatedAt() || Date.now());
 
   /**
-   * What is searched: at first the title the home was asked for, if it led here. The address
-   * says it for that one arrival, then the field does.
+   * What is searched: the title on the address, which the header's search wrote there. It
+   * stays on it, so a reload or a copy of the address shows the same games. A title made of
+   * nothing the search reads (spaces, signs) is no search.
    */
-  protected readonly search = signal(
-    inject(ActivatedRoute).snapshot.queryParamMap.get(LIBRARY_SEARCH) ?? '',
+  protected readonly search = toSignal(
+    this.route.queryParamMap.pipe(map((asked) => searched(asked.get(LIBRARY_SEARCH)))),
+    { initialValue: searched(this.route.snapshot.queryParamMap.get(LIBRARY_SEARCH)) },
   );
   protected readonly filter = signal<LibraryFilter>('all');
   protected readonly sort = signal<LibrarySort>('last_played');
   /** How many steps of the list are shown: back to one whenever the list changes. */
-  private readonly steps = signal(1);
+  private readonly steps = linkedSignal({ source: this.search, computation: () => 1 });
 
   /** How many games the library holds, in the reader's language, and whether that is one. */
   protected readonly owned = computed(() => this.counted(this.games.data()?.length ?? 0));
@@ -80,12 +99,31 @@ export class Library {
   protected readonly scale = computed(() => longestPlaytime(this.games.data() ?? []));
 
   constructor() {
-    saidOnce(inject(Location), inject(Router), LIBRARY_SEARCH);
+    // Back to every game whenever a title is searched, the one already shown too: the search
+    // comes from the header, and a filter left on would hide the very game that was asked
+    // for. Clearing the search asks for nothing new: the filter stays. So does it when the
+    // browser's history leads back to a title: nothing was searched then.
+    let throughHistory = false;
+    this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        throughHistory = event.navigationTrigger === 'popstate';
+      }
+      if (!(event instanceof NavigationEnd) || throughHistory || !this.search()) return;
+      this.filter.set('all');
+      this.steps.set(1);
+    });
   }
 
-  protected typed(search: string): void {
-    this.search.set(search);
-    this.steps.set(1);
+  /**
+   * The whole library again: the title leaves the address, whatever else it says stays. Not
+   * the words it carried for one arrival, which the router still holds: they were said.
+   */
+  protected clearSearch(): void {
+    const there = this.router.parseUrl(withoutSaidOnce(this.router, this.router.url));
+    there.queryParams = Object.fromEntries(
+      Object.entries(there.queryParams).filter(([word]) => word !== LIBRARY_SEARCH),
+    );
+    void this.router.navigateByUrl(there);
   }
 
   protected pickFilter(filter: LibraryFilter): void {

@@ -135,6 +135,24 @@
       "done": "Le compte est délié, et ce qui en avait été lu est oublié."
     }
   },
+  "search": {
+    "label": "Rechercher un jeu",
+    "placeholder": "Rechercher un jeu",
+    "shortcut": "Ctrl K",
+    "shortcutApple": "⌘K",
+    "open": "Rechercher un jeu",
+    "close": "Fermer",
+    "clear": "Effacer ce qui est tapé",
+    "suggestions": "Jeux proposés",
+    "none": "Aucun jeu ne correspond à « {{ title }} ».",
+    "unreadable": "Vos jeux n’ont pas pu être lus. Entrée cherche quand même dans la bibliothèque.",
+    "seeOne": "Voir {{ count }} jeu dans la bibliothèque",
+    "seeMany": "Voir les {{ count }} jeux dans la bibliothèque",
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min",
+    "never": "Jamais lancé",
+    "unknown": "—"
+  },
   "nav": {
     "label": "Navigation principale",
     "home": "Accueil",
@@ -222,11 +240,6 @@
       "minutes": "{{ count }} min"
     },
     "unnamed": "Jeu sans nom",
-    "search": {
-      "label": "Rechercher un jeu",
-      "placeholder": "Un titre",
-      "submit": "Chercher"
-    },
     "resume": {
       "name": "Reprendre",
       "label": "Reprendre · dernière session {{ ago }}",
@@ -283,10 +296,8 @@
       "text": "Aucun jeu ici pour l’instant. L’accueil dit où en est votre bibliothèque.",
       "home": "Aller à l’accueil"
     },
-    "search": {
-      "label": "Rechercher un jeu",
-      "placeholder": "Un titre"
-    },
+    "searched": "Recherche : « {{ title }} »",
+    "clearSearch": "Effacer la recherche",
     "filter": {
       "label": "Filtrer",
       "all": "Tous",
@@ -374,6 +385,9 @@
       "outlined": "Bouton secondaire",
       "disabled": "Indisponible",
       "sync": "Synchroniser",
+      "rows": "Lignes d’un menu",
+      "rowFirst": "Mon compte",
+      "rowSecond": "Se déconnecter",
       "pills": "Pastilles",
       "lines": "Pastilles en rangée de filtres",
       "filters": {

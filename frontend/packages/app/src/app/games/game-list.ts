@@ -46,6 +46,92 @@ export function matching(games: readonly LibraryGame[], typed: string): LibraryG
   return needle ? games.filter((game) => plain(game.name ?? '').includes(needle)) : [...games];
 }
 
+/** A letter or a figure: what a word is made of. */
+const IN_WORD = /[\p{L}\p{N}]/u;
+/** A mark that goes with the letter before it, when an accent is written apart. */
+const MARK = /\p{M}/u;
+
+/**
+ * How many letters a search is made of, as `matching` reads it: without the case, the accents
+ * and the signs it ignores. None means the search asks for nothing.
+ */
+export function letters(typed: string): number {
+  return [...plain(typed.trim())].length;
+}
+
+/** Whether a title holds what was typed at the start of one of its words. */
+function startsWord(title: string, needle: string): boolean {
+  for (let at = title.indexOf(needle); at !== -1; at = title.indexOf(needle, at + 1)) {
+    if (at === 0 || !IN_WORD.test(title.charAt(at - 1))) return true;
+  }
+  return false;
+}
+
+/**
+ * The games a search suggests for what was typed, the closest first: a title that starts with
+ * it, then one a word of which does, then any that holds it; among those as close, the most
+ * played first. "he" is more likely the start of a title than the end of "The". None when the
+ * search asks for nothing: only signs that `matching` ignores.
+ */
+export function suggested(
+  games: readonly LibraryGame[],
+  typed: string,
+  language: string,
+): LibraryGame[] {
+  const needle = plain(typed.trim());
+  if (!needle) return [];
+
+  const distance = (game: LibraryGame) => {
+    const title = plain(game.name ?? '');
+    return title.startsWith(needle) ? 0 : startsWord(title, needle) ? 1 : 2;
+  };
+  // The sort keeps the order of what it cannot tell apart: the playtime's, then the title's.
+  return sorted(matching(games, typed), 'playtime', language).sort(
+    (a, b) => distance(a) - distance(b),
+  );
+}
+
+/** The title the Library is searched for, written on its address: the header's search leads there. */
+export const LIBRARY_SEARCH = 'q';
+
+/** A title cut around what was typed, to show where it was found. */
+export interface FoundTitle {
+  readonly before: string;
+  readonly found: string;
+  readonly after: string;
+}
+
+/**
+ * Where a title holds what was typed, found the way `matching` finds it: whatever the case
+ * and the accents. At the start of a word when it is there, since that is what ranked the
+ * title first; else where it first is. `null` when the title does not hold it, or when nothing
+ * was typed.
+ */
+export function foundIn(title: string, typed: string): FoundTitle | null {
+  const needle = plain(typed.trim());
+  if (!needle) return null;
+
+  let first: FoundTitle | null = null;
+  for (let start = 0; start < title.length; start++) {
+    // A find never starts on what the search ignores: an accent written apart, a sign.
+    if (!plain(title.charAt(start)) || !plain(title.slice(start)).startsWith(needle)) continue;
+
+    let end = start + 1;
+    while (plain(title.slice(start, end)).length < needle.length) end++;
+    // An accent written apart stays with its letter.
+    while (end < title.length && MARK.test(title.charAt(end))) end++;
+
+    const found = {
+      before: title.slice(0, start),
+      found: title.slice(start, end),
+      after: title.slice(end),
+    };
+    if (start === 0 || !IN_WORD.test(title.charAt(start - 1))) return found;
+    first ??= found;
+  }
+  return first;
+}
+
 /** The games a filter keeps. */
 export function kept(games: readonly LibraryGame[], filter: LibraryFilter): LibraryGame[] {
   return games.filter(KEEPS[filter]);

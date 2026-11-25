@@ -60,4 +60,23 @@
     width: var(--rs-size-touch);
     height: var(--rs-size-touch);
   }
+
+  /* One line of a list of actions: the list is the frame, the line only answers the pointer. */
+  :host([data-variant='row']) {
+    justify-content: flex-start;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: var(--rs-size-row);
+    padding-inline: 0.75rem;
+    border-radius: var(--rs-radius-field);
+    background-color: transparent;
+    color: var(--rs-text);
+    font-weight: 500;
+    text-align: start;
+  }
+  /* Under the pointer, or the one the arrow keys are on when the list is one of options. */
+  :host([data-variant='row']:hover),
+  :host([data-variant='row'][aria-selected='true']) {
+    background-color: var(--rs-surface-2);
+  }
 }

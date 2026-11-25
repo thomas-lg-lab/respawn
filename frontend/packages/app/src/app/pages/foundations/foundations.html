@@ -109,6 +109,14 @@
         </div>
 
         <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.rows') }}</span>
+          <div class="flex max-w-80 flex-col rounded-card border border-line p-2">
+            <button rsButton variant="row" type="button">{{ t('components.rowFirst') }}</button>
+            <button rsButton variant="row" type="button">{{ t('components.rowSecond') }}</button>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
           <span class="type-caption text-muted">{{ t('components.search') }}</span>
           <rs-search-field
             [label]="t('components.search')"

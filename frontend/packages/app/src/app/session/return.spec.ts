@@ -82,7 +82,7 @@ describe('the return after a sign-in', () => {
   });
 
   it('comes back without what the address said for one arrival', async () => {
-    // The home's search, and the word of a link: the screen read them when it arrived.
+    // The word of a link: the screen read it when it arrived. The title searched stays.
     const { harness, router, server, returnTo } = await visit(
       '/library?q=portal&sort=name&steam_link=linked',
       (server) => server.answer('/me', ACCOUNT),
@@ -96,7 +96,7 @@ describe('the return after a sign-in', () => {
     await server.answer('/config', SIGN_IN_OPTIONS);
     await harness.fixture.whenStable();
 
-    await vi.waitFor(() => expect(returnTo()).toBe('/library?sort=name'));
+    await vi.waitFor(() => expect(returnTo()).toBe('/library?q=portal&sort=name'));
     expect(router.url.startsWith('/sign-in?')).toBe(true);
   });
 

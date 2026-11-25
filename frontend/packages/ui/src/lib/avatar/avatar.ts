@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 
 /**
- * An avatar: the first letter of a name in a disc. A decoration, hidden from screen
+ * An avatar: the first letter of a name in a square. A decoration, hidden from screen
  * readers: the name itself is always written beside it.
  */
 @Component({

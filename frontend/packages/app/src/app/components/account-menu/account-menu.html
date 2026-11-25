@@ -5,73 +5,76 @@
   (openChange)="$event && opened.emit()"
   *transloco="let t; prefix: 'account'"
 >
-  <button rsButton rsDisclosureTrigger variant="icon" [aria-label]="t('menu')">
-    <svg lucideUserRound class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+  <!-- The account's own square, as the panel shows it: no outline, the touch target around it. -->
+  <button
+    rsDisclosureTrigger
+    class="flex size-touch items-center justify-center rounded-thumb transition-opacity duration-hover hover:opacity-85"
+    [aria-label]="t('menu')"
+  >
+    <rs-avatar [name]="account().display_name" />
   </button>
 
+  <!-- Three parts under one frame, a rule between them: who, the settings, what can be done. -->
   <section
     rsDisclosurePanel
-    class="absolute top-full right-0 z-10 mt-2.5 flex w-77.5 max-w-[calc(100cqw-2rem)] flex-col gap-4 rounded-card border border-control-line bg-surface p-4.5"
+    class="absolute top-full right-0 z-10 mt-2.5 w-85 max-w-[calc(100cqw-2rem)] divide-y divide-line origin-top-right animate-overlay-in overflow-hidden rounded-card border border-line bg-surface shadow-overlay"
     [attr.aria-label]="t('menu')"
   >
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 bg-surface-2 p-4.5">
       <rs-avatar [name]="account().display_name" />
-      <div class="flex min-w-0 flex-col">
-        <span class="truncate font-semibold" data-account-name>{{ account().display_name }}</span>
-        <!-- One line each: a long address is cut, never the role. -->
+      <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+        <!-- The role beside the name, which is cut when long: the role never is. -->
+        <div class="flex items-center gap-2">
+          <span class="truncate font-semibold" data-account-name>{{ account().display_name }}</span>
+          @if (account().is_admin) {
+            <span
+              class="shrink-0 rounded-thumb border border-control-line px-1.5 py-0.5 type-label text-muted"
+              data-account-role
+              >{{ t('administrator') }}</span
+            >
+          }
+        </div>
         @if (account().email; as email) {
           <span class="truncate type-caption text-muted" data-account-email [title]="email">{{
             email
           }}</span>
         }
-        @if (account().is_admin) {
-          <span class="type-caption text-muted" data-account-role>{{ t('administrator') }}</span>
-        }
       </div>
     </div>
 
-    <!-- The way to the account screen: the panel closes behind it, and its button takes the focus. -->
-    <a rsButton shape="field" routerLink="/account" data-account-link (click)="menu.dismiss()">
-      <svg lucideSettings class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
-      {{ t('view') }}
-    </a>
-
-    <rs-settings-choices
-      [language]="language()"
-      [theme]="theme()"
-      [character]="character()"
-      (languagePicked)="languagePicked.emit($event)"
-      (themePicked)="themePicked.emit($event)"
-      (characterPicked)="characterPicked.emit($event)"
-    />
-
-    <p class="type-caption text-muted">{{ t('settingsKept') }}</p>
+    <div class="flex flex-col gap-3 p-4.5">
+      <rs-settings-choices
+        [language]="language()"
+        [theme]="theme()"
+        [character]="character()"
+        (languagePicked)="languagePicked.emit($event)"
+        (themePicked)="themePicked.emit($event)"
+        (characterPicked)="characterPicked.emit($event)"
+      />
+      <p class="type-caption text-muted">{{ t('settingsKept') }}</p>
+    </div>
 
     @if (providers().length) {
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col p-2">
         <!-- Titled like the settings above it. -->
-        <p class="type-label text-muted">{{ t('providers') }}</p>
+        <p class="px-3 pt-2 pb-1 type-label text-muted">{{ t('providers') }}</p>
         @for (provider of providers(); track provider.name) {
           @if (provider.linked) {
             <p
-              class="flex items-center gap-2 px-1 py-2"
+              class="flex min-h-row items-center gap-3 px-3 text-muted"
               [attr.data-linked-provider]="provider.name"
             >
-              <svg
-                lucideCheck
-                class="size-icon text-muted"
-                [strokeWidth]="2"
-                aria-hidden="true"
-              ></svg>
+              <svg lucideCheck class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
               {{ t('providerLinked', { provider: provider.label }) }}
             </p>
           } @else {
             <a
               rsButton
-              shape="field"
+              variant="row"
               [href]="provider.address"
               [attr.data-link-provider]="provider.name"
             >
+              <svg lucideLink class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
               {{ t('linkProvider', { provider: provider.label }) }}
             </a>
           }
@@ -79,17 +82,29 @@
       </div>
     }
 
-    <button
-      rsButton
-      shape="field"
-      type="button"
-      class="font-semibold"
-      data-sign-out
-      [disabled]="signingOut()"
-      (click)="signOut.emit()"
-    >
-      <svg lucideLogOut class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
-      {{ t('signOut') }}
-    </button>
+    <div class="flex flex-col p-2">
+      <!-- The way to the account screen: the panel closes behind it, and its button takes the focus. -->
+      <a rsButton variant="row" routerLink="/account" data-account-link (click)="menu.dismiss()">
+        <svg lucideSettings class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+        {{ t('view') }}
+        <svg
+          lucideChevronRight
+          class="ms-auto size-icon text-muted"
+          [strokeWidth]="2"
+          aria-hidden="true"
+        ></svg>
+      </a>
+      <button
+        rsButton
+        variant="row"
+        type="button"
+        data-sign-out
+        [disabled]="signingOut()"
+        (click)="signOut.emit()"
+      >
+        <svg lucideLogOut class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+        {{ t('signOut') }}
+      </button>
+    </div>
   </section>
 </div>

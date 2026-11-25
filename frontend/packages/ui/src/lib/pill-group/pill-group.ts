@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, booleanAttribute, input } from '@angular/core';
 
 let created = 0;
 
@@ -10,18 +10,24 @@ let created = 0;
  *     <rs-pill-group [label]="…">
  *       <button rsPill [pressed]="…" (click)="…">…</button>
  *     </rs-pill-group>
+ *
+ * `segmented` is for the positions of one choice where room is short: the label and the
+ * pills share a line, and the pills one track. The pills draw themselves as its positions:
+ * nothing is to be set on them.
  */
 @Component({
   selector: 'rs-pill-group',
   host: {
     role: 'group',
     '[attr.aria-labelledby]': 'labelId',
+    '[attr.data-segmented]': "segmented() ? '' : null",
   },
   templateUrl: './pill-group.html',
   styleUrl: './pill-group.css',
 })
 export class PillGroup {
   readonly label = input.required<string>();
+  readonly segmented = input(false, { transform: booleanAttribute });
 
   protected readonly labelId = `rs-pill-group-${++created}`;
 }

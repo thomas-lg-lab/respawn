@@ -1,5 +1,7 @@
+import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { type LibraryGame } from '@respawn/data';
+import { Router } from '@angular/router';
+import { type LibraryGame, PROVIDER_OUTCOME } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, api, button, start, type } from '@app/testing/app-testing';
@@ -26,8 +28,12 @@ function library(): LibraryGame[] {
 
 describe('Library', () => {
   /** Opens the library, signed in; the API answers with these games unless told not to. */
-  async function open(games: LibraryGame[] | null = library(), language: Language = 'fr') {
-    const { harness, server, arrived } = await start('/library', language);
+  async function open(
+    games: LibraryGame[] | null = library(),
+    language: Language = 'fr',
+    address = '/library',
+  ) {
+    const { harness, server, arrived } = await start(address, language);
     await server.answer('/me', ACCOUNT);
     await arrived;
     // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.
@@ -110,12 +116,10 @@ describe('Library', () => {
     expect(text(row(screen, 'Pokémon'), '[data-last-played]')).toBe('—');
   });
 
-  it('searches by title, and counts what each filter would keep of it', async () => {
-    const { harness, screen } = await open();
+  it('keeps the title its address asks for, and counts what each filter would keep of it', async () => {
+    const { screen } = await open(library(), 'fr', '/library?q=po');
 
-    type(screen.querySelector('input[type="search"]')!, 'po');
-    await harness.fixture.whenStable();
-
+    expect(text(screen, '[data-searched]')).toBe('Recherche : « po »');
     expect(names(screen)).toEqual(['Portal 2', 'Pokémon']);
     expect(text(screen, '[data-filter="all"]')).toBe('Tous 2');
     expect(text(screen, '[data-filter="launched"]')).toBe('Lancés 1');
@@ -131,6 +135,90 @@ describe('Library', () => {
     expect(names(screen)).toEqual(['Celeste', 'Pokémon']);
     expect(pill(screen, 'never').getAttribute('aria-pressed')).toBe('true');
     expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('goes back to every game when another title is searched, whatever filter was on', async () => {
+    const { harness, screen } = await open();
+    pill(screen, 'never').click();
+    await harness.fixture.whenStable();
+
+    // Asked from the header: a game that was played, which "never launched" would hide.
+    await harness.navigateByUrl('/library?q=hades');
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toEqual(['Hades']);
+    expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('true');
+
+    // Clearing the search asks for nothing new: a filter picked meanwhile stays.
+    pill(screen, 'launched').click();
+    await harness.fixture.whenStable();
+    button(screen, 'Effacer la recherche').click();
+    await harness.fixture.whenStable();
+
+    expect(pill(screen, 'launched').getAttribute('aria-pressed')).toBe('true');
+    expect(names(screen)).toEqual(['Portal 2', 'Hades']);
+  });
+
+  it('shows every game that bears a title searched again, a filter left on since', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=hades');
+    pill(screen, 'never').click();
+    await harness.fixture.whenStable();
+    expect(names(screen)).toEqual([]);
+
+    // The same title, asked again in the header: the address does not change.
+    const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+    type(search, 'hades');
+    await harness.fixture.whenStable();
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toEqual(['Hades']);
+    expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps the filter when the history leads back to a title: nothing was searched', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=po');
+    // The router follows the browser's history as it does once the app has started.
+    TestBed.inject(Router).setUpLocationChangeListener();
+    await harness.navigateByUrl('/library?q=hades');
+    await harness.fixture.whenStable();
+    pill(screen, 'launched').click();
+    await harness.fixture.whenStable();
+
+    const location = TestBed.inject(Location);
+    location.back();
+    await vi.waitFor(() => expect(text(screen, '[data-searched]')).toBe('Recherche : « po »'));
+    location.forward();
+    await vi.waitFor(() => expect(text(screen, '[data-searched]')).toBe('Recherche : « hades »'));
+
+    expect(pill(screen, 'launched').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('takes a title made of spaces or of signs for no search', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=%20');
+    expect(screen.querySelector('[data-searched]')).toBeNull();
+    expect(names(screen)).toHaveLength(4);
+
+    await harness.navigateByUrl('/library?q=%5E%5E');
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-searched]')).toBeNull();
+    expect(names(screen)).toHaveLength(4);
+  });
+
+  it('does not say again the word of a link when the search is cleared', async () => {
+    const { harness, screen } = await open(
+      library(),
+      'fr',
+      `/library?q=po&${PROVIDER_OUTCOME}=linked`,
+    );
+    // Said once: the word left the address the browser shows, the title stayed.
+    expect(TestBed.inject(Location).path()).toBe('/library?q=po');
+
+    button(screen, 'Effacer la recherche').click();
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Location).path()).toBe('/library');
+    expect(screen.querySelector('rs-banner')).toBeNull();
   });
 
   it('sorts by playtime or by title', async () => {
@@ -149,15 +237,19 @@ describe('Library', () => {
     expect(names(screen)).toEqual(['Celeste', 'Hades', 'Pokémon', 'Portal 2']);
   });
 
-  it('says that no game matches, the search still there to change', async () => {
-    const { harness, screen } = await open();
-
-    type(screen.querySelector('input[type="search"]')!, 'zelda');
-    await harness.fixture.whenStable();
+  it('says that no game matches, and lists every game again once the search is cleared', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=zelda&sort=name');
 
     expect(text(screen, '[data-no-match]')).toBe('Aucun jeu ne correspond.');
     expect(screen.querySelector('table')).toBeNull();
-    expect(screen.querySelector('input[type="search"]')).not.toBeNull();
+
+    button(screen, 'Effacer la recherche').click();
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toHaveLength(4);
+    expect(screen.querySelector('[data-searched]')).toBeNull();
+    // Only the title left the address.
+    expect(TestBed.inject(Location).path()).toBe('/library?sort=name');
   });
 
   it('shows a long list a step at a time, and starts over when the list changes', async () => {
@@ -177,7 +269,8 @@ describe('Library', () => {
     expect(names(screen)).toHaveLength(230);
     expect(screen.querySelector('[data-more]')).toBeNull();
 
-    type(screen.querySelector('input[type="search"]')!, 'game');
+    // Another title is searched from the header: the address changes, the screen stays.
+    await harness.navigateByUrl('/library?q=game');
     await harness.fixture.whenStable();
     expect(names(screen)).toHaveLength(100);
   });
@@ -217,7 +310,7 @@ describe('Library', () => {
     expect(text(screen, '[data-empty]')).toContain('Aucun jeu ici pour l’instant.');
     expect(screen.querySelector('main a[rsButton]')?.getAttribute('href')).toBe('/');
     expect(screen.querySelector('[data-owned]')).toBeNull();
-    expect(screen.querySelector('input[type="search"]')).toBeNull();
+    expect(screen.querySelector('rs-library-toolbar')).toBeNull();
   });
 
   it('says that the games are on their way', async () => {

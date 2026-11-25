@@ -19,14 +19,16 @@
       </button>
     }
   </div>
-  <!-- The search is the one box of the toolbar; the sort is its words. -->
-  <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-    <rs-search-field
-      class="max-w-130 flex-[1_1_14rem]"
-      [label]="t('search.label')"
-      [placeholder]="t('search.placeholder')"
-      [(value)]="search"
-    />
+  <!-- The title the header's search asked for, with the way back to every game; then the sort. -->
+  <div class="flex min-h-touch flex-wrap items-center gap-x-4 gap-y-2">
+    @if (search()) {
+      <p class="min-w-0 font-medium wrap-anywhere" role="status" data-searched>
+        {{ t('searched', { title: search() }) }}
+      </p>
+      <button rsButton type="button" data-search-clear (click)="searchCleared.emit()">
+        {{ t('clearSearch') }}
+      </button>
+    }
     <label class="ms-auto flex items-center gap-1 type-control text-muted">
       {{ t('sort.label') }}
       <select rsSelect quiet data-sort (change)="pickSort($event)">

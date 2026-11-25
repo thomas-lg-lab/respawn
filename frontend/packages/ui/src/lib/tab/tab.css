@@ -2,25 +2,41 @@
 
 @layer components {
   :host {
+    /* The colour of the block before the words: none until the pointer or the current screen. */
+    --cursor: transparent;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
     min-height: var(--rs-size-touch);
-    padding-inline: 1rem;
-    border-radius: var(--rs-radius-pill);
-    color: var(--rs-text);
+    padding-inline: 0.75rem;
+    color: var(--rs-muted);
     font-weight: 600;
-    transition-property: background-color, color;
+    transition-property: color;
     transition-duration: var(--rs-duration-hover);
     @apply type-control;
   }
-  :host(:hover) {
-    background-color: var(--rs-surface-2);
+
+  /* The cursor of the logo, before the words: a block with no radius, the pixel accent. */
+  :host::before {
+    content: '';
+    flex-shrink: 0;
+    width: 0.4375rem;
+    height: 1.0625rem;
+    background-color: var(--cursor);
+    transition-property: background-color;
+    transition-duration: var(--rs-duration-hover);
   }
 
-  /* The current screen: the inverse colours, under the pointer too. */
+  :host(:hover) {
+    --cursor: var(--rs-control-line);
+    color: var(--rs-text);
+  }
+
+  /* The current screen: the cursor lit, under the pointer too. It does not blink: the header
+     stays still while the screens change under it. */
   :host([aria-current='page']) {
-    background-color: var(--rs-inverse);
-    color: var(--rs-on-inverse);
+    --cursor: var(--rs-accent-text);
+    color: var(--rs-text);
   }
 }

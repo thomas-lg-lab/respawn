@@ -20,7 +20,7 @@
         [sort]="sort()"
         [counts]="counts()"
         [language]="currentLanguage()"
-        (searchChange)="typed($event)"
+        (searchCleared)="clearSearch()"
         (filterPicked)="pickFilter($event)"
         (sortPicked)="pickSort($event)"
       />

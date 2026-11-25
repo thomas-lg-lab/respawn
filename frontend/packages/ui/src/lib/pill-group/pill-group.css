@@ -16,4 +16,20 @@
     flex-wrap: wrap;
     gap: 0.375rem;
   }
+
+  /* Segmented: the label and its track on one line, the track under it where both do not fit. */
+  :host([data-segmented]) {
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.375rem 0.75rem;
+  }
+  :host([data-segmented]) .pills {
+    flex-wrap: nowrap;
+    gap: 0.125rem;
+    padding: 0.1875rem;
+    border: 1px solid var(--rs-line);
+    border-radius: var(--rs-radius-pill);
+    background-color: var(--rs-surface-2);
+  }
 }
