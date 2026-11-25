@@ -49,11 +49,7 @@ public sealed class LibraryService(
             async () =>
             {
                 // Under the lock a reading takes: a reading on its way ends first, or finds no account.
-                if (await linkedAccounts.FindByIdAsync(linkedAccountId, ct) is not { } account || account.OwnerId != ownerId)
-                {
-                    throw new GamesException(GamesError.UnknownLinkedAccount);
-                }
-
+                var account = await linkedAccounts.OwnedAsync(ownerId, linkedAccountId, ct);
                 await linkedAccounts.RemoveAsync(account.Id, ct);
                 return true;
             },
@@ -90,26 +86,9 @@ public sealed class LibraryService(
                     Guid.CreateVersion7(), account.Source, reading.Kind, takenAt, now, account.Id, reading.Payload, complete);
                 await snapshots.AddAsync(snapshot, ct);
 
-                // A game the catalogue does not know gets a canonical record of its own. Finding out
-                // that two store entries are the same game is a merge, made later and elsewhere.
-                var known = await catalogue.FindStoreEntriesAsync(account.Source, [.. items.Select(item => item.ExternalId)], ct);
-                NewStoreEntry[] unknown =
-                [
-                    .. items
-                        .Where(item => !known.ContainsKey(item.ExternalId))
-                        .Select(item => new NewStoreEntry(
-                            Guid.CreateVersion7(), Guid.CreateVersion7(), account.Source, item.ExternalId, item.Name)),
-                ];
-                if (unknown.Length > 0)
-                {
-                    await catalogue.AddAsync(unknown, now, ct);
-                }
-
-                var entries = known.ToDictionary(entry => entry.Key, entry => entry.Value.Id, StringComparer.Ordinal);
-                foreach (var entry in unknown)
-                {
-                    entries[entry.ExternalId] = entry.Id;
-                }
+                // A game the catalogue does not know gets a canonical record of its own.
+                var (known, entries) = await catalogue.EnsureAsync(
+                    account.Source, [.. items.Select(item => (item.ExternalId, item.Name))], now, ct);
 
                 // What the reading says is kept whole; what is known only moves by the rules.
                 var before = await library.FindOwnershipsAsync(account.Id, ct);

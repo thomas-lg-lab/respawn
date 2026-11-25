@@ -16,7 +16,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261125090012_YearReviews";
+    public override string LastMigrationId => "20261125150529_UnusedSnapshotIndexes";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -296,14 +296,8 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                 b.HasKey("Id")
                     .HasName("pk_raw_snapshots");
 
-                b.HasIndex("LinkedAccountId", "Kind", "TakenAt")
-                    .HasDatabaseName("ix_raw_snapshots_linked_account_id_kind_taken_at");
-
                 b.HasIndex("LinkedAccountId", "TakenAt", "Id")
                     .HasDatabaseName("ix_raw_snapshots_linked_account_id_taken_at_id");
-
-                b.HasIndex("Source", "Kind", "TakenAt")
-                    .HasDatabaseName("ix_raw_snapshots_source_kind_taken_at");
 
                 b.ToTable("raw_snapshots", "games");
             });

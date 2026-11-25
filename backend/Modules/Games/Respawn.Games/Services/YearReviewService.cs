@@ -230,23 +230,11 @@ public sealed class YearReviewService(
                 var snapshot = new RawSnapshot(Guid.CreateVersion7(), account.Source, reading.Kind, takenAt, now, account.Id, reading.Payload, Complete: true);
                 await snapshots.AddAsync(snapshot, ct);
 
-                string[] ids = [.. months.Select(month => month.ExternalId).Distinct(StringComparer.Ordinal)];
-                var known = await catalogue.FindStoreEntriesAsync(account.Source, ids, ct);
-                NewStoreEntry[] unknown =
-                [
-                    .. ids.Where(id => !known.ContainsKey(id))
-                        .Select(id => new NewStoreEntry(Guid.CreateVersion7(), Guid.CreateVersion7(), account.Source, id, Name: null)),
-                ];
-                if (unknown.Length > 0)
-                {
-                    await catalogue.AddAsync(unknown, now, ct);
-                }
-
-                var entries = known.ToDictionary(entry => entry.Key, entry => entry.Value.Id, StringComparer.Ordinal);
-                foreach (var entry in unknown)
-                {
-                    entries[entry.ExternalId] = entry.Id;
-                }
+                var (_, entries) = await catalogue.EnsureAsync(
+                    account.Source,
+                    [.. months.Select(month => month.ExternalId).Distinct(StringComparer.Ordinal).Select(id => (id, (string?)null))],
+                    now,
+                    ct);
 
                 await reviews.RecordAsync(
                     account.Id,

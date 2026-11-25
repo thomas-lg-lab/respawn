@@ -85,8 +85,6 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             snapshot.Property(s => s.Source).HasMaxLength(Limits.Source);
             snapshot.Property(s => s.Kind).HasMaxLength(Limits.SnapshotKind);
             snapshot.Property(s => s.Payload).HasColumnType("text");
-            snapshot.HasIndex(s => new { s.LinkedAccountId, s.Kind, s.TakenAt });
-            snapshot.HasIndex(s => new { s.Source, s.Kind, s.TakenAt });
             // An account's readings in the order they were taken, whatever their kind: the history reads
             // a range of them, and walks back from its first day.
             snapshot.HasIndex(s => new { s.LinkedAccountId, s.TakenAt, s.Id });

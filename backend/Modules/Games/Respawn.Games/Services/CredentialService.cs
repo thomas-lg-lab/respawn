@@ -12,7 +12,7 @@ public sealed class CredentialService(
 {
     public async Task SetAsync(Guid ownerId, Guid linkedAccountId, string credential, CancellationToken ct)
     {
-        var account = await OwnedAsync(ownerId, linkedAccountId, ct);
+        var account = await linkedAccounts.OwnedAsync(ownerId, linkedAccountId, ct);
         var given = credential.Trim();
         if (sources.FirstOrDefault(source => source.Source == account.Source) is not { } source || !source.IsCredential(given))
         {
@@ -38,15 +38,10 @@ public sealed class CredentialService(
 
     public async Task RemoveAsync(Guid ownerId, Guid linkedAccountId, CancellationToken ct)
     {
-        var account = await OwnedAsync(ownerId, linkedAccountId, ct);
+        var account = await linkedAccounts.OwnedAsync(ownerId, linkedAccountId, ct);
         if (!await credentials.RemoveAsync(account.Id, ct))
         {
             throw new GamesException(GamesError.UnknownLinkedAccount);
         }
     }
-
-    private async Task<LinkedAccount> OwnedAsync(Guid ownerId, Guid linkedAccountId, CancellationToken ct) =>
-        await linkedAccounts.FindByIdAsync(linkedAccountId, ct) is { } account && account.OwnerId == ownerId
-            ? account
-            : throw new GamesException(GamesError.UnknownLinkedAccount);
 }
