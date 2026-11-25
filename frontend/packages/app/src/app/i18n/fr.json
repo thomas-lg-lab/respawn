@@ -254,7 +254,7 @@
     "years": {
       "title": "Temps de jeu par année",
       "reviewed": "{{ years }} : d’après la rétrospective annuelle de Steam, mois par mois.",
-      "since": "Depuis le {{ date }} : compté jour par jour, à chaque synchronisation.",
+      "since": "{{ years }} : compté jour par jour à chaque synchronisation, depuis le {{ date }}.",
       "dashed": "Une année en pointillés n’est pas entière.",
       "open": "Année incomplète"
     },

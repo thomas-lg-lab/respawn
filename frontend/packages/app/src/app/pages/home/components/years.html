@@ -17,8 +17,8 @@
     @if (reviewed(); as span) {
       <p data-years-reviewed>{{ t('years.reviewed', { years: span }) }}</p>
     }
-    @if (since(); as date) {
-      <p data-years-since>{{ t('years.since', { date }) }}</p>
+    @if (synced(); as synced) {
+      <p data-years-since>{{ t('years.since', synced) }}</p>
     }
     @if (someOpen()) {
       <p data-years-open>{{ t('years.dashed') }}</p>

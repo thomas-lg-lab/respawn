@@ -5,10 +5,25 @@ import { formatDate, saidPlaytime } from '@app/format/format';
 import type { PlayedYear } from '../history-blocks';
 
 /**
- * The time played year by year: the years Steam's Year in Review covers, whole, then the years
- * from the first sync on, counted day by day. The block says where each part comes from, and
- * draws as an outline a year that is not whole (the one the first sync fell in, the one still
- * running).
+ * Years as runs: "2024", "2022–2023, 2025". A year left out of a run is one the chart does not
+ * draw, or draws from the other source: each caption names exactly its own years.
+ */
+export function yearRuns(years: readonly number[]): string {
+  const runs: [number, number][] = [];
+  for (const year of [...years].sort((a, b) => a - b)) {
+    const last = runs.at(-1);
+    if (last && year === last[1] + 1) last[1] = year;
+    else runs.push([year, year]);
+  }
+  return runs
+    .map(([first, last]) => (first === last ? String(first) : `${first}–${last}`))
+    .join(', ');
+}
+
+/**
+ * The time played year by year: the years Steam's Year in Review covers, whole, and the years
+ * counted day by day at each sync. Each caption names the years it speaks of, and an outline
+ * draws a year that is not whole (the one the first sync fell in, the one still running).
  */
 @Component({
   selector: 'rs-years',
@@ -19,18 +34,22 @@ export class Years {
   readonly years = input.required<readonly PlayedYear[]>();
   readonly language = input.required<string>();
 
-  /** The reviewed years, as one span: "2024", or "2022–2025"; null when none is. */
+  /** The reviewed years, as runs; null when none is. */
   protected readonly reviewed = computed(() => {
     const reviewed = this.years().filter((each) => each.reviewed);
-    const [first, last] = [reviewed.at(0), reviewed.at(-1)];
-    if (!first || !last) return null;
-    return first === last ? String(first.year) : `${first.year}–${last.year}`;
+    return reviewed.length ? yearRuns(reviewed.map((each) => each.year)) : null;
   });
 
-  /** The first day the syncs count, when some year is theirs. */
-  protected readonly since = computed(() => {
-    const counted = this.years().find((each) => !each.reviewed);
-    return counted ? formatDate(counted.firstDay, this.language()) : null;
+  /** The years the syncs count, as runs, and the first day they count; null when none is theirs. */
+  protected readonly synced = computed(() => {
+    const synced = this.years().filter((each) => !each.reviewed);
+    const first = synced.at(0);
+    return first
+      ? {
+          years: yearRuns(synced.map((each) => each.year)),
+          date: formatDate(first.firstDay, this.language()),
+        }
+      : null;
   });
 
   protected readonly someOpen = computed(() => this.years().some((each) => each.open));

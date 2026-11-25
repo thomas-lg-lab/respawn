@@ -820,7 +820,7 @@ describe('Home', () => {
       // The year of the first sync is not whole.
       expect(screen.querySelector('[data-year="2026"]')?.hasAttribute('data-open')).toBe(true);
       expect(text(screen, '[data-years-since]')).toBe(
-        'Depuis le 18 nov. 2026 : compté jour par jour, à chaque synchronisation.',
+        '2026 : compté jour par jour à chaque synchronisation, depuis le 18 nov. 2026.',
       );
       expect(text(screen, '[data-years-open]')).toBe('Une année en pointillés n’est pas entière.');
       expect(screen.querySelector('[data-years-reviewed]')).toBeNull();
@@ -840,7 +840,30 @@ describe('Home', () => {
         '2024–2025 : d’après la rétrospective annuelle de Steam, mois par mois.',
       );
       expect(text(screen, '[data-years-since]')).toBe(
-        'Depuis le 18 nov. 2026 : compté jour par jour, à chaque synchronisation.',
+        '2026 : compté jour par jour à chaque synchronisation, depuis le 18 nov. 2026.',
+      );
+    });
+
+    it('names in each caption only the years it speaks of', async () => {
+      const games = played();
+      // 2023 has no review for every account and comes before the first sync: it is not drawn.
+      // 2027 is reviewed, between two years of the syncs.
+      const { screen } = await open([account()], '/', STATS, games, readings(games), {
+        years: [
+          reviewed(2022, 3600),
+          reviewed(2024, 7200),
+          ...synced().years,
+          reviewed(2027, 3600),
+          { ...synced().years[0]!, year: 2028, first_day: '2028-01-01', last_day: '2028-03-01' },
+        ],
+      });
+
+      expect(all(screen, '[data-years] .label')).toEqual(['2022', '2024', '2026', '2027', '2028']);
+      expect(text(screen, '[data-years-reviewed]')).toBe(
+        '2022, 2024, 2027 : d’après la rétrospective annuelle de Steam, mois par mois.',
+      );
+      expect(text(screen, '[data-years-since]')).toBe(
+        '2026, 2028 : compté jour par jour à chaque synchronisation, depuis le 18 nov. 2026.',
       );
     });
 
@@ -943,12 +966,44 @@ describe('Home', () => {
       );
       expect(text(screen, '[data-ranking] h2')).toBe('Où est passé le temps');
       expect(screen.querySelector('[data-activity]')).toBeNull();
+      // The years do not depend on the history: they are drawn all the same.
+      expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
 
       screen.querySelector<HTMLButtonElement>('[data-history-retry]')!.click();
       await server.answer(HISTORY, readings(games));
       await harness.fixture.whenStable();
 
       expect(screen.querySelector('[data-history-refused]')).toBeNull();
+      expect(all(screen, '[data-activity] h3')).toHaveLength(2);
+    });
+
+    it('asks both again when the history and the years could not be read', async () => {
+      configureApp('fr');
+      const harness = await RouterTestingHarness.create();
+      const server = api();
+      const arrived = harness.navigateByUrl('/');
+      await server.answer('/me', ACCOUNT);
+      await server.home([account()]);
+      const games = played();
+      await server.answer('/library/stats', STATS);
+      await server.answer(GAMES, { total: games.length, offset: 0, limit: 500, games });
+      await server.refuse(HISTORY, 503, 'database_unavailable');
+      await server.refuse(YEARS, 503, 'database_unavailable');
+      await arrived;
+      await harness.fixture.whenStable();
+      const screen = harness.fixture.nativeElement as HTMLElement;
+
+      expect(screen.querySelectorAll('[data-history-refused]')).toHaveLength(1);
+      expect(screen.querySelector('[data-years]')).toBeNull();
+      expect(screen.querySelector('[data-activity]')).toBeNull();
+
+      screen.querySelector<HTMLButtonElement>('[data-history-retry]')!.click();
+      await server.answer(HISTORY, readings(games));
+      await server.answer(YEARS, synced());
+      await harness.fixture.whenStable();
+
+      expect(screen.querySelector('[data-history-refused]')).toBeNull();
+      expect(text(screen, '[data-year="2026"] .said')).toBe('4 h');
       expect(all(screen, '[data-activity] h3')).toHaveLength(2);
     });
 
@@ -1050,7 +1105,7 @@ describe('Home', () => {
         '2025: from Steam’s Year in Review, month by month.',
       );
       expect(text(screen, '[data-years-since]')).toBe(
-        'Since Nov 18, 2026: counted day by day, at each sync.',
+        '2026: counted day by day at each sync, from Nov 18, 2026.',
       );
       expect(text(screen, '[data-years-open]')).toBe('A dashed year is not whole.');
       expect(text(screen, '[data-activity] h2')).toBe('Activity');
