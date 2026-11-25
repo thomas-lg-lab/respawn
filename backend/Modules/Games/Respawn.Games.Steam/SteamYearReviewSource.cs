@@ -115,9 +115,9 @@ internal sealed class SteamYearReviewSource(SteamClient steam) : IYearReviewSour
         }
     }
 
-    /// <summary>The month a review dates by its start. Steam's start of a month is not midnight UTC (its
-    /// own time zone, which the answer does not say): a day and a half after it is that month whatever
-    /// the zone.</summary>
+    /// <summary>The month a review dates by its start. The answer does not say in which time zone a
+    /// month starts (midnight UTC in the answers seen so far): a day and a half after it is that month
+    /// whatever the zone.</summary>
     private static DateOnly Month(uint start)
     {
         var day = DateTimeOffset.FromUnixTimeSeconds(start).AddHours(36).UtcDateTime;

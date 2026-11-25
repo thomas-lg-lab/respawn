@@ -1,6 +1,6 @@
 namespace Respawn.Accounts;
 
-/// <summary>An account as the use cases see it. The e-mail is empty for an account created from a
+/// <summary>An account as the use cases see it. There is no e-mail for an account created from a
 /// provider that sends none; the settings, for an account that never chose any.</summary>
 public sealed record Account(Guid Id, string? Email, string DisplayName, bool IsAdmin, InterfaceSettings? Settings);
 
