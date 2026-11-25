@@ -10,6 +10,8 @@
       "@respawn/ui": ["./packages/ui/src/public-api.ts"],
       "@respawn/util": ["./packages/util/src/public-api.ts"],
       "@respawn/data": ["./packages/data/src/public-api.ts"],
+      // What the specs of every package share of the API: answers as it gives them.
+      "@respawn/data/testing": ["./packages/data/src/lib/testing/fixtures.ts"],
 
       "@app/*": ["./packages/app/src/app/*"],
       "@ui/*": ["./packages/ui/src/lib/*"],

@@ -16,7 +16,7 @@ import {
 } from '@app/testing/app-testing';
 import { signedInOnly, signedOutOnly } from './session.guards';
 
-/** A screen behind the session that is not the home: the app has none yet. */
+/** A screen behind the session that is not the home, standing in for any of them. */
 @Component({ selector: 'rs-test-screen', template: '' })
 class Screen {}
 

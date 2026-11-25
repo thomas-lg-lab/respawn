@@ -1,7 +1,8 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { type LinkedAccount, TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data';
+import { type LinkedAccount } from '@respawn/data';
+import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { ACCOUNT, api, configureApp, field, type } from '@app/testing/app-testing';
 import '../../layout/shell';
 import './account';
@@ -56,7 +57,7 @@ describe('Account', () => {
     expect(text(screen, '[data-identity] [data-account-name]')).toBe('First');
     expect(text(screen, '[data-identity] [data-account-email]')).toBe('first@example.org');
     // Steam gave no name: the account is told by its id there.
-    expect(text(screen, '[data-linked-account] [data-name]')).toBe('76561198000000001');
+    expect(text(screen, '[data-linked-account] [data-name]')).toBe('76561190000000001');
     expect(text(screen, '[data-key-state]')).toBe('Lu avec la clé de l’instance');
     expect(text(screen, '[data-last-sync]')).toContain('Dernière synchronisation réussie');
     expect(screen.querySelector('[data-key-remove]')).toBeNull();

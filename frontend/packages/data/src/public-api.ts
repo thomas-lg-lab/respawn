@@ -12,4 +12,3 @@ export * from './lib/linked-accounts/linked-accounts.queries';
 export * from './lib/linked-accounts/steam-link';
 export * from './lib/models/models';
 export * from './lib/server-state';
-export * from './lib/testing/fixtures';

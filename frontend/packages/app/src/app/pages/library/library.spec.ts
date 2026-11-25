@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { type LibraryGame, TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data';
+import { type LibraryGame } from '@respawn/data';
+import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, api, button, configureApp, type } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';

@@ -63,7 +63,6 @@
      itself is Tailwind's 4px base. */
   --spacing-touch: var(--rs-size-touch);
   --spacing-button: var(--rs-size-button);
-  --spacing-search: var(--rs-size-search);
   --spacing-row: var(--rs-size-row);
   --spacing-icon: var(--rs-size-icon);
   --spacing-avatar: var(--rs-size-avatar);

@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { LibraryStats } from '@respawn/data';
 import { SegmentedBar, StatTile } from '@respawn/ui';
-import { formatCount, playtime } from '@app/format/format';
+import { formatCount, isOne, playtime } from '@app/format/format';
 
 /** A figure as a tile shows it: a translation key and what goes in it. */
 interface Said {
@@ -48,7 +48,7 @@ export class Figures {
 
   /** One game or several is the language's to say: French counts none as one. */
   private games(count: number): Said {
-    const one = new Intl.PluralRules(this.language()).select(count) === 'one';
+    const one = isOne(count, this.language());
     return { key: one ? 'ofOne' : 'ofMany', count: formatCount(count, this.language()) };
   }
 }

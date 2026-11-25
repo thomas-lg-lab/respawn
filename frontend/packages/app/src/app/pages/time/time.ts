@@ -5,7 +5,7 @@ import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
 import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
-import { formatAgo, formatCount, saidPlaytime } from '@app/format/format';
+import { formatAgo, formatCount, isOne, saidPlaytime } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
 import { TimeMap } from './components/time-map';
 import { type TimeTile, timeTiles } from './time-tiles';
@@ -69,7 +69,7 @@ export class Time {
       others:
         tile.kind === 'others'
           ? {
-              one: new Intl.PluralRules(language).select(tile.count) === 'one',
+              one: isOne(tile.count, language),
               count: formatCount(tile.count, language),
             }
           : null,
