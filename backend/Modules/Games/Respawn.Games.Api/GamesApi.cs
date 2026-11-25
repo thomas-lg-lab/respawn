@@ -28,6 +28,7 @@ public static class GamesApi
         // A scheme of its own, that opens no session: it only answers on the link's routes.
         services.AddAuthentication().AddSteam(SteamLink.Scheme, SteamLink.Configure);
         services.AddHostedService<SyncScheduler>();
+        services.AddHostedService<YearReviewScheduler>();
         return services;
     }
 

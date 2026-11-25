@@ -15,7 +15,7 @@ namespace Respawn.Games.Api;
 [Route("api/v1")]
 [Produces("application/json")]
 [GamesRefusals]
-public sealed class LibraryController(ILibraryService library) : ControllerBase
+public sealed class LibraryController(ILibraryService library, IYearReviewService reviews) : ControllerBase
 {
     /// <summary>The games one answer holds when the request names no limit.</summary>
     private const int DefaultLimit = 100;
@@ -72,6 +72,20 @@ public sealed class LibraryController(ILibraryService library) : ControllerBase
         DateOnly? to = null,
         CancellationToken ct = default) =>
         LibraryHistoryResponse.From(await library.GetHistoryAsync(Caller.Id(User), from, to, ct));
+
+    [HttpGet("library/years")]
+    [Authorize]
+    [EndpointSummary("What the signed-in account played, year by year")]
+    [EndpointDescription(
+        "Playtime per calendar year (UTC), the earliest first. A year is counted from the store's own review "
+        + "(source review: Steam's Year in Review, every month of it, from 2022 on) when every linked account has "
+        + "one, and otherwise from the daily readings (source readings: the growth of the totals, from the "
+        + "first reading on). first_day and last_day say the days a year covers, and whole whether that is all of it. "
+        + "A review counts every game played, owned or not; the readings count the games of the library.")]
+    [ProducesResponseType<LibraryYearsResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    public async Task<LibraryYearsResponse> Years(CancellationToken ct) =>
+        LibraryYearsResponse.From(await reviews.GetYearsAsync(Caller.Id(User), ct));
 }
 
 /// <summary>The orders of a library, as the API spells them.</summary>

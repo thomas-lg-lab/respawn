@@ -144,6 +144,36 @@ public sealed class OwnershipRow
     public DateTimeOffset? MissingSince { get; set; }
 }
 
+/// <summary>A year a store reviewed for a linked account (Steam's Year in Review), kept: its months are
+/// in <see cref="MonthlyPlaytimeRow"/>, and its answer is the snapshot.</summary>
+public sealed class YearReviewRow
+{
+    public Guid LinkedAccountId { get; set; }
+
+    public int Year { get; set; }
+
+    public Guid SnapshotId { get; set; }
+}
+
+/// <summary>What a review says was played of one store entry in one month, through one linked account.
+/// Derived from the year's snapshot, and replaced with it.</summary>
+public sealed class MonthlyPlaytimeRow
+{
+    public Guid LinkedAccountId { get; set; }
+
+    public Guid StoreEntryId { get; set; }
+
+    /// <summary>The first day of the month.</summary>
+    public DateOnly Month { get; set; }
+
+    public long PlaytimeSeconds { get; set; }
+
+    public int Sessions { get; set; }
+
+    /// <summary>The review it comes from.</summary>
+    public Guid SnapshotId { get; set; }
+}
+
 /// <summary>One sync of a linked account, once it has ended: when, why, and how it went. The words are
 /// those of <see cref="SyncWords"/>.</summary>
 public sealed class SyncRunRow

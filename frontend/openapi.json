@@ -505,6 +505,37 @@
         }
       }
     },
+    "/api/v1/library/years": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What the signed-in account played, year by year",
+        "description": "Playtime per calendar year (UTC), the earliest first. A year is counted from the store's own review (source review: Steam's Year in Review, every month of it, from 2022 on) when every linked account has one, and otherwise from the daily readings (source readings: the growth of the totals, from the first reading on). first_day and last_day say the days a year covers, and whole whether that is all of it. A review counts every game played, owned or not; the readings count the games of the library.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryYearsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/linked-accounts": {
       "get": {
         "tags": [
@@ -1212,6 +1243,20 @@
           }
         }
       },
+      "LibraryYearsResponse": {
+        "required": [
+          "years"
+        ],
+        "type": "object",
+        "properties": {
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/YearResponse"
+            }
+          }
+        }
+      },
       "LinkedAccountResponse": {
         "required": [
           "id",
@@ -1487,6 +1532,41 @@
                 "$ref": "#/components/schemas/SettingsResponse"
               }
             ]
+          }
+        }
+      },
+      "YearResponse": {
+        "required": [
+          "year",
+          "seconds",
+          "source",
+          "first_day",
+          "last_day",
+          "whole"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "source": {
+            "type": "string"
+          },
+          "first_day": {
+            "type": "string",
+            "format": "date"
+          },
+          "last_day": {
+            "type": "string",
+            "format": "date"
+          },
+          "whole": {
+            "type": "boolean"
           }
         }
       }

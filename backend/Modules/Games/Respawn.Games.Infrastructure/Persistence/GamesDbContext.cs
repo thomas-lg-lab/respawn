@@ -27,6 +27,10 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<SyncRunRow> SyncRuns => Set<SyncRunRow>();
 
+    public DbSet<YearReviewRow> YearReviews => Set<YearReviewRow>();
+
+    public DbSet<MonthlyPlaytimeRow> MonthlyPlaytime => Set<MonthlyPlaytimeRow>();
+
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
     /// migration at first connection and the design-time tools.</summary>
     public static void Configure(DbContextOptionsBuilder options, DbDataSource dataSource) =>
@@ -131,6 +135,29 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
                 .HasFilter("outcome = 'succeeded'");
             run.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(r => r.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
             run.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(r => r.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<YearReviewRow>(review =>
+        {
+            review.ToTable("year_reviews");
+            review.HasKey(r => new { r.LinkedAccountId, r.Year });
+            review.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(r => r.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
+            review.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(r => r.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MonthlyPlaytimeRow>(month =>
+        {
+            month.ToTable("monthly_playtime", table =>
+            {
+                table.HasCheckConstraint("ck_monthly_playtime_figures", "playtime_seconds >= 0 AND sessions >= 0");
+                table.HasCheckConstraint("ck_monthly_playtime_month", "EXTRACT(DAY FROM month) = 1");
+            });
+            // An account's months in order; a year's rows are replaced together, by their snapshot.
+            month.HasKey(m => new { m.LinkedAccountId, m.Month, m.StoreEntryId });
+            month.HasIndex(m => m.SnapshotId);
+            month.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(m => m.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
+            month.HasOne<StoreEntryRow>().WithMany().HasForeignKey(m => m.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
+            month.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(m => m.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

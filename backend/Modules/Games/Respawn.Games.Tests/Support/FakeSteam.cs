@@ -20,6 +20,10 @@ internal sealed class FakeSteam
     /// <summary>What Steam answers next.</summary>
     public string Body { get; set; } = Recorded("owned-games.json");
 
+    /// <summary>When set, what Steam answers a request, in place of <see cref="Body"/> when it gives one:
+    /// a test answers each method, or each year, its own way.</summary>
+    public Func<Uri, string?>? BodyFor { get; set; }
+
     /// <summary>When set, the answer's bytes, in place of <see cref="Body"/>.</summary>
     public byte[]? Bytes { get; set; }
 
@@ -85,7 +89,8 @@ internal sealed class FakeSteam
                 throw new HttpRequestException("No such host is known.");
             }
 
-            var content = new ByteArrayContent(steam.Bytes ?? Encoding.UTF8.GetBytes(steam.Body));
+            var body = steam.BodyFor?.Invoke(request.RequestUri!) ?? steam.Body;
+            var content = new ByteArrayContent(steam.Bytes ?? Encoding.UTF8.GetBytes(body));
             content.Headers.TryAddWithoutValidation("Content-Type", steam.ContentType);
             return new HttpResponseMessage(steam.Status) { Content = content };
         }
