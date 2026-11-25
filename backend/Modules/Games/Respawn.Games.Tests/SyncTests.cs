@@ -536,14 +536,18 @@ public sealed class SyncTests
         var account = await LinkAsync(app, browser);
 
         // Steam is asked, and the run cannot be written: nothing in the database says a sync ran.
-        Assert.Equal(HttpStatusCode.InternalServerError, await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).StatusAsync());
+        Assert.Equal(
+            (HttpStatusCode.InternalServerError, "internal_error"),
+            await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).RefusalAsync());
         Assert.Equal(
             (HttpStatusCode.TooManyRequests, "too_many_requests"),
             await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).RefusalAsync());
         Assert.Single(steam.Requests);
 
         clock.Advance(TimeSpan.FromSeconds(61));
-        Assert.Equal(HttpStatusCode.InternalServerError, await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).StatusAsync());
+        Assert.Equal(
+            (HttpStatusCode.InternalServerError, "internal_error"),
+            await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null).RefusalAsync());
         Assert.Equal(2, steam.Requests.Count);
     }
 

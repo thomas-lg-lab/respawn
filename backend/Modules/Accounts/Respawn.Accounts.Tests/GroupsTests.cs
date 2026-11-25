@@ -159,7 +159,7 @@ public sealed class GroupsTests
         // The account, its group and its membership are one transaction.
         await using var app = await TestApp.StartAsync(services: services => services.AddScoped<ISessionStore, FailingSessions>());
         using var browser = app.Browser();
-        Assert.Equal(HttpStatusCode.InternalServerError, await browser.RegisterAsync().StatusAsync());
+        Assert.Equal((HttpStatusCode.InternalServerError, "internal_error"), await browser.RegisterAsync().RefusalAsync());
 
         Assert.Empty(await GroupsAsync(app));
         using var scope = app.Services.CreateScope();
