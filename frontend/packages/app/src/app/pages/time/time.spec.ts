@@ -1,5 +1,6 @@
 import { RouterTestingHarness } from '@angular/router/testing';
-import { type LibraryGame, TEST_LINKED_ACCOUNT } from '@respawn/data';
+import { type LibraryGame } from '@respawn/data';
+import { TEST_LINKED_ACCOUNT } from '@respawn/data/testing';
 import { ACCOUNT, api, configureApp } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';

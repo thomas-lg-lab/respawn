@@ -32,7 +32,7 @@ export const TEST_SYNC_RUN: SyncRun = {
 export const TEST_LINKED_ACCOUNT: LinkedAccount = {
   id: '9d2b7a44-1c53-4b7e-9c0a-6e1f2a3b4c5d',
   source: 'steam',
-  external_id: '76561198000000001',
+  external_id: '76561190000000001',
   display_name: null,
   linked_at: '2026-11-18T10:00:00Z',
   has_own_key: false,

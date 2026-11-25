@@ -10,7 +10,7 @@ const angular = require('angular-eslint');
 const MAY_IMPORT = {
   util: [],
   data: [],
-  ui: ['util'],
+  ui: [],
   app: ['ui', 'util', 'data'],
 };
 
@@ -61,7 +61,7 @@ const NO_PAGE_FROM_COMPONENT = {
 
 /** The attributes whose value a person reads or hears, as a selector's regular expression. */
 const SPOKEN_ATTRIBUTES =
-  '/^(alt|title|label|placeholder|aria-label|aria-description|aria-placeholder|aria-roledescription|aria-valuetext)$/';
+  '/^(alt|title|label|placeholder|caption|figure|note|hint|error|letter|aria-label|aria-description|aria-placeholder|aria-roledescription|aria-valuetext)$/';
 
 const NO_TEXT_IN_ATTRIBUTE =
   'No text written in a template: this attribute is read or heard, so its value comes from the translation files.';
@@ -146,6 +146,24 @@ module.exports = tseslint.config(
     files: [`packages/${pkg}/**/*.ts`],
     rules: restrictedImports(pkg),
   })),
+  {
+    // What a package gives the specs (`@respawn/x/testing`) is theirs: the app never ships it.
+    files: ['packages/**/*.ts'],
+    ignores: ['**/*.spec.ts', '**/testing/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@respawn/*/testing'],
+              message: 'Fixtures are for the specs: the app is built without them.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Repeats each package's patterns rather than adding to them: in flat config a later block
   // setting the same rule replaces it outright for the files it matches.
   ...HAS_PAGES.map((pkg) => ({

@@ -11,7 +11,7 @@ import type { Language } from '@app/i18n/language';
 import { testTranslations } from './translations';
 
 /** An account as the API describes one. */
-export { TEST_ACCOUNT as ACCOUNT } from '@respawn/data';
+export { TEST_ACCOUNT as ACCOUNT } from '@respawn/data/testing';
 
 /** What an instance offers once it has its first account: local sign-in, registration closed. */
 export const SIGN_IN_OPTIONS: SignInOptions = {
@@ -25,7 +25,7 @@ export const SIGN_IN_OPTIONS: SignInOptions = {
 /**
  * For the specs of the screens: the real routes, the real translations and the real server
  * state, with the API played by `HttpTestingController`. `screens` stands in for the routes
- * where a spec needs a screen the app does not have yet.
+ * where a spec needs a screen of its own.
  */
 export function configureApp(
   language: Language,

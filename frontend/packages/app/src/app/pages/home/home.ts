@@ -49,7 +49,7 @@ import {
   syncNotice,
   syncView,
   syncsWord,
-} from './sync-view';
+} from '@app/sync/sync-view';
 
 /**
  * The refusals of a reading nobody asked for (the one made on the return from Steam) that

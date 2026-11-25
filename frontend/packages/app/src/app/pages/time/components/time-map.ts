@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { formatCount, saidPlaytime } from '@app/format/format';
+import { formatCount, isOne, saidPlaytime } from '@app/format/format';
 import { treemap } from '@app/games/time-map';
 import type { GameTile, OthersTile } from '../time-tiles';
 
@@ -136,7 +136,7 @@ export class TimeMap {
     const language = this.language();
     return others
       ? {
-          one: new Intl.PluralRules(language).select(others.count) === 'one',
+          one: isOne(others.count, language),
           count: formatCount(others.count, language),
           time: saidPlaytime(others.seconds, language),
         }
