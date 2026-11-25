@@ -1,35 +1,13 @@
-import { RouterTestingHarness } from '@angular/router/testing';
 import { type LibraryGame } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT } from '@respawn/data/testing';
-import { ACCOUNT, api, configureApp } from '@app/testing/app-testing';
+import { ACCOUNT, api, start } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
 import './time';
+import { ago, game } from '@app/testing/games';
 
 const FIRST_PAGE = '/library?sort=name&offset=0&limit=500';
 const HOUR = 3600;
-
-let made = 0;
-
-function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
-  return {
-    game_id: `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`,
-    name,
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    entries: [],
-    ...values,
-  };
-}
-
-/** Noon, that many days back on the calendar: a clock change cannot move it to another day. */
-function ago(days: number): string {
-  const moment = new Date();
-  moment.setDate(moment.getDate() - days);
-  moment.setHours(12, 0, 0, 0);
-  return moment.toISOString();
-}
 
 /** Three launched games, 152 hours in all, and one never launched. */
 function library(): LibraryGame[] {
@@ -44,10 +22,7 @@ function library(): LibraryGame[] {
 describe('Time', () => {
   /** Opens the Time tab, signed in; the API answers with these games unless told not to. */
   async function open(games: LibraryGame[] | null = library(), language: Language = 'fr') {
-    configureApp(language);
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/time');
+    const { harness, server, arrived } = await start('/time', language);
     await server.answer('/me', ACCOUNT);
     await arrived;
     // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.

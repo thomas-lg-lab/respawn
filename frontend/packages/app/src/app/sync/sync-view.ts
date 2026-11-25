@@ -85,6 +85,6 @@ const SYNC_ERRORS = ['not_configured', 'refused', 'unavailable', 'unreadable'];
  */
 export function syncErrorKey(run: SyncRun | null | undefined): string {
   const error = run?.error ?? '';
-  if (error === 'refused' && run?.own_key) return 'home.syncErrors.refused_own_key';
-  return `home.syncErrors.${SYNC_ERRORS.includes(error) ? error : 'unknown'}`;
+  if (error === 'refused' && run?.own_key) return 'sync.errors.refused_own_key';
+  return `sync.errors.${SYNC_ERRORS.includes(error) ? error : 'unknown'}`;
 }

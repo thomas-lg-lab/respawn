@@ -1,18 +1,17 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router, type Routes } from '@angular/router';
-import { RouterTestingHarness } from '@angular/router/testing';
+import { type Routes } from '@angular/router';
 import { Api } from '@respawn/data';
 import { QueryClient } from '@tanstack/angular-query';
 import { SignIn } from '@app/pages/sign-in/sign-in';
 import {
   ACCOUNT,
-  SIGN_IN_OPTIONS,
   api,
   button,
-  configureApp,
   field,
+  SIGN_IN_OPTIONS,
   type,
+  visit as go,
 } from '@app/testing/app-testing';
 import { signedInOnly, signedOutOnly } from './session.guards';
 
@@ -30,23 +29,12 @@ type Server = ReturnType<typeof api>;
 
 /** Signing in leads back to where the visitor was headed, or was when the session ended. */
 describe('the return after a sign-in', () => {
+  /** Goes to an address of these screens, and says where the sign-in was told to come back to. */
   async function visit(path: string, exchanges: (server: Server) => Promise<void>) {
-    configureApp('fr', [], screens);
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl(path);
-    await exchanges(server);
-    await arrived;
-    await harness.fixture.whenStable();
-    const router = TestBed.inject(Router);
-    return {
-      harness,
-      server,
-      router,
-      screen: harness.fixture.nativeElement as HTMLElement,
-      /** Where the sign-in was told to come back to. */
-      returnTo: () => router.parseUrl(router.url).queryParams['returnTo'] as string | undefined,
-    };
+    const visited = await go(path, exchanges, screens);
+    const returnTo = () =>
+      visited.router.parseUrl(visited.router.url).queryParams['returnTo'] as string | undefined;
+    return { ...visited, returnTo };
   }
 
   const nobody = async (server: Server) => {

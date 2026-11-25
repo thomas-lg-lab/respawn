@@ -231,7 +231,7 @@ export class Home {
     if (!refused || refused.stood !== syncsWord(this.accounts.data() ?? [])) return null;
     const { failure } = refused;
     return failure instanceof ApiFailure && failure.code === 'too_many_requests'
-      ? 'home.sync.tooSoon'
+      ? 'sync.tooSoon'
       : failureKey(failure);
   });
 

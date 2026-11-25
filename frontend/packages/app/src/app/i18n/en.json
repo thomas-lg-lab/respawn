@@ -1,6 +1,7 @@
 {
   "app": {
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "retry": "Try again"
   },
   "settings": {
     "language": "Language",
@@ -99,7 +100,8 @@
       "title": "Game accounts",
       "text": "The store accounts respawn reads your games and your playtime from, once a day.",
       "none": "No game account is linked yet.",
-      "another": "Link another Steam account"
+      "another": "Link another Steam account",
+      "first": "Link my Steam account"
     },
     "sources": {
       "steam": "Steam"
@@ -139,23 +141,33 @@
     "library": "Library",
     "time": "Time"
   },
+  "steamLink": {
+    "linked": "Your Steam account is linked.",
+    "linked_elsewhere": "This Steam account is already linked to another account.",
+    "failed": "The link with Steam did not go through. Try again.",
+    "unavailable": "Steam is not answering. Try again in a moment."
+  },
+  "sync": {
+    "tooSoon": "A sync was just asked for. Try again in a minute.",
+    "errors": {
+      "not_configured": "This instance has no Steam API key: its administrator has to add one.",
+      "refused": "Steam refused the instance’s API key: its administrator has to check it.",
+      "refused_own_key": "Steam refused your API key.",
+      "unavailable": "Steam is not answering.",
+      "unreadable": "Steam’s answer could not be read.",
+      "unknown": "The sync with Steam failed."
+    }
+  },
   "home": {
     "label": "Game in progress",
     "title": "Home",
     "loading": "Loading your library…",
-    "retry": "Try again",
     "noAccount": {
       "label": "New game",
       "title": "No game account linked",
       "text": "Link your Steam account to find your games and your playtime here. You sign in at Steam: respawn never sees your password and changes nothing.",
       "link": "Link my Steam account",
       "note": "Read-only: respawn reads the list of your games and your playtime, nothing else."
-    },
-    "steamLink": {
-      "linked": "Your Steam account is linked.",
-      "linked_elsewhere": "This Steam account is already linked to another account.",
-      "failed": "The link with Steam did not go through. Try again.",
-      "unavailable": "Steam is not answering. Try again in a moment."
     },
     "firstSync": {
       "label": "Loading the game",
@@ -183,20 +195,11 @@
       "retry": "Sync again",
       "note": "Your Steam account stays linked. respawn only reads the list of your games and your playtime."
     },
-    "syncErrors": {
-      "not_configured": "This instance has no Steam API key: its administrator has to add one.",
-      "refused": "Steam refused the instance’s API key: its administrator has to check it.",
-      "refused_own_key": "Steam refused your API key.",
-      "unavailable": "Steam is not answering.",
-      "unreadable": "Steam’s answer could not be read.",
-      "unknown": "The sync with Steam failed."
-    },
     "sync": {
       "now": "Sync now",
       "retry": "Try again",
       "dismiss": "Dismiss",
       "running": "Syncing with Steam. You can keep browsing.",
-      "tooSoon": "A sync was just asked for. Try again in a minute.",
       "last": "Last successful sync: {{ date }}",
       "kept": "Your games are shown as of the last successful sync.",
       "nothingVisible": "Steam no longer shows any games: the game details of your profile may have become private. Your games are shown as of the last successful sync.",

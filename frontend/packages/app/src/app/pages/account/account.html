@@ -2,10 +2,10 @@
   <!-- What came of linking Steam: the API sent the browser back here with its word. -->
   @if (cameBack; as outcome) {
     @if (outcome === 'linked') {
-      <rs-banner role="status" data-steam-link="linked">{{ t('home.steamLink.linked') }}</rs-banner>
+      <rs-banner role="status" data-steam-link="linked">{{ t('steamLink.linked') }}</rs-banner>
     } @else {
       <rs-banner tone="warn" role="alert" [attr.data-steam-link]="outcome">{{
-        t('home.steamLink.' + outcome)
+        t('steamLink.' + outcome)
       }}</rs-banner>
     }
   }
@@ -73,12 +73,12 @@
         [href]="linkAddress"
       >
         <svg lucideLink class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
-        {{ t(all.length ? 'account.linked.another' : 'home.noAccount.link') }}
+        {{ t(all.length ? 'account.linked.another' : 'account.linked.first') }}
       </a>
     } @else if (accounts.isError()) {
       <rs-banner tone="warn" role="alert">{{ t(failureKey(accounts.error())) }}</rs-banner>
       <button rsButton type="button" class="self-start" data-retry (click)="accounts.refetch()">
-        {{ t('home.retry') }}
+        {{ t('app.retry') }}
       </button>
     } @else {
       <div role="status">

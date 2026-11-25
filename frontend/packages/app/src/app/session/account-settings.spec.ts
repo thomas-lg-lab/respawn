@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { RouterTestingHarness } from '@angular/router/testing';
+import type { RouterTestingHarness } from '@angular/router/testing';
 import { type Account, type AccountSettings, accountKeys } from '@respawn/data';
 import { DisplaySettings } from '@respawn/util';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, SIGN_IN_OPTIONS, api, configureApp, field, type } from '@app/testing/app-testing';
+import { ACCOUNT, api, field, SIGN_IN_OPTIONS, type, visit } from '@app/testing/app-testing';
 // Loaded up front, as in the routes' spec: a navigation then finds the screens.
 import '@app/layout/shell';
 import '@app/pages/home/home';
@@ -25,17 +25,6 @@ const signedIn =
 
 /** The settings of the interface follow the account: taken at sign-in, kept at each pick. */
 describe('the settings on the account', () => {
-  async function visit(path: string, exchanges: (server: Server) => Promise<void>) {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl(path);
-    await exchanges(server);
-    await arrived;
-    await harness.fixture.whenStable();
-    return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
-  }
-
   /**
    * Opens the account menu if it is closed, and picks a theme in it. Not waited for: the save
    * it sends is work in progress until the test answers it.

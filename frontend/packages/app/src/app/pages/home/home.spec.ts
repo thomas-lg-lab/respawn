@@ -1,6 +1,6 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { RouterTestingHarness } from '@angular/router/testing';
+import type { RouterTestingHarness } from '@angular/router/testing';
 import {
   AWAITING_SYNC_INTERVAL,
   type LibraryGame,
@@ -18,9 +18,10 @@ import {
   TEST_SYNC_RUN,
 } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, api, button, configureApp, type } from '@app/testing/app-testing';
+import { ACCOUNT, api, button, start, type } from '@app/testing/app-testing';
 import '../../layout/shell';
 import './home';
+import { ago, game } from '@app/testing/games';
 
 type Server = ReturnType<typeof api>;
 
@@ -55,28 +56,6 @@ const SYNC = `/linked-accounts/${TEST_LINKED_ACCOUNT.id}/sync`;
 const GAMES = '/library?sort=name&offset=0&limit=500';
 const HISTORY = '/library/history';
 const YEARS = '/library/years';
-
-let made = 0;
-
-function game(name: string | null, values: Partial<LibraryGame> = {}): LibraryGame {
-  return {
-    game_id: `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`,
-    name,
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    entries: [],
-    ...values,
-  };
-}
-
-/** Noon, that many days back on the calendar: a clock change cannot move it to another day. */
-function ago(days: number): string {
-  const moment = new Date();
-  moment.setDate(moment.getDate() - days);
-  moment.setHours(12, 0, 0, 0);
-  return moment.toISOString();
-}
 
 /** A small library that has been played, as the API gives it: by title. */
 function played(): LibraryGame[] {
@@ -140,10 +119,7 @@ describe('Home', () => {
     history: LibraryHistory = NO_HISTORY,
     years: LibraryYears = NO_YEARS,
   ) {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl(path);
+    const { harness, server, arrived } = await start(path);
     await server.answer('/me', ACCOUNT);
     await server.answer('/linked-accounts', { accounts });
     const read = accounts.some((each) => each.sync.last_succeeded_at);
@@ -178,10 +154,7 @@ describe('Home', () => {
   });
 
   it('says that the account was linked, once, and reads its library at once', async () => {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/?steam_link=linked');
+    const { harness, server, arrived } = await start('/?steam_link=linked');
     await server.answer('/me', ACCOUNT);
     await server.home([neverRead(null)]);
     await arrived;
@@ -209,10 +182,7 @@ describe('Home', () => {
   });
 
   it('says nothing of a first reading the schedule started before it was asked', async () => {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/?steam_link=linked');
+    const { harness, server, arrived } = await start('/?steam_link=linked');
     await server.answer('/me', ACCOUNT);
     await server.home([neverRead(null)]);
     await arrived;
@@ -367,10 +337,7 @@ describe('Home', () => {
   });
 
   it('asks the figures again on request when they could not be read', async () => {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/');
+    const { harness, server, arrived } = await start('/');
     await server.answer('/me', ACCOUNT);
     await server.home([account()]);
     await server.refuse('/library/stats', 503, 'database_unavailable');
@@ -485,10 +452,7 @@ describe('Home', () => {
   });
 
   it('says that the API could not tell which accounts are linked, and asks again', async () => {
-    configureApp('fr');
-    const harness = await RouterTestingHarness.create();
-    const server = api();
-    const arrived = harness.navigateByUrl('/');
+    const { harness, server, arrived } = await start('/');
     await server.answer('/me', ACCOUNT);
     await server.refuse('/linked-accounts', 503, 'database_unavailable');
     await arrived;
@@ -716,10 +680,7 @@ describe('Home', () => {
     });
 
     it('says that the games could not be read, and asks again on request', async () => {
-      configureApp('fr');
-      const harness = await RouterTestingHarness.create();
-      const server = api();
-      const arrived = harness.navigateByUrl('/');
+      const { harness, server, arrived } = await start('/');
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       await server.answer('/library/stats', STATS);
@@ -743,10 +704,7 @@ describe('Home', () => {
     });
 
     it('says the blocks in English too', async () => {
-      configureApp('en');
-      const harness = await RouterTestingHarness.create();
-      const server = api();
-      const arrived = harness.navigateByUrl('/');
+      const { harness, server, arrived } = await start('/', 'en');
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       await library(server, STATS, played());
@@ -905,10 +863,7 @@ describe('Home', () => {
     });
 
     it('says that the years could not be read, keeps the activity, and asks again', async () => {
-      configureApp('fr');
-      const harness = await RouterTestingHarness.create();
-      const server = api();
-      const arrived = harness.navigateByUrl('/');
+      const { harness, server, arrived } = await start('/');
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       const games = played();
@@ -970,10 +925,7 @@ describe('Home', () => {
     });
 
     it('says that the history could not be read, keeps the other blocks, and asks again', async () => {
-      configureApp('fr');
-      const harness = await RouterTestingHarness.create();
-      const server = api();
-      const arrived = harness.navigateByUrl('/');
+      const { harness, server, arrived } = await start('/');
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       const games = played();
@@ -1002,10 +954,7 @@ describe('Home', () => {
     });
 
     it('asks both again when the history and the years could not be read', async () => {
-      configureApp('fr');
-      const harness = await RouterTestingHarness.create();
-      const server = api();
-      const arrived = harness.navigateByUrl('/');
+      const { harness, server, arrived } = await start('/');
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       const games = played();
@@ -1047,10 +996,7 @@ describe('Home', () => {
     });
 
     it('shows the blocks made of the games while the history is awaited', async () => {
-      configureApp('fr');
-      const harness = await RouterTestingHarness.create();
-      const server = api();
-      const arrived = harness.navigateByUrl('/');
+      const { harness, server, arrived } = await start('/');
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       const games = played();
@@ -1110,10 +1056,7 @@ describe('Home', () => {
     });
 
     it('says the history in English too', async () => {
-      configureApp('en');
-      const harness = await RouterTestingHarness.create();
-      const server = api();
-      const arrived = harness.navigateByUrl('/');
+      const { harness, server, arrived } = await start('/', 'en');
       await server.answer('/me', ACCOUNT);
       await server.home([account()]);
       const games = played();

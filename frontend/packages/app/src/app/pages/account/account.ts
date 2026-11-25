@@ -28,7 +28,7 @@ type Asked = 'sync' | 'key' | 'unlink';
 /** Why a "sync now" was refused. Too soon after the last one has a sentence of its own, as on the home. */
 function syncRefusalKey(failure: unknown): string {
   return failure instanceof ApiFailure && failure.code === 'too_many_requests'
-    ? 'home.sync.tooSoon'
+    ? 'sync.tooSoon'
     : failureKey(failure);
 }
 

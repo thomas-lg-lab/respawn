@@ -7,7 +7,7 @@
         <span class="flex-1 basis-60">
           @switch (notice()) {
             @case ('failed') {
-              {{ t(reason() ?? 'home.syncErrors.unknown') }} {{ t('home.sync.kept') }}
+              {{ t(reason() ?? 'sync.errors.unknown') }} {{ t('home.sync.kept') }}
             }
             @case ('nothing-visible') {
               {{ t('home.sync.nothingVisible') }}
