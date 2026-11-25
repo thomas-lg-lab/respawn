@@ -6,7 +6,8 @@
  *   data-theme      "dark" | "light"; absent, the system's preference decides
  *   data-character  "pixel" (default) | "plain"
  *
- * Components never read these directly: they use the Tailwind names theme.css maps to them.
+ * A base component of this package reads them in its own stylesheet; a screen uses the
+ * Tailwind names theme.css maps to them.
  */
 
 :root {
@@ -99,7 +100,6 @@
   /* Size. */
   --rs-size-touch: 2.75rem; /* 44px, the smallest touch target */
   --rs-size-button: 3rem; /* 48px, the primary button */
-  --rs-size-search: 3.25rem; /* 52px, the search field of the home */
   --rs-size-row: 3rem; /* 48px, a list row */
   --rs-size-icon: 1.125rem; /* 18px, with a 2px stroke */
   --rs-size-avatar: 2.25rem; /* 36px */
@@ -113,7 +113,6 @@
   --rs-pop: 1.04;
   --rs-shadow-raised: 0 8px 24px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.45));
   --rs-duration-pulse: 1.4s;
-  --rs-duration-spin: 1s;
   --rs-duration-blink: 1s;
   --rs-blink-count: 5;
 }

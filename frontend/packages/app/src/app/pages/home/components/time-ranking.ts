@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Card, SegmentedBar } from '@respawn/ui';
-import { formatCount, saidPlaytime } from '@app/format/format';
+import { formatCount, isOne, saidPlaytime } from '@app/format/format';
 import type { Ranking } from '../library-blocks';
 
 /**
@@ -38,7 +38,7 @@ export class TimeRanking {
     if (count === 0) return null;
     const language = this.language();
     return {
-      one: new Intl.PluralRules(language).select(count) === 'one',
+      one: isOne(count, language),
       count: formatCount(count, language),
       time: saidPlaytime(seconds, language),
     };

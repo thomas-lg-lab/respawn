@@ -1,7 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Banner, Button } from '@respawn/ui';
-import type { SyncNotice } from '../sync-view';
+import type { SyncNotice } from '@app/sync/sync-view';
 
 /**
  * What the home says of the sync above the library it shows: one is running, or the last

@@ -32,6 +32,13 @@ const agoInFigures = perLanguage(
   (language) => new Intl.RelativeTimeFormat(language, { numeric: 'always' }),
 );
 
+const plurals = perLanguage((language) => new Intl.PluralRules(language));
+
+/** Whether a count takes the singular in the language: 1 in English, 0 and 1 in French. */
+export function isOne(count: number, language: string): boolean {
+  return plurals(language).select(count) === 'one';
+}
+
 /** A count, with the language's own grouping: 1,305 or 1 305. */
 export function formatCount(count: number, language: string): string {
   return counts(language).format(count);

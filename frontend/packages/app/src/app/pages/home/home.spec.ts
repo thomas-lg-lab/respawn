@@ -9,12 +9,14 @@ import {
   type LibraryYears,
   type LinkedAccount,
   type SyncRun,
+} from '@respawn/data';
+import {
   TEST_LIBRARY_HISTORY as NO_HISTORY,
   TEST_LIBRARY_STATS as STATS,
   TEST_LIBRARY_YEARS as NO_YEARS,
   TEST_LINKED_ACCOUNT,
   TEST_SYNC_RUN,
-} from '@respawn/data';
+} from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
 import { ACCOUNT, api, button, configureApp, type } from '@app/testing/app-testing';
 import '../../layout/shell';

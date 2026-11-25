@@ -6,7 +6,7 @@ import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
 import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
-import { formatCount } from '@app/format/format';
+import { formatCount, isOne } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
 import { LIBRARY_SEARCH, saidOnce } from '@app/session/said-once';
 import { GameTable } from './components/game-table';
@@ -106,7 +106,7 @@ export class Library {
   private counted(count: number): { one: boolean; count: string } {
     const language = this.language.current();
     return {
-      one: new Intl.PluralRules(language).select(count) === 'one',
+      one: isOne(count, language),
       count: formatCount(count, language),
     };
   }

@@ -17,7 +17,7 @@ import { Avatar, Banner, Button, Card, Label, Skeleton } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { LanguageSetting } from '@app/i18n/language';
-import { syncErrorKey } from '@app/pages/home/sync-view';
+import { syncErrorKey } from '@app/sync/sync-view';
 import { saidOnce } from '@app/session/said-once';
 import { type AccountNotice, LinkedAccount } from './components/linked-account';
 import type { GivenKey } from './components/own-key-form';

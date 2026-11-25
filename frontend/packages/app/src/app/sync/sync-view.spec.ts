@@ -1,9 +1,5 @@
-import {
-  type LinkedAccount,
-  type SyncRun,
-  TEST_LINKED_ACCOUNT,
-  TEST_SYNC_RUN,
-} from '@respawn/data';
+import { type LinkedAccount, type SyncRun } from '@respawn/data';
+import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import {
   STALE_AFTER,
   accountInView,

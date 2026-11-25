@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Card } from '@respawn/ui';
-import { formatCount, formatDate, formatDay, saidPlaytime } from '@app/format/format';
+import { formatCount, formatDate, formatDay, isOne, saidPlaytime } from '@app/format/format';
 import type { PlayedDay } from '../history-blocks';
 
 /**
@@ -43,7 +43,7 @@ export class Activity {
         day.others === 0
           ? null
           : {
-              one: new Intl.PluralRules(language).select(day.others) === 'one',
+              one: isOne(day.others, language),
               count: formatCount(day.others, language),
             },
     }));
