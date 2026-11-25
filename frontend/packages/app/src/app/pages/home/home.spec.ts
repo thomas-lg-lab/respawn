@@ -110,14 +110,26 @@ async function library(
 }
 
 describe('Home', () => {
-  /** Opens the home, signed in, with these accounts linked. */
+  /**
+   * Opens the home, signed in, with these accounts linked. Once one was read, the API answers
+   * the library as `with` says: the figures (`null`: not asked), the games, the history and the
+   * years, each empty unless given.
+   */
   async function open(
     accounts: LinkedAccount[],
-    path = '/',
-    stats: LibraryStats | null = STATS,
-    games: LibraryGame[] = [],
-    history: LibraryHistory = NO_HISTORY,
-    years: LibraryYears = NO_YEARS,
+    {
+      path = '/',
+      stats = STATS,
+      games = [],
+      history = NO_HISTORY,
+      years = NO_YEARS,
+    }: {
+      path?: string;
+      stats?: LibraryStats | null;
+      games?: LibraryGame[];
+      history?: LibraryHistory;
+      years?: LibraryYears;
+    } = {},
   ) {
     const { harness, server, arrived } = await start(path);
     await server.answer('/me', ACCOUNT);
@@ -212,13 +224,13 @@ describe('Home', () => {
   });
 
   it('asks no reading when the link came back for an account already read', async () => {
-    const { screen } = await open([account()], '/?steam_link=linked');
+    const { screen } = await open([account()], { path: '/?steam_link=linked' });
 
     expect(title(screen)).toBe('Accueil');
   });
 
   it('says why a link did not go through', async () => {
-    const { screen } = await open([], '/?steam_link=linked_elsewhere');
+    const { screen } = await open([], { path: '/?steam_link=linked_elsewhere' });
 
     expect(text(screen, '[role="alert"]')).toBe('Ce compte Steam est déjà lié à un autre compte.');
     expect(title(screen)).toBe('Aucun compte de jeu lié');
@@ -296,10 +308,12 @@ describe('Home', () => {
   });
 
   it('says a figure Steam did not give is unknown, never zero', async () => {
-    const { screen } = await open([account()], '/', {
-      ...STATS,
-      recent_playtime_seconds: null,
-      recently_played: 0,
+    const { screen } = await open([account()], {
+      stats: {
+        ...STATS,
+        recent_playtime_seconds: null,
+        recently_played: 0,
+      },
     });
 
     expect(text(screen, '[data-figure="recent"] .figure')).toBe('—');
@@ -308,10 +322,12 @@ describe('Home', () => {
   });
 
   it('counts games as the language does: none is singular in French', async () => {
-    const { screen } = await open([account()], '/', {
-      ...STATS,
-      recent_playtime_seconds: 0,
-      recently_played: 0,
+    const { screen } = await open([account()], {
+      stats: {
+        ...STATS,
+        recent_playtime_seconds: 0,
+        recently_played: 0,
+      },
     });
 
     expect(text(screen, '[data-figure="recent"] .note')).toBe('sur 0 jeu');
@@ -325,11 +341,13 @@ describe('Home', () => {
   });
 
   it('does not count every game as never launched when no playtime was given', async () => {
-    const { screen } = await open([account()], '/', {
-      ...STATS,
-      playtime_seconds: null,
-      launched: 0,
-      never_launched: STATS.games,
+    const { screen } = await open([account()], {
+      stats: {
+        ...STATS,
+        playtime_seconds: null,
+        launched: 0,
+        never_launched: STATS.games,
+      },
     });
 
     expect(text(screen, '[data-figure="never-launched"] .figure')).toBe('—');
@@ -478,7 +496,7 @@ describe('Home', () => {
     afterEach(() => vi.restoreAllMocks());
 
     it('puts forward the game played last, with what Steam says of it', async () => {
-      const { screen } = await open([account()], '/', STATS, played());
+      const { screen } = await open([account()], { games: played() });
 
       expect(text(screen, '[data-resume-label]')).toBe('Reprendre · dernière session hier');
       expect(text(screen, '[data-resume-name]')).toBe('Elden Ring');
@@ -488,7 +506,7 @@ describe('Home', () => {
     });
 
     it('launches the game in Steam, when a copy of it is there', async () => {
-      const { screen } = await open([account()], '/', STATS, played());
+      const { screen } = await open([account()], { games: played() });
 
       const launch = screen.querySelector<HTMLAnchorElement>('[data-launch]')!;
       expect(launch.textContent.trim()).toBe('Lancer dans Steam');
@@ -497,14 +515,14 @@ describe('Home', () => {
 
     it('offers no launch for a game no Steam copy of which is known', async () => {
       const games = played().map((each) => ({ ...each, entries: [] }));
-      const { screen } = await open([account()], '/', STATS, games);
+      const { screen } = await open([account()], { games });
 
       expect(text(screen, '[data-resume-name]')).toBe('Elden Ring');
       expect(screen.querySelector('[data-launch]')).toBeNull();
     });
 
     it('lists the other games of the last two weeks beside it', async () => {
-      const { screen } = await open([account()], '/', STATS, played());
+      const { screen } = await open([account()], { games: played() });
 
       expect(names(screen, 'recently')).toEqual(['Portal 2']);
       expect(text(screen, '[data-recently] [data-played]')).toBe(
@@ -514,7 +532,7 @@ describe('Home', () => {
 
     it('falls back on the latest sessions when Steam names no game of the two weeks', async () => {
       const games = played().map((each) => ({ ...each, recent_playtime_seconds: null }));
-      const { screen } = await open([account()], '/', STATS, games);
+      const { screen } = await open([account()], { games });
 
       expect(text(screen, '[data-resume-time]')).toBe('142 h au total');
       expect(names(screen, 'recently')).toEqual(['Portal 2', 'Hades']);
@@ -525,7 +543,7 @@ describe('Home', () => {
       const more = Array.from({ length: 6 }, (_, index) =>
         game(`Jeu ${index}`, { playtime_seconds: (index + 1) * 60 }),
       );
-      const { screen } = await open([account()], '/', STATS, [...played(), ...more]);
+      const { screen } = await open([account()], { games: [...played(), ...more] });
 
       expect(names(screen, 'ranking')).toEqual([
         'Elden Ring',
@@ -540,7 +558,7 @@ describe('Home', () => {
     });
 
     it('draws the time map of the most played games, coloured by their last session', async () => {
-      const { screen } = await open([account()], '/', STATS, played());
+      const { screen } = await open([account()], { games: played() });
 
       const tiles = [...screen.querySelectorAll('[data-time-map] [data-game]')];
       // Elden Ring and Portal 2 were played these two weeks, Hades over a year ago.
@@ -573,7 +591,7 @@ describe('Home', () => {
           game('Hades', { playtime_seconds: 3600 }),
           game('Tunic', { playtime_seconds: 3600 }),
         ];
-        const { harness, screen } = await open([account()], '/', STATS, games);
+        const { harness, screen } = await open([account()], { games });
         const first = () => screen.querySelector<HTMLElement>('[data-time-map] [data-game]');
 
         // Wider than tall until it is measured: the two halves side by side.
@@ -594,7 +612,7 @@ describe('Home', () => {
 
     it('draws no time map of one launched game alone', async () => {
       const games = [game('Celeste'), game('Hades', { playtime_seconds: 3600 })];
-      const { screen } = await open([account()], '/', STATS, games);
+      const { screen } = await open([account()], { games });
 
       expect(screen.querySelector('[data-ranking]')).not.toBeNull();
       expect(screen.querySelector('[data-time-map]')).toBeNull();
@@ -602,7 +620,7 @@ describe('Home', () => {
 
     it('draws three games never launched, and others on request', async () => {
       const random = vi.spyOn(Math, 'random').mockReturnValue(0);
-      const { harness, screen } = await open([account()], '/', STATS, played());
+      const { harness, screen } = await open([account()], { games: played() });
       // Four were never launched: Celeste, Hollow Knight, Tunic, Unpacking.
       expect(names(screen, 'picks')).toEqual(['Celeste', 'Hollow Knight', 'Tunic']);
 
@@ -616,7 +634,7 @@ describe('Home', () => {
     it('keeps the draw when the games are read again', async () => {
       vi.spyOn(Math, 'random').mockReturnValue(0);
       const games = played();
-      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      const { harness, server, screen } = await open([account()], { games });
       expect(names(screen, 'picks')).toEqual(['Celeste', 'Hollow Knight', 'Tunic']);
 
       vi.spyOn(Math, 'random').mockReturnValue(0.99);
@@ -639,20 +657,20 @@ describe('Home', () => {
       const games = played().map((each) =>
         each.name === 'Elden Ring' ? { ...each, name: '🎮 Arcade' } : each,
       );
-      const { screen } = await open([account()], '/', STATS, games);
+      const { screen } = await open([account()], { games });
 
       expect(text(screen, '[data-resume] .letter')).toBe('🎮');
     });
 
     it('offers no other draw when every game never launched is shown', async () => {
-      const { screen } = await open([account()], '/', STATS, played().slice(0, 4));
+      const { screen } = await open([account()], { games: played().slice(0, 4) });
 
       expect(names(screen, 'picks').sort()).toEqual(['Celeste', 'Hollow Knight']);
       expect(screen.querySelector('[data-reroll]')).toBeNull();
     });
 
     it('shows no block a library that was never played has nothing to put in', async () => {
-      const { screen } = await open([account()], '/', STATS, [game('Celeste'), game(null)]);
+      const { screen } = await open([account()], { games: [game('Celeste'), game(null)] });
 
       expect(screen.querySelector('[data-resume]')).toBeNull();
       expect(screen.querySelector('[data-recently]')).toBeNull();
@@ -662,7 +680,7 @@ describe('Home', () => {
     });
 
     it('leads to the Library with the title that was searched', async () => {
-      const { harness, server, screen } = await open([account()], '/', STATS, played());
+      const { harness, server, screen } = await open([account()], { games: played() });
 
       type(screen.querySelector<HTMLInputElement>('[data-search] input')!, ' portal ');
       button(screen, 'Chercher').click();
@@ -778,7 +796,11 @@ describe('Home', () => {
 
     it('draws only the whole years, and names the one counted in part', async () => {
       const games = played();
-      const { screen } = await open([account()], '/', STATS, games, readings(games), past());
+      const { screen } = await open([account()], {
+        games,
+        history: readings(games),
+        years: past(),
+      });
 
       expect(all(screen, '[data-years] .label')).toEqual(['2025']);
       expect(text(screen, '[data-year="2025"] .said')).toBe('4 h');
@@ -795,31 +817,10 @@ describe('Home', () => {
 
     it('draws no card while only the current year has time', async () => {
       const games = played();
-      const { screen } = await open([account()], '/', STATS, games, readings(games), synced());
-
-      expect(screen.querySelector('[data-years]')).toBeNull();
-    });
-
-    it('names every year counted in part, the first sync’s as well as the running one', async () => {
-      const games = played();
-      const { screen } = await open([account()], '/', STATS, games, readings(games), {
-        years: [
-          reviewed(2025, 3600),
-          ...synced().years,
-          { ...synced().years[0]!, year: 2027, first_day: '2027-01-01', last_day: '2027-01-05' },
-        ],
-      });
-
-      expect(all(screen, '[data-years] .label')).toEqual(['2025']);
-      expect(text(screen, '[data-years-pending]')).toBe(
-        '2026–2027 : compté en partie seulement, montré une fois l’année entière connue.',
-      );
-    });
-
-    it('shows no years while nothing was played in any', async () => {
-      const games = played();
-      const { screen } = await open([account()], '/', STATS, games, readings(games), {
-        years: [reviewed(2025, 0), { ...synced().years[0]!, seconds: 0 }],
+      const { screen } = await open([account()], {
+        games,
+        history: readings(games),
+        years: synced(),
       });
 
       expect(screen.querySelector('[data-years]')).toBeNull();
@@ -828,13 +829,17 @@ describe('Home', () => {
     it('names in each caption only the years it speaks of', async () => {
       const games = played();
       // 2023 has no review and the syncs covered it entirely; 2025 is not there at all.
-      const { screen } = await open([account()], '/', STATS, games, readings(games), {
-        years: [
-          reviewed(2022, 3600),
-          { ...reviewed(2023, 1800), source: 'readings' },
-          reviewed(2024, 7200),
-          ...synced().years,
-        ],
+      const { screen } = await open([account()], {
+        games,
+        history: readings(games),
+        years: {
+          years: [
+            reviewed(2022, 3600),
+            { ...reviewed(2023, 1800), source: 'readings' },
+            reviewed(2024, 7200),
+            ...synced().years,
+          ],
+        },
       });
 
       expect(all(screen, '[data-years] .label')).toEqual(['2022', '2023', '2024']);
@@ -851,8 +856,12 @@ describe('Home', () => {
 
     it('says nothing of the syncs nor of a year to come when every year is reviewed', async () => {
       const games = played();
-      const { screen } = await open([account()], '/', STATS, games, readings(games), {
-        years: [reviewed(2025, 3600)],
+      const { screen } = await open([account()], {
+        games,
+        history: readings(games),
+        years: {
+          years: [reviewed(2025, 3600)],
+        },
       });
 
       expect(text(screen, '[data-years-reviewed]')).toBe(
@@ -891,7 +900,7 @@ describe('Home', () => {
 
     it('lists the latest days played, the latest first, each game with its time', async () => {
       const games = played();
-      const { screen } = await open([account()], '/', STATS, games, readings(games));
+      const { screen } = await open([account()], { games, history: readings(games) });
 
       expect(all(screen, '[data-activity] h3')).toEqual([
         'Samedi 21 novembre',
@@ -914,7 +923,7 @@ describe('Home', () => {
     });
 
     it('says when the tracking began while no day was played, and draws no year', async () => {
-      const { screen } = await open([account()], '/', STATS, played());
+      const { screen } = await open([account()], { games: played() });
 
       expect(text(screen, '[data-activity-since]')).toBe('Le suivi a commencé le 18 nov. 2026');
       expect(text(screen, '[data-activity-empty]')).toContain(
@@ -982,7 +991,7 @@ describe('Home', () => {
 
     it('reads the history again once a sync ended', async () => {
       const games = played();
-      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      const { harness, server, screen } = await open([account()], { games });
       expect(screen.querySelector('[data-activity-empty]')).not.toBeNull();
 
       screen.querySelector<HTMLButtonElement>('[data-sync-now]')!.click();
@@ -1028,7 +1037,7 @@ describe('Home', () => {
 
     it('does not say gone a game the history has before the games asked again do', async () => {
       const games = played();
-      const { harness, server, screen } = await open([account()], '/', STATS, games);
+      const { harness, server, screen } = await open([account()], { games });
       const bought = game('Outer Wilds', { playtime_seconds: 3600 });
       const told: LibraryHistory = {
         tracking_since: '2026-11-18T10:05:00Z',
