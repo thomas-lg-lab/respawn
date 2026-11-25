@@ -8,7 +8,8 @@
   >
     @for (choice of filters(); track choice.id) {
       <button
-        rsFilterTab
+        rsPill
+        variant="line"
         [pressed]="filter() === choice.id"
         [attr.data-filter]="choice.id"
         (click)="filterPicked.emit(choice.id)"

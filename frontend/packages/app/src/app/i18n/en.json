@@ -372,6 +372,7 @@
       "disabled": "Unavailable",
       "sync": "Sync",
       "pills": "Pills",
+      "lines": "Pills as a row of filters",
       "filters": {
         "all": "All",
         "recent": "Recent",

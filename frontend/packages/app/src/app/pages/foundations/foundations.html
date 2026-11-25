@@ -60,6 +60,22 @@
         </rs-pill-group>
 
         <div class="flex flex-col gap-2">
+          <span class="type-caption text-muted">{{ t('components.lines') }}</span>
+          <div class="flex gap-5.5 border-b border-line">
+            @for (choice of filters; track choice) {
+              <button
+                rsPill
+                variant="line"
+                [pressed]="filter() === choice"
+                (click)="filter.set(choice)"
+              >
+                {{ t('components.filters.' + choice) }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
           <span class="type-caption text-muted">{{ t('components.bar') }}</span>
           <rs-segmented-bar [value]="hours" [max]="hoursScale">{{
             t('components.hours', { count: hours })

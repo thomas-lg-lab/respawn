@@ -9,7 +9,6 @@ export * from './lib/card/card';
 export * from './lib/column-chart/column-chart';
 export * from './lib/cover/cover';
 export * from './lib/disclosure/disclosure';
-export * from './lib/filter-tab/filter-tab';
 export * from './lib/hero/hero';
 export * from './lib/label/label';
 export * from './lib/logo/logo';

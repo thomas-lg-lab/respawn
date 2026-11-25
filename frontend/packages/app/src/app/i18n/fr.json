@@ -372,6 +372,7 @@
       "disabled": "Indisponible",
       "sync": "Synchroniser",
       "pills": "Pastilles",
+      "lines": "Pastilles en rangée de filtres",
       "filters": {
         "all": "Tous",
         "recent": "Récents",
