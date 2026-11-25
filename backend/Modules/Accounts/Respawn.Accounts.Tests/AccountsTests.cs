@@ -171,6 +171,38 @@ public sealed class AccountsTests
     }
 
     [Fact]
+    public async Task A_lock_ends_after_its_time_and_a_sign_in_starts_the_count_again()
+    {
+        var clock = new Clock();
+        await using var app = await TestApp.StartAsync(
+            new() { ["RESPAWN_LOCKOUT_MINUTES"] = "15" },
+            services => services.AddSingleton<TimeProvider>(clock));
+        using var owner = app.Browser();
+        await owner.RegisterAsync();
+        using var browser = app.Browser();
+
+        // Two failures, under the threshold of three, then the right password: the count starts over,
+        // so two more do not lock.
+        for (var round = 0; round < 2; round++)
+        {
+            await browser.LoginAsync("first@example.org", "wrong password");
+            await browser.LoginAsync("first@example.org", "wrong password");
+            Assert.Equal(HttpStatusCode.OK, await browser.LoginAsync("first@example.org", TestApp.Password).StatusAsync());
+        }
+
+        // Three in a row lock, for a quarter of an hour and no longer.
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            await browser.LoginAsync("first@example.org", "wrong password");
+        }
+
+        clock.Now += TimeSpan.FromMinutes(14);
+        Assert.Equal(HttpStatusCode.Unauthorized, await browser.LoginAsync("first@example.org", TestApp.Password).StatusAsync());
+        clock.Now += TimeSpan.FromMinutes(2);
+        Assert.Equal(HttpStatusCode.OK, await browser.LoginAsync("first@example.org", TestApp.Password).StatusAsync());
+    }
+
+    [Fact]
     public async Task A_locked_account_is_verified_like_any_other()
     {
         // The password is checked even when the account is locked: the answer must not come faster.

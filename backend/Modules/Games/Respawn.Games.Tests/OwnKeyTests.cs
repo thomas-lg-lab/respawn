@@ -231,6 +231,24 @@ public sealed class OwnKeyTests
     }
 
     [Fact]
+    public async Task The_yearly_reviews_are_read_with_the_owner_s_key_too()
+    {
+        var steam = new FakeSteam();
+        await using var app = await StartAsync(steam);
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+        await SetKeyAsync(browser, account);
+        Assert.Equal("succeeded", (await SyncNowAsync(browser, account)).GetProperty("outcome").GetString());
+
+        Assert.Equal(1, await Assert.Single(app.Services.GetServices<IHostedService>().OfType<YearReviewScheduler>()).RunDueAsync(default));
+
+        // The owner's key and that one only, as for the library: never the instance's beside it.
+        var reviews = steam.Requests.Where(request => request.Address.AbsolutePath.Contains("YearInReview", StringComparison.Ordinal)).ToArray();
+        Assert.NotEmpty(reviews);
+        Assert.All(reviews, request => Assert.Equal(OwnKey, request.Key));
+    }
+
+    [Fact]
     public async Task Only_the_owner_gives_or_takes_away_a_key()
     {
         var steam = new FakeSteam();
