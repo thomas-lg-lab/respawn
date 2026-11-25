@@ -47,8 +47,4 @@ export class SearchField {
   focus(): void {
     this.box().nativeElement.focus();
   }
-
-  blur(): void {
-    this.box().nativeElement.blur();
-  }
 }

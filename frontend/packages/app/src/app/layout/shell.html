@@ -79,7 +79,8 @@
   <router-outlet />
 </main>
 
-<!-- It stays at the foot of the window, clear of a phone's home indicator. -->
+<!-- It stays at the foot of the window, clear of a phone's home indicator. A tab's cursor takes
+     no room here: it stands before the words, which stay in the middle of their tab. -->
 <nav
   class="sticky bottom-0 z-10 flex gap-1 border-t border-line bg-bg px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] wide:hidden"
   data-tabs="bar"
@@ -89,7 +90,7 @@
   @for (tab of tabs; track tab.path) {
     <a
       rsTab
-      class="min-h-button flex-1"
+      class="min-h-button flex-1 before:-ms-3.75"
       routerLinkActive
       ariaCurrentWhenActive="page"
       [routerLink]="tab.path"

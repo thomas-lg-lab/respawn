@@ -361,19 +361,40 @@ describe('GameSearch', () => {
     expect(document.activeElement).toBe(opener);
   });
 
-  it('stays as it is while the window itself is left', async () => {
+  it('stays as it is when the focus leaves for nothing, until a press outside', async () => {
     const { fixture, element, input, search } = await create();
     const bar = element.querySelector('[data-search-bar]')!;
     element.querySelector<HTMLButtonElement>('[data-search-open]')!.click();
     await search('ha');
 
-    const away = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    // The window was left, or a phone put its keyboard away: no next target.
     input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
     await fixture.whenStable();
-    away.mockRestore();
-
     expect(bar.getAttribute('data-unfolded')).toBe('true');
     expect(element.querySelector('[data-search-panel]')).not.toBeNull();
+
+    // A press inside changes nothing; one outside closes, what was typed still there.
+    bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await fixture.whenStable();
+    expect(bar.getAttribute('data-unfolded')).toBe('true');
+
+    document.body.click();
+    await fixture.whenStable();
+    expect(bar.getAttribute('data-unfolded')).toBe('false');
+    expect(element.querySelector('[data-search-panel]')).toBeNull();
+    expect(input.value).toBe('ha');
+  });
+
+  it('still suggests from the games it holds when a later reading failed', async () => {
+    const { fixture, element, input, host, search } = await create();
+    host.unreadable.set(true);
+    await fixture.whenStable();
+
+    await search('ha');
+
+    expect(element.querySelector('[data-search-unreadable]')).toBeNull();
+    expect(titles(element)).toHaveLength(5);
+    expect(input.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('suggests nothing while the focus is on its button, the field folded over what was typed', async () => {

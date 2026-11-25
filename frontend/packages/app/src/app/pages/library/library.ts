@@ -1,7 +1,13 @@
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter as only, map } from 'rxjs';
+import {
+  ActivatedRoute,
+  NavigationEnd,
+  NavigationStart,
+  Router,
+  RouterLink,
+} from '@angular/router';
+import { map } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
@@ -95,17 +101,17 @@ export class Library {
   constructor() {
     // Back to every game whenever a title is searched, the one already shown too: the search
     // comes from the header, and a filter left on would hide the very game that was asked
-    // for. Clearing the search asks for nothing new: the filter stays.
-    this.router.events
-      .pipe(
-        only((event) => event instanceof NavigationEnd),
-        takeUntilDestroyed(),
-      )
-      .subscribe(() => {
-        if (!this.search()) return;
-        this.filter.set('all');
-        this.steps.set(1);
-      });
+    // for. Clearing the search asks for nothing new: the filter stays. So does it when the
+    // browser's history leads back to a title: nothing was searched then.
+    let throughHistory = false;
+    this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        throughHistory = event.navigationTrigger === 'popstate';
+      }
+      if (!(event instanceof NavigationEnd) || throughHistory || !this.search()) return;
+      this.filter.set('all');
+      this.steps.set(1);
+    });
   }
 
   /**

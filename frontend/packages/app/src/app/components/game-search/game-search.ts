@@ -48,7 +48,7 @@ interface Suggestion {
 @Component({
   selector: 'rs-game-search',
   imports: [TranslocoDirective, Button, Cover, SearchField, LucideSearch, LucideX],
-  host: { '(document:keydown)': 'shortcut($event)' },
+  host: { '(document:keydown)': 'shortcut($event)', '(document:click)': 'pressedOutside($event)' },
   templateUrl: './game-search.html',
 })
 export class GameSearch {
@@ -118,9 +118,17 @@ export class GameSearch {
   });
 
   protected readonly shown = computed(() => this.focused() && this.found() !== null);
-  /** Enough was typed for suggestions, and the games they would come from could not be read. */
+  /**
+   * Enough was typed for suggestions, and the games they would come from could not be read.
+   * Not while games read earlier are still held: a reading that failed since takes nothing
+   * away from what can be suggested.
+   */
   protected readonly failed = computed(
-    () => this.focused() && this.unreadable() && letters(this.asked()) >= SUGGESTS_FROM,
+    () =>
+      this.focused() &&
+      this.unreadable() &&
+      !this.games() &&
+      letters(this.asked()) >= SUGGESTS_FROM,
   );
   /** A list of suggestions is shown: there is none to show when no game was found. */
   protected readonly listed = computed(() => this.shown() && this.suggestions().length > 0);
@@ -145,17 +153,26 @@ export class GameSearch {
   }
 
   /**
-   * The focus left for another part of the page, or for nothing: the search closes. Not when
-   * it is the window that lost the focus: the visitor went to look at something else and
-   * comes back to the search as it was.
+   * The focus left for another part of the page: the search closes. Not when it left for
+   * nothing: the window lost the focus, a phone put its keyboard away, or a press landed on
+   * something that takes none. The search stays as it was, and a press outside closes it.
    */
   protected left(event: FocusEvent): void {
     const next = event.relatedTarget;
-    if (next instanceof Node && this.host.contains(next)) return;
-    if (next === null && !document.hasFocus()) return;
+    if (next instanceof Node && !this.host.contains(next)) this.shut();
+  }
+
+  /** A press outside the search closes it, wherever the focus is. */
+  protected pressedOutside(event: Event): void {
+    if (!this.focused() && !this.unfolded()) return;
+    // The path the press took: what it landed on may have left the page since.
+    if (!event.composedPath().includes(this.host)) this.shut();
+  }
+
+  /** Nothing is suggested any more, and the field folds back; what was typed stays. */
+  private shut(): void {
     this.focused.set(false);
     this.active.set(-1);
-    // What was typed stays, and is there again when the field is asked for.
     this.unfolded.set(false);
   }
 
@@ -246,9 +263,7 @@ export class GameSearch {
    */
   protected close(): void {
     this.typed.set('');
-    this.unfolded.set(false);
-    this.focused.set(false);
-    this.active.set(-1);
+    this.shut();
     this.changes.detectChanges();
 
     this.opener().nativeElement.focus();

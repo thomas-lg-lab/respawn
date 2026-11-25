@@ -1,5 +1,6 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { type LibraryGame, PROVIDER_OUTCOME } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
@@ -173,6 +174,24 @@ describe('Library', () => {
 
     expect(names(screen)).toEqual(['Hades']);
     expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps the filter when the history leads back to a title: nothing was searched', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=po');
+    // The router follows the browser's history as it does once the app has started.
+    TestBed.inject(Router).setUpLocationChangeListener();
+    await harness.navigateByUrl('/library?q=hades');
+    await harness.fixture.whenStable();
+    pill(screen, 'launched').click();
+    await harness.fixture.whenStable();
+
+    const location = TestBed.inject(Location);
+    location.back();
+    await vi.waitFor(() => expect(text(screen, '[data-searched]')).toBe('Recherche : « po »'));
+    location.forward();
+    await vi.waitFor(() => expect(text(screen, '[data-searched]')).toBe('Recherche : « hades »'));
+
+    expect(pill(screen, 'launched').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('takes a title made of spaces or of signs for no search', async () => {
