@@ -33,6 +33,10 @@ internal static class ProviderSignIn
     /// <summary>The parameter the front finds on the address it is sent back to, with the outcome.</summary>
     public const string OutcomeParameter = "provider_sign_in";
 
+    /// <summary>The outcome when what was needed could not be asked (the provider, the database): trying
+    /// again may work.</summary>
+    public const string Unavailable = "unavailable";
+
     /// <summary>The account a link was started by, kept in the state the provider hands back.</summary>
     public const string LinkItem = "respawn.link";
 
@@ -138,10 +142,15 @@ internal static class ProviderSignIn
                 _ => "failed",
             };
         }
+        catch (Exception ex) when (DatabaseUnavailableException.Among(ex))
+        {
+            // The browser is in the middle of a navigation: it goes back to the app, and may try again.
+            Log(http).LogWarning("a sign-in through {Scheme} could not be recorded: {Reason}", context.Scheme.Name, ex.Message);
+            outcome = Unavailable;
+        }
         catch (Exception ex) when (!http.RequestAborted.IsCancellationRequested)
         {
-            // The browser is in the middle of a navigation: it goes back to the app whatever happened
-            // here (the database away, for one), and the log says what.
+            // Whatever happened here, the browser goes back to the app, and the log says what.
             Log(http).LogError(ex, "a sign-in through {Scheme} could not be recorded", context.Scheme.Name);
             outcome = "failed";
         }
@@ -238,7 +247,7 @@ internal static class ProviderSignIn
             properties = format.Unprotect(state);
         }
 
-        return GoBack(context.HttpContext, properties, unavailable ? "unavailable" : "failed", context.HandleResponse);
+        return GoBack(context.HttpContext, properties, unavailable ? Unavailable : "failed", context.HandleResponse);
     }
 
     private static Task GoBack(HttpContext http, AuthenticationProperties? properties, string outcome, Action handled)

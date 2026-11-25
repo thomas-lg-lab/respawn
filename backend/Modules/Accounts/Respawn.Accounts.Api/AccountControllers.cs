@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Respawn.Accounts.Ports;
 using Respawn.SharedKernel;
@@ -59,6 +60,32 @@ public sealed class AuthController(
     public async Task<UserResponse> Login(LoginRequest body, CancellationToken ct) =>
         await SignInAsync(await accounts.LoginAsync(body.Email, body.Password, ct));
 
+    [HttpPost("logout")]
+    [EndpointSummary("Sign out of this browser")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout(CancellationToken ct)
+    {
+        await accounts.LogoutAsync(Request.Cookies[SessionCookie.Name], ct);
+        SessionCookie.Clear(Response);
+        return NoContent();
+    }
+
+    private async Task<UserResponse> SignInAsync(SignedIn signedIn)
+    {
+        await SessionCookie.ReplaceAsync(HttpContext, accounts, signedIn.SessionToken, options, cookie, logger);
+        return UserResponse.From(signedIn.Account);
+    }
+}
+
+/// <summary>The sign-in and the link through a provider: navigations, not calls. Apart from
+/// <see cref="AuthController"/> because starting one needs no database: a controller that took the
+/// account service would answer an error, a page of JSON in the visitor's browser, while the database
+/// is away.</summary>
+[ApiController]
+[Route("api/v1/auth")]
+[Tags("Auth")]
+public sealed class ProviderSignInController(AccountOptions options, ILogger<ProviderSignInController> logger) : ControllerBase
+{
     [HttpGet("oidc/{provider}")]
     [EnableRateLimiting(AccountsApi.SignInRateLimit)]
     [EndpointSummary("Sign in through a configured provider: sends the browser to the provider")]
@@ -142,7 +169,21 @@ public sealed class AuthController(
         {
             // The route asks for no session of the pipeline, whose refusal would be an error: it looks
             // the session up itself.
-            if (await accounts.FindSignedInAsync(Request.Cookies[SessionCookie.Name], HttpContext.RequestAborted) is not { } owner)
+            Account? owner;
+            try
+            {
+                // Resolved here, not injected: the account service comes with the database, which a
+                // sign-in does not need to start.
+                var accounts = HttpContext.RequestServices.GetRequiredService<IAccountService>();
+                owner = await accounts.FindSignedInAsync(Request.Cookies[SessionCookie.Name], HttpContext.RequestAborted);
+            }
+            catch (Exception ex) when (DatabaseUnavailableException.Among(ex))
+            {
+                logger.LogWarning("a link through {Provider} could not start: {Reason}", configured.Name, ex.Message);
+                return Unavailable(back);
+            }
+
+            if (owner is null)
             {
                 return NotStarted(back);
             }
@@ -162,9 +203,7 @@ public sealed class AuthController(
             var unavailable = Navigation.NotAnswering(ex);
             logger.LogWarning(
                 "the provider {Provider} could not be asked to start a sign-in: {Reason}", configured.Name, ProviderSignIn.Cause(ex));
-            return unavailable
-                ? LocalRedirect(Navigation.WithOutcome(back, ProviderSignIn.OutcomeParameter, "unavailable"))
-                : NotStarted(back);
+            return unavailable ? Unavailable(back) : NotStarted(back);
         }
 
         return new EmptyResult();
@@ -174,21 +213,9 @@ public sealed class AuthController(
     private LocalRedirectResult NotStarted(string back) =>
         LocalRedirect(Navigation.WithOutcome(back, ProviderSignIn.OutcomeParameter, Navigation.Failed));
 
-    [HttpPost("logout")]
-    [EndpointSummary("Sign out of this browser")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Logout(CancellationToken ct)
-    {
-        await accounts.LogoutAsync(Request.Cookies[SessionCookie.Name], ct);
-        SessionCookie.Clear(Response);
-        return NoContent();
-    }
-
-    private async Task<UserResponse> SignInAsync(SignedIn signedIn)
-    {
-        await SessionCookie.ReplaceAsync(HttpContext, accounts, signedIn.SessionToken, options, cookie, logger);
-        return UserResponse.From(signedIn.Account);
-    }
+    /// <summary>Back to the app too: what was needed could not be asked, and trying again may work.</summary>
+    private LocalRedirectResult Unavailable(string back) =>
+        LocalRedirect(Navigation.WithOutcome(back, ProviderSignIn.OutcomeParameter, ProviderSignIn.Unavailable));
 }
 
 [ApiController]

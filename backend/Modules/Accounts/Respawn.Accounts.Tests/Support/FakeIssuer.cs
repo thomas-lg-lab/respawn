@@ -74,6 +74,16 @@ internal sealed class FakeIssuer
             services.AddHttpClient(ProviderSignIn.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Handler));
     }
 
+    /// <summary>The app with this provider and no database: nothing is asked of it yet.</summary>
+    public TestApp CreateAppWithoutDatabase() => TestApp.Create(
+        new()
+        {
+            ["RESPAWN_OIDC_PROVIDERS"] = Providers(Issuer),
+            ["RESPAWN_DATABASE_URL"] = null,
+            ["RESPAWN_DATABASE_URL_FILE"] = Path.Combine(Path.GetTempPath(), $"respawn-no-secret-{Guid.NewGuid():N}"),
+        },
+        services => services.AddHttpClient(ProviderSignIn.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Handler));
+
     /// <summary>Sign with a new key from now on, as a provider does from time to time.</summary>
     public void Rotate() => _key = NewKey($"test-key-{Guid.NewGuid():N}");
 

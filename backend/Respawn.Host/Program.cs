@@ -30,8 +30,10 @@ builder.WebHost.ConfigureKestrel(kestrel => kestrel.AddServerHeader = false);
 
 var services = builder.Services;
 
-// Settings are built from the configuration when first needed, never at start-up.
+// Settings are built from the configuration once the host is, so a test host can supply its own, and
+// all of them before the app listens: one that cannot be read stops the start (SettingsCheck).
 services.AddSingleton(provider => RespawnSettings.Http(provider.GetRequiredService<IConfiguration>()));
+services.AddHostedService<SettingsCheck>();
 services.TryAddSingleton(TimeProvider.System);
 
 // The one database. Nothing connects here: a module's first query does, and every module is migrated then.
@@ -132,4 +134,14 @@ app.MapGet("/healthz", () => Results.Json(new { status = "ok" })).ExcludeFromDes
 app.MapOpenApi("/api/v1/openapi.json");
 app.MapControllers();
 
-app.Run();
+try
+{
+    app.Run();
+}
+catch (FormatException)
+{
+    // A setting that cannot be read: SettingsCheck said which one. A plain exit, not a crash on top of it.
+    return 1;
+}
+
+return 0;

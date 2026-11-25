@@ -5,13 +5,13 @@ using Respawn.SharedKernel;
 
 namespace Respawn.Persistence;
 
-/// <summary>No connection string yet, the database does not answer, or a schema could not be migrated.</summary>
-public sealed class DatabaseUnavailableException(string message, Exception? inner = null) : Exception(message, inner)
+/// <summary>What a failure says of the database.</summary>
+public static class DatabaseFailures
 {
     /// <summary>Whether an exception, or one it wraps, says the database cannot be reached right now
     /// (as opposed to a query it refused). A refused sign-in counts: it is what a new connection gets
     /// while a rotated password has reached the server and not yet this app.</summary>
-    public static bool Explains(Exception? exception)
+    public static bool MeanUnavailable(Exception? exception)
     {
         for (var current = exception; current is not null; current = current.InnerException)
         {

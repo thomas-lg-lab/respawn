@@ -467,6 +467,23 @@ public sealed class OidcTests
     }
 
     [Fact]
+    public async Task Without_a_database_a_sign_in_still_starts_and_a_link_goes_back_to_the_app()
+    {
+        var issuer = new FakeIssuer();
+        await using var app = issuer.CreateAppWithoutDatabase();
+        using var browser = app.Browser();
+
+        // Starting a sign-in asks nothing of the database: the browser is sent to the provider.
+        var start = await browser.StartAsync("/sign-in");
+        Assert.StartsWith(FakeIssuer.Issuer, start.Landing(), StringComparison.Ordinal);
+
+        // A link needs to know who is signed in, which nothing can tell for now: back to the app, with
+        // a word that says trying again may work, and never a page of JSON.
+        Assert.Equal("/library?provider_sign_in=unavailable", (await browser.StartAsync("/library", link: true)).Landing());
+        Assert.Equal(0, app.Logs.Count("unhandled error"));
+    }
+
+    [Fact]
     public async Task A_provider_that_answers_wrongly_is_said_and_never_an_error_page()
     {
         var issuer = new FakeIssuer();

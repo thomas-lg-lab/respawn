@@ -11,6 +11,25 @@ public interface IConnectionSource
     DbDataSource DataSource();
 }
 
+/// <summary>No connection string yet, the database does not answer, or a schema could not be migrated:
+/// what <see cref="IConnectionSource.DataSource"/> throws while the database cannot be used.</summary>
+public sealed class DatabaseUnavailableException(string message, Exception? inner = null) : Exception(message, inner)
+{
+    /// <summary>Whether a failure is one, or was caused by one.</summary>
+    public static bool Among(Exception? failure)
+    {
+        for (var cause = failure; cause is not null; cause = cause.InnerException)
+        {
+            if (cause is DatabaseUnavailableException)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 /// <summary>A module's schema migrations. The host runs every module's when it first connects.</summary>
 public interface ISchemaMigrator
 {

@@ -38,7 +38,8 @@ public sealed class HttpSettings
 /// Settings, read from the environment (README, "Configuration"). Nothing here is required to start:
 /// with no database configured the app still answers /healthz.
 ///
-/// Read when a request first needs them, not at start-up, so a test host can supply its own.
+/// Read once the host is built, so a test host can supply its own, and checked before the app listens
+/// (<see cref="SettingsCheck"/>): a value that cannot be read stops the start.
 /// </summary>
 internal static partial class RespawnSettings
 {

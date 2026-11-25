@@ -32,6 +32,22 @@ public sealed class HostTests
     }
 
     [Theory]
+    [InlineData("RESPAWN_SESSION_DAYS", "0")]
+    [InlineData("RESPAWN_OIDC_PROVIDERS", "not json")]
+    [InlineData("RESPAWN_TRUSTED_PROXIES", "proxy.example.org")]
+    [InlineData("RESPAWN_AUTH_RATE_LIMIT", "ten/minute")]
+    public async Task A_setting_that_cannot_be_read_stops_the_start_and_the_log_names_it(string name, string value)
+    {
+        await using var app = TestApp.Create(new() { [name] = value });
+
+        // However the host says it did not start: what matters is that it did not, and the line below.
+        Assert.ThrowsAny<Exception>(() => app.CreateClient());
+
+        Assert.Equal(1, app.Logs.Count("a setting cannot be read, the app does not start"));
+        Assert.Contains(name, app.Logs.Text, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("0/minute")]
     [InlineData("ten/minute")]
     [InlineData("10/day")]
