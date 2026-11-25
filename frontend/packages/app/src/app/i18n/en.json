@@ -248,8 +248,7 @@
     },
     "timeMap": {
       "title": "The time map",
-      "caption": "The {{ count }} most played games: a tile as large as the playtime, and the warmer the more recent the last session.",
-      "captionOthers": "The {{ count }} most played games, the others in the band at the bottom: a tile as large as the playtime, and the warmer the more recent the last session."
+      "caption": "The {{ count }} most played games: a tile as large as the playtime, and the warmer the more recent the last session."
     },
     "picks": {
       "title": "Never launched, at random",

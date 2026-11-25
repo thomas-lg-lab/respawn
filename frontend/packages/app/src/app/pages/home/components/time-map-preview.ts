@@ -19,11 +19,11 @@ import type { TimeMap } from '@app/games/time-tiles';
 const RATIO = 2.6;
 
 /**
- * The time map at a glance: the map of the Time tab, smaller. The same tiles in the same
+ * The time map at a glance: the tiles of the Time tab, smaller. The same games in the same
  * order, the most played at the top left, each as large as its playtime and coloured by its
- * last session, and the other launched games in a thin band under them. A drawing only, with
- * what it shows said under it: no tile names its game. The whole card leads to the Time tab,
- * where the map is drawn in full.
+ * last session; the band of the other launched games is the Time tab's alone. A drawing only,
+ * with what it shows said under it: no tile names its game. The whole card leads to the Time
+ * tab, where the map is drawn in full.
  *
  * The drawing keeps its height and takes the width it is given, so its shape changes with
  * the window: it is measured, and the tiles are cut for the shape it has.
