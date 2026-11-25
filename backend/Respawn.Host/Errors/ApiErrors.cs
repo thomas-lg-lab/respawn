@@ -45,7 +45,9 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
             return true;
         }
 
-        logger.LogError(exception, "unhandled error on {Method} {Path}", context.Request.Method, context.Request.Path);
+        // What answered, as the app names it, and never the request's own words: a path or a method
+        // the client wrote could forge lines of the log.
+        logger.LogError(exception, "unhandled error in {Endpoint}", context.GetEndpoint()?.DisplayName ?? "no endpoint");
         await ApiErrors.WriteAsync(context, 500, "internal_error", "Something went wrong on the server.");
         return true;
     }
