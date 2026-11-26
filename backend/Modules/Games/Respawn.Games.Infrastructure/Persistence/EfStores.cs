@@ -520,61 +520,78 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         // that listed the game: one bought in the days asked is looked up nowhere. That lookup is a
         // lateral join so that it is made once for a reading, and only for one with none before it.
         //
-        // For one game, only the rows of its store entries are looked up in each snapshot, by the
-        // primary key: a day costs a row or two, not the whole library.
-        var (everyGame, game) = (gameId is null, gameId ?? Guid.Empty);
+        // For one game, the readings start from its store entries: their rows come from the index on
+        // the store entry, a row or two a day, and the rest of the library is not read. The game is
+        // then a condition written in the query, not a value that switches it off: the plan is made
+        // for the query as it is written, and one written for both would read the library each time.
         var since = (from ?? DateOnly.MinValue).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
         var until = to is { } day && day < DateOnly.MaxValue
             ? day.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
             : DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
-        var rows = await db.Database
-            .SqlQuery<PlayedRow>(
-                $"""
-                WITH readings AS (
-                    SELECT s.linked_account_id,
-                           o.store_entry_id,
-                           w.first_seen_at,
-                           (s.taken_at AT TIME ZONE 'UTC')::date AS day,
-                           o.known_playtime_seconds AS known,
-                           LAG(o.known_playtime_seconds) OVER (
-                               PARTITION BY s.linked_account_id, o.store_entry_id
-                               ORDER BY s.taken_at, s.id) AS before
-                    FROM games.linked_accounts a
-                    JOIN games.raw_snapshots s ON s.linked_account_id = a.id
-                    JOIN games.observations o ON o.snapshot_id = s.id
-                    JOIN games.ownerships w ON w.linked_account_id = a.id AND w.store_entry_id = o.store_entry_id
-                    WHERE a.owner_id = {ownerId}
-                      AND s.taken_at >= {since} AND s.taken_at < {until}
-                      AND w.unlisted_since IS NULL
-                      AND o.known_playtime_seconds IS NOT NULL
-                      AND ({everyGame} OR o.store_entry_id IN (SELECT id FROM games.store_entries WHERE game_id = {game}))
-                ),
-                gains AS (
-                    SELECT r.day,
-                           r.store_entry_id,
-                           r.known - COALESCE(r.before, earlier.known) AS gained
-                    FROM readings r
-                    LEFT JOIN LATERAL (
-                        SELECT p.known_playtime_seconds AS known
-                        FROM games.raw_snapshots ps
-                        JOIN games.observations p ON p.snapshot_id = ps.id
-                        WHERE r.before IS NULL
-                          AND ps.linked_account_id = r.linked_account_id
-                          AND ps.taken_at >= r.first_seen_at AND ps.taken_at < {since}
-                          AND p.store_entry_id = r.store_entry_id
-                          AND p.known_playtime_seconds IS NOT NULL
-                        ORDER BY ps.taken_at DESC, ps.id DESC
-                        LIMIT 1) earlier ON TRUE
-                )
-                SELECT g.day AS day, e.game_id AS game_id, SUM(g.gained)::bigint AS seconds
-                FROM gains g
-                JOIN games.store_entries e ON e.id = g.store_entry_id
-                WHERE g.gained > 0
-                GROUP BY g.day, e.game_id
-                """)
+        var rows = await (gameId is { } game
+                ? db.Database.SqlQueryRaw<PlayedRow>(PlayedOfOneGame, ownerId, since, until, game)
+                : db.Database.SqlQueryRaw<PlayedRow>(PlayedOfEveryGame, ownerId, since, until))
             .ToListAsync(ct);
         return [.. rows.Select(row => new PlayedDay(row.Day, row.GameId, TimeSpan.FromSeconds(row.Seconds)))];
     }
+
+    /// <summary>The query of <see cref="ListPlayedAsync"/>, up to where one game may be asked for: {0}
+    /// is the owner, {1} and {2} the first instant asked and the first one after the last.</summary>
+    private const string PlayedReadings =
+        """
+        WITH readings AS (
+            SELECT s.linked_account_id,
+                   o.store_entry_id,
+                   e.game_id,
+                   w.first_seen_at,
+                   (s.taken_at AT TIME ZONE 'UTC')::date AS day,
+                   o.known_playtime_seconds AS known,
+                   LAG(o.known_playtime_seconds) OVER (
+                       PARTITION BY s.linked_account_id, o.store_entry_id
+                       ORDER BY s.taken_at, s.id) AS before
+            FROM games.linked_accounts a
+            JOIN games.raw_snapshots s ON s.linked_account_id = a.id
+            JOIN games.observations o ON o.snapshot_id = s.id
+            JOIN games.ownerships w ON w.linked_account_id = a.id AND w.store_entry_id = o.store_entry_id
+            JOIN games.store_entries e ON e.id = o.store_entry_id
+            WHERE a.owner_id = {0}
+              AND s.taken_at >= {1} AND s.taken_at < {2}
+              AND w.unlisted_since IS NULL
+              AND o.known_playtime_seconds IS NOT NULL
+
+        """;
+
+    /// <summary>The rest of it: what each reading adds to the one before, per day and per game.</summary>
+    private const string PlayedGains =
+        """
+        ),
+        gains AS (
+            SELECT r.day,
+                   r.game_id,
+                   r.known - COALESCE(r.before, earlier.known) AS gained
+            FROM readings r
+            LEFT JOIN LATERAL (
+                SELECT p.known_playtime_seconds AS known
+                FROM games.raw_snapshots ps
+                JOIN games.observations p ON p.snapshot_id = ps.id
+                WHERE r.before IS NULL
+                  AND ps.linked_account_id = r.linked_account_id
+                  AND ps.taken_at >= r.first_seen_at AND ps.taken_at < {1}
+                  AND p.store_entry_id = r.store_entry_id
+                  AND p.known_playtime_seconds IS NOT NULL
+                ORDER BY ps.taken_at DESC, ps.id DESC
+                LIMIT 1) earlier ON TRUE
+        )
+        SELECT g.day AS day, g.game_id AS game_id, SUM(g.gained)::bigint AS seconds
+        FROM gains g
+        WHERE g.gained > 0
+        GROUP BY g.day, g.game_id
+        """;
+
+    private const string PlayedOfEveryGame = PlayedReadings + PlayedGains;
+
+    /// <summary>{3} is the game.</summary>
+    private const string PlayedOfOneGame = PlayedReadings + "      AND e.game_id = {3}\n" + PlayedGains;
 
     private static long? Seconds(TimeSpan? playtime) => playtime is { } value ? (long)value.TotalSeconds : null;
 
