@@ -138,7 +138,7 @@
   "search": {
     "label": "Search a game",
     "placeholder": "Search a game",
-    "shortcut": "Ctrl K",
+    "shortcut": "Ctrl + K",
     "shortcutApple": "⌘K",
     "open": "Search a game",
     "close": "Close",

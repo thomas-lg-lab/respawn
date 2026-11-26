@@ -124,7 +124,14 @@
           }
         </div>
         <div class="border-t border-line p-1">
-          <button rsButton variant="row" type="button" data-search-all (click)="ask(asked())">
+          <button
+            rsButton
+            variant="row"
+            type="button"
+            class="font-label"
+            data-search-all
+            (click)="ask(asked())"
+          >
             {{ t(all().one ? 'seeOne' : 'seeMany', { count: all().count }) }}
           </button>
         </div>

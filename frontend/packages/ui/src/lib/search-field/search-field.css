@@ -20,7 +20,22 @@
     box-shadow: 0 0 0 1px var(--rs-focus);
   }
 
+  /* In the `pixel` character (the default) the field is a terminal's line: the labels' prompt
+     stands before what is typed, written like them, and the caret is a block of the focus
+     colour. In `plain` it is a search field: the magnifier, the body font, the browser's caret. */
+  .prompt {
+    flex-shrink: 0;
+    font-family: var(--rs-font-label);
+    font-size: 1.125rem;
+    line-height: 1;
+    color: var(--rs-accent-text);
+  }
+  .prompt::before {
+    content: var(--rs-label-prompt);
+  }
+
   .icon {
+    display: none;
     flex-shrink: 0;
     width: var(--rs-size-icon);
     height: var(--rs-size-icon);
@@ -33,6 +48,24 @@
     border: 0;
     background-color: transparent;
     color: var(--rs-text);
+    font-family: var(--rs-font-label);
+    caret-color: var(--rs-focus);
+    caret-shape: block;
+  }
+  input::placeholder {
+    color: var(--rs-muted);
+  }
+
+  :host-context([data-character='plain']) .prompt {
+    display: none;
+  }
+  :host-context([data-character='plain']) .icon {
+    display: block;
+  }
+  :host-context([data-character='plain']) input {
+    font-family: var(--rs-font-body);
+    caret-color: auto;
+    caret-shape: auto;
   }
   input:focus-visible {
     outline: none;

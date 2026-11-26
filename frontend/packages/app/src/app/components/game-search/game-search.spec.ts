@@ -199,7 +199,7 @@ describe('GameSearch', () => {
 
   it('hints at its shortcut while empty, and clears what was typed on request', async () => {
     const { fixture, element, input, search } = await create();
-    expect(said(element, 'kbd')).toEqual(['Ctrl K']);
+    expect(said(element, 'kbd')).toEqual(['Ctrl + K']);
 
     await search('ha');
     expect(element.querySelector('kbd')).toBeNull();
@@ -207,7 +207,7 @@ describe('GameSearch', () => {
     await fixture.whenStable();
 
     expect(input.value).toBe('');
-    expect(said(element, 'kbd')).toEqual(['Ctrl K']);
+    expect(said(element, 'kbd')).toEqual(['Ctrl + K']);
   });
 
   it('takes the focus on Ctrl+K from anywhere; Escape gives up what was typed, then the focus', async () => {
