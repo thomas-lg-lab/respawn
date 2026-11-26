@@ -189,6 +189,12 @@ describe('Game', () => {
         each.textContent.trim(),
       ),
     ).toEqual(['Factorio', 'Elden Ring', 'Balatro']);
+    // The other games lead to their pages; the page's own is no link to itself.
+    expect(
+      [...screen.querySelectorAll('[data-month-games] [data-name]')].map((each) =>
+        each.getAttribute('href'),
+      ),
+    ).toEqual(['/games/a', null, '/games/b']);
   });
 
   it('says another month once it is pressed', async () => {
