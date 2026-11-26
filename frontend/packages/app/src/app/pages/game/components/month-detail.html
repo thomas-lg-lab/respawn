@@ -33,14 +33,22 @@
         data-month-games
       >
         @for (row of rows(); track row.id) {
-          <li class="flex min-h-6 items-center gap-3 tabular-nums" [attr.data-game]="row.id">
-            <span
-              class="w-30 shrink-0 truncate wide:w-37.5"
-              [class.font-semibold]="row.own"
-              [class.text-muted]="!row.own"
-              data-name
-              >{{ row.name ?? t('unnamed') }}</span
-            >
+          <li
+            class="relative flex min-h-6 items-center gap-3 tabular-nums"
+            [attr.data-game]="row.id"
+          >
+            @if (row.own) {
+              <span class="w-30 shrink-0 truncate font-semibold wide:w-37.5" data-name>{{
+                row.name ?? t('unnamed')
+              }}</span>
+            } @else {
+              <a
+                class="w-30 shrink-0 truncate text-muted after:absolute after:inset-0 hover:text-text hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus wide:w-37.5"
+                data-name
+                [routerLink]="gamePage(row.id)"
+                >{{ row.name ?? t('unnamed') }}</a
+              >
+            }
             <rs-segmented-bar
               class="flex-1"
               [quiet]="!row.own"
