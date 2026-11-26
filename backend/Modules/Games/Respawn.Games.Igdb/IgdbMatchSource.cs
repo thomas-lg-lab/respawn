@@ -99,7 +99,8 @@ internal sealed class IgdbMatchSource(IgdbClient igdb, TimeProvider clock) : IGa
                 if (row.ValueKind == JsonValueKind.Object
                     && row.TryGetProperty("uid", out var uid) && uid.ValueKind == JsonValueKind.String
                     && uid.GetString() is { } externalId && asked.Contains(externalId)
-                    && row.TryGetProperty("game", out var game) && game.TryGetInt64(out var gameId) && gameId > 0)
+                    && row.TryGetProperty("game", out var game) && game.ValueKind == JsonValueKind.Number
+                    && game.TryGetInt64(out var gameId) && gameId > 0)
                 {
                     matches.Add(new GameMatch(externalId, gameId.ToString(CultureInfo.InvariantCulture)));
                 }

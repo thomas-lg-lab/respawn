@@ -232,6 +232,58 @@ public sealed class IgdbTests : IDisposable
     }
 
     [Fact]
+    public async Task A_row_whose_game_is_not_a_number_says_nothing()
+    {
+        var igdb = new FakeIgdb
+        {
+            Body = """
+                [{"id":1,"game":null,"uid":"620","external_game_source":1},
+                 {"id":2,"game":{"id":72},"uid":"620","external_game_source":1},
+                 {"id":3,"game":"233","uid":"220","external_game_source":1},
+                 {"id":4,"game":71,"uid":"400","external_game_source":1}]
+                """,
+        };
+        await using var app = await igdb.StartAppAsync();
+
+        var reading = await Source(app).MatchAsync("steam", AppIds, default);
+
+        Assert.Equal([new GameMatch("400", "71")], reading.Matches);
+    }
+
+    [Theory]
+    [InlineData("""{"access_token":"fake0token0nobodys0token000000","expires_in":"5039234"}""")]
+    [InlineData("""{"access_token":"fake0token0nobodys0token000000","expires_in":null}""")]
+    public async Task A_token_whose_life_is_not_a_number_is_unreadable(string body)
+    {
+        var igdb = new FakeIgdb { TokenBody = body };
+        await using var app = await igdb.StartAppAsync();
+
+        var refusal = await Assert.ThrowsAsync<SourceException>(() => Source(app).MatchAsync("steam", AppIds, default));
+
+        Assert.Equal(SourceError.Unreadable, refusal.Error);
+        Assert.Empty(igdb.Requests);
+    }
+
+    [Fact]
+    public async Task A_question_given_up_while_it_waits_gives_its_turn_back()
+    {
+        var igdb = new FakeIgdb();
+        await using var app = await igdb.StartAppAsync();
+        await Source(app).MatchAsync("steam", AppIds, default);
+        var watch = Stopwatch.StartNew();
+
+        // The second waits for its turn, a quarter of a second after the first, and gives up before.
+        using var giveUp = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Source(app).MatchAsync("steam", AppIds, giveUp.Token));
+        await Source(app).MatchAsync("steam", AppIds, default);
+        watch.Stop();
+
+        // The third takes the turn the second gave back, not the one after it.
+        Assert.Equal(2, igdb.Requests.Count);
+        Assert.True(watch.Elapsed < TimeSpan.FromMilliseconds(400), $"the third question waited {watch.Elapsed}");
+    }
+
+    [Fact]
     public async Task Igdb_out_of_reach_may_be_asked_again()
     {
         var igdb = new FakeIgdb { Unreachable = true };

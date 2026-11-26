@@ -138,7 +138,8 @@ internal sealed class IgdbClient(IHttpClientFactory http, Func<IgdbOptions> opti
             if (root.ValueKind == JsonValueKind.Object
                 && root.TryGetProperty("access_token", out var value) && value.ValueKind == JsonValueKind.String
                 && value.GetString() is { } token && IgdbOptions.IsCredential(token)
-                && root.TryGetProperty("expires_in", out var expires) && expires.TryGetInt64(out var seconds) && seconds > 0)
+                && root.TryGetProperty("expires_in", out var expires) && expires.ValueKind == JsonValueKind.Number
+                && expires.TryGetInt64(out var seconds) && seconds > 0)
             {
                 var life = TimeSpan.FromSeconds(Math.Min(seconds, (long)TimeSpan.FromDays(3650).TotalSeconds));
                 var margin = life / 10 < Renewal ? life / 10 : Renewal;
@@ -178,21 +179,41 @@ internal sealed class IgdbClient(IHttpClientFactory http, Func<IgdbOptions> opti
     }
 
     /// <summary>Waits for this request's turn: one starts every <see cref="Spacing"/> at most, by the
-    /// machine's own time, which is IGDB's measure, whatever the app's clock says.</summary>
+    /// machine's own time, which is IGDB's measure, whatever the app's clock says. A caller that gives up
+    /// while it waits gives its turn back when no one took the next one yet.</summary>
     private async Task PaceAsync(CancellationToken ct)
     {
         TimeSpan wait;
+        long start, next;
         lock (_pace)
         {
             var now = Stopwatch.GetTimestamp();
-            var start = Math.Max(now, _nextStart);
-            _nextStart = start + (long)(Spacing.TotalSeconds * Stopwatch.Frequency);
+            start = Math.Max(now, _nextStart);
+            next = start + (long)(Spacing.TotalSeconds * Stopwatch.Frequency);
+            _nextStart = next;
             wait = Stopwatch.GetElapsedTime(now, start);
         }
 
-        if (wait > TimeSpan.Zero)
+        if (wait <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        try
         {
             await Task.Delay(wait, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            lock (_pace)
+            {
+                if (_nextStart == next)
+                {
+                    _nextStart = start;
+                }
+            }
+
+            throw;
         }
     }
 
@@ -289,8 +310,13 @@ internal sealed class IgdbClient(IHttpClientFactory http, Func<IgdbOptions> opti
         };
     }
 
-    /// <summary>A token, the access it was given for, and when to ask for a new one.</summary>
-    private sealed record Token((string ClientId, string ClientSecret) Access, string Value, DateTimeOffset RenewAt);
+    /// <summary>A token, the access it was given for, and when to ask for a new one. Written out, it
+    /// shows neither the secret nor the token.</summary>
+    private sealed record Token((string ClientId, string ClientSecret) Access, string Value, DateTimeOffset RenewAt)
+    {
+        public override string ToString() =>
+            string.Create(CultureInfo.InvariantCulture, $"Token {{ RenewAt = {RenewAt:O} }}");
+    }
 
     private sealed record Answer(HttpStatusCode Status, byte[]? Bytes, DateTimeOffset TakenAt);
 }
