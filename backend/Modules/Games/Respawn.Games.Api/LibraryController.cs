@@ -149,7 +149,8 @@ public sealed class LibraryController(ILibraryService library, IPlaytimeService 
     [EndpointDescription(
         "One item per game, by name, with the entries taken out. back_since is the notice to show: a "
         + "store lists the game again since that date, and the notice was not dismissed. A game taken "
-        + "out is in no other answer of the library.")]
+        + "out is not in the library, its figures or its history; a store's review of a year still counts "
+        + "what was played of it.")]
     [ProducesResponseType<RemovedGamesResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<RemovedGamesResponse> Removed(CancellationToken ct) =>

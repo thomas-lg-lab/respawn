@@ -190,7 +190,10 @@ public sealed class LibraryTests
         Assert.Equal((HttpStatusCode.NotFound, "not_in_library"), await other.DeleteAsync(game).RefusalAsync());
         Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
 
+        // Taken out an hour after the reading that left it out, before the readings that follow.
+        clock.Set(Day(2).AddHours(1));
         Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(game).StatusAsync());
+        clock.Set(Day(20));
         Assert.Equal(["Portal 2"], await NamesAsync(browser));
         Assert.Equal((1, 0), ((await StatsAsync(browser)).Games, (await StatsAsync(browser)).Missing));
         Assert.Equal((HttpStatusCode.NotFound, "not_in_library"), await browser.DeleteAsync(game).RefusalAsync());
@@ -202,7 +205,7 @@ public sealed class LibraryTests
         Assert.Equal(
             (portal, account.Id, "steam", "400", null, null),
             (taken.GetProperty("store_entry_id").GetGuid(), taken.GetProperty("linked_account_id").GetGuid(), taken.GetProperty("source").GetString(), taken.GetProperty("external_id").GetString(), Date(taken, "listed_again_since"), Date(taken, "notice_dismissed_at")));
-        Assert.InRange(Date(taken, "removed_at")!.Value, Day(20), Day(21));
+        Assert.InRange(Date(taken, "removed_at")!.Value, Day(2), Day(3));
         var seen = await browser.GetAsync($"/api/v1/games/{entry.GameId}").JsonAsync();
         Assert.Empty(seen.GetProperty("entries").EnumerateArray());
         Assert.Equal(entry.GameId, seen.GetProperty("removed").GetProperty("game_id").GetGuid());
@@ -293,6 +296,53 @@ public sealed class LibraryTests
         // Unlinking the account forgets what was taken out of it with the rest.
         Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/linked-accounts/{first.Id}").StatusAsync());
         Assert.Empty(await RemovedAsync(browser));
+    }
+
+    [Fact]
+    public async Task A_notice_is_the_games_whichever_entry_is_listed_again_and_an_old_reading_raises_none()
+    {
+        var clock = new LibraryClock();
+        clock.Set(Day(10));
+        await using var app = await StartAsync(clock);
+        using var browser = app.Browser();
+        var owner = await OwnerAsync(browser);
+        var first = await LinkAsync(app, owner, "76561190000000001");
+        var second = await LinkAsync(app, owner, "76561190000000002");
+        foreach (var account in new[] { first, second })
+        {
+            await ReadAsync(app, account.Id, Day(1), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
+            await ReadAsync(app, account.Id, Day(2), complete: true, ("620", "Portal 2", 90, null));
+        }
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        var game = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).GameId;
+        async Task<DateTimeOffset?> BackSinceAsync() => Date(Assert.Single(await RemovedAsync(browser)), "back_since");
+
+        // Both entries are missing: both go, on the tenth day.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/library/games/{game}").StatusAsync());
+        Assert.Equal(2, Assert.Single(await RemovedAsync(browser)).GetProperty("entries").GetArrayLength());
+        clock.Set(Day(20));
+
+        // A reading from before that day, arriving late, lists it: nothing new to tell its owner.
+        await ReadAsync(app, first.Id, Day(3), complete: false, ("400", "Portal", 35, null));
+        Assert.Null(await BackSinceAsync());
+
+        // One taken since does, whole library or not; one that says nothing of the game changes nothing.
+        await ReadAsync(app, first.Id, Day(11), complete: false, ("400", "Portal", 40, null));
+        await ReadAsync(app, first.Id, Day(12), complete: false, ("620", "Portal 2", 90, null));
+        Assert.Equal(Day(11), await BackSinceAsync());
+
+        // Dismissed for the game: the other entry, listed later by its own store, raises none.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/library/removed/{game}/notice").StatusAsync());
+        Assert.All(
+            Assert.Single(await RemovedAsync(browser)).GetProperty("entries").EnumerateArray(),
+            entry => Assert.NotNull(Date(entry, "notice_dismissed_at")));
+        await ReadAsync(app, second.Id, Day(13), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
+        Assert.Null(await BackSinceAsync());
+        Assert.Equal(
+            new DateTimeOffset?[] { Day(11), Day(13) },
+            Assert.Single(await RemovedAsync(browser)).GetProperty("entries").EnumerateArray().Select(entry => Date(entry, "listed_again_since")).Order());
     }
 
     [Fact]

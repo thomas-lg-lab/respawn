@@ -249,18 +249,18 @@ public sealed class LibraryService(
         unitOfWork.RunAsync(
             async () =>
             {
-                var back = (await RemovedAsync(ownerId, gameId, ct))
-                    .Where(owned => owned.Ownership.ListedAgainSince is not null)
-                    .ToList();
-                if (back.Count == 0)
+                var removed = await RemovedAsync(ownerId, gameId, ct);
+                if (removed.TrueForAll(owned => owned.Ownership.ListedAgainSince is null))
                 {
                     throw new GamesException(GamesError.NotBack);
                 }
 
+                // The notice is the game's: every entry taken out, or one a store lists later
+                // would raise it again.
                 var now = clock.GetUtcNow();
                 await library.SaveAsync(
                     [
-                        .. back.Where(owned => owned.Ownership.NoticeDismissedAt is null)
+                        .. removed.Where(owned => owned.Ownership.NoticeDismissedAt is null)
                             .Select(owned => owned with { Ownership = owned.Ownership with { NoticeDismissedAt = now } }),
                     ],
                     ct);
@@ -337,7 +337,7 @@ public sealed class LibraryService(
     /// listed is no longer missing, unless a complete reading left it out more recently than this
     /// one: a reading that arrives late does not undo what is known since. Listing a game never
     /// brings it back into a library its owner took it out of: it is noted as listed again, since the
-    /// earliest reading that did, and the owner decides. One date cannot say both "since the earliest reading that left
+    /// earliest reading that did after it was taken out, and the owner decides. One date cannot say both "since the earliest reading that left
     /// it out" and "since it was last listed": readings that arrive out of order, between two that
     /// left the game out, may clear the note or date it wrongly, until the next complete reading sets
     /// it again. Nothing reads the past yet.</summary>
@@ -347,7 +347,11 @@ public sealed class LibraryService(
         var firstSeen = current is not null && current.FirstSeenAt < takenAt ? current.FirstSeenAt : takenAt;
         var goneSince = current?.UnlistedSince;
         var missingSince = current?.MissingSince > takenAt ? current.MissingSince : null;
-        DateTimeOffset? listedAgainSince = goneSince is null || missingSince is not null ? null : current?.ListedAgainSince ?? takenAt;
+
+        // A reading from before its owner took the game out tells them nothing new: no notice.
+        DateTimeOffset? listedAgainSince = goneSince is null || missingSince is not null
+            ? null
+            : current?.ListedAgainSince ?? (takenAt >= goneSince ? takenAt : null);
         return new Ownership(
             entry,
             silent ? current?.Playtime : item.Playtime,

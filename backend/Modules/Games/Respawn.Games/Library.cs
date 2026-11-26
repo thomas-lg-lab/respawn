@@ -104,10 +104,11 @@ public sealed record Observation(
 /// still agrees with itself: nothing here can tell which). A game of the library stays in it, flagged;
 /// null once a reading lists it again. Kept up to date for a game out of the library too.</param>
 /// <param name="ListedAgainSince">For a game out of the library, the date of the earliest reading that
-/// listed it again, while none has left it out since: the store has it back, and its owner is told.
-/// Null in the library.</param>
-/// <param name="NoticeDismissedAt">When its owner said they do not want to be told it is back, for
-/// good: whatever the store says afterwards. Null in the library.</param>
+/// listed it again, taken after it left, while none has left it out since: the store has it back, and
+/// its owner is told. Null in the library.</param>
+/// <param name="NoticeDismissedAt">When its owner said they do not want to be told the game is back,
+/// for good: whatever a store says afterwards, of this entry or of another taken out with it. Null in
+/// the library.</param>
 public sealed record Ownership(
     Guid StoreEntryId,
     TimeSpan? Playtime,
