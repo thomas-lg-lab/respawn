@@ -26,7 +26,8 @@ public enum GamesError
     /// <summary>The catalogue has no such game.</summary>
     UnknownGame,
 
-    /// <summary>No source has a cover for the game.</summary>
+    /// <summary>No source has a cover for the game. Never thrown: an answer of its own
+    /// (<see cref="CoverAnswer"/>), named here for the refusal it becomes.</summary>
     NoCover,
 }
 

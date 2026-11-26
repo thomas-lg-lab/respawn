@@ -285,12 +285,20 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
     {
         var entries = await db.StoreEntries.AsNoTracking()
             .Where(e => e.GameId == gameId)
-            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath))
+            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath, e.CoverAskedAt != null))
             .ToListAsync(ct);
 
         // A game most often has an entry: the second question is for the id that is no game's.
         return entries.Count > 0 || await db.Games.AnyAsync(g => g.Id == gameId, ct) ? entries : null;
     }
+
+    public async Task<IReadOnlyList<Guid>> ListAccountsWithCoverPathsDueAsync(DateTimeOffset askedBefore, CancellationToken ct) =>
+        await db.Ownerships.AsNoTracking()
+            .Join(db.StoreEntries.AsNoTracking(), o => o.StoreEntryId, e => e.Id, (o, e) => new { o.LinkedAccountId, e.CoverAskedAt })
+            .Where(row => row.CoverAskedAt == null || row.CoverAskedAt < askedBefore)
+            .Select(row => row.LinkedAccountId)
+            .Distinct()
+            .ToListAsync(ct);
 
     public async Task<IReadOnlyList<CoverEntry>> ListCoverPathsDueAsync(Guid linkedAccountId, DateTimeOffset askedBefore, CancellationToken ct) =>
         await db.Ownerships.AsNoTracking()
@@ -298,7 +306,7 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             .Join(db.StoreEntries.AsNoTracking(), o => o.StoreEntryId, e => e.Id, (o, e) => e)
             .Where(e => e.CoverAskedAt == null || e.CoverAskedAt < askedBefore)
             .OrderBy(e => e.Id)
-            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath))
+            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath, e.CoverAskedAt != null))
             .ToListAsync(ct);
 
     public async Task SetCoverPathsAsync(IReadOnlyCollection<CoverPath> paths, DateTimeOffset at, CancellationToken ct)
@@ -314,7 +322,16 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             }
         }
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            // What could not be kept is not left to be written by whatever saves next in this scope.
+            db.ChangeTracker.Clear();
+            throw;
+        }
     }
 }
 

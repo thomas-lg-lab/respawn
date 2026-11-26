@@ -124,7 +124,7 @@ and adapters around it.
 | `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, the sync, the import of a store's yearly reviews, the covers, and the ports they need | nothing; no package |
 | `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core, and the encryption of the store keys users give (libsodium) | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` and `IYearReviewSource`, and Steam's store and image host, asked with no key, behind `ICoverSource` | its core only |
-| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, the schedules of the sync and of the import of the yearly reviews (two timers in the app's process), and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, the schedules of the sync, of the import of the yearly reviews and of the covers' places (three timers in the app's process), and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Respawn.Tests` | the tests of the host and of the solution as a whole: the runtime contract, the database connection, the architecture rules | everything |
 | `Respawn.Testing` | what every test project shares: the app started in-process, the test database; not a test project | the host |

@@ -37,8 +37,9 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
     /// <summary>The folder of every app's images on Steam's image host.</summary>
     public static readonly Uri Images = new("https://shared.steamstatic.com/store_item_assets/steam/apps/");
 
-    /// <summary>The most connections kept to the image host at once: a screen of covers asked for
-    /// together waits here rather than opening as many connections to Steam.</summary>
+    /// <summary>The most images asked of the image host at once, and so the most connections kept to
+    /// it: a screen of covers asked for together waits its turn here, before the time the host has
+    /// to answer starts, rather than opening as many connections to Steam.</summary>
     public const int MaxConnections = 16;
 
     /// <summary>How long the image host has to answer, body included.</summary>
@@ -46,6 +47,9 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
 
     /// <summary>Where every game's cover was before the store gave each image a folder of its own.</summary>
     private static readonly string[] FixedPaths = ["library_600x900.jpg", "portrait.png"];
+
+    /// <summary>The turns at the image host. Never disposed: the source lives as long as the app.</summary>
+    private readonly SemaphoreSlim _turns = new(MaxConnections, MaxConnections);
 
     public string Source => "steam";
 
@@ -62,7 +66,18 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
         string[] places = path is not null && IsPath(path) ? [path, .. FixedPaths.Where(place => place != path)] : FixedPaths;
         foreach (var place in places)
         {
-            var (status, bytes) = await steam.GetImageAsync($"{externalId}/{place}", ct);
+            HttpStatusCode status;
+            byte[]? bytes;
+            await _turns.WaitAsync(ct);
+            try
+            {
+                (status, bytes) = await steam.GetImageAsync($"{externalId}/{place}", ct);
+            }
+            finally
+            {
+                _turns.Release();
+            }
+
             if (status == HttpStatusCode.OK)
             {
                 // What is there and is no image is no cover: too large, or bytes that are not an
@@ -91,9 +106,14 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(externalIds.Count, PathsPerRequest);
         string[] ids = [.. externalIds.Where(IsAppId).Distinct(StringComparer.Ordinal)];
+
+        // What is no app id is no game of the store: said as such, without asking, so that it is not
+        // asked about again at every sync.
+        var none = externalIds.Where(id => !IsAppId(id)).Distinct(StringComparer.Ordinal)
+            .ToDictionary(id => id, _ => (string?)null, StringComparer.Ordinal);
         if (ids.Length == 0)
         {
-            return new Dictionary<string, string?>(StringComparer.Ordinal);
+            return none;
         }
 
         // The assets only: prices, tags and the rest are not asked for. The language and the country
@@ -103,7 +123,13 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
             .Append("],\"context\":{\"language\":\"english\",\"country_code\":\"US\"},\"data_request\":{\"include_assets\":true}}")
             .ToString();
         var body = await steam.GetOpenAsync("IStoreBrowseService/GetItems/v1/?input_json=" + Uri.EscapeDataString(asked), ct);
-        return Paths(body, ids);
+        var paths = Paths(body, ids);
+        foreach (var id in none.Keys)
+        {
+            paths[id] = null;
+        }
+
+        return paths;
     }
 
     /// <summary>What an answer says of the covers' places, for the games asked about and no other: a

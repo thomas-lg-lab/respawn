@@ -427,7 +427,7 @@ export interface paths {
         };
         /**
          * A game's cover
-         * @description The cover as an image, fetched from a source of the game each time it is asked for: the instance keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Any signed-in account may ask for the cover of any game.
+         * @description The cover as an image, fetched from a source of the game each time it is asked for: the instance keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in account may ask for the cover of any game; a client that asks for too many at once is answered 429.
          */
         get: {
             parameters: {
@@ -447,9 +447,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "image/jpeg": components["schemas"]["FileContentResult"];
-                        "image/png": components["schemas"]["FileContentResult"];
-                        "image/webp": components["schemas"]["FileContentResult"];
+                        "image/jpeg": components["schemas"]["Stream"];
+                        "image/png": components["schemas"]["Stream"];
+                        "image/webp": components["schemas"]["Stream"];
                     };
                 };
                 /** @description Unauthorized */
@@ -463,6 +463,15 @@ export interface paths {
                 };
                 /** @description Not Found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1138,8 +1147,6 @@ export interface components {
         ErrorResponse: {
             error?: components["schemas"]["ErrorBody"];
         };
-        /** Format: binary */
-        FileContentResult: string;
         HistoryDayResponse: {
             /** Format: date */
             date: string;
@@ -1258,6 +1265,8 @@ export interface components {
             theme: string;
             character: string;
         };
+        /** Format: binary */
+        Stream: string;
         SyncRunResponse: {
             /** Format: uuid */
             id: string;

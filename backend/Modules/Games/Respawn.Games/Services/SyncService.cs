@@ -4,15 +4,13 @@ namespace Respawn.Games.Services;
 
 /// <summary>The sync: a connector reads a linked account's library, <see cref="ILibraryService"/> records
 /// it, and the run is kept with its outcome, in one transaction with what was recorded. Nothing is tried
-/// twice here: the schedule decides when a failed reading is made again. A library kept, the store is
-/// asked where the covers of its games are (<see cref="ICoverService.ReadCoverPathsAsync"/>).</summary>
+/// twice here: the schedule decides when a failed reading is made again.</summary>
 public sealed class SyncService(
     IUnitOfWork unitOfWork,
     ILinkedAccountStore linkedAccounts,
     ICredentialStore credentials,
     ISyncRunStore runs,
     ILibraryService library,
-    ICoverService covers,
     IEnumerable<ILibrarySource> sources,
     SyncGate gate,
     TimeProvider clock) : ISyncService
@@ -176,12 +174,11 @@ public sealed class SyncService(
 
         if (reading is not null)
         {
-            SyncRun? kept = null;
             try
             {
                 // The answer, what it becomes and the run, together or not at all: a reading kept
                 // without its run would be made again, and a run without its reading would lie.
-                kept = await KeepAsync(account, async () =>
+                return await KeepAsync(account, async () =>
                 {
                     var snapshot = await library.RecordLibraryAsync(account.Id, reading, ct);
                     return Ended(reading.Items.Count > 0 ? SyncOutcome.Succeeded : SyncOutcome.NothingVisible, snapshot: snapshot);
@@ -193,37 +190,10 @@ public sealed class SyncService(
                 // would ask the store again at every turn.
                 failed = Ended(SyncOutcome.Failed, SourceError.Unreadable, "the reading could not be recorded: " + ex.Message);
             }
-
-            if (kept is not null)
-            {
-                await AskCoversAsync(account, ct);
-                return kept;
-            }
         }
 
         return await KeepAsync(account, () => Task.FromResult(failed!), ct);
     }
-
-    /// <summary>Where the store says the covers of the library's games are, asked once the library is
-    /// kept and apart from it. Nothing that goes wrong here is the sync's: the run is kept and says
-    /// what the reading was. A store that does not say, one that takes too long
-    /// (<see cref="CoverSchedule.Budget"/>) or an answer that cannot be kept leaves games to ask about
-    /// at the next sync, and their covers are found without their place, where the connector can.</summary>
-#pragma warning disable CA1031 // whatever fails after the run is kept must not make a sync that ended look like one that did not
-    private async Task AskCoversAsync(LinkedAccount account, CancellationToken ct)
-    {
-        using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        budget.CancelAfter(CoverSchedule.Budget);
-        try
-        {
-            await covers.ReadCoverPathsAsync(account.Id, budget.Token);
-        }
-        catch (Exception) when (!ct.IsCancellationRequested)
-        {
-            // The caller giving up is the only thing that goes through.
-        }
-    }
-#pragma warning restore CA1031
 
     private Task<SyncRun> KeepAsync(LinkedAccount account, Func<Task<SyncRun>> ended, CancellationToken ct) =>
         unitOfWork.RunAsync(

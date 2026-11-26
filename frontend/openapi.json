@@ -336,7 +336,7 @@
           "Games"
         ],
         "summary": "A game's cover",
-        "description": "The cover as an image, fetched from a source of the game each time it is asked for: the instance keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Any signed-in account may ask for the cover of any game.",
+        "description": "The cover as an image, fetched from a source of the game each time it is asked for: the instance keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in account may ask for the cover of any game; a client that asks for too many at once is answered 429.",
         "parameters": [
           {
             "name": "id",
@@ -355,17 +355,17 @@
             "content": {
               "image/jpeg": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileContentResult"
+                  "$ref": "#/components/schemas/Stream"
                 }
               },
               "image/png": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileContentResult"
+                  "$ref": "#/components/schemas/Stream"
                 }
               },
               "image/webp": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileContentResult"
+                  "$ref": "#/components/schemas/Stream"
                 }
               }
             }
@@ -382,6 +382,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -1050,10 +1060,6 @@
           }
         }
       },
-      "FileContentResult": {
-        "type": "string",
-        "format": "binary"
-      },
       "HistoryDayResponse": {
         "required": [
           "date",
@@ -1491,6 +1497,10 @@
             "type": "string"
           }
         }
+      },
+      "Stream": {
+        "type": "string",
+        "format": "binary"
       },
       "SyncRunResponse": {
         "required": [

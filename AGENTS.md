@@ -38,7 +38,7 @@
   store's yearly reviews, apart from the sync and never needed by it (`YearReviewService`, and
   `YearReviewScheduler` in `.Api`), and the covers (`CoverService`: an image is asked of a source at each
   request and passed on, never kept; what is kept is where a store says a cover is, a short text asked
-  after a sync); and its connectors, one
+  on a schedule of its own, `CoverScheduler` in `.Api`, never by the sync); and its connectors, one
   project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API, and
   with no key Steam's store and its image host), tested
   against recorded answers under `Recorded/`, never against the source.

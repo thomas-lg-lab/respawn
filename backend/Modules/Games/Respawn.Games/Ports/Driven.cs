@@ -70,6 +70,10 @@ public interface ICatalogue
     /// Null when the catalogue has no such game.</summary>
     Task<IReadOnlyList<CoverEntry>?> FindCoverEntriesAsync(Guid gameId, CancellationToken ct);
 
+    /// <summary>The linked accounts that own at least one store entry whose store was never asked
+    /// where its cover is, or was asked before <paramref name="askedBefore"/>, in no order.</summary>
+    Task<IReadOnlyList<Guid>> ListAccountsWithCoverPathsDueAsync(DateTimeOffset askedBefore, CancellationToken ct);
+
     /// <summary>The store entries a linked account owns whose store was never asked where their cover
     /// is, or was asked before <paramref name="askedBefore"/>, in no order.</summary>
     Task<IReadOnlyList<CoverEntry>> ListCoverPathsDueAsync(Guid linkedAccountId, DateTimeOffset askedBefore, CancellationToken ct);
@@ -191,8 +195,8 @@ public interface ICoverSource
 
     /// <summary>Where the store says the covers of these games are, by the game's id in the store: a
     /// short text the connector understands, never an image nor a whole address; null for a game the
-    /// store answers about and knows no cover of, or does not know. A game the answer says nothing
-    /// about is left out: nothing was learnt of it, and it is to ask about again.</summary>
+    /// store answers about and knows no cover of, or does not know, and for an id that cannot be a
+    /// game of the store, which is not sent. A game the answer says nothing about is left out.</summary>
     /// <param name="externalIds">At most <see cref="PathsPerRequest"/> ids.</param>
     /// <param name="ct">Gives up.</param>
     /// <exception cref="SourceException">The store could not be read.</exception>
