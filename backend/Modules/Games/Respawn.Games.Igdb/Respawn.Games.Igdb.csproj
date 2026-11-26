@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The IGDB connector: an outbound adapter of the Games module that asks IGDB what it knows of the
+       stores' games, with a token Twitch gives the instance. It only knows the module's core, so it can
+       leave the repository one day. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Respawn.Games\Respawn.Games.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="11.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Respawn.Games.Tests" />
+  </ItemGroup>
+
+</Project>

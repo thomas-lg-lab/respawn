@@ -117,7 +117,7 @@ What the app expects from where it runs:
 | Filesystem | read-only root filesystem; nothing is written outside `/tmp` and, when `RESPAWN_DATA_DIR` is set, that directory (the covers; `/data` in the image, owned by its user) |
 | User | any non-root user (the image runs as 10001) |
 | Logs | stdout |
-| Secrets | the database connection string, the Steam Web API key and the encryption key, each from the environment or a mounted file; none is needed to start |
+| Secrets | the database connection string, the Steam Web API key, the encryption key and, optional, IGDB's client id and secret, each from the environment or a mounted file; none is needed to start |
 
 ## Configuration
 
@@ -130,6 +130,8 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_PUBLIC_URL` | none | The address the instance is reached at, scheme and host (`https://respawn.example.org`). Set it behind a reverse proxy: linking a Steam account and signing in through a provider send the browser to Steam or the provider, which send it back to this address. Without it, the address of the request is used |
 | `RESPAWN_STEAM_API_KEY` | none | The instance's [Steam Web API key](https://steamcommunity.com/dev/apikey), which reads the libraries of the linked Steam accounts. A user may give their own key on their linked account, which is then the only one that reads it. Without either, no Steam library is read |
 | `RESPAWN_STEAM_API_KEY_FILE` | `/secrets/steam-api-key` | File holding the key, read when the variable is not set, and read again at each reading |
+| `RESPAWN_IGDB_CLIENT_ID`, `RESPAWN_IGDB_CLIENT_SECRET` | none | The client id and secret of a [Twitch application](https://dev.twitch.tv/console/apps), the instance's access to [IGDB](https://api-docs.igdb.com/), the database of games that will bring genres, descriptions, durations and covers. Optional: without both, IGDB is never asked anything. Nothing is read from IGDB yet |
+| `RESPAWN_IGDB_CLIENT_ID_FILE`, `RESPAWN_IGDB_CLIENT_SECRET_FILE` | `/secrets/igdb-client-id`, `/secrets/igdb-client-secret` | Files holding them, read when the variables are not set, and read again each time IGDB is asked |
 | `RESPAWN_ENCRYPTION_KEY` | none | 32 random bytes in base64 (`openssl rand -base64 32`; a placeholder such as all zeros is refused), which encrypt the Steam Web API keys users give on their own linked accounts. Without it, nobody can give one. Changed or lost, the keys already given can no longer be read: their syncs fail until each user gives their key again |
 | `RESPAWN_ENCRYPTION_KEY_FILE` | `/secrets/encryption-key` | File holding the encryption key, read when the variable is not set, and read again each time it is needed |
 | `RESPAWN_COOKIE_SECURE` | `true` | Session cookie sent over HTTPS only; `false` for plain HTTP on localhost |
@@ -330,7 +332,7 @@ adapters around it.
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts, what a navigation may come back to |
 | `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity) and its API, which runs the sign-in through a provider |
-| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, the sync that reads each library once a day, the import of a store's yearly reviews, the covers, fetched when asked for and kept as files when the instance has a data directory, and what is read back of it all: the library, one game as its owner sees it, and the time played by year, by month of a game and by game of a month, counted by one rule; and its connectors, one project per outside source behind a port of the core (`Respawn.Games.Steam`) |
+| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, the sync that reads each library once a day, the import of a store's yearly reviews, the covers, fetched when asked for and kept as files when the instance has a data directory, and what is read back of it all: the library, one game as its owner sees it, and the time played by year, by month of a game and by game of a month, counted by one rule; and its connectors, one project per outside source behind a port of the core (`Respawn.Games.Steam`, `Respawn.Games.Igdb`) |
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 | [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API: its types, its client and each feature's queries) |

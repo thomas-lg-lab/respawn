@@ -43,7 +43,8 @@
   (`GameService`), and the time played by year, by month of a game and by game of a month, counted by one
   rule (`PlaytimeService`); and its connectors, one
   project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API, and
-  with no key Steam's store and its image host), tested
+  with no key Steam's store and its image host; `Respawn.Games.Igdb`: IGDB, with the token Twitch gives the
+  instance, optional), tested
   against recorded answers under `Recorded/`, never against the source.
   One test project per module (`Modules/<Name>/Respawn.<Name>.Tests`), `Respawn.Tests` for the host and the
   architecture rules, `Respawn.Testing` for what they share; they start the real app against a real PostgreSQL.

@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Respawn.Games\Respawn.Games.csproj" />
     <ProjectReference Include="..\Respawn.Games.Api\Respawn.Games.Api.csproj" />
     <ProjectReference Include="..\Respawn.Games.Infrastructure\Respawn.Games.Infrastructure.csproj" />
+    <ProjectReference Include="..\Respawn.Games.Igdb\Respawn.Games.Igdb.csproj" />
     <ProjectReference Include="..\Respawn.Games.Steam\Respawn.Games.Steam.csproj" />
   </ItemGroup>
 

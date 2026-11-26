@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Respawn.Games;
 using Respawn.Games.Api;
+using Respawn.Games.Igdb;
 using Respawn.Games.Infrastructure;
 using Respawn.Games.Ports;
 using Respawn.Games.Services;
@@ -36,6 +37,8 @@ internal static class GamesModule
         services.AddGamesInfrastructure(provider => RespawnSettings.Encryption(provider.GetRequiredService<IConfiguration>()));
         services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));
+        // IGDB, when the instance is given a client id and secret: what is known of the games.
+        services.AddIgdbConnector(provider => RespawnSettings.Igdb(provider.GetRequiredService<IConfiguration>()));
 
         // Giving or taking away an owner's own key, and coming back from Steam: a bucket of its own for
         // each, per client address, at the pace of the sign-in routes. A key is given once in a while,

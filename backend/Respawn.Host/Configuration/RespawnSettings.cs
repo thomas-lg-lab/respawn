@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Respawn.Accounts;
+using Respawn.Games.Igdb;
 using Respawn.Games.Infrastructure.Credentials;
 using Respawn.Games.Steam;
 using Respawn.Persistence;
@@ -62,6 +63,14 @@ internal static partial class RespawnSettings
     {
         ApiKey = configuration["RESPAWN_STEAM_API_KEY"],
         ApiKeyFile = configuration["RESPAWN_STEAM_API_KEY_FILE"] ?? "/secrets/steam-api-key",
+    };
+
+    public static IgdbOptions Igdb(IConfiguration configuration) => new()
+    {
+        ClientId = configuration["RESPAWN_IGDB_CLIENT_ID"],
+        ClientIdFile = configuration["RESPAWN_IGDB_CLIENT_ID_FILE"] ?? "/secrets/igdb-client-id",
+        ClientSecret = configuration["RESPAWN_IGDB_CLIENT_SECRET"],
+        ClientSecretFile = configuration["RESPAWN_IGDB_CLIENT_SECRET_FILE"] ?? "/secrets/igdb-client-secret",
     };
 
     /// <summary>The data directory, where the covers are kept; null when none is given, and the covers

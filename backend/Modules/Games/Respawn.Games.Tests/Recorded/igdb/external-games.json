@@ -1,0 +1,44 @@
+[
+  {
+    "id": 11306,
+    "game": 1942,
+    "uid": "292030",
+    "external_game_source": 1
+  },
+  {
+    "id": 15150,
+    "game": 72,
+    "uid": "620",
+    "external_game_source": 1
+  },
+  {
+    "id": 15156,
+    "game": 71,
+    "uid": "400",
+    "external_game_source": 1
+  },
+  {
+    "id": 15164,
+    "game": 233,
+    "uid": "220",
+    "external_game_source": 1
+  },
+  {
+    "id": 15175,
+    "game": 241,
+    "uid": "10",
+    "external_game_source": 1
+  },
+  {
+    "id": 322616,
+    "game": 866,
+    "uid": "8930",
+    "external_game_source": 1
+  },
+  {
+    "id": 2084186,
+    "game": 119133,
+    "uid": "1245620",
+    "external_game_source": 1
+  }
+]
