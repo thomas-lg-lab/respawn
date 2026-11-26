@@ -137,13 +137,13 @@ public sealed class LibraryService(
                     // The whole library, and these are not in it: noted, since the earliest reading
                     // that says so, unless something more recent lists them. Nothing is concluded:
                     // the answer may be cut short and still agree with itself, so the games stay.
+                    // A game its owner took out is noted the same way, and is no longer back.
                     var listed = items.Select(item => entries[item.ExternalId]).ToHashSet();
                     owned.AddRange(before.Values
                         .Where(absent => !listed.Contains(absent.StoreEntryId)
-                            && absent.UnlistedSince is null
                             && absent.AsOf <= takenAt
                             && (absent.MissingSince is null || absent.MissingSince > takenAt))
-                        .Select(absent => absent with { MissingSince = takenAt, RecentPlaytime = null }));
+                        .Select(absent => absent with { MissingSince = takenAt, RecentPlaytime = null, ListedAgainSince = null }));
                 }
 
                 await library.RecordAsync(account.Id, snapshot.Id, said, owned, ct);
@@ -201,6 +201,90 @@ public sealed class LibraryService(
             ]);
     }
 
+    public Task RemoveGameAsync(Guid ownerId, Guid gameId, CancellationToken ct) =>
+        unitOfWork.RunAsync(
+            async () =>
+            {
+                // Under the lock a reading takes: what the store last said is settled while this decides.
+                var inLibrary = (await library.FindGameOwnershipsAsync(ownerId, gameId, ct))
+                    .Where(owned => owned.Ownership.UnlistedSince is null)
+                    .ToList();
+                if (inLibrary.Count == 0)
+                {
+                    throw new GamesException(GamesError.NotInLibrary);
+                }
+
+                var missing = inLibrary.Where(owned => owned.Ownership.MissingSince is not null).ToList();
+                if (missing.Count == 0)
+                {
+                    throw new GamesException(GamesError.StillListed);
+                }
+
+                var now = clock.GetUtcNow();
+                await library.SaveAsync(
+                    [.. missing.Select(owned => owned with { Ownership = owned.Ownership with { UnlistedSince = now, RecentPlaytime = null } })],
+                    ct);
+                return true;
+            },
+            ct);
+
+    public Task RestoreGameAsync(Guid ownerId, Guid gameId, CancellationToken ct) =>
+        unitOfWork.RunAsync(
+            async () =>
+            {
+                var removed = await RemovedAsync(ownerId, gameId, ct);
+                await library.SaveAsync(
+                    [
+                        .. removed.Select(owned => owned with
+                        {
+                            Ownership = owned.Ownership with { UnlistedSince = null, ListedAgainSince = null, NoticeDismissedAt = null },
+                        }),
+                    ],
+                    ct);
+                return true;
+            },
+            ct);
+
+    public Task DismissReturnAsync(Guid ownerId, Guid gameId, CancellationToken ct) =>
+        unitOfWork.RunAsync(
+            async () =>
+            {
+                var back = (await RemovedAsync(ownerId, gameId, ct))
+                    .Where(owned => owned.Ownership.ListedAgainSince is not null)
+                    .ToList();
+                if (back.Count == 0)
+                {
+                    throw new GamesException(GamesError.NotBack);
+                }
+
+                var now = clock.GetUtcNow();
+                await library.SaveAsync(
+                    [
+                        .. back.Where(owned => owned.Ownership.NoticeDismissedAt is null)
+                            .Select(owned => owned with { Ownership = owned.Ownership with { NoticeDismissedAt = now } }),
+                    ],
+                    ct);
+                return true;
+            },
+            ct);
+
+    public async Task<IReadOnlyList<RemovedGame>> GetRemovedAsync(Guid ownerId, CancellationToken ct)
+    {
+        var games = RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId: null, ct));
+        games.Sort((a, b) => Named((a.Name, a.GameId), (b.Name, b.GameId)));
+        return games;
+    }
+
+    /// <summary>What an owner took out of a game.</summary>
+    /// <exception cref="GamesException"><see cref="GamesError.NotRemoved"/>.</exception>
+    private async Task<List<AccountOwnership>> RemovedAsync(Guid ownerId, Guid gameId, CancellationToken ct)
+    {
+        var removed = (await library.FindGameOwnershipsAsync(ownerId, gameId, ct))
+            .Where(owned => owned.Ownership.UnlistedSince is not null)
+            .ToList();
+        return removed.Count > 0 ? removed : throw new GamesException(GamesError.NotRemoved);
+    }
+
     /// <summary>An owner's library, a game once however many entries it is owned through.</summary>
     private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct) =>
         OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow());
@@ -209,19 +293,7 @@ public sealed class LibraryService(
     /// not tell apart come by name, then by id: a page never depends on chance.</summary>
     private static Comparison<OwnedGame> Order(LibrarySort sort)
     {
-        // Letters before their case and their accents, the same in every language of the interface.
-        var names = StringComparer.InvariantCultureIgnoreCase;
-        int ByName(OwnedGame a, OwnedGame b)
-        {
-            var order = (a.Name, b.Name) switch
-            {
-                (null, null) => 0,
-                (null, _) => 1,
-                (_, null) => -1,
-                _ => names.Compare(a.Name, b.Name),
-            };
-            return order != 0 ? order : a.GameId.CompareTo(b.GameId);
-        }
+        static int ByName(OwnedGame a, OwnedGame b) => Named((a.Name, a.GameId), (b.Name, b.GameId));
 
         int Then(int order, OwnedGame a, OwnedGame b) => order != 0 ? order : ByName(a, b);
 
@@ -231,6 +303,20 @@ public sealed class LibraryService(
             LibrarySort.LastPlayed => (a, b) => Then(Descending(a.LastPlayedAt, b.LastPlayedAt), a, b),
             _ => ByName,
         };
+    }
+
+    /// <summary>By name, a game without one last, then by id. Letters before their case and their
+    /// accents, the same in every language of the interface.</summary>
+    private static int Named((string? Name, Guid Id) a, (string? Name, Guid Id) b)
+    {
+        var order = (a.Name, b.Name) switch
+        {
+            (null, null) => 0,
+            (null, _) => 1,
+            (_, null) => -1,
+            _ => StringComparer.InvariantCultureIgnoreCase.Compare(a.Name, b.Name),
+        };
+        return order != 0 ? order : a.Id.CompareTo(b.Id);
     }
 
     /// <summary>The greatest first, and what is not known last.</summary>
@@ -247,10 +333,11 @@ public sealed class LibraryService(
     /// <summary>What is known of a game after a reading at least as recent as the last one. An answer
     /// may be poorer than the one before (a profile made private, a store having a bad day): what it
     /// does not say is kept, and a playtime of zero is taken as not said when one is known. A playtime
-    /// that goes down without reaching zero is the store correcting itself, and is taken. Listing a
-    /// game brings it back into the library, and it is no longer missing, unless it left the library,
-    /// or a complete reading left it out, more recently than this one: a reading that arrives late
-    /// does not undo what is known since. One date cannot say both "since the earliest reading that left
+    /// that goes down without reaching zero is the store correcting itself, and is taken. A game
+    /// listed is no longer missing, unless a complete reading left it out more recently than this
+    /// one: a reading that arrives late does not undo what is known since. Listing a game never
+    /// brings it back into a library its owner took it out of: it is noted as listed again, since the
+    /// earliest reading that did, and the owner decides. One date cannot say both "since the earliest reading that left
     /// it out" and "since it was last listed": readings that arrive out of order, between two that
     /// left the game out, may clear the note or date it wrongly, until the next complete reading sets
     /// it again. Nothing reads the past yet.</summary>
@@ -258,8 +345,9 @@ public sealed class LibraryService(
     {
         var silent = item.Playtime is null || (item.Playtime == TimeSpan.Zero && current?.Playtime > TimeSpan.Zero);
         var firstSeen = current is not null && current.FirstSeenAt < takenAt ? current.FirstSeenAt : takenAt;
-        var goneSince = current?.UnlistedSince > takenAt ? current.UnlistedSince : null;
+        var goneSince = current?.UnlistedSince;
         var missingSince = current?.MissingSince > takenAt ? current.MissingSince : null;
+        DateTimeOffset? listedAgainSince = goneSince is null || missingSince is not null ? null : current?.ListedAgainSince ?? takenAt;
         return new Ownership(
             entry,
             silent ? current?.Playtime : item.Playtime,
@@ -269,7 +357,9 @@ public sealed class LibraryService(
             snapshot,
             goneSince is null && missingSince is null ? item.RecentPlaytime : null,
             goneSince,
-            missingSince);
+            missingSince,
+            listedAgainSince,
+            current?.NoticeDismissedAt);
     }
 
     /// <summary>The total a reading leaves known, for the history: <paramref name="total"/>, unless it is

@@ -39,7 +39,11 @@ public interface ILibraryService
     /// noted as missing since that reading (<see cref="Ownership.MissingSince"/>), and stays in the
     /// library. No reading takes a game out of a library, however many leave it out: an answer may be
     /// cut short and still agree with itself, and a library must not empty itself on a store's bad
-    /// day. Its owner decides; a reading that lists the game again clears the note.
+    /// day. Its owner decides (<see cref="RemoveGameAsync"/>); a reading that lists the game again
+    /// clears the note.
+    /// No reading puts a game back either: one its owner took out stays out, and a reading that lists
+    /// it again is only noted (<see cref="Ownership.ListedAgainSince"/>), until a complete one leaves
+    /// it out once more.
     /// What was played lately is the latest reading's word, or nothing: a window that moves is not
     /// carried over.
     /// A store entry takes the name its store now gives it; <see cref="ICatalogue.RenameAsync"/> says
@@ -67,4 +71,29 @@ public interface ILibraryService
     /// <paramref name="to"/>, both included, when they are given: none when the last is before the
     /// first.</summary>
     Task<LibraryHistory> GetHistoryAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct);
+
+    /// <summary>Takes a game out of an owner's library: every entry of it its store no longer lists
+    /// (<see cref="Ownership.MissingSince"/>). An entry a store still lists stays, and the game with
+    /// it. What was known of the entries taken out is kept, and they stay out whatever the store says
+    /// later.</summary>
+    /// <exception cref="GamesException"><see cref="GamesError.NotInLibrary"/>: the library does not
+    /// have the game. <see cref="GamesError.StillListed"/>: no entry of it is missing.</exception>
+    Task RemoveGameAsync(Guid ownerId, Guid gameId, CancellationToken ct);
+
+    /// <summary>Puts back in an owner's library everything they took out of a game, whether its store
+    /// lists it again or not: an entry the store does not list comes back flagged as missing.</summary>
+    /// <exception cref="GamesException"><see cref="GamesError.NotRemoved"/>: nothing of the game was
+    /// taken out.</exception>
+    Task RestoreGameAsync(Guid ownerId, Guid gameId, CancellationToken ct);
+
+    /// <summary>Dismisses, for good, the notice that a store lists again a game its owner took out:
+    /// the game stays out, and nothing the store says later raises the notice again. Dismissing it
+    /// twice changes nothing.</summary>
+    /// <exception cref="GamesException"><see cref="GamesError.NotRemoved"/>: nothing of the game was
+    /// taken out. <see cref="GamesError.NotBack"/>: no store lists it again.</exception>
+    Task DismissReturnAsync(Guid ownerId, Guid gameId, CancellationToken ct);
+
+    /// <summary>The games an owner took out of their library, by name, each with whether a store lists
+    /// it again (<see cref="RemovedGame.BackSince"/>).</summary>
+    Task<IReadOnlyList<RemovedGame>> GetRemovedAsync(Guid ownerId, CancellationToken ct);
 }

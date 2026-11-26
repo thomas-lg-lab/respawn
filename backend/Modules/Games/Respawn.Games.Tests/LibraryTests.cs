@@ -152,37 +152,147 @@ public sealed class LibraryTests
     }
 
     [Fact]
-    public async Task A_game_taken_out_of_a_library_stays_out_until_a_later_reading_lists_it()
+    public async Task A_missing_game_is_taken_out_by_its_owner_and_stays_out_whatever_its_store_says()
     {
-        await using var app = await StartAsync();
+        // The owner decides after every reading of the test.
+        var clock = new LibraryClock();
+        clock.Set(Day(20));
+        await using var app = await StartAsync(clock);
         using var browser = app.Browser();
+        using var nobody = app.Browser();
         var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
         await ReadAsync(app, account.Id, Day(1), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, 5));
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-        var portal = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).Id;
+        var entry = await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400");
+        var (portal, game, notice) = (entry.Id, $"/api/v1/library/games/{entry.GameId}", $"/api/v1/library/removed/{entry.GameId}/notice");
+        Task<OwnershipRow> RowAsync() => db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
 
-        // Its owner's decision, which no route takes yet: written here as the table holds it.
-        TestDatabase.Run($"UPDATE games.ownerships SET unlisted_since = '{Day(3):O}' WHERE store_entry_id = '{portal}'");
-        Assert.Equal(["Portal 2"], await NamesAsync(browser));
-        Assert.Equal(1, (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("total").GetInt32());
+        // Every route needs a session.
+        Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await nobody.DeleteAsync(game).RefusalAsync());
+        Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await nobody.PutAsync(game, null).RefusalAsync());
+        Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await nobody.DeleteAsync(notice).RefusalAsync());
+        Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await nobody.GetAsync("/api/v1/library/removed").RefusalAsync());
 
-        // A reading from before, arriving late, does not bring it back: what it says is taken.
-        await ReadAsync(app, account.Id, Day(2), complete: false, ("400", "Portal", 40, 5));
-        Assert.Equal(["Portal 2"], await NamesAsync(browser));
-        var late = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
-        Assert.Equal((Day(3), 2400L, Day(2)), (late.UnlistedSince, late.PlaytimeSeconds, late.AsOf));
-        Assert.Null(late.RecentPlaytimeSeconds);
+        // Only a game the library has, and its store no longer lists, is taken out.
+        Assert.Equal(
+            (HttpStatusCode.NotFound, "not_in_library"),
+            await browser.DeleteAsync($"/api/v1/library/games/{Guid.CreateVersion7()}").RefusalAsync());
+        Assert.Equal((HttpStatusCode.Conflict, "still_listed"), await browser.DeleteAsync(game).RefusalAsync());
+        Assert.Equal((HttpStatusCode.NotFound, "not_removed"), await browser.PutAsync(game, null).RefusalAsync());
+        Assert.Equal((HttpStatusCode.NotFound, "not_removed"), await browser.DeleteAsync(notice).RefusalAsync());
 
-        // A complete reading that leaves it out says nothing new of a game that is out.
-        await ReadAsync(app, account.Id, Day(4), complete: true, ("620", "Portal 2", 90, null));
-        Assert.Null((await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal)).MissingSince);
-
-        // A later one that lists it does: bought again, back with its first date.
-        await ReadAsync(app, account.Id, Day(5), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 45, null));
+        // By its owner alone: another account has no such game in its library.
+        await ReadAsync(app, account.Id, Day(2), complete: true, ("620", "Portal 2", 90, null));
+        OpenRegistration();
+        using var other = app.Browser();
+        await other.RegisterAsync("second@example.org");
+        Assert.Equal((HttpStatusCode.NotFound, "not_in_library"), await other.DeleteAsync(game).RefusalAsync());
         Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
-        var back = await db.Ownerships.AsNoTracking().SingleAsync(o => o.StoreEntryId == portal);
-        Assert.Equal((null, 2700L, Day(1), Day(5)), (back.UnlistedSince, back.PlaytimeSeconds, back.FirstSeenAt, back.AsOf));
+
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(game).StatusAsync());
+        Assert.Equal(["Portal 2"], await NamesAsync(browser));
+        Assert.Equal((1, 0), ((await StatsAsync(browser)).Games, (await StatsAsync(browser)).Missing));
+        Assert.Equal((HttpStatusCode.NotFound, "not_in_library"), await browser.DeleteAsync(game).RefusalAsync());
+
+        // Said where the games taken out are listed, and on the game itself; nobody else's.
+        var removed = Assert.Single(await RemovedAsync(browser));
+        Assert.Equal((entry.GameId, "Portal", null), (removed.GetProperty("game_id").GetGuid(), removed.GetProperty("name").GetString(), Date(removed, "back_since")));
+        var taken = Assert.Single(removed.GetProperty("entries").EnumerateArray());
+        Assert.Equal(
+            (portal, account.Id, "steam", "400", null, null),
+            (taken.GetProperty("store_entry_id").GetGuid(), taken.GetProperty("linked_account_id").GetGuid(), taken.GetProperty("source").GetString(), taken.GetProperty("external_id").GetString(), Date(taken, "listed_again_since"), Date(taken, "notice_dismissed_at")));
+        Assert.InRange(Date(taken, "removed_at")!.Value, Day(20), Day(21));
+        var seen = await browser.GetAsync($"/api/v1/games/{entry.GameId}").JsonAsync();
+        Assert.Empty(seen.GetProperty("entries").EnumerateArray());
+        Assert.Equal(entry.GameId, seen.GetProperty("removed").GetProperty("game_id").GetGuid());
+        Assert.Empty(await RemovedAsync(other));
+        Assert.Equal(JsonValueKind.Null, (await other.GetAsync($"/api/v1/games/{entry.GameId}").JsonAsync()).GetProperty("removed").ValueKind);
+
+        // No store lists it again: no notice to dismiss. A complete reading that leaves it out
+        // changes nothing of that.
+        Assert.Equal((HttpStatusCode.Conflict, "not_back"), await browser.DeleteAsync(notice).RefusalAsync());
+        await ReadAsync(app, account.Id, Day(3), complete: true, ("620", "Portal 2", 90, null));
+        Assert.Equal((Day(2), null), ((await RowAsync()).MissingSince, (await RowAsync()).ListedAgainSince));
+
+        // Its store lists it again: what it says is taken, the game stays out, and the API says it
+        // is back, since the earliest reading that listed it.
+        await ReadAsync(app, account.Id, Day(4), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 45, 5));
+        await ReadAsync(app, account.Id, Day(5), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 45, null));
+        Assert.Equal(["Portal 2"], await NamesAsync(browser));
+        var back = await RowAsync();
+        Assert.NotNull(back.UnlistedSince);
+        Assert.Equal((null, Day(4), 2700L, Day(5)), (back.MissingSince, back.ListedAgainSince, back.PlaytimeSeconds, back.AsOf));
+        Assert.Null(back.RecentPlaytimeSeconds);
+        Assert.Equal(Day(4), Date(Assert.Single(await RemovedAsync(browser)), "back_since"));
+
+        // Dismissed, for good: the game is still listed as taken out, with nothing to tell.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(notice).StatusAsync());
+        var dismissed = (await RowAsync()).NoticeDismissedAt;
+        Assert.InRange(dismissed!.Value, Day(20), Day(21));
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(notice).StatusAsync());
+        Assert.Equal(dismissed, (await RowAsync()).NoticeDismissedAt);
+        removed = Assert.Single(await RemovedAsync(browser));
+        Assert.Null(Date(removed, "back_since"));
+        Assert.Equal((Day(4), dismissed), (Date(removed.GetProperty("entries")[0], "listed_again_since"), Date(removed.GetProperty("entries")[0], "notice_dismissed_at")));
+
+        // Left out, then listed once more: no longer back, then back since that reading, and still
+        // no notice.
+        await ReadAsync(app, account.Id, Day(6), complete: true, ("620", "Portal 2", 90, null));
+        Assert.Equal((Day(6), null), ((await RowAsync()).MissingSince, (await RowAsync()).ListedAgainSince));
+        Assert.Equal((HttpStatusCode.Conflict, "not_back"), await browser.DeleteAsync(notice).RefusalAsync());
+        await ReadAsync(app, account.Id, Day(7), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 45, null));
+        removed = Assert.Single(await RemovedAsync(browser));
+        Assert.Equal((null, Day(7)), (Date(removed, "back_since"), Date(removed.GetProperty("entries")[0], "listed_again_since")));
+
+        // Put back by its owner: in the library as its store last said it, with its first date.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.PutAsync(game, null).StatusAsync());
+        Assert.Equal(["Portal", "Portal 2"], await NamesAsync(browser));
+        Assert.Empty(await RemovedAsync(browser));
+        var again = await RowAsync();
+        Assert.Equal(
+            (null, null, null, null, 2700L, Day(1)),
+            (again.UnlistedSince, again.MissingSince, again.ListedAgainSince, again.NoticeDismissedAt, again.PlaytimeSeconds, again.FirstSeenAt));
+        Assert.Equal((HttpStatusCode.NotFound, "not_removed"), await browser.PutAsync(game, null).RefusalAsync());
+
+        // Taken out again, then put back while its store does not list it: back, flagged as missing.
+        await ReadAsync(app, account.Id, Day(8), complete: true, ("620", "Portal 2", 90, null));
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(game).StatusAsync());
+        Assert.Null(Date(Assert.Single(await RemovedAsync(browser)), "back_since"));
+        Assert.Equal(HttpStatusCode.NoContent, await browser.PutAsync(game, null).StatusAsync());
+        Assert.Equal(new DateTimeOffset?[] { Day(8), null }, await MissingAsync(browser));
+    }
+
+    [Fact]
+    public async Task A_game_owned_twice_loses_only_the_entry_its_store_no_longer_lists()
+    {
+        var clock = new LibraryClock();
+        clock.Set(Day(20));
+        await using var app = await StartAsync(clock);
+        using var browser = app.Browser();
+        var owner = await OwnerAsync(browser);
+        var first = await LinkAsync(app, owner, "76561190000000001");
+        var second = await LinkAsync(app, owner, "76561190000000002");
+        await ReadAsync(app, first.Id, Day(1), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
+        await ReadAsync(app, second.Id, Day(1), complete: true, ("620", "Portal 2", 20, null), ("400", "Portal", 10, null));
+        await ReadAsync(app, first.Id, Day(2), complete: true, ("620", "Portal 2", 90, null));
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        var game = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).GameId;
+
+        // The first account's entry goes; the game stays through the second, with its time alone.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/library/games/{game}").StatusAsync());
+        var seen = await browser.GetAsync($"/api/v1/games/{game}").JsonAsync();
+        Assert.Equal(second.Id, Assert.Single(seen.GetProperty("entries").EnumerateArray()).GetProperty("linked_account_id").GetGuid());
+        Assert.Equal(600L, seen.GetProperty("playtime_seconds").GetInt64());
+        Assert.Equal(first.Id, Assert.Single(seen.GetProperty("removed").GetProperty("entries").EnumerateArray()).GetProperty("linked_account_id").GetGuid());
+
+        // What is left is listed by its store: nothing more to take out.
+        Assert.Equal((HttpStatusCode.Conflict, "still_listed"), await browser.DeleteAsync($"/api/v1/library/games/{game}").RefusalAsync());
+
+        // Unlinking the account forgets what was taken out of it with the rest.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/linked-accounts/{first.Id}").StatusAsync());
+        Assert.Empty(await RemovedAsync(browser));
     }
 
     [Fact]
@@ -728,6 +838,14 @@ public sealed class LibraryTests
             ? since.GetDateTimeOffset()
             : (DateTimeOffset?)null)];
 
+    /// <summary>The games taken out of the library, in the order the API gives them.</summary>
+    private static async Task<JsonElement[]> RemovedAsync(HttpClient browser) =>
+        [.. (await browser.GetAsync("/api/v1/library/removed").JsonAsync()).GetProperty("games").EnumerateArray()];
+
+    /// <summary>A date of an answer, or null when it has none.</summary>
+    private static DateTimeOffset? Date(JsonElement item, string name) =>
+        item.GetProperty(name) is { ValueKind: JsonValueKind.String } date ? date.GetDateTimeOffset() : null;
+
     /// <summary>The library as names and seconds, for the games that have both.</summary>
     private static async Task<(string Name, long Seconds)[]> PlaytimesAsync(HttpClient browser) =>
         [.. (await LibraryAsync(browser)).Select(game => (game.GetProperty("name").GetString()!, game.GetProperty("playtime_seconds").GetInt64()))];
@@ -748,6 +866,15 @@ public sealed class LibraryTests
 
         public Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<OwnedEntry>>([]);
+
+        public Task<IReadOnlyList<AccountOwnership>> FindGameOwnershipsAsync(Guid ownerId, Guid gameId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<AccountOwnership>>([]);
+
+        public Task SaveAsync(IReadOnlyCollection<AccountOwnership> owned, CancellationToken ct) =>
+            throw new InvalidOperationException("the library cannot be written");
+
+        public Task<IReadOnlyList<RemovedEntry>> ListRemovedAsync(Guid ownerId, Guid? gameId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<RemovedEntry>>([]);
 
         public Task<DateTimeOffset?> FindFirstSeenAsync(Guid ownerId, CancellationToken ct) =>
             Task.FromResult<DateTimeOffset?>(null);

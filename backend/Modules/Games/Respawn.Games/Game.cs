@@ -23,4 +23,5 @@ public sealed record GameRank(int Position, int Launched);
 /// <param name="Owned">The game in the owner's library, as the library gives it; null when it is not
 /// in it.</param>
 /// <param name="Rank">Null when the owner never launched it.</param>
-public sealed record GameView(CatalogueGame Game, OwnedGame? Owned, GameRank? Rank);
+/// <param name="Removed">What the owner took out of their library of it; null when nothing was.</param>
+public sealed record GameView(CatalogueGame Game, OwnedGame? Owned, GameRank? Rank, RemovedGame? Removed = null);

@@ -96,12 +96,18 @@ public sealed record Observation(
 /// <param name="RecentPlaytime">What was played lately, as that latest reading said it. A window that
 /// moves cannot be carried over: when the reading does not say, it is null again.</param>
 /// <param name="UnlistedSince">The date from which it is out of the library; null while it is in it.
-/// No reading sets it: a game leaves a library when its owner says so. What was known of it and its
-/// history stay; a later reading that lists it brings it back.</param>
+/// No reading sets it and none clears it: a game leaves a library when its owner says so, and comes
+/// back when they say so. What was known of it and its history stay, and the readings go on saying
+/// what the store says of it.</param>
 /// <param name="MissingSince">The date of the earliest complete reading that left it out, while none
 /// has listed it since (a refund, a share that ended, a free weekend over, or an answer cut short that
-/// still agrees with itself: nothing here can tell which). The game stays in the library, flagged;
-/// null once a reading lists it again.</param>
+/// still agrees with itself: nothing here can tell which). A game of the library stays in it, flagged;
+/// null once a reading lists it again. Kept up to date for a game out of the library too.</param>
+/// <param name="ListedAgainSince">For a game out of the library, the date of the earliest reading that
+/// listed it again, while none has left it out since: the store has it back, and its owner is told.
+/// Null in the library.</param>
+/// <param name="NoticeDismissedAt">When its owner said they do not want to be told it is back, for
+/// good: whatever the store says afterwards. Null in the library.</param>
 public sealed record Ownership(
     Guid StoreEntryId,
     TimeSpan? Playtime,
@@ -111,7 +117,36 @@ public sealed record Ownership(
     Guid SnapshotId,
     TimeSpan? RecentPlaytime = null,
     DateTimeOffset? UnlistedSince = null,
-    DateTimeOffset? MissingSince = null);
+    DateTimeOffset? MissingSince = null,
+    DateTimeOffset? ListedAgainSince = null,
+    DateTimeOffset? NoticeDismissedAt = null);
+
+/// <summary>What is known of a store entry through one linked account.</summary>
+public sealed record AccountOwnership(Guid LinkedAccountId, Ownership Ownership);
+
+/// <summary>One way an owner owned a game they took out of their library.</summary>
+/// <param name="RemovedAt">When its owner took it out.</param>
+/// <param name="ListedAgainSince">The date of the earliest reading that listed it again, while none has
+/// left it out since; null while its store does not list it.</param>
+/// <param name="NoticeDismissedAt">When its owner dismissed, for good, the notice that it is back.</param>
+public sealed record RemovedEntry(
+    Guid GameId,
+    string? GameName,
+    Guid StoreEntryId,
+    Guid LinkedAccountId,
+    string Source,
+    string ExternalId,
+    DateTimeOffset RemovedAt,
+    DateTimeOffset? ListedAgainSince = null,
+    DateTimeOffset? NoticeDismissedAt = null);
+
+/// <summary>A game an owner took out of their library, once, however many entries were taken out.</summary>
+/// <param name="GameId">The canonical record.</param>
+/// <param name="Name">Null while no source has named the game.</param>
+/// <param name="BackSince">The notice its owner is owed: the earliest date a store listed again one of
+/// its entries, among those whose notice was not dismissed. Null when there is nothing to tell.</param>
+/// <param name="Entries">The entries taken out, at least one.</param>
+public sealed record RemovedGame(Guid GameId, string? Name, DateTimeOffset? BackSince, IReadOnlyList<RemovedEntry> Entries);
 
 /// <summary>One way an owner owns a game: a store entry, through one of their linked accounts. The pair
 /// of the two ids is unique in a library.</summary>

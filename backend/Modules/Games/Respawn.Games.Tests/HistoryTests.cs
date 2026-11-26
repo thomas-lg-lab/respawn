@@ -233,7 +233,7 @@ public sealed class HistoryTests
         var games = await GamesAsync(app);
         Assert.Equal([(Date(2), games["400"], 1800L), (Date(2), games["620"], 600L)], await DaysAsync(browser));
 
-        // Its owner's decision, which no route takes yet: written here as the table holds it.
+        // Its owner's decision, written here as the table holds it.
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
         var portal = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).Id;

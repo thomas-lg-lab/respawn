@@ -232,7 +232,11 @@ part of the API.
 | `GET /api/v1/library/history` | What was played day by day since `tracking_since`: for each day, the games played and their `seconds`, the earliest day first. A store gives totals and no history, so a day's time is the growth of those totals between two readings in a row, dated by the later one (UTC); the total a game had at its first reading is not split over time, and days and games with nothing played are left out. `from` and `to` (`YYYY-MM-DD`, both included) ask for a part of it |
 | `GET /api/v1/library/years` | What was played year by year (UTC), the earliest first: for each year its `seconds`, its `source`, the days it covers (`first_day`, `last_day`) and `whole`, whether that is all of it. A year is counted from the store's own review (`review`: Steam's Year in Review, every month of it, from 2022 on) when every linked account has one, and otherwise from the daily readings (`readings`, from the first reading on); a year before the first reading, from the reviews of the accounts that have one. A review counts every game played, owned or not; the readings count the games of the library |
 | `GET /api/v1/library/months/{month}` | What was played in one month (`YYYY-MM`), game by game, the most played first, each with its `name` and its `seconds`; counted as the month's year is in `/library/years`, which `source`, `first_day` and `last_day` say. A month nothing counts (before the first reading in a year with no review, or still to come) answers with `source` null and no game |
-| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, and its `rank` among the games launched. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
+| `DELETE /api/v1/library/games/{id}` | Takes a game its store no longer lists out of the library: every entry of it flagged with `missing_since`; an entry a store still lists stays, and the game with it. What was known of it is kept, and no sync puts it back. `404` with `not_in_library`, `409` with `still_listed` when no entry is missing |
+| `PUT /api/v1/library/games/{id}` | Puts back everything the account took out of that game, whether its store lists it again or not: an entry the store does not list comes back flagged as missing. `404` with `not_removed` |
+| `GET /api/v1/library/removed` | The games the account took out of its library, by name, with the entries taken out (`removed_at`, `listed_again_since`, `notice_dismissed_at`). `back_since` is the notice to show: a store lists the game again since that date, and the notice was not dismissed |
+| `DELETE /api/v1/library/removed/{id}/notice` | Dismisses that notice, for good: the game stays out, and nothing its store says later raises it again; the game can still be put back. `404` with `not_removed`, `409` with `not_back` when no store lists it again |
+| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, and in `removed` what the account took out of its library of it. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
 | `GET /api/v1/games/{id}/months` | The months that game was played in, the earliest first, each with its `seconds` and its `source`, counted as in `/library/years`: the months of a year add up to the game's part of that year there. A month with nothing played is left out |
 | `GET /api/v1/games/{id}/cover` | A game's cover, as an image (JPEG, PNG or WebP). The instance keeps no image: it fetches the cover from Steam at each request, and `Cache-Control` lets the browser keep it for a week (an hour until Steam's store has said where the cover is, a few minutes after the first sync). `404` with `no_cover` when the game has none, `503` with `cover_unavailable` when Steam does not answer, `429` for a client that asks for too many. For any signed-in account and any game |
 
@@ -247,8 +251,8 @@ Errors always have the same shape, whatever answered:
 | 400 | `invalid_key` |
 | 401 | `not_signed_in`, `invalid_credentials` |
 | 403 | `registration_closed`, `local_sign_in_disabled`, `cross_site_request`, `forbidden` |
-| 404 | `unknown_linked_account`, `unknown_game`, `no_cover`, `http_error` |
-| 409 | `account_exists`, `sync_in_progress` |
+| 404 | `unknown_linked_account`, `unknown_game`, `no_cover`, `not_in_library`, `not_removed`, `http_error` |
+| 409 | `account_exists`, `sync_in_progress`, `still_listed`, `not_back` |
 | 422 | `invalid_request`, `invalid_email`, `weak_password` |
 | 429 | `too_many_requests` |
 | 500 | `internal_error` |
@@ -273,7 +277,11 @@ was played, and when) is the difference between two of them: a day that was not 
   ended, a free weekend over, or an answer cut short that still agrees with itself: the store does not say
   which) stays, flagged: `missing_since` on its entry in `GET /api/v1/library` and in
   `GET /api/v1/games/{id}`, the date of the first full answer that left it out. The flag goes when the
-  store lists the game again. Taking it out is its owner's decision, which no route takes yet.
+  store lists the game again. Taking it out is its owner's decision
+  (`DELETE /api/v1/library/games/{id}`).
+- **No sync puts a game back either.** A game its owner took out stays out, whatever the store says
+  later. When the store lists it again, `GET /api/v1/library/removed` says so (`back_since`), and its
+  owner puts it back or dismisses that notice for good.
 - Every sync is kept with its outcome, in the same transaction as what it recorded. Unlinking an account
   forgets its syncs with the rest.
 - A sync asked for through the API goes on to its end when the request is given up.

@@ -24,7 +24,7 @@ public sealed class GamesController(ICoverService covers, IGameService games, IP
         "The catalogue's record with what the account owns of it: the entries it is owned through, as in "
         + "the library, each with its playtime and missing_since, their total, and its rank among the games "
         + "launched. Any game of the catalogue is answered: one that is not in the library has no entry "
-        + "and no rank. What was played of it over time is its months.")]
+        + "and no rank, and one the account took out of it says so in removed. What was played of it over time is its months.")]
     [ProducesResponseType<GameResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]

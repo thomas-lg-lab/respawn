@@ -75,6 +75,29 @@ internal static class OwnedGames
     }
 }
 
+internal static class RemovedGames
+{
+    /// <summary>The games taken out of a library from the entries taken out, a game once, its entries
+    /// in an order that does not change.</summary>
+    public static List<RemovedGame> Of(IReadOnlyList<RemovedEntry> entries) =>
+    [
+        .. entries.GroupBy(entry => entry.GameId).Select(removed =>
+        {
+            RemovedEntry[] ordered =
+            [
+                .. removed.OrderBy(entry => entry.Source, StringComparer.Ordinal)
+                    .ThenBy(entry => entry.ExternalId, StringComparer.Ordinal)
+                    .ThenBy(entry => entry.LinkedAccountId),
+            ];
+            return new RemovedGame(
+                removed.Key,
+                ordered[0].GameName,
+                ordered.Where(entry => entry.NoticeDismissedAt is null).Min(entry => entry.ListedAgainSince),
+                ordered);
+        }),
+    ];
+}
+
 internal static class StoreEntries
 {
     /// <summary>The store entries of these games: those the catalogue has, as it has them, and the id

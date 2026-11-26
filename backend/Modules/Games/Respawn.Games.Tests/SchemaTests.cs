@@ -114,6 +114,14 @@ public sealed class SchemaTests
             PostgresErrorCodes.CheckViolation,
             await RefusalAsync(app, db => db.Ownerships.ExecuteUpdateAsync(o => o.SetProperty(x => x.PlaytimeSeconds, -1L))));
 
+        // Only a game out of the library is listed again, or has a notice dismissed.
+        Assert.Equal(
+            PostgresErrorCodes.CheckViolation,
+            await RefusalAsync(app, db => db.Ownerships.ExecuteUpdateAsync(o => o.SetProperty(x => x.ListedAgainSince, Now))));
+        Assert.Equal(
+            PostgresErrorCodes.CheckViolation,
+            await RefusalAsync(app, db => db.Ownerships.ExecuteUpdateAsync(o => o.SetProperty(x => x.NoticeDismissedAt, Now))));
+
         // A store account is linked once, and nothing a library stands on can be deleted under it.
         Assert.Equal(
             PostgresErrorCodes.UniqueViolation,

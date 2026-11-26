@@ -108,6 +108,17 @@ public interface ILibraryStore
     /// accounts, those noted as missing included, without those that left the library.</summary>
     Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
 
+    /// <summary>What is known of a game through each of an owner's linked accounts, in the library or
+    /// out of it, in no order. Empty when they never owned it.</summary>
+    Task<IReadOnlyList<AccountOwnership>> FindGameOwnershipsAsync(Guid ownerId, Guid gameId, CancellationToken ct);
+
+    /// <summary>Brings these ownerships, which exist, to the state given.</summary>
+    Task SaveAsync(IReadOnlyCollection<AccountOwnership> owned, CancellationToken ct);
+
+    /// <summary>The ownerships the owner took out of their library, in no order. Only those of one game
+    /// when <paramref name="gameId"/> is given.</summary>
+    Task<IReadOnlyList<RemovedEntry>> ListRemovedAsync(Guid ownerId, Guid? gameId, CancellationToken ct);
+
     /// <summary>When the first of the readings that listed one of these ownerships was taken: the
     /// earliest <see cref="OwnedEntry.FirstSeenAt"/> of <see cref="ListAsync"/>, without reading the
     /// library. Null while the owner owns nothing.</summary>

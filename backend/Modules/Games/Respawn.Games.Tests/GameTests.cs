@@ -205,14 +205,27 @@ public sealed class GameTests
         Assert.Equal(["200", "401", "404"], Statuses("/api/v1/games/{id}/months"));
         Assert.Equal(["200", "401", "422"], Statuses("/api/v1/library/months/{month}"));
 
+        // The routes that take a game out of the library and answer its return.
+        string[] StatusesOf(string path, string method) =>
+            [.. paths.GetProperty(path).GetProperty(method).GetProperty("responses").EnumerateObject().Select(response => response.Name).Order()];
+        Assert.Equal(["204", "401", "403", "404", "409"], StatusesOf("/api/v1/library/games/{id}", "delete"));
+        Assert.Equal(["204", "401", "403", "404"], StatusesOf("/api/v1/library/games/{id}", "put"));
+        Assert.Equal(["200", "401"], StatusesOf("/api/v1/library/removed", "get"));
+        Assert.Equal(["204", "401", "403", "404", "409"], StatusesOf("/api/v1/library/removed/{id}/notice", "delete"));
+
         var schemas = document.GetProperty("components").GetProperty("schemas");
         string[] Fields(string schema) =>
             [.. schemas.GetProperty(schema).GetProperty("properties").EnumerateObject().Select(field => field.Name)];
         Assert.Equal(
-            ["game_id", "name", "stores", "playtime_seconds", "recent_playtime_seconds", "last_played_at", "entries", "rank"],
+            ["game_id", "name", "stores", "playtime_seconds", "recent_playtime_seconds", "last_played_at", "entries", "rank", "removed"],
             Fields("GameResponse"));
         Assert.Equal(["store_entry_id", "source", "external_id"], Fields("GameStoreResponse"));
         Assert.Equal(["position", "launched"], Fields("GameRankResponse"));
+        Assert.Equal(["games"], Fields("RemovedGamesResponse"));
+        Assert.Equal(["game_id", "name", "back_since", "entries"], Fields("RemovedGameResponse"));
+        Assert.Equal(
+            ["store_entry_id", "linked_account_id", "source", "external_id", "removed_at", "listed_again_since", "notice_dismissed_at"],
+            Fields("RemovedEntryResponse"));
         Assert.Equal(["months"], Fields("GameMonthsResponse"));
         Assert.Equal(["month", "seconds", "source"], Fields("GameMonthResponse"));
         Assert.Equal(["month", "source", "first_day", "last_day", "games"], Fields("LibraryMonthResponse"));

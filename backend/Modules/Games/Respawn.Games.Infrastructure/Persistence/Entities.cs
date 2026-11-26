@@ -151,6 +151,13 @@ public sealed class OwnershipRow
     /// <summary>The date of the earliest complete snapshot that left it out, while none has listed it
     /// since; the game is still in the library, flagged.</summary>
     public DateTimeOffset? MissingSince { get; set; }
+
+    /// <summary>Out of the library: the date of the earliest snapshot that listed it again, while none
+    /// has left it out since.</summary>
+    public DateTimeOffset? ListedAgainSince { get; set; }
+
+    /// <summary>Out of the library: when its owner dismissed, for good, the notice that it is back.</summary>
+    public DateTimeOffset? NoticeDismissedAt { get; set; }
 }
 
 /// <summary>A year a store reviewed for a linked account (Steam's Year in Review), kept: its months are

@@ -427,7 +427,7 @@ export interface paths {
         };
         /**
          * One game, as the signed-in account sees it
-         * @description The catalogue's record with what the account owns of it: the entries it is owned through, as in the library, each with its playtime and missing_since, their total, and its rank among the games launched. Any game of the catalogue is answered: one that is not in the library has no entry and no rank. What was played of it over time is its months.
+         * @description The catalogue's record with what the account owns of it: the entries it is owned through, as in the library, each with its playtime and missing_since, their total, and its rank among the games launched. Any game of the catalogue is answered: one that is not in the library has no entry and no rank, and one the account took out of it says so in removed. What was played of it over time is its months.
          */
         get: {
             parameters: {
@@ -900,6 +900,263 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/games/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put a game back in the library
+         * @description Puts back everything the account took out of the game, whether its store lists it again or not: an entry the store does not list comes back flagged as missing. 404 not_removed when nothing of the game was taken out.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Take a game its store no longer lists out of the library
+         * @description Takes out every entry of the game that is flagged as missing (missing_since); an entry a store still lists stays, and the game with it. 409 still_listed when no entry is missing: only a game its store no longer lists is taken out. What was known of the game is kept, and it stays out: no sync puts it back. If its store lists it again, the removed games say so (back_since), and its owner puts it back or dismisses that notice.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/removed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The games the signed-in account took out of its library
+         * @description One item per game, by name, with the entries taken out. back_since is the notice to show: a store lists the game again since that date, and the notice was not dismissed. A game taken out is in no other answer of the library.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RemovedGamesResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/removed/{id}/notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Dismiss the notice that a removed game is back
+         * @description For good: the game stays out, and nothing its store says later raises the notice again. It can still be put back. 404 not_removed when nothing of the game was taken out, 409 not_back when no store lists it again. Dismissing a notice twice changes nothing.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/linked-accounts": {
         parameters: {
             query?: never;
@@ -1356,6 +1613,7 @@ export interface components {
             last_played_at: null | string;
             entries: components["schemas"]["LibraryEntryResponse"][];
             rank: null | components["schemas"]["GameRankResponse"];
+            removed: null | components["schemas"]["RemovedGameResponse"];
         };
         GameStoreResponse: {
             /** Format: uuid */
@@ -1487,6 +1745,31 @@ export interface components {
             email: string;
             display_name: string;
             password: string;
+        };
+        RemovedEntryResponse: {
+            /** Format: uuid */
+            store_entry_id: string;
+            /** Format: uuid */
+            linked_account_id: string;
+            source: string;
+            external_id: string;
+            /** Format: date-time */
+            removed_at: string;
+            /** Format: date-time */
+            listed_again_since: null | string;
+            /** Format: date-time */
+            notice_dismissed_at: null | string;
+        };
+        RemovedGameResponse: {
+            /** Format: uuid */
+            game_id: string;
+            name: null | string;
+            /** Format: date-time */
+            back_since: null | string;
+            entries: components["schemas"]["RemovedEntryResponse"][];
+        };
+        RemovedGamesResponse: {
+            games: components["schemas"]["RemovedGameResponse"][];
         };
         SettingsRequest: {
             language: string;
