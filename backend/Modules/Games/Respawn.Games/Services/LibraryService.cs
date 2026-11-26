@@ -169,14 +169,14 @@ public sealed class LibraryService(
     {
         var games = await GamesAsync(ownerId, ct);
         var entries = games.SelectMany(game => game.Entries).ToList();
-        var launched = games.Count(game => game.Playtime > TimeSpan.Zero || game.LastPlayedAt is not null);
+        var launched = games.Count(OwnedGames.Launched);
         return new LibraryStats(
             games.Count,
             launched,
             games.Count - launched,
             games.Count(game => game.Entries.All(entry => entry.MissingSince is not null)),
-            Sum(games.Select(game => game.Playtime)),
-            Sum(games.Select(game => game.RecentPlaytime)),
+            OwnedGames.Sum(games.Select(game => game.Playtime)),
+            OwnedGames.Sum(games.Select(game => game.RecentPlaytime)),
             games.Count(game => game.RecentPlaytime > TimeSpan.Zero),
             entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null);
     }
@@ -184,7 +184,7 @@ public sealed class LibraryService(
     public async Task<LibraryHistory> GetHistoryAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
         var entries = await library.ListAsync(ownerId, ct);
-        var played = await library.ListPlayedAsync(ownerId, from, to, ct);
+        var played = await library.ListPlayedAsync(ownerId, gameId: null, from, to, ct);
         return new LibraryHistory(
             entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null,
             [
@@ -202,57 +202,9 @@ public sealed class LibraryService(
             ]);
     }
 
-    /// <summary>An owner's library, a game once however many entries it is owned through. What a store
-    /// said was played lately is no longer recent once its window has gone by since that reading; a
-    /// store no connector reads cannot say its window, so its figure is not kept either.</summary>
-    private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct)
-    {
-        var now = clock.GetUtcNow();
-        var windows = sources.ToDictionary(source => source.Source, source => source.RecentWindow, StringComparer.Ordinal);
-        return
-        [
-            .. (await library.ListAsync(ownerId, ct))
-                .Select(entry => entry.RecentPlaytime is not null
-                    && !(windows.TryGetValue(entry.Source, out var window) && entry.AsOf + window > now)
-                        ? entry with { RecentPlaytime = null }
-                        : entry)
-                .GroupBy(entry => entry.GameId)
-                .Select(Game),
-        ];
-    }
-
-    /// <summary>A game from the entries it is owned through: its totals add up, its last session is
-    /// the latest, and its entries come in an order that does not change.</summary>
-    private static OwnedGame Game(IGrouping<Guid, OwnedEntry> owned)
-    {
-        OwnedEntry[] entries =
-        [
-            .. owned.OrderBy(entry => entry.Source, StringComparer.Ordinal)
-                .ThenBy(entry => entry.ExternalId, StringComparer.Ordinal)
-                .ThenBy(entry => entry.LinkedAccountId),
-        ];
-        return new OwnedGame(
-            owned.Key,
-            entries[0].GameName,
-            Sum(entries.Select(entry => entry.Playtime)),
-            Sum(entries.Select(entry => entry.RecentPlaytime)),
-            entries.Max(entry => entry.LastPlayedAt),
-            entries);
-    }
-
-    private static TimeSpan? Sum(IEnumerable<TimeSpan?> times)
-    {
-        TimeSpan? total = null;
-        foreach (var time in times)
-        {
-            if (time is { } said)
-            {
-                total = (total ?? TimeSpan.Zero) + said;
-            }
-        }
-
-        return total;
-    }
+    /// <summary>An owner's library, a game once however many entries it is owned through.</summary>
+    private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct) =>
+        OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow());
 
     /// <summary>The order of a library. What cannot be placed comes last, and two games the order does
     /// not tell apart come by name, then by id: a page never depends on chance.</summary>

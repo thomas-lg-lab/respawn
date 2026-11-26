@@ -200,15 +200,104 @@ public sealed record YearResponse(int Year, long Seconds, string Source, DateOnl
         new(
             year.Year,
             (long)year.Playtime.TotalSeconds,
-            year.Source switch
-            {
-                YearSource.Review => "review",
-                YearSource.Readings => "readings",
-                _ => throw new ArgumentOutOfRangeException(nameof(year), year.Source, null),
-            },
+            YearWords.Of(year.Source),
             year.From,
             year.To,
             year.Whole);
+}
+
+/// <summary>One game, as the signed-in account sees it: the catalogue's record and what the account
+/// owns of it.</summary>
+/// <param name="GameId">The game, whatever the store.</param>
+/// <param name="Name">The game's name; null while no source has named it.</param>
+/// <param name="Stores">The game as each store knows it, whoever owns it.</param>
+/// <param name="PlaytimeSeconds">The total played, added up over its entries; null when no store ever said,
+/// or the game is not in the library.</param>
+/// <param name="RecentPlaytimeSeconds">What was played lately, as in the library; null when no store says.</param>
+/// <param name="LastPlayedAt">Null when no store says, or the game was never launched.</param>
+/// <param name="Entries">The ways the account owns the game, as in the library: one per store entry and
+/// linked account, each with its own playtime and missing_since. Empty when the game is not in the library.</param>
+/// <param name="Rank">Where the game stands among the games launched; null when it was never launched.</param>
+public sealed record GameResponse(
+    Guid GameId,
+    string? Name,
+    IReadOnlyList<GameStoreResponse> Stores,
+    long? PlaytimeSeconds,
+    long? RecentPlaytimeSeconds,
+    DateTimeOffset? LastPlayedAt,
+    IReadOnlyList<LibraryEntryResponse> Entries,
+    GameRankResponse? Rank)
+{
+    public static GameResponse From(GameView view) =>
+        new(
+            view.Game.Id,
+            view.Game.Name,
+            [.. view.Game.Stores.Select(store => new GameStoreResponse(store.StoreEntryId, store.Source, store.ExternalId))],
+            Seconds.Of(view.Owned?.Playtime),
+            Seconds.Of(view.Owned?.RecentPlaytime),
+            view.Owned?.LastPlayedAt,
+            [.. (view.Owned?.Entries ?? []).Select(LibraryEntryResponse.From)],
+            view.Rank is { } rank ? new GameRankResponse(rank.Position, rank.Launched) : null);
+}
+
+/// <param name="StoreEntryId">The game as that store knows it. A library entry names it as its store_entry_id.</param>
+/// <param name="Source">The store.</param>
+/// <param name="ExternalId">The game's id in that store (Steam: the app id).</param>
+public sealed record GameStoreResponse(Guid StoreEntryId, string Source, string ExternalId);
+
+/// <param name="Position">One for the most played game of the library; two games played as long share theirs.</param>
+/// <param name="Launched">How many games of the library were launched, this one included: the same
+/// figure as launched in the library's figures.</param>
+public sealed record GameRankResponse(int Position, int Launched);
+
+/// <summary>What was played of one game, month by month.</summary>
+/// <param name="Months">The months the game was played in, the earliest first. A month with nothing
+/// played is left out: the years of the library say which days are counted at all.</param>
+public sealed record GameMonthsResponse(IReadOnlyList<GameMonthResponse> Months)
+{
+    public static GameMonthsResponse From(IReadOnlyList<GameMonth> months) =>
+        new([.. months.Select(month => new GameMonthResponse(month.Month, (long)month.Playtime.TotalSeconds, YearWords.Of(month.Source)))]);
+}
+
+/// <param name="Month">The first day of the month.</param>
+/// <param name="Seconds">What was played of the game that month, added up over its entries; more than zero.</param>
+/// <param name="Source">review: the store's review of that year, exact to the month. readings: the growth
+/// of the game's totals between the daily readings of that month, in UTC.</param>
+public sealed record GameMonthResponse(DateOnly Month, long Seconds, string Source);
+
+/// <summary>What was played in one month, game by game.</summary>
+/// <param name="Month">The first day of the month.</param>
+/// <param name="Source">review or readings, as the month's year is counted; null when nothing counts that
+/// month: its year has no review, and the readings had not started, or the month is still to come.</param>
+/// <param name="FirstDay">The first day counted; null with no source.</param>
+/// <param name="LastDay">The last day counted; null with no source.</param>
+/// <param name="Games">The games played that month, the most played first; empty when nothing was.</param>
+public sealed record LibraryMonthResponse(
+    DateOnly Month, string? Source, DateOnly? FirstDay, DateOnly? LastDay, IReadOnlyList<MonthGameResponse> Games)
+{
+    public static LibraryMonthResponse From(LibraryMonth month) =>
+        new(
+            month.Month,
+            month.Source is { } source ? YearWords.Of(source) : null,
+            month.From,
+            month.To,
+            [.. month.Games.Select(game => new MonthGameResponse(game.GameId, game.Name, (long)game.Playtime.TotalSeconds))]);
+}
+
+/// <param name="GameId">The game. A review counts every game played: it may not be in the library.</param>
+/// <param name="Name">The game's name; null while no source has named it.</param>
+/// <param name="Seconds">What was played of it that month; more than zero.</param>
+public sealed record MonthGameResponse(Guid GameId, string? Name, long Seconds);
+
+/// <summary>Where a time was counted from, as the API spells it.</summary>
+internal static class YearWords
+{
+    public static string Of(YearSource source) => source switch
+    {
+        YearSource.Review => "review",
+        YearSource.Readings => "readings",
+        _ => throw new ArgumentOutOfRangeException(nameof(source), source, null),
+    };
 }
 
 /// <param name="Id">The sync.</param>

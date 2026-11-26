@@ -14,8 +14,40 @@ namespace Respawn.Games.Api;
 [ApiController]
 [Route("api/v1")]
 [GamesRefusals]
-public sealed class GamesController(ICoverService covers) : ControllerBase
+public sealed class GamesController(ICoverService covers, IGameService games, IPlaytimeService playtime) : ControllerBase
 {
+    [HttpGet("games/{id:guid}")]
+    [Authorize]
+    [Produces("application/json")]
+    [EndpointSummary("One game, as the signed-in account sees it")]
+    [EndpointDescription(
+        "The catalogue's record with what the account owns of it: the entries it is owned through, as in "
+        + "the library, each with its playtime and missing_since, their total, and its rank among the games "
+        + "launched. Any game of the catalogue is answered: one that is not in the library has no entry "
+        + "and no rank. What was played of it over time is its months.")]
+    [ProducesResponseType<GameResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<GameResponse> Get([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct) =>
+        GameResponse.From(await games.GetGameAsync(Caller.Id(User), id, ct));
+
+    [HttpGet("games/{id:guid}/months")]
+    [Authorize]
+    [Produces("application/json")]
+    [EndpointSummary("What the signed-in account played of one game, month by month")]
+    [EndpointDescription(
+        "The months the game was played in and the time of each, the earliest first, counted as the years "
+        + "of the library are: from the store's review when its year has one (exact to the month), from "
+        + "the daily readings otherwise. The months of a year add up to what was played of the game that "
+        + "year; over the same year of the library, that is its share of it, and the library's years say "
+        + "which days are counted at all. A game that is not in the library may have months: a review "
+        + "counts every game played. The day by day is the library's history.")]
+    [ProducesResponseType<GameMonthsResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<GameMonthsResponse> Months([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct) =>
+        GameMonthsResponse.From(await playtime.GetGameMonthsAsync(Caller.Id(User), id, ct));
+
     /// <summary>How long a browser keeps a cover: artwork changes a few times in a game's life.</summary>
     private const string KeptAWeek = "private, max-age=604800";
 

@@ -16,6 +16,65 @@ internal static class LinkedAccounts
             : throw new GamesException(GamesError.UnknownLinkedAccount);
 }
 
+internal static class OwnedGames
+{
+    /// <summary>A library from the entries it is made of, a game once however many entries it is owned
+    /// through. What a store said was played lately is no longer recent once its window has gone by
+    /// since that reading; a store no connector reads cannot say its window, so its figure is not kept
+    /// either.</summary>
+    public static List<OwnedGame> Of(IReadOnlyList<OwnedEntry> entries, IEnumerable<ILibrarySource> sources, DateTimeOffset now)
+    {
+        var windows = sources.ToDictionary(source => source.Source, source => source.RecentWindow, StringComparer.Ordinal);
+        return
+        [
+            .. entries
+                .Select(entry => entry.RecentPlaytime is not null
+                    && !(windows.TryGetValue(entry.Source, out var window) && entry.AsOf + window > now)
+                        ? entry with { RecentPlaytime = null }
+                        : entry)
+                .GroupBy(entry => entry.GameId)
+                .Select(Game),
+        ];
+    }
+
+    /// <summary>Whether a store says the game was played: some playtime, or a last session.</summary>
+    public static bool Launched(OwnedGame game) => game.Playtime > TimeSpan.Zero || game.LastPlayedAt is not null;
+
+    /// <summary>The times that were said, added up; null while none was.</summary>
+    public static TimeSpan? Sum(IEnumerable<TimeSpan?> times)
+    {
+        TimeSpan? total = null;
+        foreach (var time in times)
+        {
+            if (time is { } said)
+            {
+                total = (total ?? TimeSpan.Zero) + said;
+            }
+        }
+
+        return total;
+    }
+
+    /// <summary>A game from the entries it is owned through: its totals add up, its last session is
+    /// the latest, and its entries come in an order that does not change.</summary>
+    private static OwnedGame Game(IGrouping<Guid, OwnedEntry> owned)
+    {
+        OwnedEntry[] entries =
+        [
+            .. owned.OrderBy(entry => entry.Source, StringComparer.Ordinal)
+                .ThenBy(entry => entry.ExternalId, StringComparer.Ordinal)
+                .ThenBy(entry => entry.LinkedAccountId),
+        ];
+        return new OwnedGame(
+            owned.Key,
+            entries[0].GameName,
+            Sum(entries.Select(entry => entry.Playtime)),
+            Sum(entries.Select(entry => entry.RecentPlaytime)),
+            entries.Max(entry => entry.LastPlayedAt),
+            entries);
+    }
+}
+
 internal static class StoreEntries
 {
     /// <summary>The store entries of these games: those the catalogue has, as it has them, and the id

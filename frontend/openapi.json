@@ -330,6 +330,112 @@
         }
       }
     },
+    "/api/v1/games/{id}": {
+      "get": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "One game, as the signed-in account sees it",
+        "description": "The catalogue's record with what the account owns of it: the entries it is owned through, as in the library, each with its playtime and missing_since, their total, and its rank among the games launched. Any game of the catalogue is answered: one that is not in the library has no entry and no rank. What was played of it over time is its months.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The game, by its id in the catalogue.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/games/{id}/months": {
+      "get": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "What the signed-in account played of one game, month by month",
+        "description": "The months the game was played in and the time of each, the earliest first, counted as the years of the library are: from the store's review when its year has one (exact to the month), from the daily readings otherwise. The months of a year add up to what was played of the game that year; over the same year of the library, that is its share of it, and the library's years say which days are counted at all. A game that is not in the library may have months: a review counts every game played. The day by day is the library's history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The game, by its id in the catalogue.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameMonthsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/games/{id}/cover": {
       "get": {
         "tags": [
@@ -602,6 +708,59 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/months/{month}": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What the signed-in account played in one month, game by game",
+        "description": "The games played in a month and the time of each, the most played first, counted as the month's year is in the years of the library: from the store's review (every game played, owned or not, which is why each comes with its name) or from the daily readings (the games of the library, over first_day to last_day). A month nothing counts, before the first reading in a year with no review or still to come, is answered with no source and no game.",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "path",
+            "description": "The month, as YYYY-MM, in UTC.",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{3}-(0[1-9]|1[0-2])$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryMonthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/json": {
                 "schema": {
@@ -1060,6 +1219,146 @@
           }
         }
       },
+      "GameMonthResponse": {
+        "required": [
+          "month",
+          "seconds",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "format": "date"
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "GameMonthsResponse": {
+        "required": [
+          "months"
+        ],
+        "type": "object",
+        "properties": {
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameMonthResponse"
+            }
+          }
+        }
+      },
+      "GameRankResponse": {
+        "required": [
+          "position",
+          "launched"
+        ],
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "launched": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "GameResponse": {
+        "required": [
+          "game_id",
+          "name",
+          "stores",
+          "playtime_seconds",
+          "recent_playtime_seconds",
+          "last_played_at",
+          "entries",
+          "rank"
+        ],
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameStoreResponse"
+            }
+          },
+          "playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "recent_playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "last_played_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryEntryResponse"
+            }
+          },
+          "rank": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GameRankResponse"
+              }
+            ]
+          }
+        }
+      },
+      "GameStoreResponse": {
+        "required": [
+          "store_entry_id",
+          "source",
+          "external_id"
+        ],
+        "type": "object",
+        "properties": {
+          "store_entry_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          }
+        }
+      },
       "HistoryDayResponse": {
         "required": [
           "date",
@@ -1235,6 +1534,48 @@
           }
         }
       },
+      "LibraryMonthResponse": {
+        "required": [
+          "month",
+          "source",
+          "first_day",
+          "last_day",
+          "games"
+        ],
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "format": "date"
+          },
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "first_day": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "last_day": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonthGameResponse"
+            }
+          }
+        }
+      },
       "LibraryResponse": {
         "required": [
           "total",
@@ -1404,6 +1745,30 @@
             "maxLength": 256,
             "minLength": 0,
             "type": "string"
+          }
+        }
+      },
+      "MonthGameResponse": {
+        "required": [
+          "game_id",
+          "name",
+          "seconds"
+        ],
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

@@ -281,6 +281,26 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task<CatalogueGame?> FindGameAsync(Guid gameId, CancellationToken ct)
+    {
+        var game = await db.Games.AsNoTracking().Where(g => g.Id == gameId).Select(g => new { g.Name }).FirstOrDefaultAsync(ct);
+        return game is null
+            ? null
+            : new CatalogueGame(
+                gameId,
+                game.Name,
+                await db.StoreEntries.AsNoTracking()
+                    .Where(e => e.GameId == gameId)
+                    .Select(e => new GameStore(e.Id, e.Source, e.ExternalId))
+                    .ToListAsync(ct));
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string?>> FindNamesAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct)
+    {
+        Guid[] ids = [.. gameIds];
+        return await db.Games.AsNoTracking().Where(g => ids.Contains(g.Id)).ToDictionaryAsync(g => g.Id, g => g.Name, ct);
+    }
+
     public async Task<IReadOnlyList<CoverEntry>?> FindCoverEntriesAsync(Guid gameId, CancellationToken ct)
     {
         var entries = await db.StoreEntries.AsNoTracking()
@@ -486,7 +506,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             row.MissingSince))];
     }
 
-    public async Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct)
+    public async Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
         // The differences are taken by the database, which reads the observations of the days asked
         // and no others: their snapshots come from the index on the linked account and the date, their
@@ -499,6 +519,10 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         // looked up in each, and the walk stops at the first that has one, or at the earliest reading
         // that listed the game: one bought in the days asked is looked up nowhere. That lookup is a
         // lateral join so that it is made once for a reading, and only for one with none before it.
+        //
+        // For one game, only the rows of its store entries are looked up in each snapshot, by the
+        // primary key: a day costs a row or two, not the whole library.
+        var (everyGame, game) = (gameId is null, gameId ?? Guid.Empty);
         var since = (from ?? DateOnly.MinValue).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
         var until = to is { } day && day < DateOnly.MaxValue
             ? day.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
@@ -523,6 +547,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                       AND s.taken_at >= {since} AND s.taken_at < {until}
                       AND w.unlisted_since IS NULL
                       AND o.known_playtime_seconds IS NOT NULL
+                      AND ({everyGame} OR o.store_entry_id IN (SELECT id FROM games.store_entries WHERE game_id = {game}))
                 ),
                 gains AS (
                     SELECT r.day,
