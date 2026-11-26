@@ -45,20 +45,28 @@ public sealed partial record ImageName(string Kind, string Source, string Key, s
 /// <param name="CheckedAt">When its source was last asked for it.</param>
 public sealed record KeptImage(ImageName Name, DateTimeOffset CheckedAt);
 
-/// <summary>One fetch of a game's images at a time in this process: two screens asking for the same
-/// cover at once cost its source one request, the second finding the first one's file.</summary>
+/// <summary>Turns in this process. One fetch of a game's images at a time: two screens asking for the
+/// same cover at once cost its source one request, the second finding the first one's file. And one
+/// change of an image's file at a time, whichever games show it: a file is made one of a game's and
+/// removed once no game shows it, never both at once.</summary>
 public sealed class ImageGate
 {
-    private readonly Dictionary<Guid, (SemaphoreSlim Turn, int Waiting)> _games = [];
+    private readonly Dictionary<object, (SemaphoreSlim Turn, int Waiting)> _turns = [];
 
     /// <summary>Waits for the game's turn; disposing of what is returned ends it.</summary>
-    public async Task<IAsyncDisposable> EnterAsync(Guid gameId, CancellationToken ct)
+    public Task<IAsyncDisposable> EnterAsync(Guid gameId, CancellationToken ct) => EnterAsync((object)gameId, ct);
+
+    /// <summary>Waits for the image's turn, whichever game asks; disposing of what is returned ends it.
+    /// Taken while a game's turn is held, never the other way round.</summary>
+    public Task<IAsyncDisposable> EnterAsync(ImageName image, CancellationToken ct) => EnterAsync((object)image, ct);
+
+    private async Task<IAsyncDisposable> EnterAsync(object key, CancellationToken ct)
     {
         SemaphoreSlim turn;
-        lock (_games)
+        lock (_turns)
         {
-            var (held, waiting) = _games.TryGetValue(gameId, out var known) ? known : (new SemaphoreSlim(1, 1), 0);
-            _games[gameId] = (held, waiting + 1);
+            var (held, waiting) = _turns.TryGetValue(key, out var known) ? known : (new SemaphoreSlim(1, 1), 0);
+            _turns[key] = (held, waiting + 1);
             turn = held;
         }
 
@@ -68,31 +76,31 @@ public sealed class ImageGate
         }
         catch
         {
-            Leave(gameId);
+            Leave(key);
             throw;
         }
 
-        return new Turn(this, gameId, turn);
+        return new Turn(this, key, turn);
     }
 
-    private void Leave(Guid gameId)
+    private void Leave(object key)
     {
-        lock (_games)
+        lock (_turns)
         {
-            var (turn, waiting) = _games[gameId];
+            var (turn, waiting) = _turns[key];
             if (waiting == 1)
             {
-                _games.Remove(gameId);
+                _turns.Remove(key);
                 turn.Dispose();
             }
             else
             {
-                _games[gameId] = (turn, waiting - 1);
+                _turns[key] = (turn, waiting - 1);
             }
         }
     }
 
-    private sealed class Turn(ImageGate gate, Guid gameId, SemaphoreSlim turn) : IAsyncDisposable
+    private sealed class Turn(ImageGate gate, object key, SemaphoreSlim turn) : IAsyncDisposable
     {
         private int _ended;
 
@@ -101,7 +109,7 @@ public sealed class ImageGate
             if (Interlocked.Exchange(ref _ended, 1) == 0)
             {
                 turn.Release();
-                gate.Leave(gameId);
+                gate.Leave(key);
             }
 
             return ValueTask.CompletedTask;

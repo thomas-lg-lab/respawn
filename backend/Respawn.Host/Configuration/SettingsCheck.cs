@@ -29,7 +29,7 @@ internal sealed class SettingsCheck(IServiceProvider services, ILogger<SettingsC
         {
             // The message names the setting and never quotes its value.
             logger.LogCritical("a setting cannot be read, the app does not start: {Reason}", ex.Message);
-            throw;
+            throw new StartRefusedException("a setting cannot be read", ex);
         }
 
         // Said once: where the covers come from, for whoever runs the instance.
@@ -42,7 +42,7 @@ internal sealed class SettingsCheck(IServiceProvider services, ILogger<SettingsC
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 logger.LogCritical("the data directory (RESPAWN_DATA_DIR) cannot be written, the app does not start: {Reason}", ex.Message);
-                throw;
+                throw new StartRefusedException("the data directory cannot be written", ex);
             }
 
             logger.LogInformation("covers are kept in the data directory {Directory}, fetched from their source the first time each is asked for", files.Directory);

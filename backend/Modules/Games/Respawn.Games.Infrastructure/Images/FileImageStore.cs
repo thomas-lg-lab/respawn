@@ -71,6 +71,13 @@ public sealed partial class FileImageStore(string directory, ILogger<FileImageSt
             return false;
         }
 
+        // The same name holds the same bytes, and a file is only ever moved into place whole: one that
+        // is there already needs no second write.
+        if (File.Exists(path))
+        {
+            return true;
+        }
+
         var written = Path.Combine(Temporary, $"{Guid.CreateVersion7():N}");
         try
         {
@@ -78,7 +85,7 @@ public sealed partial class FileImageStore(string directory, ILogger<FileImageSt
             await File.WriteAllBytesAsync(written, bytes, ct);
             System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
-            // The same name holds the same bytes: one written over is written over with itself.
+            // Overwritten only by a write of the same image that got there first, with the same bytes.
             File.Move(written, path, overwrite: true);
             if (Interlocked.Exchange(ref _troubled, 0) == 1)
             {

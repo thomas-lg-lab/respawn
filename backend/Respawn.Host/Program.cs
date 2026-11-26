@@ -138,7 +138,7 @@ try
 {
     app.Run();
 }
-catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
+catch (StartRefusedException)
 {
     // A setting that cannot be read, or a data directory that cannot be written: SettingsCheck said
     // which. A plain exit, not a crash on top of it.

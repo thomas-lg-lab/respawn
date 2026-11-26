@@ -57,13 +57,8 @@ public sealed class CoverService(
             // right image.
             if (fetched.From is { Asked: true } from
                 && ImageName.Of(ImageKinds.Cover, from.Source, from.ExternalId, found) is { } name
-                && await images.WriteAsync(name, found.Bytes, ct))
+                && await KeepAsync(gameId, new KeptImage(name, now), found, ct))
             {
-                if (await catalogue.KeepImageAsync(gameId, new KeptImage(name, now), ct) is { } replaced && replaced != name)
-                {
-                    images.Delete(replaced);
-                }
-
                 return new CoverAnswer(Passed(found, name.Tag), true);
             }
 
@@ -91,6 +86,66 @@ public sealed class CoverService(
     private static bool IsCurrent(KeptImage kept, IReadOnlyList<CoverEntry> entries, DateTimeOffset now) =>
         kept.CheckedAt > now - CoverSchedule.AskAgainAfter
         && entries.Any(entry => entry.Source == kept.Name.Source && entry.AskedAt is { } asked && kept.CheckedAt >= asked);
+
+    /// <summary>Writes the image and makes it the one the game shows, in its file's turn, then removes the
+    /// file it showed before once no game shows it, in that file's turn: a file another game is being
+    /// given is never removed under it. False when the image could not be written.</summary>
+    private async Task<bool> KeepAsync(Guid gameId, KeptImage image, Cover cover, CancellationToken ct)
+    {
+        ImageName? replaced;
+        await using (await imageGate.EnterAsync(image.Name, ct))
+        {
+            if (!await images.WriteAsync(image.Name, cover.Bytes, ct))
+            {
+                return false;
+            }
+
+            try
+            {
+                replaced = await catalogue.KeepImageAsync(gameId, image, ct);
+            }
+            catch
+            {
+                // A request cut short or a database that failed leaves a file no game may show: it goes
+                // now, or it would stay for good.
+                await RemoveUnshownQuietlyAsync(image.Name);
+                throw;
+            }
+        }
+
+        if (replaced is not null)
+        {
+            // Not cut short by the request: the old file would stay for good.
+            await using (await imageGate.EnterAsync(replaced, CancellationToken.None))
+            {
+                await RemoveUnshownAsync(replaced);
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Removes an image's file once no game shows it; asked in the file's turn.</summary>
+    private async Task RemoveUnshownAsync(ImageName image)
+    {
+        if (!await catalogue.IsImageShownAsync(image, CancellationToken.None))
+        {
+            images.Delete(image);
+        }
+    }
+
+    /// <summary>The same, after a failure: one that cannot be made now leaves the file, and the first
+    /// failure is the one said.</summary>
+    private async Task RemoveUnshownQuietlyAsync(ImageName image)
+    {
+        try
+        {
+            await RemoveUnshownAsync(image);
+        }
+        catch (Exception)
+        {
+        }
+    }
 
     private async Task<CoverImage?> OpenAsync(KeptImage kept, CancellationToken ct) =>
         await images.OpenAsync(kept.Name, ct) is { } file ? new CoverImage(kept.Name.ContentType, file, kept.Name.Tag) : null;

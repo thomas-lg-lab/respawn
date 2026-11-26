@@ -93,8 +93,12 @@ public interface ICatalogue
     Task<KeptImage?> FindImageAsync(Guid gameId, string kind, CancellationToken ct);
 
     /// <summary>Makes this the image the game shows for its kind, in the place of the one it showed.
-    /// Returns that one when no game shows it any more, for its file to be removed; null otherwise.</summary>
+    /// Returns that one when it was another, whose file may go once no game shows it
+    /// (<see cref="IsImageShownAsync"/>); null otherwise.</summary>
     Task<ImageName?> KeepImageAsync(Guid gameId, KeptImage image, CancellationToken ct);
+
+    /// <summary>Whether a game shows this image: its file is removed only once none does.</summary>
+    Task<bool> IsImageShownAsync(ImageName image, CancellationToken ct);
 
     /// <summary>Says the source of the image a game shows for a kind was asked for it at that moment,
     /// and gave nothing newer.</summary>

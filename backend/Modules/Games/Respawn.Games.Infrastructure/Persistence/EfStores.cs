@@ -364,13 +364,12 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
 
         (row.Source, row.Key, row.ContentType, row.CheckedAt) = (name.Source, name.Key, name.ContentType, image.CheckedAt);
         await SaveAsync(ct);
-
-        // Two games may show one file: it goes only once none does.
-        return replaced is null || replaced == name
-            || await db.Images.AnyAsync(i => i.Kind == replaced.Kind && i.Source == replaced.Source && i.Key == replaced.Key, ct)
-            ? null
-            : replaced;
+        return replaced == name ? null : replaced;
     }
+
+    // Two games may show one file: it goes only once none does.
+    public Task<bool> IsImageShownAsync(ImageName image, CancellationToken ct) =>
+        db.Images.AnyAsync(i => i.Kind == image.Kind && i.Source == image.Source && i.Key == image.Key, ct);
 
     public Task CheckedImageAsync(Guid gameId, string kind, DateTimeOffset at, CancellationToken ct) =>
         db.Images.Where(i => i.GameId == gameId && i.Kind == kind)
