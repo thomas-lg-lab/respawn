@@ -65,13 +65,7 @@
   } @else {
     <div role="status">
       @if (view() === 'covers') {
-        <div
-          class="grid grid-cols-3 gap-x-3 gap-y-5 wide:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] wide:gap-x-4"
-        >
-          @for (tile of placeholders; track tile) {
-            <rs-skeleton class="aspect-2/3" />
-          }
-        </div>
+        <rs-game-grid loading [language]="currentLanguage()" />
       } @else {
         <div class="flex flex-col gap-2">
           @for (row of placeholders; track row) {

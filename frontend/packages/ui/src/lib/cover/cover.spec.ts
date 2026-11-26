@@ -4,10 +4,16 @@ import { Cover } from './cover';
 
 @Component({
   imports: [Cover],
-  template: `<rs-cover [hue]="40" [src]="src()" (failed)="failed = failed + 1" />`,
+  template: `<rs-cover
+    [hue]="40"
+    [src]="src()"
+    [eager]="eager()"
+    (failed)="failed = failed + 1"
+  />`,
 })
 class Host {
   readonly src = signal<string | undefined>(undefined);
+  readonly eager = signal(false);
   failed = 0;
 }
 
@@ -37,6 +43,15 @@ describe('Cover', () => {
     const { element } = await create('/api/v1/games/1/cover');
 
     expect(element.querySelector('img')!.getAttribute('loading')).toBe('lazy');
+  });
+
+  it('asks for the image at once when the cover is in view as its page opens', async () => {
+    const { fixture, element } = await create('/api/v1/games/1/cover');
+
+    fixture.componentInstance.eager.set(true);
+    await fixture.whenStable();
+
+    expect(element.querySelector('img')!.getAttribute('loading')).toBe('eager');
   });
 
   it('leaves the placeholder and says so when the image does not load, until another is given', async () => {

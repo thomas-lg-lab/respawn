@@ -1,4 +1,4 @@
-import { Component, input, linkedSignal, output } from '@angular/core';
+import { Component, booleanAttribute, input, linkedSignal, output } from '@angular/core';
 
 /**
  * A cover, 2:3: a game's artwork when `src` gives one, over its placeholder, a flat block in a
@@ -17,6 +17,12 @@ export class Cover {
   readonly hue = input.required<number>();
   /** Where the image is; none for the placeholder alone. */
   readonly src = input<string>();
+  /**
+   * The image is asked for at once, for a cover in view as soon as its page opens. Without it,
+   * only once the cover comes near the screen: a list of a thousand games does not fetch a
+   * thousand images.
+   */
+  readonly eager = input(false, { transform: booleanAttribute });
   /** The image did not load: there is none to show, or it could not be read. */
   readonly failed = output<void>();
 

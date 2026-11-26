@@ -1,8 +1,14 @@
+<!-- While the games load, the same grid holds as many blocks, hidden from screen readers: the
+     screen says in words what it waits for. -->
 <ul
   class="grid grid-cols-3 gap-x-3 gap-y-5 wide:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] wide:gap-x-4"
   *transloco="let t; prefix: 'library'"
-  [attr.aria-label]="t('title')"
+  [attr.aria-label]="loading() ? null : t('title')"
+  [attr.aria-hidden]="loading() ? 'true' : null"
 >
+  @for (tile of placeholders(); track tile) {
+    <li><rs-skeleton class="aspect-2/3" /></li>
+  }
   @for (tile of tiles(); track tile.id) {
     <li class="group relative flex min-w-0 flex-col gap-2" [attr.data-game]="tile.id">
       <rs-cover

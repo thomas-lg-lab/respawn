@@ -363,6 +363,8 @@ describe('Library', () => {
     await vi.waitFor(() =>
       expect(text(screen, 'main [role="status"]')).toBe('Chargement de vos jeux…'),
     );
+    // The covers' grid, whole rows of blocks where the tiles will stand.
+    expect(screen.querySelectorAll('rs-game-grid rs-skeleton')).toHaveLength(12);
 
     await server.answer(FIRST_PAGE, { total: 0, offset: 0, limit: 500, games: [] });
     await harness.fixture.whenStable();
