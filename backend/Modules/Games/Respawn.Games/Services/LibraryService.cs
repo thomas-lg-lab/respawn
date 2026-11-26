@@ -183,10 +183,9 @@ public sealed class LibraryService(
 
     public async Task<LibraryHistory> GetHistoryAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
-        var entries = await library.ListAsync(ownerId, ct);
         var played = await library.ListPlayedAsync(ownerId, gameId: null, from, to, ct);
         return new LibraryHistory(
-            entries.Count > 0 ? entries.Min(entry => entry.FirstSeenAt) : null,
+            await library.FindFirstSeenAsync(ownerId, ct),
             [
                 .. played
                     .GroupBy(day => day.Date)

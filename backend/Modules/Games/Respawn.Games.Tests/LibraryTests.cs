@@ -749,6 +749,9 @@ public sealed class LibraryTests
         public Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<OwnedEntry>>([]);
 
+        public Task<DateTimeOffset?> FindFirstSeenAsync(Guid ownerId, CancellationToken ct) =>
+            Task.FromResult<DateTimeOffset?>(null);
+
         public Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? from, DateOnly? to, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<PlayedDay>>([]);
     }

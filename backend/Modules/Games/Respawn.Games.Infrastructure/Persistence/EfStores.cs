@@ -393,15 +393,28 @@ internal sealed class EfYearReviewStore(GamesDbContext db) : IYearReviewStore
                 .Select(row => (row.LinkedAccountId, row.Year)),
         ];
 
-    public async Task<IReadOnlyList<PlayedMonth>> ListPlayedAsync(Guid ownerId, CancellationToken ct)
+    public async Task<IReadOnlyList<PlayedMonth>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? month, CancellationToken ct)
     {
-        var rows = await (
-            from month in db.MonthlyPlaytime.AsNoTracking()
-            join account in db.LinkedAccounts on month.LinkedAccountId equals account.Id
+        // A condition is added only when it is asked for, so that each query is planned as it is
+        // written: one month comes from the primary key (the account, then the month), one game from
+        // the index on the store entry.
+        var played =
+            from row in db.MonthlyPlaytime.AsNoTracking()
+            join account in db.LinkedAccounts on row.LinkedAccountId equals account.Id
             where account.OwnerId == ownerId
-            join entry in db.StoreEntries on month.StoreEntryId equals entry.Id
-            select new { month.LinkedAccountId, month.Month, entry.GameId, month.PlaytimeSeconds, month.Sessions })
-            .ToListAsync(ct);
+            join entry in db.StoreEntries on row.StoreEntryId equals entry.Id
+            select new { row.LinkedAccountId, row.Month, entry.GameId, row.PlaytimeSeconds, row.Sessions };
+        if (gameId is { } game)
+        {
+            played = played.Where(row => row.GameId == game);
+        }
+
+        if (month is { } asked)
+        {
+            played = played.Where(row => row.Month == asked);
+        }
+
+        var rows = await played.ToListAsync(ct);
         return [.. rows.Select(row => new PlayedMonth(row.LinkedAccountId, row.Month, row.GameId, TimeSpan.FromSeconds(row.PlaytimeSeconds), row.Sessions))];
     }
 }
@@ -505,6 +518,14 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             row.AsOf,
             row.MissingSince))];
     }
+
+    public async Task<DateTimeOffset?> FindFirstSeenAsync(Guid ownerId, CancellationToken ct) =>
+        await (
+            from ownership in db.Ownerships.AsNoTracking()
+            join account in db.LinkedAccounts on ownership.LinkedAccountId equals account.Id
+            where account.OwnerId == ownerId && ownership.UnlistedSince == null
+            select (DateTimeOffset?)ownership.FirstSeenAt)
+            .MinAsync(ct);
 
     public async Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
