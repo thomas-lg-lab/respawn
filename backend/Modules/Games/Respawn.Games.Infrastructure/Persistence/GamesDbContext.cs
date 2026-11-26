@@ -104,8 +104,15 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
         modelBuilder.Entity<OwnershipRow>(ownership =>
         {
-            ownership.ToTable("ownerships", table => table.HasCheckConstraint(
-                "ck_ownerships_playtime", "playtime_seconds >= 0 AND recent_playtime_seconds >= 0"));
+            ownership.ToTable("ownerships", table =>
+            {
+                table.HasCheckConstraint("ck_ownerships_playtime", "playtime_seconds >= 0 AND recent_playtime_seconds >= 0");
+
+                // Only a game out of the library is listed again, or has a notice to dismiss.
+                table.HasCheckConstraint(
+                    "ck_ownerships_listed_again",
+                    "unlisted_since IS NOT NULL OR (listed_again_since IS NULL AND notice_dismissed_at IS NULL)");
+            });
             ownership.HasKey(o => new { o.LinkedAccountId, o.StoreEntryId });
             ownership.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(o => o.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
             ownership.HasOne<StoreEntryRow>().WithMany().HasForeignKey(o => o.StoreEntryId).OnDelete(DeleteBehavior.Restrict);

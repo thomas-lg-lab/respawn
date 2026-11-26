@@ -336,7 +336,7 @@
           "Games"
         ],
         "summary": "One game, as the signed-in account sees it",
-        "description": "The catalogue's record with what the account owns of it: the entries it is owned through, as in the library, each with its playtime and missing_since, their total, and its rank among the games launched. Any game of the catalogue is answered: one that is not in the library has no entry and no rank. What was played of it over time is its months.",
+        "description": "The catalogue's record with what the account owns of it: the entries it is owned through, as in the library, each with its playtime and missing_since, their total, and its rank among the games launched. Any game of the catalogue is answered: one that is not in the library has no entry and no rank, and one the account took out of it says so in removed. What was played of it over time is its months.",
         "parameters": [
           {
             "name": "id",
@@ -761,6 +761,232 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/games/{id}": {
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Take a game its store no longer lists out of the library",
+        "description": "Takes out every entry of the game that is flagged as missing (missing_since); an entry a store still lists stays, and the game with it. 409 still_listed when no entry is missing: only a game its store no longer lists is taken out. What was known of the game is kept, and it stays out: no sync puts it back. If its store lists it again, the removed games say so (back_since), and its owner puts it back or dismisses that notice.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The game, by its id in the catalogue.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Put a game back in the library",
+        "description": "Puts back everything the account took out of the game, whether its store lists it again or not: an entry the store does not list comes back flagged as missing. 404 not_removed when nothing of the game was taken out.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The game, by its id in the catalogue.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/removed": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The games the signed-in account took out of its library",
+        "description": "One item per game, by name, with the entries taken out. back_since is the notice to show: a store lists the game again since that date, and the notice was not dismissed. A game taken out is not in the library, its figures or its history; a store's review of a year still counts what was played of it.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedGamesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/removed/{id}/notice": {
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Dismiss the notice that a removed game is back",
+        "description": "For good: the game stays out, and nothing its store says later raises the notice again. It can still be put back. 404 not_removed when nothing of the game was taken out, 409 not_back when no store lists it again. Dismissing a notice twice changes nothing.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The game, by its id in the catalogue.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -1280,7 +1506,8 @@
           "recent_playtime_seconds",
           "last_played_at",
           "entries",
-          "rank"
+          "rank",
+          "removed"
         ],
         "type": "object",
         "properties": {
@@ -1334,6 +1561,16 @@
               },
               {
                 "$ref": "#/components/schemas/GameRankResponse"
+              }
+            ]
+          },
+          "removed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RemovedGameResponse"
               }
             ]
           }
@@ -1822,6 +2059,100 @@
             "maxLength": 256,
             "minLength": 0,
             "type": "string"
+          }
+        }
+      },
+      "RemovedEntryResponse": {
+        "required": [
+          "store_entry_id",
+          "linked_account_id",
+          "source",
+          "external_id",
+          "removed_at",
+          "listed_again_since",
+          "notice_dismissed_at"
+        ],
+        "type": "object",
+        "properties": {
+          "store_entry_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "linked_account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "removed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "listed_again_since": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "notice_dismissed_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "RemovedGameResponse": {
+        "required": [
+          "game_id",
+          "name",
+          "back_since",
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "back_since": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemovedEntryResponse"
+            }
+          }
+        }
+      },
+      "RemovedGamesResponse": {
+        "required": [
+          "games"
+        ],
+        "type": "object",
+        "properties": {
+          "games": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemovedGameResponse"
+            }
           }
         }
       },

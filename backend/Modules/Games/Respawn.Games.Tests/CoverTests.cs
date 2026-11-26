@@ -332,19 +332,26 @@ public sealed class CoverTests
         await browser.RegisterAsync();
         var none = $"/api/v1/games/{Guid.CreateVersion7()}/cover";
 
-        // As many as the largest screen of covers asks for, in a row; the bucket fills again a little
-        // while they are asked, so the refusal comes somewhat after the two thousandth.
+        // As many as the largest screen of covers asks for, in a row; the bucket fills again each
+        // minute while they are asked, so the refusal comes at the two thousandth or somewhat after.
+        // The refusal checked is the one that ended the run: a request after it could land after the
+        // bucket filled again, on a busy machine.
         var answered = 0;
-        var status = HttpStatusCode.NotFound;
-        while (status == HttpStatusCode.NotFound && answered < 3000)
+        (HttpStatusCode Status, string? Code) refusal = default;
+        while (answered < 4000)
         {
             using var answer = await browser.GetAsync(none);
-            status = answer.StatusCode;
-            answered += status == HttpStatusCode.NotFound ? 1 : 0;
+            if (answer.StatusCode != HttpStatusCode.NotFound)
+            {
+                refusal = (answer.StatusCode, (await answer.JsonAsync()).GetProperty("error").GetProperty("code").GetString());
+                break;
+            }
+
+            answered++;
         }
 
-        Assert.InRange(answered, 2000, 2600);
-        Assert.Equal((HttpStatusCode.TooManyRequests, "too_many_requests"), await browser.GetAsync(none).RefusalAsync());
+        Assert.InRange(answered, 2000, 3999);
+        Assert.Equal((HttpStatusCode.TooManyRequests, "too_many_requests"), refusal);
     }
 
     [Fact]

@@ -16,7 +16,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261126065409_StoreEntryCovers";
+    public override string LastMigrationId => "20261126114817_RemovedGames";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -218,9 +218,17 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("last_played_at");
 
+                b.Property<DateTimeOffset?>("ListedAgainSince")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("listed_again_since");
+
                 b.Property<DateTimeOffset?>("MissingSince")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("missing_since");
+
+                b.Property<DateTimeOffset?>("NoticeDismissedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("notice_dismissed_at");
 
                 b.Property<long?>("PlaytimeSeconds")
                     .HasColumnType("bigint")
@@ -249,6 +257,8 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
 
                 b.ToTable("ownerships", "games", t =>
                     {
+                        t.HasCheckConstraint("ck_ownerships_listed_again", "unlisted_since IS NOT NULL OR (listed_again_since IS NULL AND notice_dismissed_at IS NULL)");
+
                         t.HasCheckConstraint("ck_ownerships_playtime", "playtime_seconds >= 0 AND recent_playtime_seconds >= 0");
                     });
             });

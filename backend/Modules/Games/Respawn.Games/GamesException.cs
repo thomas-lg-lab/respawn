@@ -29,6 +29,18 @@ public enum GamesError
     /// <summary>No source has a cover for the game. Never thrown: an answer of its own
     /// (<see cref="CoverAnswer"/>), named here for the refusal it becomes.</summary>
     NoCover,
+
+    /// <summary>The owner's library does not have the game.</summary>
+    NotInLibrary,
+
+    /// <summary>The game cannot be taken out of the library: its store lists every entry of it.</summary>
+    StillListed,
+
+    /// <summary>The owner took nothing of the game out of their library.</summary>
+    NotRemoved,
+
+    /// <summary>No store lists again what the owner took out of the game: there is no notice to dismiss.</summary>
+    NotBack,
 }
 
 public sealed class GamesException(GamesError error) : Exception(error.ToString())

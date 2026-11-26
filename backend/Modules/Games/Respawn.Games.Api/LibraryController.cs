@@ -105,6 +105,74 @@ public sealed class LibraryController(ILibraryService library, IPlaytimeService 
         string month,
         CancellationToken ct) =>
         LibraryMonthResponse.From(await playtime.GetMonthAsync(Caller.Id(User), Months.Parse(month), ct));
+
+    [HttpDelete("library/games/{id:guid}")]
+    [Authorize]
+    [EndpointSummary("Take a game its store no longer lists out of the library")]
+    [EndpointDescription(
+        "Takes out every entry of the game that is flagged as missing (missing_since); an entry a store "
+        + "still lists stays, and the game with it. 409 still_listed when no entry is missing: only a game "
+        + "its store no longer lists is taken out. What was known of the game is kept, and it stays out: "
+        + "no sync puts it back. If its store lists it again, the removed games say so (back_since), and "
+        + "its owner puts it back or dismisses that notice.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Remove([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct)
+    {
+        await library.RemoveGameAsync(Caller.Id(User), id, ct);
+        return NoContent();
+    }
+
+    [HttpPut("library/games/{id:guid}")]
+    [Authorize]
+    [EndpointSummary("Put a game back in the library")]
+    [EndpointDescription(
+        "Puts back everything the account took out of the game, whether its store lists it again or not: "
+        + "an entry the store does not list comes back flagged as missing. 404 not_removed when nothing "
+        + "of the game was taken out.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Restore([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct)
+    {
+        await library.RestoreGameAsync(Caller.Id(User), id, ct);
+        return NoContent();
+    }
+
+    [HttpGet("library/removed")]
+    [Authorize]
+    [EndpointSummary("The games the signed-in account took out of its library")]
+    [EndpointDescription(
+        "One item per game, by name, with the entries taken out. back_since is the notice to show: a "
+        + "store lists the game again since that date, and the notice was not dismissed. A game taken "
+        + "out is not in the library, its figures or its history; a store's review of a year still counts "
+        + "what was played of it.")]
+    [ProducesResponseType<RemovedGamesResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    public async Task<RemovedGamesResponse> Removed(CancellationToken ct) =>
+        new([.. (await library.GetRemovedAsync(Caller.Id(User), ct)).Select(RemovedGameResponse.From)]);
+
+    [HttpDelete("library/removed/{id:guid}/notice")]
+    [Authorize]
+    [EndpointSummary("Dismiss the notice that a removed game is back")]
+    [EndpointDescription(
+        "For good: the game stays out, and nothing its store says later raises the notice again. It can "
+        + "still be put back. 404 not_removed when nothing of the game was taken out, 409 not_back when no "
+        + "store lists it again. Dismissing a notice twice changes nothing.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Dismiss([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct)
+    {
+        await library.DismissReturnAsync(Caller.Id(User), id, ct);
+        return NoContent();
+    }
 }
 
 /// <summary>A month, as the API spells it.</summary>

@@ -424,18 +424,103 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
     public async Task<IReadOnlyDictionary<Guid, Ownership>> FindOwnershipsAsync(Guid linkedAccountId, CancellationToken ct)
     {
         var rows = await db.Ownerships.AsNoTracking().Where(o => o.LinkedAccountId == linkedAccountId).ToListAsync(ct);
-        return rows.ToDictionary(
-            row => row.StoreEntryId,
-            row => new Ownership(
-                row.StoreEntryId,
-                Playtime(row.PlaytimeSeconds),
-                row.LastPlayedAt,
-                row.FirstSeenAt,
-                row.AsOf,
-                row.SnapshotId,
-                Playtime(row.RecentPlaytimeSeconds),
-                row.UnlistedSince,
-                row.MissingSince));
+        return rows.ToDictionary(row => row.StoreEntryId, Known);
+    }
+
+    public async Task<IReadOnlyList<AccountOwnership>> FindGameOwnershipsAsync(Guid ownerId, Guid gameId, CancellationToken ct)
+    {
+        var rows = await (
+            from ownership in db.Ownerships.AsNoTracking()
+            join account in db.LinkedAccounts on ownership.LinkedAccountId equals account.Id
+            where account.OwnerId == ownerId
+            join entry in db.StoreEntries on ownership.StoreEntryId equals entry.Id
+            where entry.GameId == gameId
+            select ownership)
+            .ToListAsync(ct);
+        return [.. rows.Select(row => new AccountOwnership(row.LinkedAccountId, Known(row)))];
+    }
+
+    public async Task SaveAsync(IReadOnlyCollection<AccountOwnership> owned, CancellationToken ct)
+    {
+        // One query for every row: what the pairs ask for is picked out of the few rows the two lists
+        // of ids select.
+        var accounts = owned.Select(o => o.LinkedAccountId).Distinct().ToList();
+        var entries = owned.Select(o => o.Ownership.StoreEntryId).Distinct().ToList();
+        var rows = await db.Ownerships
+            .Where(o => accounts.Contains(o.LinkedAccountId) && entries.Contains(o.StoreEntryId))
+            .ToDictionaryAsync(o => (o.LinkedAccountId, o.StoreEntryId), ct);
+        foreach (var (linkedAccountId, ownership) in owned)
+        {
+            Set(rows[(linkedAccountId, ownership.StoreEntryId)], ownership);
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<RemovedEntry>> ListRemovedAsync(Guid ownerId, Guid? gameId, CancellationToken ct)
+    {
+        var removed =
+            from ownership in db.Ownerships.AsNoTracking()
+            join account in db.LinkedAccounts on ownership.LinkedAccountId equals account.Id
+            where account.OwnerId == ownerId && ownership.UnlistedSince != null
+            join entry in db.StoreEntries on ownership.StoreEntryId equals entry.Id
+            join game in db.Games on entry.GameId equals game.Id
+            select new
+            {
+                GameId = game.Id,
+                GameName = game.Name,
+                StoreEntryId = entry.Id,
+                LinkedAccountId = account.Id,
+                entry.Source,
+                entry.ExternalId,
+                ownership.UnlistedSince,
+                ownership.ListedAgainSince,
+                ownership.NoticeDismissedAt,
+            };
+        if (gameId is { } asked)
+        {
+            removed = removed.Where(row => row.GameId == asked);
+        }
+
+        var rows = await removed.ToListAsync(ct);
+        return [.. rows.Select(row => new RemovedEntry(
+            row.GameId,
+            row.GameName,
+            row.StoreEntryId,
+            row.LinkedAccountId,
+            row.Source,
+            row.ExternalId,
+            row.UnlistedSince!.Value,
+            row.ListedAgainSince,
+            row.NoticeDismissedAt))];
+    }
+
+    private static Ownership Known(OwnershipRow row) =>
+        new(
+            row.StoreEntryId,
+            Playtime(row.PlaytimeSeconds),
+            row.LastPlayedAt,
+            row.FirstSeenAt,
+            row.AsOf,
+            row.SnapshotId,
+            Playtime(row.RecentPlaytimeSeconds),
+            row.UnlistedSince,
+            row.MissingSince,
+            row.ListedAgainSince,
+            row.NoticeDismissedAt);
+
+    private static void Set(OwnershipRow row, Ownership ownership)
+    {
+        row.PlaytimeSeconds = Seconds(ownership.Playtime);
+        row.LastPlayedAt = ownership.LastPlayedAt;
+        row.FirstSeenAt = ownership.FirstSeenAt;
+        row.AsOf = ownership.AsOf;
+        row.SnapshotId = ownership.SnapshotId;
+        row.RecentPlaytimeSeconds = Seconds(ownership.RecentPlaytime);
+        row.UnlistedSince = ownership.UnlistedSince;
+        row.MissingSince = ownership.MissingSince;
+        row.ListedAgainSince = ownership.ListedAgainSince;
+        row.NoticeDismissedAt = ownership.NoticeDismissedAt;
     }
 
     public async Task RecordAsync(
@@ -467,14 +552,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 db.Ownerships.Add(row);
             }
 
-            row.PlaytimeSeconds = Seconds(ownership.Playtime);
-            row.LastPlayedAt = ownership.LastPlayedAt;
-            row.FirstSeenAt = ownership.FirstSeenAt;
-            row.AsOf = ownership.AsOf;
-            row.SnapshotId = ownership.SnapshotId;
-            row.RecentPlaytimeSeconds = Seconds(ownership.RecentPlaytime);
-            row.UnlistedSince = ownership.UnlistedSince;
-            row.MissingSince = ownership.MissingSince;
+            Set(row, ownership);
         }
 
         await db.SaveChangesAsync(ct);

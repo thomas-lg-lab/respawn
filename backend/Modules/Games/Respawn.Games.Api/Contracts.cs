@@ -218,6 +218,8 @@ public sealed record YearResponse(int Year, long Seconds, string Source, DateOnl
 /// <param name="Entries">The ways the account owns the game, as in the library: one per store entry and
 /// linked account, each with its own playtime and missing_since. Empty when the game is not in the library.</param>
 /// <param name="Rank">Where the game stands among the games launched; null when it was never launched.</param>
+/// <param name="Removed">What the account took out of its library of this game, as the removed games
+/// give it; null when nothing was.</param>
 public sealed record GameResponse(
     Guid GameId,
     string? Name,
@@ -226,7 +228,8 @@ public sealed record GameResponse(
     long? RecentPlaytimeSeconds,
     DateTimeOffset? LastPlayedAt,
     IReadOnlyList<LibraryEntryResponse> Entries,
-    GameRankResponse? Rank)
+    GameRankResponse? Rank,
+    RemovedGameResponse? Removed)
 {
     public static GameResponse From(GameView view) =>
         new(
@@ -237,8 +240,55 @@ public sealed record GameResponse(
             Seconds.Of(view.Owned?.RecentPlaytime),
             view.Owned?.LastPlayedAt,
             [.. (view.Owned?.Entries ?? []).Select(LibraryEntryResponse.From)],
-            view.Rank is { } rank ? new GameRankResponse(rank.Position, rank.Launched) : null);
+            view.Rank is { } rank ? new GameRankResponse(rank.Position, rank.Launched) : null,
+            view.Removed is { } removed ? RemovedGameResponse.From(removed) : null);
 }
+
+/// <summary>The games the signed-in account took out of its library.</summary>
+/// <param name="Games">One item per game, by name.</param>
+public sealed record RemovedGamesResponse(IReadOnlyList<RemovedGameResponse> Games);
+
+/// <param name="GameId">The game, whatever the store.</param>
+/// <param name="Name">The game's name; null while no source has named it.</param>
+/// <param name="BackSince">The notice to show: the date of the earliest answer of a store that listed
+/// the game again, among the entries whose notice was not dismissed. Null when no store lists it again,
+/// or the notice was dismissed.</param>
+/// <param name="Entries">The entries taken out, at least one.</param>
+public sealed record RemovedGameResponse(Guid GameId, string? Name, DateTimeOffset? BackSince, IReadOnlyList<RemovedEntryResponse> Entries)
+{
+    public static RemovedGameResponse From(RemovedGame game) =>
+        new(
+            game.GameId,
+            game.Name,
+            game.BackSince,
+            [
+                .. game.Entries.Select(entry => new RemovedEntryResponse(
+                    entry.StoreEntryId,
+                    entry.LinkedAccountId,
+                    entry.Source,
+                    entry.ExternalId,
+                    entry.RemovedAt,
+                    entry.ListedAgainSince,
+                    entry.NoticeDismissedAt)),
+            ]);
+}
+
+/// <param name="StoreEntryId">The game as its store knows it.</param>
+/// <param name="LinkedAccountId">The store account it was owned through.</param>
+/// <param name="Source">The store.</param>
+/// <param name="ExternalId">The game's id in that store.</param>
+/// <param name="RemovedAt">When it was taken out of the library.</param>
+/// <param name="ListedAgainSince">The date of the earliest answer of the store that listed it again,
+/// while none has left it out since; null while the store does not list it.</param>
+/// <param name="NoticeDismissedAt">When the notice that it is back was dismissed, for good; null otherwise.</param>
+public sealed record RemovedEntryResponse(
+    Guid StoreEntryId,
+    Guid LinkedAccountId,
+    string Source,
+    string ExternalId,
+    DateTimeOffset RemovedAt,
+    DateTimeOffset? ListedAgainSince,
+    DateTimeOffset? NoticeDismissedAt);
 
 /// <param name="StoreEntryId">The game as that store knows it. A library entry names it as its store_entry_id.</param>
 /// <param name="Source">The store.</param>

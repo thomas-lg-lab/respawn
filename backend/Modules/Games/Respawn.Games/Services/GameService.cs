@@ -29,7 +29,8 @@ public sealed class GameService(
                 ],
             },
             owned,
-            Rank(owned, games));
+            Rank(owned, games),
+            RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId, ct)).SingleOrDefault());
     }
 
     /// <summary>The game's place among those launched, the most played first. Two games played as long
