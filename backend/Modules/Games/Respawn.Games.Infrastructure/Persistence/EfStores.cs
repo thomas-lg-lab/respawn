@@ -280,6 +280,42 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
 
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<CoverEntry>?> FindCoverEntriesAsync(Guid gameId, CancellationToken ct)
+    {
+        var entries = await db.StoreEntries.AsNoTracking()
+            .Where(e => e.GameId == gameId)
+            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath))
+            .ToListAsync(ct);
+
+        // A game most often has an entry: the second question is for the id that is no game's.
+        return entries.Count > 0 || await db.Games.AnyAsync(g => g.Id == gameId, ct) ? entries : null;
+    }
+
+    public async Task<IReadOnlyList<CoverEntry>> ListCoverPathsDueAsync(Guid linkedAccountId, DateTimeOffset askedBefore, CancellationToken ct) =>
+        await db.Ownerships.AsNoTracking()
+            .Where(o => o.LinkedAccountId == linkedAccountId)
+            .Join(db.StoreEntries.AsNoTracking(), o => o.StoreEntryId, e => e.Id, (o, e) => e)
+            .Where(e => e.CoverAskedAt == null || e.CoverAskedAt < askedBefore)
+            .OrderBy(e => e.Id)
+            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath))
+            .ToListAsync(ct);
+
+    public async Task SetCoverPathsAsync(IReadOnlyCollection<CoverPath> paths, DateTimeOffset at, CancellationToken ct)
+    {
+        Guid[] ids = [.. paths.Select(path => path.StoreEntryId)];
+        var entries = await db.StoreEntries.Where(e => ids.Contains(e.Id)).ToDictionaryAsync(e => e.Id, ct);
+        foreach (var path in paths)
+        {
+            if (entries.TryGetValue(path.StoreEntryId, out var entry))
+            {
+                entry.CoverPath = path.Path;
+                entry.CoverAskedAt = at;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
 }
 
 internal sealed class EfYearReviewStore(GamesDbContext db) : IYearReviewStore

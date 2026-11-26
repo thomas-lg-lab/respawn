@@ -19,6 +19,7 @@ internal static class GamesModule
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<ICredentialService, CredentialService>();
+        services.AddScoped<ICoverService, CoverService>();
         // The syncs on their way: one for the app, which is one replica.
         services.AddSingleton<SyncGate>();
         // The import of the stores' yearly reviews, apart from the sync.

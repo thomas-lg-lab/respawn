@@ -45,6 +45,8 @@ public static class GamesApi
         GamesError.SyncTooSoon => Error(429, "too_many_requests", "This store account was read a moment ago. Wait a minute and try again."),
         GamesError.InvalidCredential => Error(400, "invalid_key", "This is not a key of this store."),
         GamesError.CredentialsUnavailable => Error(503, "keys_unavailable", "This instance cannot keep a key: it has no encryption key."),
+        GamesError.UnknownGame => Error(404, "unknown_game", "No such game."),
+        GamesError.NoCover => Error(404, "no_cover", "This game has no cover."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };
 }

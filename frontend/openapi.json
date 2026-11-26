@@ -330,6 +330,79 @@
         }
       }
     },
+    "/api/v1/games/{id}/cover": {
+      "get": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "A game's cover",
+        "description": "The cover as an image, fetched from a source of the game each time it is asked for: the instance keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Any signed-in account may ask for the cover of any game.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The game, by its id in the catalogue.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library": {
       "get": {
         "tags": [
@@ -977,6 +1050,10 @@
           }
         }
       },
+      "FileContentResult": {
+        "type": "string",
+        "format": "binary"
+      },
       "HistoryDayResponse": {
         "required": [
           "date",
@@ -1572,6 +1649,9 @@
     },
     {
       "name": "Config"
+    },
+    {
+      "name": "Games"
     },
     {
       "name": "Library"

@@ -22,6 +22,12 @@ public enum GamesError
 
     /// <summary>The instance cannot keep a key: it was given no encryption key, or one it cannot use.</summary>
     CredentialsUnavailable,
+
+    /// <summary>The catalogue has no such game.</summary>
+    UnknownGame,
+
+    /// <summary>No source has a cover for the game.</summary>
+    NoCover,
 }
 
 public sealed class GamesException(GamesError error) : Exception(error.ToString())

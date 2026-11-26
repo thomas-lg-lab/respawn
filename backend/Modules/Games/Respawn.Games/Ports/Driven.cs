@@ -65,6 +65,18 @@ public interface ICatalogue
     /// a record named otherwise since (by hand, by a merge, from another source) keeps its name, and so
     /// does one whose other entries are renamed, even from the same name.</summary>
     Task RenameAsync(IReadOnlyCollection<StoreEntryRename> renames, CancellationToken ct);
+
+    /// <summary>The store entries of a game, in no order, each with where its store says its cover is.
+    /// Null when the catalogue has no such game.</summary>
+    Task<IReadOnlyList<CoverEntry>?> FindCoverEntriesAsync(Guid gameId, CancellationToken ct);
+
+    /// <summary>The store entries a linked account owns whose store was never asked where their cover
+    /// is, or was asked before <paramref name="askedBefore"/>, in no order.</summary>
+    Task<IReadOnlyList<CoverEntry>> ListCoverPathsDueAsync(Guid linkedAccountId, DateTimeOffset askedBefore, CancellationToken ct);
+
+    /// <summary>Keeps where a store says these entries' covers are, none included, and that it was
+    /// asked at that moment.</summary>
+    Task SetCoverPathsAsync(IReadOnlyCollection<CoverPath> paths, DateTimeOffset at, CancellationToken ct);
 }
 
 public interface ILibraryStore
@@ -157,4 +169,31 @@ public interface ILibrarySource
     /// <summary>Whether this can be an owner's access to the store, by its shape alone: what cannot is
     /// refused before it is kept, and never sent to the store.</summary>
     bool IsCredential(string credential);
+}
+
+/// <summary>A store's covers, read by a connector. Nothing here needs an access to the store: a cover
+/// is public, and is asked for without the instance's key or an owner's.</summary>
+public interface ICoverSource
+{
+    /// <summary>The store it reads, as store entries name it.</summary>
+    string Source { get; }
+
+    /// <summary>The most games the store says the covers' places of in one answer.</summary>
+    int PathsPerRequest { get; }
+
+    /// <summary>The cover of one game of the store, or null when the store has none.</summary>
+    /// <param name="externalId">The game's id in the store.</param>
+    /// <param name="path">Where the store said the cover is (<see cref="ReadCoverPathsAsync"/>), when
+    /// it was asked and said; the connector then looks there first.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">The store could not be read.</exception>
+    Task<Cover?> ReadCoverAsync(string externalId, string? path, CancellationToken ct);
+
+    /// <summary>Where the store says the covers of these games are, by the game's id in the store: a
+    /// short text the connector understands, never an image nor a whole address. A game the store does
+    /// not know, or knows no cover of, is left out.</summary>
+    /// <param name="externalIds">At most <see cref="PathsPerRequest"/> ids.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">The store could not be read.</exception>
+    Task<IReadOnlyDictionary<string, string>> ReadCoverPathsAsync(IReadOnlyCollection<string> externalIds, CancellationToken ct);
 }

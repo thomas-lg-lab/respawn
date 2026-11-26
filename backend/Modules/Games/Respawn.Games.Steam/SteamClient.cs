@@ -4,9 +4,9 @@ using System.Text;
 namespace Respawn.Games.Steam;
 
 /// <summary>
-/// How the connector asks the Steam Web API anything: the key (the one handed over, or the instance's),
-/// in a header; the time Steam has to answer; the size and the encoding of the answer; and what a
-/// refusal means. Read-only: nothing is ever written to Steam.
+/// How the connector asks Steam anything: the key (the one handed over, or the instance's), in a
+/// header, for what needs one and for nothing else; the time Steam has to answer; the size and the
+/// encoding of the answer; and what a refusal means. Read-only: nothing is ever written to Steam.
 /// </summary>
 internal sealed class SteamClient(IHttpClientFactory http, Func<SteamOptions> options, TimeProvider clock)
 {
@@ -46,24 +46,81 @@ internal sealed class SteamClient(IHttpClientFactory http, Func<SteamOptions> op
                     : "what was given as a Steam Web API key is not one: a key is letters and digits");
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, address);
-        request.Headers.Add(SteamLibrarySource.KeyHeader, key);
+        var answer = await SendAsync(SteamLibrarySource.HttpClientName, address, key, SteamLibrarySource.MaxAnswerBytes, SteamLibrarySource.Patience, ct);
+        if (answer.Status != HttpStatusCode.OK)
+        {
+            throw Refusal(answer.Status, credential is null ? "the instance's key" : "the key given on this account");
+        }
 
-        byte[] bytes;
-        DateTimeOffset takenAt;
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        patience.CancelAfter(SteamLibrarySource.Patience);
+        return (Text(answer), answer.TakenAt);
+    }
+
+    /// <summary>Asks Steam what it says to anyone, and returns its answer as text: no key is sent,
+    /// neither the instance's nor an owner's.</summary>
+    /// <param name="address">The method and its parameters, relative to <see cref="SteamLibrarySource.Api"/>.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">Steam could not be read.</exception>
+    public async Task<string> GetOpenAsync(string address, CancellationToken ct)
+    {
+        var answer = await SendAsync(SteamCoverSource.StoreClientName, address, null, SteamLibrarySource.MaxAnswerBytes, SteamLibrarySource.Patience, ct);
+        if (answer.Status != HttpStatusCode.OK)
+        {
+            throw Refusal(answer.Status, "the request");
+        }
+
+        return Text(answer);
+    }
+
+    /// <summary>Asks Steam's image host for a file, with no key. Whatever it answers is handed over:
+    /// what an answer other than a file means is the caller's to say. The bytes are there when Steam
+    /// answered 200 with no more than <see cref="SteamCoverSource.MaxImageBytes"/>.</summary>
+    /// <param name="address">The file, relative to <see cref="SteamCoverSource.Images"/>.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">Steam did not answer.</exception>
+    public async Task<(HttpStatusCode Status, byte[]? Bytes)> GetImageAsync(string address, CancellationToken ct)
+    {
+        var answer = await SendAsync(SteamCoverSource.ImagesClientName, address, null, SteamCoverSource.MaxImageBytes, SteamCoverSource.Patience, ct);
+        return (answer.Status, answer.Bytes);
+    }
+
+    /// <summary>Steam's answer as text.</summary>
+    private static string Text(Answer answer)
+    {
+        if (answer.Bytes is null)
+        {
+            throw new SourceException(SourceError.Unreadable, $"Steam's answer is larger than {SteamLibrarySource.MaxAnswerBytes / (1024 * 1024)} MB");
+        }
+
         try
         {
-            using var client = http.CreateClient(SteamLibrarySource.HttpClientName);
-            using var answer = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, patience.Token);
-            takenAt = clock.GetUtcNow();
-            if (answer.StatusCode != HttpStatusCode.OK)
-            {
-                throw Refusal(answer.StatusCode, own: credential is not null);
-            }
+            return Utf8.GetString(answer.Bytes);
+        }
+        catch (DecoderFallbackException ex)
+        {
+            throw new SourceException(SourceError.Unreadable, "Steam's answer is not text", ex);
+        }
+    }
 
-            bytes = await BodyAsync(answer, patience.Token);
+    /// <summary>One question to one of Steam's hosts: the key in a header when there is one, the time
+    /// Steam has to answer, and the answer's bytes when it is a 200 of an accepted size.</summary>
+    private async Task<Answer> SendAsync(string clientName, string address, string? key, int maxBytes, TimeSpan patience, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, address);
+        if (key is not null)
+        {
+            request.Headers.Add(SteamLibrarySource.KeyHeader, key);
+        }
+
+        using var waiting = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        waiting.CancelAfter(patience);
+        try
+        {
+            using var client = http.CreateClient(clientName);
+            using var answer = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, waiting.Token);
+            var takenAt = clock.GetUtcNow();
+            return answer.StatusCode == HttpStatusCode.OK
+                ? new Answer(answer.StatusCode, await BodyAsync(answer, maxBytes, waiting.Token), takenAt)
+                : new Answer(answer.StatusCode, null, takenAt);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested
             && ex is HttpRequestException or IOException or OperationCanceledException)
@@ -72,24 +129,16 @@ internal sealed class SteamClient(IHttpClientFactory http, Func<SteamOptions> op
             // not a failure of Steam: its cancellation goes through as it is.
             throw new SourceException(SourceError.Unavailable, "Steam did not answer", ex);
         }
-
-        try
-        {
-            return (Utf8.GetString(bytes), takenAt);
-        }
-        catch (DecoderFallbackException ex)
-        {
-            throw new SourceException(SourceError.Unreadable, "Steam's answer is not text", ex);
-        }
     }
 
-    /// <summary>The bytes of an answer, read here rather than by the client: an answer too large is
-    /// refused as unreadable, and the charset its headers name is never trusted.</summary>
-    private static async Task<byte[]> BodyAsync(HttpResponseMessage answer, CancellationToken ct)
+    /// <summary>The bytes of an answer, read here rather than by the client: the size is counted on
+    /// the way, and the charset its headers name is never trusted. Null when it is larger than
+    /// allowed.</summary>
+    private static async Task<byte[]?> BodyAsync(HttpResponseMessage answer, int maxBytes, CancellationToken ct)
     {
-        if (answer.Content.Headers.ContentLength > SteamLibrarySource.MaxAnswerBytes)
+        if (answer.Content.Headers.ContentLength > maxBytes)
         {
-            throw TooLarge();
+            return null;
         }
 
         await using var stream = await answer.Content.ReadAsStreamAsync(ct);
@@ -98,29 +147,30 @@ internal sealed class SteamClient(IHttpClientFactory http, Func<SteamOptions> op
         int read;
         while ((read = await stream.ReadAsync(buffer, ct)) > 0)
         {
-            if (kept.Length + read > SteamLibrarySource.MaxAnswerBytes)
+            if (kept.Length + read > maxBytes)
             {
-                throw TooLarge();
+                return null;
             }
 
             kept.Write(buffer, 0, read);
         }
 
         return kept.ToArray();
-
-        static SourceException TooLarge() =>
-            new(SourceError.Unreadable, $"Steam's answer is larger than {SteamLibrarySource.MaxAnswerBytes / (1024 * 1024)} MB");
     }
 
-    private static SourceException Refusal(HttpStatusCode status, bool own)
+    /// <summary>What a host of Steam answered: the bytes when it is a 200 of an accepted size.</summary>
+    private sealed record Answer(HttpStatusCode Status, byte[]? Bytes, DateTimeOffset TakenAt);
+
+    /// <summary>What an answer other than 200 means.</summary>
+    /// <param name="status">Steam's answer.</param>
+    /// <param name="refused">What Steam refused when it says so: a key, or the request itself.</param>
+    private static SourceException Refusal(HttpStatusCode status, string refused)
     {
         var code = (int)status;
         return status switch
         {
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
-                new SourceException(
-                    SourceError.Refused,
-                    own ? $"Steam refused the key given on this account ({code})" : $"Steam refused the instance's key ({code})"),
+                new SourceException(SourceError.Refused, $"Steam refused {refused} ({code})"),
             HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout or >= HttpStatusCode.InternalServerError =>
                 new SourceException(SourceError.Unavailable, $"Steam asked to come back later ({code})"),
             _ => new SourceException(SourceError.Unreadable, $"Steam answered {code}"),
