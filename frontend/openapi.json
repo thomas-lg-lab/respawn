@@ -904,7 +904,7 @@
           "Library"
         ],
         "summary": "The games the signed-in account took out of its library",
-        "description": "One item per game, by name, with the entries taken out. back_since is the notice to show: a store lists the game again since that date, and the notice was not dismissed. A game taken out is in no other answer of the library.",
+        "description": "One item per game, by name, with the entries taken out. back_since is the notice to show: a store lists the game again since that date, and the notice was not dismissed. A game taken out is not in the library, its figures or its history; a store's review of a year still counts what was played of it.",
         "responses": {
           "200": {
             "description": "OK",
