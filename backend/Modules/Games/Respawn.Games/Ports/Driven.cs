@@ -250,6 +250,27 @@ public interface ILibrarySource
     bool IsCredential(string credential);
 }
 
+/// <summary>A game database, read by a connector: what it knows of the games of the stores. It is asked
+/// with the instance's access alone, never an owner's; an instance given none runs without it.</summary>
+public interface IGameDataSource
+{
+    /// <summary>The database, as the catalogue names it.</summary>
+    string Source { get; }
+
+    /// <summary>The most games of a store asked about at once.</summary>
+    int MatchesPerRequest { get; }
+
+    /// <summary>Which games of the database these games of a store are. An id that cannot be a game of
+    /// the store is not sent; when none is left, nothing is asked.</summary>
+    /// <param name="store">The store, as store entries name it.</param>
+    /// <param name="externalIds">At most <see cref="MatchesPerRequest"/> ids of games in the store.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">The database could not be read, or the instance has no access
+    /// to it (<see cref="SourceError.NotConfigured"/>).</exception>
+    /// <exception cref="ArgumentException">A store the database is not asked about, or too many ids.</exception>
+    Task<MatchReading> MatchAsync(string store, IReadOnlyCollection<string> externalIds, CancellationToken ct);
+}
+
 /// <summary>A store's covers, read by a connector. Nothing here needs an access to the store: a cover
 /// is public, and is asked for without the instance's key or an owner's.</summary>
 public interface ICoverSource

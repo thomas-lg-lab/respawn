@@ -44,7 +44,7 @@ public sealed class ArchitectureTests
             typeof(Games.Services.LibraryService).Assembly,
             typeof(Games.Infrastructure.DependencyInjection).Assembly,
             typeof(Games.Api.LibraryController).Assembly,
-            [typeof(Games.Steam.SteamOptions).Assembly]),
+            [typeof(Games.Steam.SteamOptions).Assembly, typeof(Games.Igdb.IgdbOptions).Assembly]),
     ];
 
     private static readonly Assembly Kernel = typeof(ErrorResponse).Assembly;

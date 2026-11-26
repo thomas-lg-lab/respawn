@@ -16,6 +16,7 @@
   <Folder Name="/backend/Modules/Games/">
     <Project Path="backend/Modules/Games/Respawn.Games/Respawn.Games.csproj" />
     <Project Path="backend/Modules/Games/Respawn.Games.Api/Respawn.Games.Api.csproj" />
+    <Project Path="backend/Modules/Games/Respawn.Games.Igdb/Respawn.Games.Igdb.csproj" />
     <Project Path="backend/Modules/Games/Respawn.Games.Infrastructure/Respawn.Games.Infrastructure.csproj" />
     <Project Path="backend/Modules/Games/Respawn.Games.Steam/Respawn.Games.Steam.csproj" />
     <Project Path="backend/Modules/Games/Respawn.Games.Tests/Respawn.Games.Tests.csproj" />

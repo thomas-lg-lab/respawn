@@ -216,6 +216,12 @@
           "Respawn.SharedKernel": "[1.0.0, )"
         }
       },
+      "respawn.games.igdb": {
+        "type": "Project",
+        "dependencies": {
+          "Respawn.Games": "[1.0.0, )"
+        }
+      },
       "respawn.games.infrastructure": {
         "type": "Project",
         "dependencies": {
