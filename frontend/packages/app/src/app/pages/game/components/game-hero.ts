@@ -2,7 +2,7 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { DomSanitizer } from '@angular/platform-browser';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideArrowUpRight, LucidePlay } from '@lucide/angular';
-import { API_BASE, type Game } from '@respawn/data';
+import { type Game, coverAddress } from '@respawn/data';
 import { Button, Cover } from '@respawn/ui';
 import { formatAgo, formatMoment } from '@app/format/format';
 import { coverHue, isMissing, steamLaunchAddress, steamStoreAddress } from '@app/games/game-list';
@@ -36,9 +36,7 @@ export class GameHero {
   private readonly sanitizer = inject(DomSanitizer);
 
   protected readonly hue = computed(() => coverHue(this.game().game_id));
-  protected readonly cover = computed(
-    () => `${API_BASE}/games/${encodeURIComponent(this.game().game_id)}/cover`,
-  );
+  protected readonly cover = computed(() => coverAddress(this.game().game_id));
   /** The cover could not be shown: the game has none, or its source did not answer. */
   protected readonly noCover = linkedSignal({ source: this.cover, computation: () => false });
 

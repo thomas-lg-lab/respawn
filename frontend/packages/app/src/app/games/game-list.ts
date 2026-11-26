@@ -9,6 +9,10 @@ import type { LibraryGame } from '@respawn/data';
 export const FILTERS = ['all', 'launched', 'recent', 'never'] as const;
 export type LibraryFilter = (typeof FILTERS)[number];
 
+/** How the library is shown, covers first: the default. */
+export const VIEWS = ['covers', 'list'] as const;
+export type LibraryView = (typeof VIEWS)[number];
+
 /** The orders, in the order of the list that offers them. */
 export const SORTS = ['last_played', 'playtime', 'name'] as const;
 export type LibrarySort = (typeof SORTS)[number];

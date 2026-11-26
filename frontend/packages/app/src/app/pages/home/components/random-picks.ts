@@ -1,7 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import type { LibraryGame } from '@respawn/data';
+import { type LibraryGame, coverAddress } from '@respawn/data';
 import { Button, Card, Cover } from '@respawn/ui';
 import { cameFrom, gamePage } from '@app/games/game-page';
 import { coverHue } from '@app/games/game-list';
@@ -30,6 +30,7 @@ export class RandomPicks {
       id: game.game_id,
       name: game.name,
       hue: coverHue(game.game_id),
+      cover: coverAddress(game.game_id),
     })),
   );
 }

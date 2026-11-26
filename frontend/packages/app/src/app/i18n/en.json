@@ -314,6 +314,11 @@
       "playtime": "Playtime",
       "name": "Title"
     },
+    "view": {
+      "label": "View",
+      "covers": "Covers",
+      "list": "List"
+    },
     "columns": {
       "game": "Game",
       "playtime": "Playtime",

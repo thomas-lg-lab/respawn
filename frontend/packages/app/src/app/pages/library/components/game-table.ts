@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import type { LibraryGame } from '@respawn/data';
+import { type LibraryGame, coverAddress } from '@respawn/data';
 import { Cover, SegmentedBar } from '@respawn/ui';
 import { formatAgo, formatCount, formatMoment, playtime } from '@app/format/format';
 import { cameFrom, gamePage } from '@app/games/game-page';
@@ -20,6 +20,7 @@ interface Row {
   /** `null` while no source has named the game. */
   readonly name: string | null;
   readonly hue: number;
+  readonly cover: string;
   readonly missing: boolean;
   /** The total, for the bar; `null` when no store said it. */
   readonly seconds: number | null;
@@ -69,6 +70,7 @@ export class GameTable {
         rank: String(index + 1).padStart(2, '0'),
         name: game.name,
         hue: coverHue(game.game_id),
+        cover: coverAddress(game.game_id),
         missing: isMissing(game),
         seconds: total,
         total: total === null ? null : this.duration(total),

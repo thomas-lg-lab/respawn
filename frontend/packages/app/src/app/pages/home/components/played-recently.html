@@ -6,7 +6,7 @@
         class="relative flex items-center gap-3.5 rounded-card border border-line bg-surface p-3 transition-colors duration-hover hover:bg-surface-2"
         [attr.data-game]="game.id"
       >
-        <rs-cover class="w-12 shrink-0" aria-hidden="true" [hue]="game.hue" />
+        <rs-cover class="w-12 shrink-0" aria-hidden="true" [hue]="game.hue" [src]="game.cover" />
         <span class="flex min-w-0 flex-col gap-0.5">
           <!-- The whole card leads to the game's page: the link's box is stretched over it. -->
           <a

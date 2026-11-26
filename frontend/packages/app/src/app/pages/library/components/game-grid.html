@@ -1,0 +1,41 @@
+<!-- While the games load, the same grid holds as many blocks, hidden from screen readers: the
+     screen says in words what it waits for. -->
+<ul
+  class="grid grid-cols-3 gap-x-3 gap-y-5 wide:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] wide:gap-x-4"
+  *transloco="let t; prefix: 'library'"
+  [attr.aria-label]="loading() ? null : t('title')"
+  [attr.aria-hidden]="loading() ? 'true' : null"
+>
+  @for (tile of placeholders(); track tile) {
+    <li><rs-skeleton class="aspect-2/3" /></li>
+  }
+  @for (tile of tiles(); track tile.id) {
+    <li class="group relative flex min-w-0 flex-col gap-2" [attr.data-game]="tile.id">
+      <rs-cover
+        class="w-full shadow-raised"
+        aria-hidden="true"
+        [hue]="tile.hue"
+        [src]="tile.cover"
+      />
+      <span class="flex min-w-0 flex-col gap-0.5">
+        <!-- The whole tile leads to the game's page: the link's box is stretched over it. -->
+        <a
+          class="line-clamp-2 font-medium wrap-anywhere group-hover:underline after:absolute after:inset-0 after:rounded-field focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-focus"
+          data-name
+          [class.text-muted]="tile.name === null"
+          [routerLink]="gamePage(tile.id)"
+          [state]="from"
+          >{{ tile.name ?? t('unnamed') }}</a
+        >
+        @if (tile.total; as total) {
+          <span class="type-caption text-muted tabular-nums" data-playtime>{{
+            total === 'never' ? t('never') : t(total.key, { count: total.count })
+          }}</span>
+        }
+        @if (tile.missing) {
+          <span class="type-caption text-muted" data-missing>{{ t('missing') }}</span>
+        }
+      </span>
+    </li>
+  }
+</ul>

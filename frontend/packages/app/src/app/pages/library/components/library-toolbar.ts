@@ -1,17 +1,24 @@
 import { Component, computed, input, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { Button, Pill, Select } from '@respawn/ui';
+import { Button, Pill, PillGroup, Select } from '@respawn/ui';
 import { formatCount } from '@app/format/format';
-import { FILTERS, type LibraryFilter, type LibrarySort, SORTS } from '@app/games/game-list';
+import {
+  FILTERS,
+  type LibraryFilter,
+  type LibrarySort,
+  type LibraryView,
+  SORTS,
+  VIEWS,
+} from '@app/games/game-list';
 
 /**
- * What narrows and orders the library: the filters as a row above the rest, each with how many
- * games it would keep, the title that was searched with the way back to every game, and the
- * order of the list. It holds none of it: the screen does.
+ * What narrows, orders and shows the library: the filters as a row above the rest, each with
+ * how many games it would keep, the title that was searched with the way back to every game,
+ * the games as covers or as a list, and their order. It holds none of it: the screen does.
  */
 @Component({
   selector: 'rs-library-toolbar',
-  imports: [TranslocoDirective, Button, Pill, Select],
+  imports: [TranslocoDirective, Button, Pill, PillGroup, Select],
   templateUrl: './library-toolbar.html',
 })
 export class LibraryToolbar {
@@ -19,14 +26,17 @@ export class LibraryToolbar {
   readonly search = input.required<string>();
   readonly filter = input.required<LibraryFilter>();
   readonly sort = input.required<LibrarySort>();
+  readonly view = input.required<LibraryView>();
   readonly counts = input.required<Record<LibraryFilter, number>>();
   readonly language = input.required<string>();
 
   readonly searchCleared = output<void>();
   readonly filterPicked = output<LibraryFilter>();
   readonly sortPicked = output<LibrarySort>();
+  readonly viewPicked = output<LibraryView>();
 
   protected readonly sorts = SORTS;
+  protected readonly views = VIEWS;
 
   protected readonly filters = computed(() =>
     FILTERS.map((id) => ({ id, count: formatCount(this.counts()[id], this.language()) })),

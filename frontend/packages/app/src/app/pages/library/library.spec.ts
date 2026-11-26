@@ -50,8 +50,13 @@ describe('Library', () => {
     within.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim();
   const names = (screen: HTMLElement) =>
     [...screen.querySelectorAll('[data-name]')].map((each) => each.textContent);
+  /** A game's row of the list or its tile among the covers. */
   const row = (screen: HTMLElement, name: string) =>
-    [...screen.querySelectorAll('tbody tr')].find((each) => text(each, '[data-name]') === name)!;
+    [...screen.querySelectorAll('[data-game]')].find((each) => text(each, '[data-name]') === name)!;
+  /** The list, rather than the covers, as this browser would remember it. */
+  const asList = () => localStorage.setItem('respawn.library-view', 'list');
+  const viewPill = (screen: HTMLElement, view: string) =>
+    screen.querySelector<HTMLButtonElement>(`[data-view="${view}"]`)!;
   const pill = (screen: HTMLElement, filter: string) =>
     screen.querySelector<HTMLButtonElement>(`[data-filter="${filter}"]`)!;
 
@@ -66,6 +71,42 @@ describe('Library', () => {
     expect(names(screen)).toEqual(['Portal 2', 'Hades', 'Celeste', 'Pokémon']);
     expect(text(screen, '[data-shown]')).toBe('4 jeux affichés sur 4');
     expect(screen.querySelector('[data-more]')).toBeNull();
+  });
+
+  it('shows the games as covers first, each with its playtime, its cover asked of the API', async () => {
+    const { screen } = await open();
+
+    expect(screen.querySelector('rs-game-grid')).not.toBeNull();
+    expect(screen.querySelector('rs-game-table')).toBeNull();
+    expect(viewPill(screen, 'covers').getAttribute('aria-pressed')).toBe('true');
+    const portal = row(screen, 'Portal 2');
+    expect(text(portal, '[data-playtime]')).toBe('2 h');
+    expect(portal.querySelector('img')?.getAttribute('src')).toBe(
+      `/api/v1/games/${portal.getAttribute('data-game')}/cover`,
+    );
+    expect(text(row(screen, 'Celeste'), '[data-playtime]')).toBe('Jamais lancé');
+    // Nothing said under a title when the store did not say.
+    expect(row(screen, 'Pokémon').querySelector('[data-playtime]')).toBeNull();
+  });
+
+  it('shows the same games as a list on request, and this browser remembers it', async () => {
+    const { harness, screen } = await open();
+
+    viewPill(screen, 'list').click();
+    await harness.fixture.whenStable();
+
+    expect(screen.querySelector('rs-game-table')).not.toBeNull();
+    expect(screen.querySelector('rs-game-grid')).toBeNull();
+    expect(viewPill(screen, 'list').getAttribute('aria-pressed')).toBe('true');
+    expect(names(screen)).toEqual(['Portal 2', 'Hades', 'Celeste', 'Pokémon']);
+    expect(localStorage.getItem('respawn.library-view')).toBe('list');
+  });
+
+  it('shows the covers again when what this browser kept is no view it knows', async () => {
+    localStorage.setItem('respawn.library-view', 'mosaic');
+    const { screen } = await open();
+
+    expect(screen.querySelector('rs-game-grid')).not.toBeNull();
   });
 
   it('reads the games again once a sync ended, learnt on this screen', async () => {
@@ -85,6 +126,7 @@ describe('Library', () => {
   });
 
   it('says a playtime, the last two weeks and the last session of a game', async () => {
+    asList();
     const { screen } = await open();
     const portal = row(screen, 'Portal 2');
 
@@ -97,6 +139,7 @@ describe('Library', () => {
   });
 
   it('names the table, and says the last session under the title too, for a phone', async () => {
+    asList();
     const { screen } = await open();
 
     expect(text(screen, 'caption')).toBe('Bibliothèque');
@@ -107,6 +150,7 @@ describe('Library', () => {
   });
 
   it('tells a game never launched from one the store says nothing about', async () => {
+    asList();
     const { screen } = await open();
 
     expect(text(row(screen, 'Celeste'), '[data-playtime]')).toBe('0 min');
@@ -319,6 +363,8 @@ describe('Library', () => {
     await vi.waitFor(() =>
       expect(text(screen, 'main [role="status"]')).toBe('Chargement de vos jeux…'),
     );
+    // The covers' grid, whole rows of blocks where the tiles will stand.
+    expect(screen.querySelectorAll('rs-game-grid rs-skeleton')).toHaveLength(12);
 
     await server.answer(FIRST_PAGE, { total: 0, offset: 0, limit: 500, games: [] });
     await harness.fixture.whenStable();
@@ -342,6 +388,7 @@ describe('Library', () => {
   });
 
   it('speaks English too', async () => {
+    asList();
     const { screen } = await open(library(), 'en');
 
     expect(text(screen, '[data-owned]')).toBe('4 games, from Steam');

@@ -33,7 +33,12 @@
                 aria-hidden="true"
                 >{{ row.rank }}</span
               >
-              <rs-cover class="w-6 shrink-0 rounded-thumb" aria-hidden="true" [hue]="row.hue" />
+              <rs-cover
+                class="w-6 shrink-0 rounded-thumb"
+                aria-hidden="true"
+                [hue]="row.hue"
+                [src]="row.cover"
+              />
               <span class="flex min-w-0 flex-col">
                 @if (row.name !== null) {
                   <a

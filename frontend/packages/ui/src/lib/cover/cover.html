@@ -1,4 +1,11 @@
-<!-- Decoration: the title it shows is always written beside it. -->
+<!-- Decoration: the title it shows is always written beside it. `loading` is bound before
+     `src`, as a browser reads it when the address is set. -->
 @if (src() && !broken()) {
-  <img alt="" decoding="async" [src]="src()" (error)="fail()" />
+  <img
+    alt=""
+    decoding="async"
+    [attr.loading]="eager() ? 'eager' : 'lazy'"
+    [src]="src()"
+    (error)="fail()"
+  />
 }
