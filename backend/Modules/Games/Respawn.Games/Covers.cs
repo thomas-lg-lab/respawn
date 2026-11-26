@@ -1,7 +1,9 @@
 namespace Respawn.Games;
 
-// A game's cover. No image is ever kept: a cover is asked of a source each time, and passed on. What is
-// kept is where a store says its cover is, a short text beside the store entry.
+// A game's cover. Where a store says its cover is, a short text beside the store entry, is always kept.
+// The image itself is kept only by an instance given a data directory (IImageStore): fetched from its
+// source the first time it is asked for, then served from the file. Without one, a cover is asked of a
+// source each time, and passed on.
 
 /// <summary>A cover as a source gave it: an image, and what kind.</summary>
 /// <param name="ContentType">The image's media type, as the connector made sure of it; never the
@@ -9,12 +11,20 @@ namespace Respawn.Games;
 /// <param name="Bytes">The image.</param>
 public sealed record Cover(string ContentType, ReadOnlyMemory<byte> Bytes);
 
+/// <summary>A cover as the route sends it.</summary>
+/// <param name="ContentType">The image's media type.</param>
+/// <param name="Content">The image, from a kept file or from what a source just gave; the reader
+/// disposes of it.</param>
+/// <param name="Tag">What names this image and no other, for a browser to ask whether it changed; null
+/// for an image that is not kept.</param>
+public sealed record CoverImage(string ContentType, Stream Content, string? Tag);
+
 /// <summary>What asking for a game's cover gave.</summary>
-/// <param name="Cover">The cover; null when no source has one.</param>
+/// <param name="Cover">The cover; null when no source has one and none is kept.</param>
 /// <param name="Settled">True when the answer stands on a store's word about where the cover is: it
 /// will not change before that store is asked again. False while a store was not asked yet: a cover
 /// found meanwhile may not be the right image, and a cover not found may be found once it is.</param>
-public sealed record CoverAnswer(Cover? Cover, bool Settled);
+public sealed record CoverAnswer(CoverImage? Cover, bool Settled);
 
 /// <summary>A store entry of a game, with where its store says its cover is, when it was asked and
 /// said.</summary>
@@ -22,8 +32,12 @@ public sealed record CoverAnswer(Cover? Cover, bool Settled);
 /// <param name="Source">Its store.</param>
 /// <param name="ExternalId">The game's id in the store.</param>
 /// <param name="CoverPath">Where the store said the cover is; null when it was not asked, or said none.</param>
-/// <param name="Asked">Whether the store was ever asked where the cover is.</param>
-public sealed record CoverEntry(Guid StoreEntryId, string Source, string ExternalId, string? CoverPath, bool Asked = false);
+/// <param name="AskedAt">When the store was last asked where the cover is; null while it never was.</param>
+public sealed record CoverEntry(Guid StoreEntryId, string Source, string ExternalId, string? CoverPath, DateTimeOffset? AskedAt = null)
+{
+    /// <summary>Whether the store was ever asked where the cover is.</summary>
+    public bool Asked => AskedAt is not null;
+}
 
 /// <summary>Where a store says a store entry's cover is; null when it knows none.</summary>
 public sealed record CoverPath(Guid StoreEntryId, string? Path);

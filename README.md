@@ -102,6 +102,7 @@ The image alone, against a PostgreSQL database of yours:
 
 ```bash
 docker run --rm -p 8080:8080 --read-only --tmpfs /tmp \
+  -v respawn-data:/data -e RESPAWN_DATA_DIR=/data \
   -e RESPAWN_DATABASE_URL=postgresql://respawn:change-me@db.example.org:5432/respawn \
   ghcr.io/thomas-lg-lab/respawn:edge
 ```
@@ -112,7 +113,7 @@ What the app expects from where it runs:
 | --- | --- |
 | HTTP | port 8080; `GET /healthz` answers `{"status": "ok"}` with no database and no secret |
 | Database | PostgreSQL (tested on 18); the app creates and migrates its own schemas on the first connection |
-| Filesystem | read-only root filesystem; nothing is written outside `/tmp` |
+| Filesystem | read-only root filesystem; nothing is written outside `/tmp` and, when `RESPAWN_DATA_DIR` is set, that directory (the covers; `/data` in the image, owned by its user) |
 | User | any non-root user (the image runs as 10001) |
 | Logs | stdout |
 | Secrets | the database connection string, the Steam Web API key and the encryption key, each from the environment or a mounted file; none is needed to start |
@@ -137,6 +138,7 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes, and apart on the returns from a sign-in provider, on the returns from Steam when an account is linked, and on the routes that give or take away a user's own Steam key (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`, with an optional `"label"` (what the sign-in page shows, 40 characters at most) and `"create_accounts": true` (someone the provider proves gets a member account even while registration is closed): OpenID Connect providers to sign in with, the instance being a public client of each (no secret). A name is lower case letters, digits and dashes, once per list; an issuer is an `https` URL. Each provider sends the browser back to `<public address>/api/v1/auth/oidc/<name>/callback`, the address to register with it |
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
+| `RESPAWN_DATA_DIR` | none | An absolute path where the instance keeps the covers it serves (under `images/`), so that each is fetched from its store once rather than at each request, and survives the store being down or dropping it. The directory must be writable by the app's user, or the app does not start; the image has `/data`, owned by its user, for a volume. Without it, nothing is kept and every cover is fetched when it is asked for. The start says once which of the two it is |
 
 Numbers are whole numbers of 1 or more. `RESPAWN_COOKIE_SECURE` is `true` or `false` (`1`, `yes`, `on` and
 `0`, `no`, `off` are read too). A value that cannot be read is refused by name, not replaced by its default: the app does not start, and its log says which.
@@ -240,7 +242,7 @@ part of the API.
 | `DELETE /api/v1/library/removed/{id}/notice` | Dismisses that notice, for good: the game stays out, and nothing its store says later raises it again; the game can still be put back. `404` with `not_removed`, `409` with `not_back` when no store lists it again |
 | `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, and in `removed` what the account took out of its library of it. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
 | `GET /api/v1/games/{id}/months` | The months that game was played in, the earliest first, each with its `seconds` and its `source`, counted as in `/library/years`: the months of a year add up to the game's part of that year there. A month with nothing played is left out |
-| `GET /api/v1/games/{id}/cover` | A game's cover, as an image (JPEG, PNG or WebP). The instance keeps no image: it fetches the cover from Steam at each request, and `Cache-Control` lets the browser keep it for a week (an hour until Steam's store has said where the cover is, a few minutes after the first sync). `404` with `no_cover` when the game has none, `503` with `cover_unavailable` when Steam does not answer, `429` for a client that asks for too many. For any signed-in account and any game |
+| `GET /api/v1/games/{id}/cover` | A game's cover, as an image (JPEG, PNG or WebP). With `RESPAWN_DATA_DIR` set, the instance keeps each cover it serves: fetched from Steam the first time it is asked for, then served from the file with an `ETag` (`304` to a browser that holds it), fetched again once Steam's store said again where it is, and still served when Steam does not answer or no longer has it. Without it, the cover is fetched from Steam at each request. `Cache-Control` lets the browser keep it for a week (an hour until Steam's store has said where the cover is, a few minutes after the first sync). `404` with `no_cover` when the game has none, `503` with `cover_unavailable` when Steam does not answer, `429` for a client that asks for too many. For any signed-in account and any game |
 
 Errors always have the same shape, whatever answered:
 
@@ -327,7 +329,7 @@ adapters around it.
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts, what a navigation may come back to |
 | `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity) and its API, which runs the sign-in through a provider |
-| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, the sync that reads each library once a day, the import of a store's yearly reviews, the covers, fetched when asked for and never kept, and what is read back of it all: the library, one game as its owner sees it, and the time played by year, by month of a game and by game of a month, counted by one rule; and its connectors, one project per outside source behind a port of the core (`Respawn.Games.Steam`) |
+| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, the sync that reads each library once a day, the import of a store's yearly reviews, the covers, fetched when asked for and kept as files when the instance has a data directory, and what is read back of it all: the library, one game as its owner sees it, and the time played by year, by month of a game and by game of a month, counted by one rule; and its connectors, one project per outside source behind a port of the core (`Respawn.Games.Steam`) |
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 | [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API: its types, its client and each feature's queries) |

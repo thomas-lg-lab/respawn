@@ -138,9 +138,10 @@ try
 {
     app.Run();
 }
-catch (FormatException)
+catch (StartRefusedException)
 {
-    // A setting that cannot be read: SettingsCheck said which one. A plain exit, not a crash on top of it.
+    // A setting that cannot be read, or a data directory that cannot be written: SettingsCheck said
+    // which. A plain exit, not a crash on top of it.
     return 1;
 }
 

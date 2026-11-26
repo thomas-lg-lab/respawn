@@ -261,6 +261,14 @@ public static class Limits
     /// <summary>Where a store says a cover is: a file's name, with a folder at most.</summary>
     public const int CoverPath = 200;
 
+    /// <summary>A kept image's kind, and the key a source names it by (<see cref="ImageName"/>).</summary>
+    public const int ImageKind = 16;
+
+    public const int ImageKey = 100;
+
+    /// <summary>An image's media type.</summary>
+    public const int ContentType = 32;
+
     /// <summary>What is kept of a connector's words when a sync fails.</summary>
     public const int SyncDetail = 500;
 

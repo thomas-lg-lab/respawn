@@ -36,9 +36,10 @@
   due and what a run becomes are the core's, `SyncService`; the timer that asks every few minutes is an
   inbound adapter, `SyncScheduler` in `.Api`; tests set the clock and run a turn by hand), and the import of a
   store's yearly reviews, apart from the sync and never needed by it (`YearReviewService`, and
-  `YearReviewScheduler` in `.Api`), and the covers (`CoverService`: an image is asked of a source at each
-  request and passed on, never kept; what is kept is where a store says a cover is, a short text asked
-  on a schedule of its own, `CoverScheduler` in `.Api`, never by the sync), and what is read back of it all: one game as an owner sees it
+  `YearReviewScheduler` in `.Api`), and the covers (`CoverService`: given a data directory, an image is asked of a source the first time it
+  is asked for and kept as a file, `IImageStore` and its `FileImageStore`, named by kind, source and key, never
+  by the game; without one, asked at each request and passed on; where a store says a cover is, a short
+  text, is asked on a schedule of its own, `CoverScheduler` in `.Api`, never by the sync), and what is read back of it all: one game as an owner sees it
   (`GameService`), and the time played by year, by month of a game and by game of a month, counted by one
   rule (`PlaytimeService`); and its connectors, one
   project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API, and
@@ -54,7 +55,7 @@
 - **The public API is a contract.** Routes live under `/api/v1`; a breaking change means a new version. The front
   uses only these routes. Errors are always `{"error": {"code", "message"}}`.
 - **Runtime rules.** The app starts and `/healthz` answers with no database and no secret; nothing is written
-  outside `/tmp`; logs go to stdout. Keep it that way: the image is tested like this in CI. What runs in the
+  outside `/tmp` and the data directory when one is given (`RESPAWN_DATA_DIR`); logs go to stdout. Keep it that way: the image is tested like this in CI. What runs in the
   background (the sync's schedule) never stops the app, and says a trouble that lasts once, not at every turn.
 - **Sign-in code.** Accounts, password checks and lockout go through ASP.NET Core Identity; cryptography comes
   from libraries (libsodium through Sodium.Core for Argon2id and for sealing the store keys users give,

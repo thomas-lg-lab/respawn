@@ -88,6 +88,55 @@ public interface ICatalogue
     /// <summary>Keeps where a store says these entries' covers are, none included, and that it was
     /// asked at that moment.</summary>
     Task SetCoverPathsAsync(IReadOnlyCollection<CoverPath> paths, DateTimeOffset at, CancellationToken ct);
+
+    /// <summary>The image a game shows for a kind, when one is kept.</summary>
+    Task<KeptImage?> FindImageAsync(Guid gameId, string kind, CancellationToken ct);
+
+    /// <summary>Makes this the image the game shows for its kind, in the place of the one it showed.
+    /// Returns that one when it was another, whose file may go once no game shows it
+    /// (<see cref="IsImageShownAsync"/>); null otherwise.</summary>
+    Task<ImageName?> KeepImageAsync(Guid gameId, KeptImage image, CancellationToken ct);
+
+    /// <summary>Whether a game shows this image: its file is removed only once none does.</summary>
+    Task<bool> IsImageShownAsync(ImageName image, CancellationToken ct);
+
+    /// <summary>Says the source of the image a game shows for a kind was asked for it at that moment,
+    /// and gave nothing newer.</summary>
+    Task CheckedImageAsync(Guid gameId, string kind, DateTimeOffset at, CancellationToken ct);
+}
+
+/// <summary>Where the images an instance keeps are written: files of a data directory. An instance
+/// given none has <see cref="NoImageStore"/>, which keeps nothing, and its covers are passed on from
+/// their source at each request.</summary>
+public interface IImageStore
+{
+    /// <summary>Whether images are kept at all.</summary>
+    bool Keeps { get; }
+
+    /// <summary>The kept image, to read and dispose of; null when there is no such file.</summary>
+    Task<Stream?> OpenAsync(ImageName image, CancellationToken ct);
+
+    /// <summary>Writes the image whole, or not at all: a reader never finds half of one. False when it
+    /// could not be written (a full disk, a directory gone): the store says so in the log, and the
+    /// image is passed on without being kept.</summary>
+    Task<bool> WriteAsync(ImageName image, ReadOnlyMemory<byte> bytes, CancellationToken ct);
+
+    /// <summary>Removes the image's file; nothing when there is none.</summary>
+    void Delete(ImageName image);
+}
+
+/// <summary>An instance with no data directory: nothing is kept.</summary>
+public sealed class NoImageStore : IImageStore
+{
+    public bool Keeps => false;
+
+    public Task<Stream?> OpenAsync(ImageName image, CancellationToken ct) => Task.FromResult<Stream?>(null);
+
+    public Task<bool> WriteAsync(ImageName image, ReadOnlyMemory<byte> bytes, CancellationToken ct) => Task.FromResult(false);
+
+    public void Delete(ImageName image)
+    {
+    }
 }
 
 public interface ILibraryStore

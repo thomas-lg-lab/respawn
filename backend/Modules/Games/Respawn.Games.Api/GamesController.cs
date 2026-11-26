@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Net.Http.Headers;
 using Respawn.Games.Ports;
 using Respawn.SharedKernel;
 
@@ -63,13 +63,17 @@ public sealed class GamesController(ICoverService covers, IGameService games, IP
     [EnableRateLimiting(GamesApi.CoverRateLimit)]
     [EndpointSummary("A game's cover")]
     [EndpointDescription(
-        "The cover as an image, fetched from a source of the game each time it is asked for: the instance "
-        + "keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers "
-        + "404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 "
-        + "cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few "
-        + "minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in account "
-        + "may ask for the cover of any game; a client that asks for too many at once is answered 429.")]
+        "The cover as an image. An instance given a data directory keeps each cover it serves: fetched from a "
+        + "source of the game the first time it is asked for, then served from there, with an ETag a browser "
+        + "sends back in If-None-Match to be answered 304 while it did not change; still served when its "
+        + "source does not answer or no longer has it. An instance without one fetches the cover each time "
+        + "it is asked for, with no ETag. Cache-Control lets the browser keep it for a week. A game without a "
+        + "cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, "
+        + "503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a "
+        + "few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in "
+        + "account may ask for the cover of any game; a client that asks for too many at once is answered 429.")]
     [ProducesResponseType<Stream>(StatusCodes.Status200OK, "image/jpeg", "image/png", "image/webp")]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized, "application/json")]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound, "application/json")]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status429TooManyRequests, "application/json")]
@@ -97,10 +101,10 @@ public sealed class GamesController(ICoverService covers, IGameService games, IP
 
         Response.Headers.CacheControl = answer.Settled ? KeptAWeek : KeptAnHour;
 
-        // The source's own array when the image is the whole of it, which it is: no second copy.
-        var bytes = MemoryMarshal.TryGetArray(cover.Bytes, out var held) && held.Array is { } array && held.Offset == 0 && held.Count == array.Length
-            ? array
-            : cover.Bytes.ToArray();
-        return File(bytes, cover.ContentType);
+        // A kept image says its name: a browser that holds it asks whether it changed, and is answered
+        // 304 with no body when it did not.
+        return cover.Tag is { } tag
+            ? File(cover.Content, cover.ContentType, lastModified: null, new EntityTagHeaderValue($"\"{tag}\""))
+            : File(cover.Content, cover.ContentType);
     }
 }

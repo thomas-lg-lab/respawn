@@ -47,7 +47,11 @@ COPY --from=build /publish ./
 # The front, where the host serves its files from.
 COPY --from=front /web/dist/app/browser ./wwwroot/
 
-# Any non-root user works: the app writes nowhere.
+# Where the covers are kept when RESPAWN_DATA_DIR=/data: owned by the image's user, so that a volume
+# created on it (docker compose, docker run -v name:/data) can be written. Nothing else is written outside /tmp.
+RUN mkdir /data && chown 10001:10001 /data
+
+# Any non-root user works: given a data directory, the app writes there and in /tmp only.
 USER 10001:10001
 EXPOSE 8080
 

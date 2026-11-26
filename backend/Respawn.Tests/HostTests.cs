@@ -35,6 +35,7 @@ public sealed class HostTests
     [InlineData("RESPAWN_SESSION_DAYS", "0")]
     [InlineData("RESPAWN_OIDC_PROVIDERS", "not json")]
     [InlineData("RESPAWN_TRUSTED_PROXIES", "proxy.example.org")]
+    [InlineData("RESPAWN_DATA_DIR", "covers")]
     [InlineData("RESPAWN_AUTH_RATE_LIMIT", "ten/minute")]
     public async Task A_setting_that_cannot_be_read_stops_the_start_and_the_log_names_it(string name, string value)
     {
@@ -45,6 +46,23 @@ public sealed class HostTests
 
         Assert.Equal(1, app.Logs.Count("a setting cannot be read, the app does not start"));
         Assert.Contains(name, app.Logs.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_data_directory_that_cannot_be_written_stops_the_start()
+    {
+        // A file where the directory should be: nothing can be made under it, whoever the app runs as.
+        var file = Path.GetTempFileName();
+        try
+        {
+            await using var app = TestApp.Create(new() { ["RESPAWN_DATA_DIR"] = file });
+            Assert.ThrowsAny<Exception>(() => app.CreateClient());
+            Assert.Equal(1, app.Logs.Count("the data directory (RESPAWN_DATA_DIR) cannot be written, the app does not start"));
+        }
+        finally
+        {
+            File.Delete(file);
+        }
     }
 
     [Theory]

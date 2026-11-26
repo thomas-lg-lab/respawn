@@ -16,7 +16,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261126114817_RemovedGames";
+    public override string LastMigrationId => "20261126151948_KeptImages";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -60,6 +60,48 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_games_igdb_id");
 
                 b.ToTable("games", "games");
+            });
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.ImageRow", b =>
+            {
+                b.Property<Guid>("GameId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("game_id");
+
+                b.Property<string>("Kind")
+                    .HasMaxLength(16)
+                    .HasColumnType("character varying(16)")
+                    .HasColumnName("kind");
+
+                b.Property<DateTimeOffset>("CheckedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("checked_at");
+
+                b.Property<string>("ContentType")
+                    .IsRequired()
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("content_type");
+
+                b.Property<string>("Key")
+                    .IsRequired()
+                    .HasMaxLength(100)
+                    .HasColumnType("character varying(100)")
+                    .HasColumnName("key");
+
+                b.Property<string>("Source")
+                    .IsRequired()
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("source");
+
+                b.HasKey("GameId", "Kind")
+                    .HasName("pk_images");
+
+                b.HasIndex("Kind", "Source", "Key")
+                    .HasDatabaseName("ix_images_kind_source_key");
+
+                b.ToTable("images", "games");
             });
 
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.LinkedAccountRow", b =>
@@ -462,6 +504,16 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_year_reviews_snapshot_id");
 
                 b.ToTable("year_reviews", "games");
+            });
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.ImageRow", b =>
+            {
+                b.HasOne("Respawn.Games.Infrastructure.Persistence.GameRow", null)
+                    .WithMany()
+                    .HasForeignKey("GameId")
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired()
+                    .HasConstraintName("fk_images_games_game_id");
             });
 
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.MonthlyPlaytimeRow", b =>
