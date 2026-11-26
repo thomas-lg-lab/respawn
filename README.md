@@ -74,8 +74,9 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next**: covers and durations through IGDB, and with them the backlog in hours; a first try at
-   searching your own backlog by what you feel like playing.
+1. **Next**: genres, descriptions and durations through IGDB, and with them the backlog in hours; a first
+   try at searching your own backlog by what you feel like playing. The connector that tells which IGDB
+   game each Steam game is comes first; nothing else is read from IGDB yet.
 2. **Statuses and ratings** for each game.
 3. **Tokens for the public API.**
 4. **More stores, next-game suggestions, sharing with a group.**
@@ -127,6 +128,7 @@ Everything is read from the environment. Nothing is required to start.
 | --- | --- | --- |
 | `RESPAWN_DATABASE_URL` | none | PostgreSQL connection string: a URI (`postgresql://user:password@host:5432/database`) or Npgsql's `Host=...;Username=...` form |
 | `RESPAWN_DATABASE_URL_FILE` | `/secrets/database-url` | File holding the connection string, read when the variable is not set; its password is read again for every new connection |
+| `RESPAWN_DATA_DIR` | none | The directory where the instance keeps its files, today the games' covers: an absolute path the app can write to, on a volume. Set it: without it nothing is kept, and every cover is fetched from Steam each time it is shown. The image has `/data` for it, and `docker-compose.yml` sets it. [The data directory](#the-data-directory) says how to set it and what goes there |
 | `RESPAWN_PUBLIC_URL` | none | The address the instance is reached at, scheme and host (`https://respawn.example.org`). Set it behind a reverse proxy: linking a Steam account and signing in through a provider send the browser to Steam or the provider, which send it back to this address. Without it, the address of the request is used |
 | `RESPAWN_STEAM_API_KEY` | none | The instance's [Steam Web API key](https://steamcommunity.com/dev/apikey), which reads the libraries of the linked Steam accounts. A user may give their own key on their linked account, which is then the only one that reads it. Without either, no Steam library is read |
 | `RESPAWN_STEAM_API_KEY_FILE` | `/secrets/steam-api-key` | File holding the key, read when the variable is not set, and read again at each reading |
@@ -141,7 +143,6 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_AUTH_RATE_LIMIT` | `10/minute` | Requests per client on the sign-in routes, and apart on the returns from a sign-in provider, on the returns from Steam when an account is linked, and on the routes that give or take away a user's own Steam key (`second`, `minute` or `hour`). A client is an IPv4 address or an IPv6 /64 |
 | `RESPAWN_OIDC_PROVIDERS` | none | JSON list of `{"name", "issuer", "client_id"}`, with an optional `"label"` (what the sign-in page shows, 40 characters at most) and `"create_accounts": true` (someone the provider proves gets a member account even while registration is closed): OpenID Connect providers to sign in with, the instance being a public client of each (no secret). A name is lower case letters, digits and dashes, once per list; an issuer is an `https` URL. Each provider sends the browser back to `<public address>/api/v1/auth/oidc/<name>/callback`, the address to register with it |
 | `RESPAWN_TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or networks (`192.0.2.10`, `198.51.100.0/24`) of the reverse proxies whose `X-Forwarded-For` is trusted. Set it behind a reverse proxy |
-| `RESPAWN_DATA_DIR` | none | An absolute path where the instance keeps the covers it serves (under `images/`), so that each is fetched from its store once rather than at each request, and survives the store being down or dropping it. The directory must be writable by the app's user, or the app does not start; the image has `/data`, owned by its user, for a volume. Without it, nothing is kept and every cover is fetched when it is asked for. The start says once which of the two it is |
 
 Numbers are whole numbers of 1 or more. `RESPAWN_COOKIE_SECURE` is `true` or `false` (`1`, `yes`, `on` and
 `0`, `no`, `off` are read too). A value that cannot be read is refused by name, not replaced by its default: the app does not start, and its log says which.
@@ -149,6 +150,36 @@ Numbers are whole numbers of 1 or more. `RESPAWN_COOKIE_SECURE` is `true` or `fa
 A URI connection string accepts the options `sslmode`, `sslrootcert`, `connect_timeout` and `application_name`;
 any other is refused, so a typo is not silently ignored. Without `connect_timeout`, a connection attempt is given
 up after five seconds.
+
+### The data directory
+
+`RESPAWN_DATA_DIR` is the only place, besides `/tmp`, where the app writes. Today it holds the covers: each
+one is fetched from Steam the first time it is shown, written there, and served from that file afterwards.
+The library then loads its covers from the instance itself, and a cover is still shown when Steam does not
+answer or no longer has it.
+
+How to set it:
+
+- **With the image**: mount a volume on `/data` and set `RESPAWN_DATA_DIR=/data`, as in
+  [Run it](#run-it) and in `docker-compose.yml`. `/data` belongs to the image's user (10001), so a named
+  volume can be written as it is.
+- **With a folder of the host** (a bind mount): make it writable by the user the container runs as
+  (`chown 10001:10001 <folder>` for the image's default user).
+- **From the sources**: any absolute path the app's user can write to.
+
+What the app does with it:
+
+- **At start**, it creates `images/` there and writes and removes a file to be sure it can. A path that is
+  not absolute, or a directory it cannot write to, stops the start, and the log says why. The log then says
+  once whether covers are kept, and where.
+- **The files** are `images/cover/steam/<key>.<jpg|png|webp>`, one per cover. Each is written in
+  `images/tmp` and then moved into place, so a stop never leaves half a file; what is left in `images/tmp` is
+  removed at the next start. A cover is checked against Steam again once Steam's store has said again where
+  it is (every 30 days); a changed cover is a new file, and the old one is removed once no game shows it.
+- **Losing it** loses nothing else: the database holds everything the app knows, and the covers are fetched
+  again as they are asked for. A backup is optional.
+- **Without it**, nothing is kept: each cover is fetched from Steam at each request, and the browser keeps
+  it for a week.
 
 ### The database, when it is not there
 
@@ -316,7 +347,16 @@ accounts that miss a year, so a newly linked account gets its past within minute
   month (`GET /api/v1/library/months/{month}`) come from the review when their year does in
   `/library/years`, and from the readings otherwise.
 
-Both schedules live in the app's process, which is one more reason the app runs as one replica.
+### Where the covers are
+
+Steam's store says where each game's cover is, apart from the sync: every five minutes the app looks for
+the linked accounts whose games' covers it has not asked about lately, and asks Steam's store about them,
+with no key. A newly synced library gets its covers within minutes; the answer is asked again after 30 days,
+and a store that does not answer is tried again later, without touching the sync. Until the store has said,
+a cover is looked for at Steam's usual address.
+
+These three schedules (the sync, the yearly reviews, the covers) live in the app's process, which is one
+more reason the app runs as one replica.
 
 A breaking change to these routes means a new version beside `/api/v1`, not a change to it.
 

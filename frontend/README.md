@@ -117,7 +117,10 @@ Colours that differ by theme are written once, with `light-dark()`, which needs 
 (Chrome 123, Firefox 120, Safari 17.5).
 
 The layout has one breakpoint, 640px of the app's own width (a container query, not the window's): styles are
-written for the narrow layout first, and `wide:` applies from 640px up.
+written for the narrow layout first, and `wide:` applies from 640px up. The header alone has a second one,
+`roomy:`, from 960px, where the search is a field beside the tabs rather than a button. What only a computer
+can do (launch a game in its Steam client) is hidden by `touch-only:`, a device whose only pointer is a
+finger, never by a width.
 
 ## Fonts
 
