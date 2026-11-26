@@ -108,6 +108,11 @@ public interface ILibraryStore
     /// accounts, those noted as missing included, without those that left the library.</summary>
     Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
 
+    /// <summary>When the first of the readings that listed one of these ownerships was taken: the
+    /// earliest <see cref="OwnedEntry.FirstSeenAt"/> of <see cref="ListAsync"/>, without reading the
+    /// library. Null while the owner owns nothing.</summary>
+    Task<DateTimeOffset?> FindFirstSeenAsync(Guid ownerId, CancellationToken ct);
+
     /// <summary>What the owner played, per day and per game, in no order, over the same ownerships as
     /// <see cref="ListAsync"/>. For each of them, the readings that knew a total
     /// (<see cref="Observation.KnownPlaytime"/>) are taken in the order of their dates: a total greater
@@ -132,8 +137,10 @@ public interface IYearReviewStore
     Task<IReadOnlyList<(Guid LinkedAccountId, int Year)>> ListOwnerYearsAsync(Guid ownerId, CancellationToken ct);
 
     /// <summary>What an owner played per month and per game, from every review kept of their linked
-    /// accounts, in no order. A game they no longer own is in it: a review counts what was played.</summary>
-    Task<IReadOnlyList<PlayedMonth>> ListPlayedAsync(Guid ownerId, CancellationToken ct);
+    /// accounts, in no order. A game they no longer own is in it: a review counts what was played.
+    /// Only one game when <paramref name="gameId"/> is given, and only the month
+    /// <paramref name="month"/> is the first day of when it is: the other rows are not read.</summary>
+    Task<IReadOnlyList<PlayedMonth>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? month, CancellationToken ct);
 }
 
 /// <summary>A store's review of a year of an account, read by a connector: what it played per month.</summary>

@@ -67,7 +67,7 @@ public sealed class PlaytimeService(
         }
 
         IEnumerable<(Guid GameId, TimeSpan Playtime)> played = cover.Source == YearSource.Review
-            ? (await reviews.ListPlayedAsync(ownerId, ct)).Where(item => item.Month == first).Select(item => (item.GameId, item.Playtime))
+            ? (await reviews.ListPlayedAsync(ownerId, gameId: null, first, ct)).Select(item => (item.GameId, item.Playtime))
             : (await library.ListPlayedAsync(ownerId, gameId: null, from, to, ct)).Select(day => (day.GameId, day.Playtime));
         var totals = played
             .GroupBy(item => item.GameId)
@@ -106,8 +106,7 @@ public sealed class PlaytimeService(
             return [];
         }
 
-        var entries = await library.ListAsync(ownerId, ct);
-        DateOnly? firstReading = entries.Count > 0 ? DateOnly.FromDateTime(entries.Min(entry => entry.FirstSeenAt).UtcDateTime) : null;
+        DateOnly? firstReading = await library.FindFirstSeenAsync(ownerId, ct) is { } seen ? DateOnly.FromDateTime(seen.UtcDateTime) : null;
         var kept = (await reviews.ListOwnerYearsAsync(ownerId, ct)).ToLookup(pair => pair.Year, pair => pair.LinkedAccountId);
         var years = kept
             .Where(year => firstReading is not { } reached || year.Key < reached.Year || accounts.All(account => year.Contains(account.Id)))
@@ -137,8 +136,8 @@ public sealed class PlaytimeService(
 
     /// <summary>What was played over the years counted, of every game or of one: per month for the
     /// years of the reviews, per day for those of the readings, and nothing of a year under the other.
-    /// For one game, only that game's readings are read: what it costs does not grow with the
-    /// library.</summary>
+    /// For one game, only that game's months and readings are read: what it costs does not grow with
+    /// the library.</summary>
     private async Task<(IReadOnlyList<PlayedMonth> Months, IReadOnlyList<PlayedDay> Days)> PlayedAsync(
         Guid ownerId, Guid? gameId, IReadOnlyList<YearCover> cover, CancellationToken ct)
     {
@@ -146,8 +145,8 @@ public sealed class PlaytimeService(
         var read = cover.Where(year => year.Source == YearSource.Readings).ToList();
         return (
             reviewed.Count > 0
-                ? [.. (await reviews.ListPlayedAsync(ownerId, ct))
-                    .Where(month => reviewed.Contains(month.Month.Year) && (gameId is null || month.GameId == gameId))]
+                ? [.. (await reviews.ListPlayedAsync(ownerId, gameId, month: null, ct))
+                    .Where(month => reviewed.Contains(month.Month.Year))]
                 : [],
             read.Count > 0
                 ? [.. (await library.ListPlayedAsync(ownerId, gameId, read.Min(year => year.From), read.Max(year => year.To), ct))
