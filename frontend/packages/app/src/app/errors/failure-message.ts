@@ -20,6 +20,9 @@ export const KNOWN_FAILURES = [
   'keys_unavailable',
   'database_unavailable',
   'internal_error',
+  'still_listed',
+  'not_in_library',
+  'not_removed',
   NETWORK_ERROR,
 ] as const;
 

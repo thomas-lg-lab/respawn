@@ -81,6 +81,9 @@
     "keys_unavailable": "Cette instance ne peut pas garder de clé : son administrateur doit lui donner une clé de chiffrement.",
     "database_unavailable": "La base de données ne répond pas. Réessayez dans un instant.",
     "internal_error": "Une erreur s’est produite sur le serveur. Réessayez dans un instant.",
+    "still_listed": "Steam liste toujours ce jeu : seul un jeu qu’il ne liste plus peut être retiré.",
+    "not_in_library": "Ce jeu n’est pas dans votre bibliothèque.",
+    "not_removed": "Ce jeu est déjà dans votre bibliothèque.",
     "network_error": "Le serveur ne répond pas. Vérifiez votre connexion et réessayez.",
     "unknown": "Quelque chose s’est mal passé. Réessayez dans un instant."
   },
@@ -357,6 +360,106 @@
     },
     "loading": "Chargement de la carte",
     "retry": "Réessayer"
+  },
+  "game": {
+    "unnamed": "Jeu sans nom",
+    "noCover": "Pas de jaquette",
+    "status": {
+      "last": "Dernière session {{ ago }}",
+      "never": "Jamais lancé",
+      "missing": "Absent de votre bibliothèque",
+      "removed": "Retiré de votre bibliothèque",
+      "notOwned": "Pas dans votre bibliothèque",
+      "unknown": "Dernière session inconnue"
+    },
+    "storePage": "Page Steam",
+    "launch": "Lancer dans Steam",
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min",
+    "unknown": "—",
+    "ordinal": {
+      "one": "{{ rank }}er",
+      "two": "{{ rank }}e",
+      "few": "{{ rank }}e",
+      "other": "{{ rank }}e"
+    },
+    "figures": {
+      "total": "Temps total",
+      "rank": "{{ rank }} de vos {{ launched }} jeux lancés",
+      "year": "Cette année",
+      "recent": "Ces deux semaines",
+      "share": "sur {{ whole }}, soit {{ share }}",
+      "since": "compté depuis le {{ date }}",
+      "best": "Meilleur mois"
+    },
+    "never": {
+      "title": "Jamais lancé.",
+      "text": "Son temps, mois par mois, s’écrira ici dès la première session."
+    },
+    "noHistory": "Aucun mois de jeu connu pour l’instant : son temps s’écrira ici mois par mois, au fil des synchronisations.",
+    "loading": "Chargement du jeu…",
+    "notFound": {
+      "title": "Ce jeu est introuvable",
+      "text": "L’adresse ne mène à aucun jeu connu de respawn."
+    },
+    "calendar": {
+      "title": "Votre temps, mois par mois",
+      "less": "moins",
+      "more": "plus",
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min",
+      "year": "{{ year }} : {{ time }}",
+      "cell": "{{ month }} : {{ time }}",
+      "years": "{{ from }} – {{ to }}",
+      "gap": {
+        "noSession": "aucune session",
+        "nothingSince": "rien depuis",
+        "notCounted": "pas de détail par mois"
+      },
+      "unplacedLabel": "Hors calendrier",
+      "unplaced": "{{ time }} sans le détail par mois",
+      "hint": "Touchez un mois pour voir ses heures et ce que vous jouiez d’autre. La teinte se règle sur votre meilleur mois.",
+      "uncounted": "Une case vide est un mois que rien n’a compté : ni bilan de l’année de Steam, ni synchronisation."
+    },
+    "month": {
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min",
+      "ordinal": {
+        "one": "{{ rank }}er",
+        "two": "{{ rank }}e",
+        "few": "{{ rank }}e",
+        "other": "{{ rank }}e"
+      },
+      "only": "Le seul jeu joué ce mois-là",
+      "place": "{{ rank }} des {{ count }} jeux joués ce mois-là · {{ share }} de vos {{ total }}",
+      "games": "Jeux joués en {{ month }}",
+      "unnamed": "Jeu sans nom",
+      "othersOne": "{{ count }} autre jeu",
+      "othersMany": "{{ count }} autres jeux",
+      "loading": "Chargement du mois…",
+      "failed": "Les autres jeux de ce mois n’ont pas pu être lus.",
+      "retry": "Réessayer"
+    },
+    "notice": {
+      "missing": {
+        "title": "Steam ne liste plus ce jeu dans votre bibliothèque depuis le {{ date }}.",
+        "undated": "Steam ne liste plus ce jeu dans votre bibliothèque.",
+        "text": "Son temps et son historique sont gardés. Le retirer, c’est vous qui le décidez.",
+        "takeOut": "Retirer de ma bibliothèque"
+      },
+      "removed": {
+        "title": "Jeu retiré de votre bibliothèque.",
+        "text": "Il ne compte plus dans vos listes ni vos totaux. Son historique reste lisible ici.",
+        "undo": "Annuler",
+        "putBack": "Remettre dans ma bibliothèque"
+      },
+      "back": {
+        "title": "Steam liste de nouveau ce jeu depuis le {{ date }}.",
+        "text": "Vous l’aviez retiré de votre bibliothèque : il en reste dehors tant que vous ne l’y remettez pas.",
+        "putBack": "Remettre dans ma bibliothèque",
+        "dismiss": "Le laisser retiré"
+      }
+    }
   },
   "notFound": {
     "label": "Introuvable",

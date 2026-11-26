@@ -8,6 +8,12 @@ import { SegmentedBar, filledSegments } from './segmented-bar';
 })
 class Host {}
 
+@Component({
+  imports: [SegmentedBar],
+  template: `<rs-segmented-bar quiet [value]="1" [max]="2" />`,
+})
+class QuietHost {}
+
 describe('SegmentedBar', () => {
   it('fills in proportion, never less than one segment for a value above zero', () => {
     expect(filledSegments(142, 200, 20)).toBe(14);
@@ -32,5 +38,20 @@ describe('SegmentedBar', () => {
     expect(drawing.children.length).toBe(20);
     expect(drawing.querySelectorAll('[data-filled]').length).toBe(14);
     expect(host.textContent?.trim()).toBe('142 h');
+  });
+
+  it('says when it is quiet, for its colour', async () => {
+    const fixture = TestBed.createComponent(Host);
+    await fixture.whenStable();
+    const bar = (fixture.nativeElement as HTMLElement).querySelector('rs-segmented-bar')!;
+    expect(bar.hasAttribute('data-quiet')).toBe(false);
+
+    const quiet = TestBed.createComponent(QuietHost);
+    await quiet.whenStable();
+    expect(
+      (quiet.nativeElement as HTMLElement)
+        .querySelector('rs-segmented-bar')!
+        .hasAttribute('data-quiet'),
+    ).toBe(true);
   });
 });

@@ -61,6 +61,34 @@ export type LibraryYears = Schemas['LibraryYearsResponse'];
 /** A year of it: its time, where it was counted from, and the days it covers. */
 export type LibraryYear = Schemas['YearResponse'];
 
+/**
+ * One game as the signed-in account sees it (`GET /api/v1/games/{id}`): the catalogue's record,
+ * the entries it is owned through, their total, its rank among the games launched, and
+ * `removed` when the account took it out of the library.
+ */
+export type Game = Schemas['GameResponse'];
+
+/** A game's rank: its place among the games launched, the most played first, and how many those are. */
+export type GameRank = Schemas['GameRankResponse'];
+
+/** What was played of a game month by month (`GET /api/v1/games/{id}/months`), the earliest first. */
+export type GameMonths = Schemas['GameMonthsResponse'];
+
+/** A month of it: its first day, its time, and where it was counted from. */
+export type GameMonth = Schemas['GameMonthResponse'];
+
+/** The games played in one month (`GET /api/v1/library/months/{month}`), the most played first. */
+export type LibraryMonth = Schemas['LibraryMonthResponse'];
+
+/** A game of that month and its time. */
+export type MonthGame = Schemas['MonthGameResponse'];
+
+/**
+ * A game the account took out of its library. `back_since` is the notice to show: a store
+ * lists it again since then, and the notice was not dismissed.
+ */
+export type RemovedGame = Schemas['RemovedGameResponse'];
+
 /** The linked store accounts (`GET /api/v1/linked-accounts`). */
 export type LinkedAccounts = Schemas['LinkedAccountsResponse'];
 

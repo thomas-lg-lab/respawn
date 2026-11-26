@@ -33,6 +33,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/time/time').then((m) => m.Time),
       },
       {
+        // A game's page: reached from a game wherever one is shown, never from a tab.
+        path: 'games/:id',
+        loadComponent: () => import('./pages/game/game').then((m) => m.Game),
+      },
+      {
         // Reached from the account menu, not from a tab.
         path: 'account',
         loadComponent: () => import('./pages/account/account').then((m) => m.Account),

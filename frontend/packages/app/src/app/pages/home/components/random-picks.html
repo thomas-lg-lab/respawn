@@ -9,11 +9,15 @@
   </div>
   <ul class="flex flex-col gap-2.5">
     @for (pick of picks(); track pick.id) {
-      <li class="flex items-center gap-3" [attr.data-game]="pick.id">
+      <li class="relative flex items-center gap-3" [attr.data-game]="pick.id">
         <rs-cover class="w-7.5 shrink-0 rounded-thumb" aria-hidden="true" [hue]="pick.hue" />
-        <span class="min-w-0 truncate font-semibold" data-name>{{
-          pick.name ?? t('unnamed')
-        }}</span>
+        <a
+          class="min-w-0 truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+          data-name
+          [routerLink]="gamePage(pick.id)"
+          [state]="from"
+          >{{ pick.name ?? t('unnamed') }}</a
+        >
       </li>
     }
   </ul>

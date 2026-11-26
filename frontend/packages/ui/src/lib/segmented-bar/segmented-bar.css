@@ -21,6 +21,9 @@
   .segment[data-filled] {
     background-color: var(--rs-accent-text);
   }
+  :host([data-quiet]) .segment[data-filled] {
+    background-color: var(--rs-control-line);
+  }
 
   .value {
     font-weight: 600;

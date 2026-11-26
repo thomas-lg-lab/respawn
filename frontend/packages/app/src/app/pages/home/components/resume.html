@@ -4,7 +4,9 @@
       {{ last() ? t('resume.label', { ago: last()?.ago }) : t('resume.name') }}
     </p>
     <h2 class="relative type-hero wrap-anywhere" data-resume-name>
-      {{ game().name ?? t('unnamed') }}
+      <a class="hover:underline" [routerLink]="gamePage(game().game_id)" [state]="from">{{
+        game().name ?? t('unnamed')
+      }}</a>
     </h2>
     @if (total(); as all) {
       <p class="relative tabular-nums" data-resume-time>
@@ -21,7 +23,14 @@
       </p>
     }
     @if (launch(); as address) {
-      <a rsButton variant="primary" class="relative mt-2 self-start" data-launch [href]="address">
+      <!-- Only on a computer: a phone has no Steam client to launch it. -->
+      <a
+        rsButton
+        variant="primary"
+        class="relative mt-2 self-start touch-only:hidden"
+        data-launch
+        [href]="address"
+      >
         <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
         {{ t('resume.launch') }}
       </a>

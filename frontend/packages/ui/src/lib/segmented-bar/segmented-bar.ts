@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, booleanAttribute, computed, input } from '@angular/core';
 
 /**
  * How many of `segments` are filled for `value` out of `max`. Anything above zero fills
@@ -16,6 +16,7 @@ export function filledSegments(value: number, max: number, segments: number): nu
  */
 @Component({
   selector: 'rs-segmented-bar',
+  host: { '[attr.data-quiet]': "quiet() ? '' : null" },
   templateUrl: './segmented-bar.html',
   styleUrl: './segmented-bar.css',
 })
@@ -23,6 +24,8 @@ export class SegmentedBar {
   readonly value = input.required<number>();
   readonly max = input.required<number>();
   readonly segments = input(20);
+  /** Filled in a quiet colour rather than the accent: one bar among others that are not the point. */
+  readonly quiet = input(false, { transform: booleanAttribute });
 
   protected readonly cells = computed(() => {
     const segments = Math.max(0, Math.floor(this.segments()));

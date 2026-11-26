@@ -134,3 +134,13 @@ export function formatDay(day: string, language: string): string {
   const text = utcDays(language).format(new Date(`${day}T00:00:00Z`));
   return text.charAt(0).toLocaleUpperCase(language) + text.slice(1);
 }
+
+const ordinals = perLanguage((language) => new Intl.PluralRules(language, { type: 'ordinal' }));
+
+/**
+ * The form a rank takes in the language, for a translation keyed by it: `one` for 1st and
+ * 1er, `two` for 2nd, `few` for 3rd, `other` for the rest.
+ */
+export function ordinalForm(rank: number, language: string): Intl.LDMLPluralRule {
+  return ordinals(language).select(rank);
+}

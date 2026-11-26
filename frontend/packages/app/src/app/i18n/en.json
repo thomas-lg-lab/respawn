@@ -81,6 +81,9 @@
     "keys_unavailable": "This instance cannot keep a key: its administrator has to give it an encryption key.",
     "database_unavailable": "The database is not answering. Try again in a moment.",
     "internal_error": "Something failed on the server. Try again in a moment.",
+    "still_listed": "Steam still lists this game: only a game it no longer lists can be taken out.",
+    "not_in_library": "This game is not in your library.",
+    "not_removed": "This game is already in your library.",
     "network_error": "The server is not answering. Check your connection and try again.",
     "unknown": "Something went wrong. Try again in a moment."
   },
@@ -357,6 +360,106 @@
     },
     "loading": "Loading the map",
     "retry": "Try again"
+  },
+  "game": {
+    "unnamed": "Unnamed game",
+    "noCover": "No cover",
+    "status": {
+      "last": "Last session {{ ago }}",
+      "never": "Never launched",
+      "missing": "Missing from your library",
+      "removed": "Taken out of your library",
+      "notOwned": "Not in your library",
+      "unknown": "Last session unknown"
+    },
+    "storePage": "Steam page",
+    "launch": "Launch in Steam",
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min",
+    "unknown": "—",
+    "ordinal": {
+      "one": "{{ rank }}st",
+      "two": "{{ rank }}nd",
+      "few": "{{ rank }}rd",
+      "other": "{{ rank }}th"
+    },
+    "figures": {
+      "total": "Total time",
+      "rank": "{{ rank }} of your {{ launched }} launched games",
+      "year": "This year",
+      "recent": "These two weeks",
+      "share": "of {{ whole }}, {{ share }}",
+      "since": "counted since {{ date }}",
+      "best": "Best month"
+    },
+    "never": {
+      "title": "Never launched.",
+      "text": "Its time, month by month, will show here from the first session."
+    },
+    "noHistory": "No month of play known yet: its time will show here month by month, as syncs go by.",
+    "loading": "Loading the game…",
+    "notFound": {
+      "title": "This game cannot be found",
+      "text": "The address leads to no game respawn knows."
+    },
+    "calendar": {
+      "title": "Your time, month by month",
+      "less": "less",
+      "more": "more",
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min",
+      "year": "{{ year }}: {{ time }}",
+      "cell": "{{ month }}: {{ time }}",
+      "years": "{{ from }} – {{ to }}",
+      "gap": {
+        "noSession": "no session",
+        "nothingSince": "nothing since",
+        "notCounted": "no detail by month"
+      },
+      "unplacedLabel": "Off the calendar",
+      "unplaced": "{{ time }} without the detail by month",
+      "hint": "Press a month to see its hours and what else you were playing. The shade follows your best month.",
+      "uncounted": "An empty cell is a month nothing counted: neither a Steam Year in Review nor a sync."
+    },
+    "month": {
+      "hours": "{{ count }} h",
+      "minutes": "{{ count }} min",
+      "ordinal": {
+        "one": "{{ rank }}st",
+        "two": "{{ rank }}nd",
+        "few": "{{ rank }}rd",
+        "other": "{{ rank }}th"
+      },
+      "only": "The only game played that month",
+      "place": "{{ rank }} of the {{ count }} games played that month · {{ share }} of your {{ total }}",
+      "games": "Games played in {{ month }}",
+      "unnamed": "Unnamed game",
+      "othersOne": "{{ count }} other game",
+      "othersMany": "{{ count }} other games",
+      "loading": "Loading the month…",
+      "failed": "The other games of this month could not be read.",
+      "retry": "Try again"
+    },
+    "notice": {
+      "missing": {
+        "title": "Steam has no longer listed this game in your library since {{ date }}.",
+        "undated": "Steam no longer lists this game in your library.",
+        "text": "Its time and its history are kept. Taking it out is your call.",
+        "takeOut": "Take it out of my library"
+      },
+      "removed": {
+        "title": "Game taken out of your library.",
+        "text": "It no longer counts in your lists or your totals. Its history can still be read here.",
+        "undo": "Undo",
+        "putBack": "Put it back in my library"
+      },
+      "back": {
+        "title": "Steam has listed this game again since {{ date }}.",
+        "text": "You took it out of your library: it stays out until you put it back.",
+        "putBack": "Put it back in my library",
+        "dismiss": "Leave it out"
+      }
+    }
   },
   "notFound": {
     "label": "Not found",

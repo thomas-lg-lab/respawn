@@ -1,4 +1,12 @@
-import { formatAgo, formatCount, formatDate, formatDay, formatMoment, playtime } from './format';
+import {
+  formatAgo,
+  formatCount,
+  formatDate,
+  formatDay,
+  formatMoment,
+  ordinalForm,
+  playtime,
+} from './format';
 
 describe('format', () => {
   it('groups a count the way the language does', () => {
@@ -57,5 +65,20 @@ describe('format', () => {
     expect(formatDay('2026-11-21', 'fr')).toBe('Samedi 21 novembre');
     // The first of the month stays so, whatever the reader's time zone.
     expect(formatDay('2026-12-01', 'en')).toBe('Tuesday, December 1');
+  });
+});
+
+describe('ordinalForm', () => {
+  it('gives the form a rank takes in the language', () => {
+    expect([1, 2, 3, 4, 11, 21, 22].map((rank) => ordinalForm(rank, 'en'))).toEqual([
+      'one',
+      'two',
+      'few',
+      'other',
+      'other',
+      'one',
+      'two',
+    ]);
+    expect([1, 2, 3].map((rank) => ordinalForm(rank, 'fr'))).toEqual(['one', 'other', 'other']);
   });
 });

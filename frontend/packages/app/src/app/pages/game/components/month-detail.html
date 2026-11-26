@@ -1,0 +1,78 @@
+<div
+  class="flex flex-wrap items-start gap-x-8 gap-y-3 border-t border-line pt-4"
+  aria-live="polite"
+  data-month-detail
+  *transloco="let t; prefix: 'game.month'"
+>
+  <div class="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">
+    <p rsLabel class="text-accent-text" data-month-name>{{ name() }}</p>
+    <p class="type-figure" data-month-time>{{ t(time().key, { count: time().count }) }}</p>
+    @if (place(); as said) {
+      <p class="type-caption text-muted tabular-nums" data-month-place>
+        @if (said.only) {
+          {{ t('only') }}
+        } @else {
+          {{
+            t('place', {
+              rank: t('ordinal.' + said.form, { rank: said.rank }),
+              count: said.count,
+              share: said.share,
+              total: t(said.total.key, { count: said.total.count }),
+            })
+          }}
+        }
+      </p>
+    }
+  </div>
+
+  @if (detail(); as known) {
+    @if (rows().length > 1 || others()) {
+      <ol
+        class="flex min-w-0 flex-2 basis-72 flex-col gap-1.5"
+        [attr.aria-label]="t('games', { month: name() })"
+        data-month-games
+      >
+        @for (row of rows(); track row.id) {
+          <li class="flex min-h-6 items-center gap-3 tabular-nums" [attr.data-game]="row.id">
+            <span
+              class="w-30 shrink-0 truncate wide:w-37.5"
+              [class.font-semibold]="row.own"
+              [class.text-muted]="!row.own"
+              data-name
+              >{{ row.name ?? t('unnamed') }}</span
+            >
+            <rs-segmented-bar
+              class="flex-1"
+              [quiet]="!row.own"
+              [value]="row.seconds"
+              [max]="known.scale"
+              [segments]="segments"
+            />
+            <span class="w-11 shrink-0 text-right font-semibold" data-time>{{
+              t(row.time.key, { count: row.time.count })
+            }}</span>
+          </li>
+        }
+        @if (others(); as rest) {
+          <li class="flex min-h-6 items-center gap-3 text-muted tabular-nums" data-others>
+            <span class="flex-1">{{
+              t(rest.one ? 'othersOne' : 'othersMany', { count: rest.count })
+            }}</span>
+            <span class="w-11 shrink-0 text-right font-semibold">{{
+              t(rest.time.key, { count: rest.time.count })
+            }}</span>
+          </li>
+        }
+      </ol>
+    }
+  } @else if (failed()) {
+    <div class="flex min-w-0 flex-2 basis-72 flex-col items-start gap-2" role="alert">
+      <p class="text-muted" data-month-failed>{{ t('failed') }}</p>
+      <button rsButton type="button" data-month-retry (click)="retry.emit()">
+        {{ t('retry') }}
+      </button>
+    </div>
+  } @else {
+    <p class="min-w-0 flex-2 basis-72 text-muted" role="status">{{ t('loading') }}</p>
+  }
+</div>

@@ -1,7 +1,9 @@
 import { Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { LibraryGame } from '@respawn/data';
 import { Button, Card, Cover } from '@respawn/ui';
+import { cameFrom, gamePage } from '@app/games/game-page';
 import { coverHue } from '@app/games/game-list';
 
 /**
@@ -10,10 +12,14 @@ import { coverHue } from '@app/games/game-list';
  */
 @Component({
   selector: 'rs-random-picks',
-  imports: [TranslocoDirective, Button, Card, Cover],
+  imports: [RouterLink, TranslocoDirective, Button, Card, Cover],
   templateUrl: './random-picks.html',
 })
 export class RandomPicks {
+  /** A game leads to its page, which leads back here. */
+  protected readonly gamePage = gamePage;
+  protected readonly from = cameFrom('home');
+
   readonly games = input.required<readonly LibraryGame[]>();
   /** Whether another draw could give other games. */
   readonly more = input(false);

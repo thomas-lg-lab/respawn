@@ -26,6 +26,7 @@ import { AccountMenu, type LinkableProvider } from '@app/components/account-menu
 import { GameSearch } from '@app/components/game-search/game-search';
 import { failureKey } from '@app/errors/failure-message';
 import { LIBRARY_SEARCH } from '@app/games/game-list';
+import { cameFrom, gamePage, originOf } from '@app/games/game-page';
 import { type Language, LanguageSetting } from '@app/i18n/language';
 import { saidOnce, withoutSaidOnce } from '@app/session/said-once';
 
@@ -52,7 +53,7 @@ const SAME_PATH: IsActiveMatchOptions = {
  * menu, and the screen under it; on a phone the tabs are a bar at the foot of the window. It
  * is where the menu's requests meet what answers them: the settings, shown at once and kept
  * on the account, the providers to link, and the sign-out; and where a title that was
- * searched leads to the Library. A link through a
+ * searched leads to the Library, and a game chosen in the search to its page. A link through a
  * provider comes back to the screen it started from, and what came of it is said here.
  *
  * It also keeps the linked accounts in view, whatever the screen: that is where the end of a
@@ -173,6 +174,16 @@ export class Shell {
       queryParams: { [LIBRARY_SEARCH]: title },
       onSameUrlNavigation: 'reload',
     });
+  }
+
+  /**
+   * A game was chosen in the search: its page, which leads back to the screen it was chosen
+   * on. Chosen on a screen the page does not lead back to (another game's page, the account),
+   * it leads to the library.
+   */
+  protected openGame(gameId: string): void {
+    const here = originOf(this.router.url);
+    void this.router.navigate(gamePage(gameId), here ? { state: cameFrom(here) } : {});
   }
 
   protected signOut(): void {

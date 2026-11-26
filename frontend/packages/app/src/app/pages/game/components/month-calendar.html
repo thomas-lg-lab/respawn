@@ -1,0 +1,143 @@
+<section
+  class="flex flex-col gap-3.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
+  data-calendar
+  *transloco="let t; prefix: 'game.calendar'"
+>
+  <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+    <h2 class="type-card-title">{{ t('title') }}</h2>
+    <span class="flex items-center gap-1.5 type-caption text-muted" aria-hidden="true" data-legend>
+      {{ t('less') }}
+      @for (shade of shades; track shade) {
+        <span
+          class="size-3.5"
+          [class.bg-accent-text/20]="shade === 1"
+          [class.bg-accent-text/45]="shade === 2"
+          [class.bg-accent-text/70]="shade === 3"
+          [class.bg-accent-text]="shade === 4"
+        ></span>
+      }
+      {{ t('more') }}
+    </span>
+  </div>
+
+  <!-- On a phone it slides: the year's label stays on the left, and the months pass under it. -->
+  <div
+    #slider
+    class="-me-4 overflow-x-auto py-0.75 pe-4 [scrollbar-width:none] wide:me-0 wide:overflow-visible wide:pe-0"
+    data-slider
+  >
+    <div class="flex w-max flex-col gap-1 wide:w-auto">
+      <div
+        class="grid grid-cols-[4.5rem_repeat(12,2.125rem)] gap-1 text-center type-caption text-muted wide:grid-cols-[2.75rem_repeat(12,minmax(0,1fr))_3.5rem]"
+        aria-hidden="true"
+      >
+        <span class="sticky left-0 z-1 self-stretch bg-surface wide:static"></span>
+        @for (month of months(); track $index) {
+          <span class="truncate">{{ month }}</span>
+        }
+        <span class="hidden wide:block"></span>
+      </div>
+
+      <!-- A line across the rows stays in view while they slide: as wide as what the slider
+           shows (the window, less the screen's and the card's margins and the card's border),
+           never wider, or the slider's end would push it out. -->
+      @if (calendar().unplaced; as unplaced) {
+        @let spent = said(unplaced);
+        <p
+          class="sticky left-0 flex h-5 w-[calc(100cqw-4rem-2px)] items-center gap-2.5 type-caption text-muted tabular-nums wide:static wide:w-auto"
+          data-unplaced
+        >
+          <span class="shrink-0">{{ t('unplacedLabel') }}</span>
+          <span class="flex-1 border-t border-dashed border-control-line" aria-hidden="true"></span>
+          <span class="shrink-0">{{
+            t('unplaced', { time: t(spent.key, { count: spent.count }) })
+          }}</span>
+        </p>
+      }
+
+      @for (row of calendar().rows; track $index) {
+        @if (row.kind === 'year') {
+          @let total = said(row.seconds);
+          <div
+            class="grid grid-cols-[4.5rem_repeat(12,2.125rem)] items-center gap-1 tabular-nums wide:grid-cols-[2.75rem_repeat(12,minmax(0,1fr))_3.5rem]"
+            role="group"
+            [attr.aria-label]="
+              t('year', { year: row.year, time: t(total.key, { count: total.count }) })
+            "
+            [attr.data-year]="row.year"
+          >
+            <!-- On a phone the year's time stands with its label; on a wide screen, at the end of the row. -->
+            <span
+              class="sticky left-0 z-1 flex flex-col self-stretch justify-center bg-surface leading-tight wide:static"
+              aria-hidden="true"
+            >
+              <span class="font-semibold wide:hidden">{{
+                t(total.key, { count: total.count })
+              }}</span>
+              <span class="type-caption text-muted">{{ row.year }}</span>
+            </span>
+            @for (cell of row.cells; track cell.month) {
+              @if (cell.kind === 'played') {
+                @let spent = said(cell.seconds);
+                @let label =
+                  t('cell', { month: name(cell), time: t(spent.key, { count: spent.count }) });
+                <button
+                  type="button"
+                  class="h-8.5 min-w-0 transition-[filter] duration-hover hover:brightness-115 aria-pressed:outline-2 aria-pressed:outline-offset-1 aria-pressed:outline-text wide:h-7.5"
+                  [class.bg-accent-text/20]="cell.shade === 1"
+                  [class.bg-accent-text/45]="cell.shade === 2"
+                  [class.bg-accent-text/70]="cell.shade === 3"
+                  [class.bg-accent-text]="cell.shade === 4"
+                  [attr.aria-pressed]="cell.month === selected()"
+                  [attr.aria-label]="label"
+                  [attr.title]="label"
+                  [attr.data-month]="cell.month"
+                  [attr.data-shade]="cell.shade"
+                  (click)="picked.emit(cell.month)"
+                ></button>
+              } @else {
+                <span
+                  class="h-8.5 min-w-0 wide:h-7.5"
+                  [class.bg-line]="cell.kind === 'none'"
+                  [class.border]="cell.kind !== 'none'"
+                  [class.border-dashed]="cell.kind === 'later'"
+                  [class.border-control-line]="cell.kind === 'later'"
+                  [class.border-line]="cell.kind === 'uncounted'"
+                  [attr.data-month]="cell.month"
+                  [attr.data-kind]="cell.kind"
+                  aria-hidden="true"
+                ></span>
+              }
+            }
+            <span class="hidden text-right font-semibold wide:block" aria-hidden="true">{{
+              t(total.key, { count: total.count })
+            }}</span>
+          </div>
+        } @else {
+          <p
+            class="sticky left-0 flex h-5 w-[calc(100cqw-4rem-2px)] items-center gap-2.5 type-caption text-muted tabular-nums wide:static wide:w-auto"
+            data-gap
+          >
+            <span class="shrink-0">{{
+              row.from === row.to ? row.from : t('years', { from: row.from, to: row.to })
+            }}</span>
+            <span
+              class="flex-1 border-t border-dashed border-control-line"
+              aria-hidden="true"
+            ></span>
+            <span class="shrink-0">{{ t('gap.' + row.said) }}</span>
+          </p>
+        }
+      }
+    </div>
+  </div>
+
+  <ng-content />
+
+  <p class="type-caption text-muted">
+    {{ t('hint') }}
+    @if (uncounted()) {
+      {{ t('uncounted') }}
+    }
+  </p>
+</section>

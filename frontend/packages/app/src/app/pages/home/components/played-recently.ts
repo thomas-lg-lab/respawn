@@ -1,7 +1,9 @@
 import { Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Cover } from '@respawn/ui';
 import { type SaidPlaytime, formatAgo, saidPlaytime } from '@app/format/format';
+import { cameFrom, gamePage } from '@app/games/game-page';
 import { coverHue } from '@app/games/game-list';
 import type { PlayedRecently as Played } from '../library-blocks';
 
@@ -23,10 +25,14 @@ interface Shown {
  */
 @Component({
   selector: 'rs-played-recently',
-  imports: [TranslocoDirective, Cover],
+  imports: [RouterLink, TranslocoDirective, Cover],
   templateUrl: './played-recently.html',
 })
 export class PlayedRecently {
+  /** A game leads to its page, which leads back here. */
+  protected readonly gamePage = gamePage;
+  protected readonly from = cameFrom('home');
+
   readonly played = input.required<Played>();
   readonly language = input.required<string>();
   /** The moment "ago" is counted from. */
