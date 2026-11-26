@@ -54,7 +54,13 @@
             @if (said.others; as others) {
               {{ t(others.one ? 'time.othersOne' : 'time.othersMany', { count: others.count }) }}
             } @else if (said.tile.kind === 'game') {
-              {{ said.tile.game.name || t('time.unnamed') }}
+              <a
+                class="hover:underline"
+                data-game-link
+                [routerLink]="gamePage(said.tile.id)"
+                [state]="from"
+                >{{ said.tile.game.name || t('time.unnamed') }}</a
+              >
             }
           </h2>
           <p class="tabular-nums" data-share>

@@ -1,0 +1,166 @@
+<div class="flex flex-col gap-5" *transloco="let t">
+  <a
+    class="-mb-2 -ms-2.5 inline-flex min-h-touch items-center gap-2 self-start rounded-pill ps-2.5 pe-3.5 font-semibold text-muted transition-colors duration-hover hover:bg-surface-2 hover:text-text"
+    data-back
+    [routerLink]="back"
+    (click)="goBack($event)"
+  >
+    <svg lucideChevronLeft class="size-4.5" [strokeWidth]="2" aria-hidden="true"></svg>
+    {{ t('nav.' + origin) }}
+  </a>
+
+  @if (game.data(); as known) {
+    @if (refusal(); as refused) {
+      <rs-banner tone="warn" role="alert" data-refused>{{ t(failureKey(refused)) }}</rs-banner>
+    }
+    <rs-library-notice
+      [game]="known"
+      [language]="currentLanguage()"
+      [justTakenOut]="justTakenOut()"
+      [busy]="busy()"
+      (takeOut)="takeOut()"
+      (putBack)="putBack()"
+      (dismiss)="dismiss()"
+    />
+
+    <rs-game-hero [game]="known" [language]="currentLanguage()" [now]="now()" />
+
+    @if (neverLaunched()) {
+      <section
+        class="flex flex-col gap-1.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
+        data-never
+      >
+        <p class="font-semibold">{{ t('game.never.title') }}</p>
+        <p class="text-muted">{{ t('game.never.text') }}</p>
+      </section>
+    } @else {
+      @if (figures(); as said) {
+        <div class="grid grid-cols-2 gap-2 wide:grid-cols-4 wide:gap-3" data-figures>
+          <rs-stat-tile
+            data-figure="total"
+            [caption]="t('game.figures.total')"
+            [figure]="
+              said.total
+                ? t('game.' + said.total.key, { count: said.total.count })
+                : t('game.unknown')
+            "
+            [note]="
+              said.rank
+                ? t('game.figures.rank', {
+                    rank: t('game.ordinal.' + said.rank.form, { rank: said.rank.position }),
+                    launched: said.rank.launched,
+                  })
+                : undefined
+            "
+          />
+          <rs-stat-tile
+            data-figure="year"
+            [caption]="t('game.figures.year')"
+            [figure]="
+              said.year ? t('game.' + said.year.key, { count: said.year.count }) : t('game.unknown')
+            "
+            [note]="
+              said.yearShare
+                ? t('game.figures.share', {
+                    whole: t('game.' + said.yearShare.whole.key, {
+                      count: said.yearShare.whole.count,
+                    }),
+                    share: said.yearShare.share,
+                  })
+                : said.yearSince
+                  ? t('game.figures.since', { date: said.yearSince })
+                  : undefined
+            "
+          />
+          <rs-stat-tile
+            data-figure="recent"
+            [caption]="t('game.figures.recent')"
+            [figure]="
+              said.recent
+                ? t('game.' + said.recent.key, { count: said.recent.count })
+                : t('game.unknown')
+            "
+            [note]="
+              said.recentShare
+                ? t('game.figures.share', {
+                    whole: t('game.' + said.recentShare.whole.key, {
+                      count: said.recentShare.whole.count,
+                    }),
+                    share: said.recentShare.share,
+                  })
+                : undefined
+            "
+          />
+          <rs-stat-tile
+            data-figure="best"
+            [caption]="t('game.figures.best')"
+            [figure]="
+              said.best
+                ? t('game.' + said.best.time.key, { count: said.best.time.count })
+                : t('game.unknown')
+            "
+            [note]="said.best?.month"
+          />
+        </div>
+      }
+
+      @if (calendar(); as drawn) {
+        @if (drawn.rows.length) {
+          <rs-month-calendar
+            [calendar]="drawn"
+            [selected]="selected()"
+            [language]="currentLanguage()"
+            (picked)="pick($event)"
+          >
+            @if (selected(); as key) {
+              <rs-month-detail
+                [month]="key"
+                [detail]="detail()"
+                [failed]="month.isError()"
+                [seconds]="selectedSeconds()"
+                [gameName]="known.name"
+                [language]="currentLanguage()"
+                (retry)="retryMonth()"
+              />
+            }
+          </rs-month-calendar>
+        } @else {
+          <p
+            class="rounded-card border border-line bg-surface px-4 py-4.5 text-muted wide:px-6 wide:py-5"
+            data-no-history
+          >
+            {{ t('game.noHistory') }}
+          </p>
+        }
+      } @else if (months.isError()) {
+        <rs-banner tone="warn" role="alert" data-months-refused>{{
+          t(failureKey(months.error()))
+        }}</rs-banner>
+        <button rsButton type="button" class="self-start" (click)="months.refetch()">
+          {{ t('app.retry') }}
+        </button>
+      } @else {
+        <div role="status">
+          <rs-skeleton class="h-60" />
+          <span class="sr-only">{{ t('game.loading') }}</span>
+        </div>
+      }
+    }
+  } @else if (unknown()) {
+    <h1 class="type-page-title">{{ t('game.notFound.title') }}</h1>
+    <p class="text-muted" data-unknown>{{ t('game.notFound.text') }}</p>
+  } @else if (game.isError()) {
+    <rs-banner tone="warn" role="alert" data-game-refused>{{
+      t(failureKey(game.error()))
+    }}</rs-banner>
+    <button rsButton type="button" class="self-start" data-retry (click)="game.refetch()">
+      {{ t('app.retry') }}
+    </button>
+  } @else {
+    <div class="flex flex-col gap-5" role="status">
+      <rs-skeleton class="h-40 wide:h-61" />
+      <rs-skeleton class="h-27" />
+      <span class="sr-only">{{ t('game.loading') }}</span>
+    </div>
+  }
+</div>

@@ -1,0 +1,4 @@
+<!-- Decoration: the title it shows is always written beside it. -->
+@if (src() && !broken()) {
+  <img alt="" decoding="async" [src]="src()" (error)="fail()" />
+}

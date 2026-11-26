@@ -6,6 +6,7 @@ import { Banner, Button, Skeleton } from '@respawn/ui';
 import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatAgo, formatCount, isOne, saidPlaytime } from '@app/format/format';
+import { cameFrom, gamePage } from '@app/games/game-page';
 import { LanguageSetting } from '@app/i18n/language';
 import { TimeMap } from './components/time-map';
 import { type TimeTile, timeTiles } from '@app/games/time-tiles';
@@ -29,6 +30,9 @@ export class Time {
 
   protected readonly failureKey = failureKey;
   protected readonly recencies = RECENCIES;
+  /** The game pressed leads to its page, which leads back here. */
+  protected readonly gamePage = gamePage;
+  protected readonly from = cameFrom('time');
   protected readonly currentLanguage = this.language.current;
   protected readonly games = injectQuery(() => this.queries.games());
   /** "Ago" is counted from the moment the games were read, so it follows each new reading. */

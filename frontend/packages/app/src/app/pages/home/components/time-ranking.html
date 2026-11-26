@@ -8,11 +8,17 @@
   <ol class="flex flex-col">
     @for (row of rows(); track row.id) {
       <li
-        class="grid min-h-touch grid-cols-[2em_minmax(0,1fr)_auto] items-center gap-3 border-t border-line px-1.5 wide:grid-cols-[2em_minmax(0,11em)_minmax(0,1fr)_4.5em]"
+        class="relative grid min-h-touch grid-cols-[2em_minmax(0,1fr)_auto] items-center gap-3 border-t border-line px-1.5 wide:grid-cols-[2em_minmax(0,11em)_minmax(0,1fr)_4.5em]"
         [attr.data-game]="row.id"
       >
         <span class="type-label text-muted" aria-hidden="true">{{ row.rank }}</span>
-        <span class="truncate font-semibold" data-name>{{ row.name ?? t('unnamed') }}</span>
+        <a
+          class="truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+          data-name
+          [routerLink]="gamePage(row.id)"
+          [state]="from"
+          >{{ row.name ?? t('unnamed') }}</a
+        >
         <rs-segmented-bar class="hidden wide:flex" [value]="row.seconds" [max]="scale()" />
         <span class="text-right font-semibold whitespace-nowrap tabular-nums" data-playtime>{{
           t('time.' + row.time.key, { count: row.time.count })

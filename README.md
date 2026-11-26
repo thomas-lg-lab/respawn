@@ -59,6 +59,9 @@ and where your time went.
   three never launched drawn at random, and the latest days played.
 - **The library** as a list, searched, filtered (launched, recent, never launched) and sorted; **the Time
   tab**, the time map in full.
+- **The page of a game**, reached from wherever a game is shown and from the search: its time, its rank, this
+  year and the last two weeks, its months since 2022 as a calendar, and for a month the other games played
+  then; "Launch in Steam" on a computer, and taking a game Steam no longer lists out of the library.
 - **Accounts**: local accounts (the first one is the administrator), or sign-in through any OpenID Connect
   provider; the language (French or English), the theme and the character of the labels kept on the
   account; the account screen with its linked Steam accounts, a reading on request, your own key and
@@ -69,13 +72,12 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next**: take a game the store no longer lists out of the library.
-2. **The page of a game**, first on what Steam says of it.
-3. **Covers and durations** through IGDB, and with them the backlog in hours; a first try at searching your
+1. **Next**: the library as covers, beside the list.
+2. **Covers and durations** through IGDB, and with them the backlog in hours; a first try at searching your
    own backlog by what you feel like playing.
-4. **Statuses and ratings** for each game.
-5. **Tokens for the public API.**
-6. **More stores, next-game suggestions, sharing with a group.**
+3. **Statuses and ratings** for each game.
+4. **Tokens for the public API.**
+5. **More stores, next-game suggestions, sharing with a group.**
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.

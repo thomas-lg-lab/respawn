@@ -1,5 +1,7 @@
 import { Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { cameFrom, gamePage } from '@app/games/game-page';
 import { Card, SegmentedBar } from '@respawn/ui';
 import { formatCount, isOne, saidPlaytime } from '@app/format/format';
 import type { Ranking } from '../library-blocks';
@@ -10,10 +12,14 @@ import type { Ranking } from '../library-blocks';
  */
 @Component({
   selector: 'rs-time-ranking',
-  imports: [TranslocoDirective, Card, SegmentedBar],
+  imports: [RouterLink, TranslocoDirective, Card, SegmentedBar],
   templateUrl: './time-ranking.html',
 })
 export class TimeRanking {
+  /** A game leads to its page, which leads back here. */
+  protected readonly gamePage = gamePage;
+  protected readonly from = cameFrom('home');
+
   readonly ranking = input.required<Ranking>();
   readonly language = input.required<string>();
 

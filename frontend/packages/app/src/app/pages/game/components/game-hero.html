@@ -1,0 +1,87 @@
+<!-- A grid: the cover beside the title and the state under it. The actions stand at the bottom
+     right, on the state's line and centred with it, so the title never runs beside them; on a
+     phone they go under the whole. -->
+<section
+  class="grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end gap-x-7 gap-y-2 rounded-hero border border-line bg-surface p-4 wide:grid-cols-[auto_minmax(0,1fr)_auto] wide:px-7 wide:py-6"
+  data-hero
+  *transloco="let t; prefix: 'game'"
+>
+  <!-- Decoration: the title is written beside it. -->
+  @if (noCover()) {
+    <div
+      class="row-span-2 flex aspect-[2/3] w-22 shrink-0 flex-col items-center justify-center gap-1 rounded-field border-2 border-dashed border-control-line p-2 text-center text-muted wide:w-37"
+      aria-hidden="true"
+      data-no-cover
+    >
+      <span class="type-page-title">{{ initial() }}</span>
+      <span class="type-caption">{{ t('noCover') }}</span>
+    </div>
+  } @else {
+    <rs-cover
+      class="row-span-2 w-22 shrink-0 shadow-raised wide:w-37"
+      aria-hidden="true"
+      data-cover
+      [hue]="hue()"
+      [src]="cover()"
+      (failed)="noCover.set(true)"
+    />
+  }
+
+  <!-- Cut after two lines on a wide screen, three on a phone: the whole title is the page's name. -->
+  <h1
+    class="line-clamp-3 type-hero text-balance wrap-anywhere wide:line-clamp-2"
+    data-title
+    [attr.title]="game().name"
+  >
+    {{ game().name ?? t('unnamed') }}
+  </h1>
+  @let said = status();
+  <p
+    class="col-start-2 flex items-center gap-2 self-start type-caption text-muted wide:self-center"
+    data-status
+  >
+    <span
+      class="size-2.5 shrink-0 border"
+      [class.border-dashed]="said.kind === 'never'"
+      [class.border-muted]="said.kind === 'never'"
+      [class.border-transparent]="said.kind !== 'never'"
+      [class.bg-warn]="said.kind === 'missing' || said.kind === 'removed'"
+      [class.bg-recency-1]="recency() === 1"
+      [class.bg-recency-2]="recency() === 2"
+      [class.bg-recency-3]="recency() === 3"
+      [class.bg-recency-4]="recency() === 4 || said.kind === 'unknown' || said.kind === 'notOwned'"
+      aria-hidden="true"
+      [attr.data-recency]="recency()"
+    ></span>
+    @if (said.kind === 'last') {
+      <span [attr.title]="said.moment">{{ t('status.last', { ago: said.ago }) }}</span>
+    } @else {
+      {{ t('status.' + said.kind) }}
+    }
+  </p>
+
+  @if (store() || launch()) {
+    <div
+      class="col-span-2 mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-2 wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-center"
+    >
+      @if (store(); as address) {
+        <a
+          class="inline-flex min-h-touch items-center gap-2 font-semibold hover:underline"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-store
+          [href]="address"
+        >
+          {{ t('storePage') }}
+          <svg lucideArrowUpRight class="size-4" [strokeWidth]="2" aria-hidden="true"></svg>
+        </a>
+      }
+      @if (launch(); as address) {
+        <a rsButton variant="primary" class="touch-only:hidden" data-launch [href]="address">
+          <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+          {{ t('launch') }}
+        </a>
+      }
+    </div>
+  }
+</section>

@@ -104,6 +104,15 @@
   }
 }
 
+/* Not a width: a device whose only pointer is a finger, a phone or a tablet. What only a
+   computer can do (launch a game in its Steam client) is hidden there; a narrow window on a
+   computer keeps it. */
+@custom-variant touch-only {
+  @media (hover: none) and (pointer: coarse) {
+    @slot;
+  }
+}
+
 /* A raised element, a little larger than its neighbours (`aria-pressed:scale-pop`). Tailwind
    has no theme key for a scale: the utility is written here, on its token. */
 @utility scale-pop {

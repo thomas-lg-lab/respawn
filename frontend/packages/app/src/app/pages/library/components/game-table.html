@@ -25,7 +25,8 @@
     <tbody>
       @for (row of rows(); track row.id) {
         <tr class="h-row border-t border-line" [attr.data-game]="row.id">
-          <th scope="row" class="px-3 py-1.5 text-left font-medium wide:px-4">
+          <!-- The title leads to the game's page; its link covers the whole cell. -->
+          <th scope="row" class="relative px-3 py-1.5 text-left font-medium wide:px-4">
             <span class="flex items-center gap-3">
               <span
                 class="hidden w-9 shrink-0 type-label text-muted wide:inline"
@@ -35,9 +36,21 @@
               <rs-cover class="w-6 shrink-0 rounded-thumb" aria-hidden="true" [hue]="row.hue" />
               <span class="flex min-w-0 flex-col">
                 @if (row.name !== null) {
-                  <span data-name>{{ row.name }}</span>
+                  <a
+                    class="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+                    data-name
+                    [routerLink]="gamePage(row.id)"
+                    [state]="from"
+                    >{{ row.name }}</a
+                  >
                 } @else {
-                  <span class="text-muted" data-name>{{ t('unnamed') }}</span>
+                  <a
+                    class="text-muted after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+                    data-name
+                    [routerLink]="gamePage(row.id)"
+                    [state]="from"
+                    >{{ t('unnamed') }}</a
+                  >
                 }
                 @if (row.missing) {
                   <span class="type-caption text-muted" data-missing>{{ t('missing') }}</span>

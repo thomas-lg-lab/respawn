@@ -697,6 +697,30 @@ describe('Home', () => {
       expect(names(screen, 'picks').sort()).toEqual(['Celeste', 'Jeu sans nom']);
     });
 
+    it('leads to the page of a game chosen in the search, which leads back home', async () => {
+      const games = played();
+      const elden = games.find((each) => each.name === 'Elden Ring')!;
+      const { harness, server, screen } = await open([account()], { games });
+
+      const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+      search.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      type(search, 'elden');
+      await harness.fixture.whenStable();
+      screen.querySelector<HTMLButtonElement>('[data-suggestion]')!.click();
+      await server.answer(`/games/${elden.game_id}`, {
+        ...elden,
+        stores: [],
+        rank: { position: 1, launched: 1 },
+        removed: null,
+      });
+      await server.answer(`/games/${elden.game_id}/months`, { months: [] });
+      await harness.fixture.whenStable();
+
+      expect(TestBed.inject(Location).path()).toBe(`/games/${elden.game_id}`);
+      expect(screen.querySelector('h1')?.textContent.trim()).toBe('Elden Ring');
+      expect(screen.querySelector('[data-back]')?.textContent.trim()).toBe('Accueil');
+    });
+
     it('leads to the Library with the title searched in the header', async () => {
       const { harness, server, screen } = await open([account()], { games: played() });
 

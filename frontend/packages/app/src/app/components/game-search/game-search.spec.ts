@@ -29,6 +29,7 @@ function library(): LibraryGame[] {
     [games]="games()"
     [unreadable]="unreadable()"
     (searched)="asked.push($event)"
+    (chosen)="chosen.push($event)"
     (opened)="opened.push(true)"
   />`,
 })
@@ -36,6 +37,9 @@ class Host {
   readonly games = signal<LibraryGame[] | undefined>(library());
   readonly unreadable = signal(false);
   readonly asked: string[] = [];
+  /** The games chosen, by title rather than id, so a test reads as what was pressed. */
+  readonly chosen: string[] = [];
+  readonly titleOf = (id: string) => this.games()?.find((each) => each.game_id === id)?.name;
   readonly opened: boolean[] = [];
 }
 
@@ -133,7 +137,7 @@ describe('GameSearch', () => {
     expect(host.asked).toEqual(['h']);
   });
 
-  it('asks for the title of the suggestion the arrows chose, or the one pressed', async () => {
+  it('chooses the game of the suggestion the arrows are on, or the one pressed', async () => {
     const { element, input, host, search, press } = await create();
 
     await search('ha');
@@ -144,7 +148,9 @@ describe('GameSearch', () => {
     expect(chosen.textContent).toContain('Hades II');
     expect(input.getAttribute('aria-activedescendant')).toBe(chosen.id);
     await press('Enter');
-    expect(host.asked).toEqual(['Hades II']);
+    expect(host.chosen.map(host.titleOf)).toEqual(['Hades II']);
+    expect(host.asked).toEqual([]);
+    expect(element.querySelector('[data-search-panel]')).toBeNull();
 
     // The arrows pass through what was typed: down past the last one, or up from the first,
     // no suggestion is chosen and Enter asks for what was typed.
@@ -155,7 +161,7 @@ describe('GameSearch', () => {
     for (let pressed = 0; pressed < 6; pressed++) await press('ArrowDown');
     expect(element.querySelector('[data-suggestion][aria-selected="true"]')).toBeNull();
     await press('Enter');
-    expect(host.asked).toEqual(['Hades II', 'ha']);
+    expect(host.asked).toEqual(['ha']);
 
     // From what was typed, up goes to the last; a letter more and no suggestion is chosen.
     await search('ha');
@@ -167,7 +173,8 @@ describe('GameSearch', () => {
     expect(element.querySelector('[data-suggestion][aria-selected="true"]')).toBeNull();
 
     element.querySelector<HTMLButtonElement>('[data-suggestion]')!.click();
-    expect(host.asked).toEqual(['Hades II', 'ha', 'Hades']);
+    expect(host.chosen.map(host.titleOf)).toEqual(['Hades II', 'Hades']);
+    expect(host.asked).toEqual(['ha']);
   });
 
   it('leads to every game found from the foot of the suggestions', async () => {

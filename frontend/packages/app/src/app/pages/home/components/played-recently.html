@@ -3,12 +3,19 @@
   <ul class="grid grid-cols-1 gap-3 wide:grid-cols-2">
     @for (game of games(); track game.id) {
       <li
-        class="flex items-center gap-3.5 rounded-card border border-line bg-surface p-3"
+        class="relative flex items-center gap-3.5 rounded-card border border-line bg-surface p-3 transition-colors duration-hover hover:bg-surface-2"
         [attr.data-game]="game.id"
       >
         <rs-cover class="w-12 shrink-0" aria-hidden="true" [hue]="game.hue" />
         <span class="flex min-w-0 flex-col gap-0.5">
-          <span class="truncate font-semibold" data-name>{{ game.name ?? t('unnamed') }}</span>
+          <!-- The whole card leads to the game's page: the link's box is stretched over it. -->
+          <a
+            class="truncate font-semibold after:absolute after:inset-0 after:rounded-card focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-focus"
+            data-name
+            [routerLink]="gamePage(game.id)"
+            [state]="from"
+            >{{ game.name ?? t('unnamed') }}</a
+          >
           @let recent =
             game.recent ? t('time.' + game.recent.key, { count: game.recent.count }) : null;
           @let total = game.total ? t('time.' + game.total.key, { count: game.total.count }) : null;

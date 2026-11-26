@@ -1,0 +1,61 @@
+@if (notice(); as said) {
+  <div
+    class="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border px-5 py-4"
+    [class.border-warn-line]="said.kind === 'missing'"
+    [class.bg-warn-bg]="said.kind === 'missing'"
+    [class.text-warn]="said.kind === 'missing'"
+    [class.border-line]="said.kind !== 'missing'"
+    [class.bg-surface]="said.kind !== 'missing'"
+    role="status"
+    [attr.data-notice]="said.kind"
+    *transloco="let t; prefix: 'game.notice'"
+  >
+    <div class="flex min-w-0 flex-1 basis-60 flex-col gap-0.5">
+      @switch (said.kind) {
+        @case ('missing') {
+          <p class="font-semibold">
+            {{ said.since ? t('missing.title', { date: said.since }) : t('missing.undated') }}
+          </p>
+          <p>{{ t('missing.text') }}</p>
+        }
+        @case ('removed') {
+          <p class="font-semibold">{{ t('removed.title') }}</p>
+          <p class="text-muted">{{ t('removed.text') }}</p>
+        }
+        @case ('back') {
+          <p class="font-semibold">{{ t('back.title', { date: said.since }) }}</p>
+          <p class="text-muted">{{ t('back.text') }}</p>
+        }
+      }
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @switch (said.kind) {
+        @case ('missing') {
+          <button
+            rsButton
+            type="button"
+            class="border-warn text-warn"
+            data-take-out
+            [disabled]="busy()"
+            (click)="takeOut.emit()"
+          >
+            {{ t('missing.takeOut') }}
+          </button>
+        }
+        @case ('removed') {
+          <button rsButton type="button" data-put-back [disabled]="busy()" (click)="putBack.emit()">
+            {{ justTakenOut() ? t('removed.undo') : t('removed.putBack') }}
+          </button>
+        }
+        @case ('back') {
+          <button rsButton type="button" data-put-back [disabled]="busy()" (click)="putBack.emit()">
+            {{ t('back.putBack') }}
+          </button>
+          <button rsButton type="button" data-dismiss [disabled]="busy()" (click)="dismiss.emit()">
+            {{ t('back.dismiss') }}
+          </button>
+        }
+      }
+    </div>
+  </div>
+}

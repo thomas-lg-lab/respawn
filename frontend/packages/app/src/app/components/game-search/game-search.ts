@@ -30,6 +30,7 @@ let created = 0;
 /** A game suggested under the field: its title cut around what was typed, and its playtime. */
 interface Suggestion {
   readonly id: string;
+  readonly gameId: string;
   readonly title: string;
   readonly cut: FoundTitle;
   readonly hue: number;
@@ -39,8 +40,8 @@ interface Suggestion {
 
 /**
  * The search of the header: a title, and from two letters the games of the library that hold
- * it, those that start with it first. A suggestion, or the Enter key, asks for a title; where that
- * leads is the shell's. Where the header has no room for a field it is a button, and the field
+ * it, those that start with it first. A suggestion chosen names its game; the Enter key with
+ * none chosen, or the foot of the list, asks for a title. Where each leads is the shell's. Where the header has no room for a field it is a button, and the field
  * unfolds over the header once asked for, then folds back when the search is left or done. Ctrl+K (⌘K on an Apple machine) brings the focus to it from anywhere.
  *
  * It only shows the games it is given: the shell reads them once the field is first used.
@@ -59,13 +60,12 @@ export class GameSearch {
   readonly language = input.required<string>();
 
   /**
-   * A title was asked for: what was typed, or the title of a suggestion.
-   *
-   * Until a game has a page of its own (iteration 1). From then on a suggestion says its game
-   * through an output of its own, and the shell leads to that game's page; Enter with no
-   * suggestion chosen and the foot of the list still lead to the Library searched.
+   * A title was asked for: what was typed, by Enter with no suggestion chosen or by the foot
+   * of the list. The shell leads to the Library searched.
    */
   readonly searched = output<string>();
+  /** A suggestion was chosen: the id of its game. The shell leads to the game's page. */
+  readonly chosen = output<string>();
   /** The field itself took the focus: the games will be needed. */
   readonly opened = output<void>();
 
@@ -98,6 +98,7 @@ export class GameSearch {
       const title = game.name ?? '';
       return {
         id: `${this.listId}-${index}`,
+        gameId: game.game_id,
         title,
         cut: foundIn(title, this.asked()) ?? { before: title, found: '', after: '' },
         hue: coverHue(game.game_id),
@@ -196,10 +197,14 @@ export class GameSearch {
       case 'Enter': {
         // Enter on a button of the search is that button's own click.
         if (event.target instanceof HTMLButtonElement) return;
-        const title = this.suggestions()[this.active()]?.title ?? this.asked();
+        const suggestion = this.suggestions()[this.active()];
+        if (suggestion) {
+          this.choose(suggestion.gameId);
+          break;
+        }
         // Nothing the search reads was typed: nothing to look for.
-        if (!letters(title)) return;
-        this.ask(title);
+        if (!letters(this.asked())) return;
+        this.ask(this.asked());
         break;
       }
       case 'Escape':
@@ -253,6 +258,11 @@ export class GameSearch {
 
   protected ask(title: string): void {
     this.searched.emit(title);
+    this.close();
+  }
+
+  protected choose(gameId: string): void {
+    this.chosen.emit(gameId);
     this.close();
   }
 

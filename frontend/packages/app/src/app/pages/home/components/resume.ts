@@ -1,20 +1,23 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucidePlay } from '@lucide/angular';
 import type { LibraryGame } from '@respawn/data';
 import { Button, Hero, Label } from '@respawn/ui';
 import { formatAgo, formatMoment, saidPlaytime } from '@app/format/format';
 import { coverHue, steamLaunchAddress } from '@app/games/game-list';
+import { cameFrom, gamePage } from '@app/games/game-page';
 
 /**
  * The game to resume, the one played last, as a banner: its title, how long ago its last
  * session was, its playtime in all and over the last two weeks, and the way to launch it in
- * Steam when a copy of it is there. What the store did not say is left out, never shown as zero.
+ * Steam when a copy of it is there, on a computer (a phone has no Steam client to ask). What
+ * the store did not say is left out, never shown as zero. Its title leads to its page.
  */
 @Component({
   selector: 'rs-resume',
-  imports: [TranslocoDirective, LucidePlay, Button, Hero, Label],
+  imports: [RouterLink, TranslocoDirective, LucidePlay, Button, Hero, Label],
   templateUrl: './resume.html',
 })
 export class Resume {
@@ -24,6 +27,10 @@ export class Resume {
   readonly now = input.required<number>();
 
   private readonly sanitizer = inject(DomSanitizer);
+
+  /** Its title leads to its page, which leads back here. */
+  protected readonly gamePage = gamePage;
+  protected readonly from = cameFrom('home');
 
   /**
    * The link that launches the game in the Steam client. Angular takes any address that is

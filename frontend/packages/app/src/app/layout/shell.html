@@ -31,6 +31,7 @@
       [language]="language.current()"
       (opened)="searchOpened.set(true)"
       (searched)="search($event)"
+      (chosen)="openGame($event)"
     />
 
     @if (me.data(); as account) {

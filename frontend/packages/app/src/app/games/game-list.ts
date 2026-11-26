@@ -200,6 +200,15 @@ export function steamLaunchAddress(game: LibraryGame): string | null {
   return owned ? `steam://run/${owned.external_id}` : null;
 }
 
+/**
+ * The game's page on the Steam store, from any copy of it Steam knows, listed or not. `null`
+ * when Steam knows none, or when what it gave as the game's number is not one.
+ */
+export function steamStoreAddress(stores: readonly { source: string; external_id: string }[]) {
+  const known = stores.find((store) => store.source === 'steam' && /^\d+$/.test(store.external_id));
+  return known ? `https://store.steampowered.com/app/${known.external_id}/` : null;
+}
+
 /** The longest playtime among the games: what a full bar stands for. */
 export function longestPlaytime(games: readonly LibraryGame[]): number {
   return games.reduce((longest, game) => Math.max(longest, game.playtime_seconds ?? 0), 0);

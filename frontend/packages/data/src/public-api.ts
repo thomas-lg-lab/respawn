@@ -7,6 +7,7 @@
 export * from './lib/account/account.queries';
 export * from './lib/account/provider-sign-in';
 export * from './lib/api/api';
+export * from './lib/games/game.queries';
 export * from './lib/library/library.queries';
 export * from './lib/linked-accounts/linked-accounts.queries';
 export * from './lib/linked-accounts/steam-link';

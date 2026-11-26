@@ -1,8 +1,10 @@
 import { Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { LibraryGame } from '@respawn/data';
 import { Cover, SegmentedBar } from '@respawn/ui';
 import { formatAgo, formatCount, formatMoment, playtime } from '@app/format/format';
+import { cameFrom, gamePage } from '@app/games/game-page';
 import { coverHue, isMissing } from '@app/games/game-list';
 
 /** A duration as a cell shows it: a translation key and the count that goes in it. */
@@ -41,10 +43,14 @@ interface Row {
  */
 @Component({
   selector: 'rs-game-table',
-  imports: [TranslocoDirective, Cover, SegmentedBar],
+  imports: [RouterLink, TranslocoDirective, Cover, SegmentedBar],
   templateUrl: './game-table.html',
 })
 export class GameTable {
+  /** A game leads to its page, which leads back here. */
+  protected readonly gamePage = gamePage;
+  protected readonly from = cameFrom('library');
+
   /** The games to show, in their order. */
   readonly games = input.required<readonly LibraryGame[]>();
   /** The playtime a full bar stands for. */
