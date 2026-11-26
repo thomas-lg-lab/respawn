@@ -66,6 +66,9 @@ internal sealed class FakeSteam
     /// <summary>When set, what the image host answers every request with, in place of its files.</summary>
     public HttpStatusCode? ImagesStatus { get; set; }
 
+    /// <summary>Awaited before the image host answers: a test holds an answer back with it.</summary>
+    public Func<Task>? ImagesBefore { get; set; }
+
     /// <summary>The files asked of the image host, by the same path, with the key each request
     /// carried: none, ever.</summary>
     public List<(string Path, string? Key)> ImageRequests { get; } = [];
@@ -144,10 +147,18 @@ internal sealed class FakeSteam
 
     private sealed class ImagesTransport(FakeSteam steam) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var path = SteamCoverSource.Images.MakeRelativeUri(request.RequestUri!).ToString();
-            steam.ImageRequests.Add((path, KeyOf(request)));
+            lock (steam.ImageRequests)
+            {
+                steam.ImageRequests.Add((path, KeyOf(request)));
+            }
+
+            if (steam.ImagesBefore is { } before)
+            {
+                await before().WaitAsync(cancellationToken);
+            }
 
             var image = steam.ImagesStatus is { } status ? new FakeImage([], "text/html", status)
                 : steam.Images.GetValueOrDefault(path) ?? new FakeImage("<html>404 Not Found</html>"u8.ToArray(), "text/html", HttpStatusCode.NotFound);
@@ -158,7 +169,7 @@ internal sealed class FakeSteam
                 answer.Headers.Location = new Uri(image.Location);
             }
 
-            return Task.FromResult(answer);
+            return answer;
         }
     }
 }

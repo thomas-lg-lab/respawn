@@ -1,12 +1,16 @@
 namespace Respawn.Games.Ports;
 
-/// <summary>The covers of the catalogue's games, asked of the sources (<see cref="ICoverSource"/>) each
-/// time and never kept: only where a store says a cover is. Apart from the sync: whatever happens
-/// here, the sync goes on.</summary>
+/// <summary>The covers of the catalogue's games, asked of the sources (<see cref="ICoverSource"/>) and,
+/// on an instance that keeps images (<see cref="IImageStore"/>), kept and served from there; and where a
+/// store says a cover is. Apart from the sync: whatever happens here, the sync goes on.</summary>
 public interface ICoverService
 {
     /// <summary>The cover of a game, from the first of its store entries whose source has one, or
-    /// none; and whether that answer is settled (<see cref="CoverAnswer.Settled"/>).</summary>
+    /// none; and whether that answer is settled (<see cref="CoverAnswer.Settled"/>). Where images are
+    /// kept: the kept one while it is current, asked of its source once its store said again where it
+    /// is or <see cref="CoverSchedule.AskAgainAfter"/> after it was last asked for, and still served
+    /// when that source does not answer or has none any more. A cover found before the store said
+    /// where it is is passed on and not kept.</summary>
     /// <exception cref="GamesException"><see cref="GamesError.UnknownGame"/>: the catalogue has no such
     /// game.</exception>
     /// <exception cref="SourceException">No source gave a cover, and one of them could not be read: the

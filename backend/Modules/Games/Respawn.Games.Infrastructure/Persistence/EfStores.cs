@@ -305,7 +305,7 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
     {
         var entries = await db.StoreEntries.AsNoTracking()
             .Where(e => e.GameId == gameId)
-            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath, e.CoverAskedAt != null))
+            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath, e.CoverAskedAt))
             .ToListAsync(ct);
 
         // A game most often has an entry: the second question is for the id that is no game's.
@@ -326,7 +326,7 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             .Join(db.StoreEntries.AsNoTracking(), o => o.StoreEntryId, e => e.Id, (o, e) => e)
             .Where(e => e.CoverAskedAt == null || e.CoverAskedAt < askedBefore)
             .OrderBy(e => e.Id)
-            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath, e.CoverAskedAt != null))
+            .Select(e => new CoverEntry(e.Id, e.Source, e.ExternalId, e.CoverPath, e.CoverAskedAt))
             .ToListAsync(ct);
 
     public async Task SetCoverPathsAsync(IReadOnlyCollection<CoverPath> paths, DateTimeOffset at, CancellationToken ct)
@@ -342,6 +342,42 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             }
         }
 
+        await SaveAsync(ct);
+    }
+
+    public async Task<KeptImage?> FindImageAsync(Guid gameId, string kind, CancellationToken ct) =>
+        await db.Images.AsNoTracking()
+            .Where(i => i.GameId == gameId && i.Kind == kind)
+            .Select(i => new KeptImage(new ImageName(i.Kind, i.Source, i.Key, i.ContentType), i.CheckedAt))
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<ImageName?> KeepImageAsync(Guid gameId, KeptImage image, CancellationToken ct)
+    {
+        var name = image.Name;
+        var row = await db.Images.FirstOrDefaultAsync(i => i.GameId == gameId && i.Kind == name.Kind, ct);
+        var replaced = row is null ? null : new ImageName(row.Kind, row.Source, row.Key, row.ContentType);
+        if (row is null)
+        {
+            row = new ImageRow { GameId = gameId, Kind = name.Kind };
+            db.Images.Add(row);
+        }
+
+        (row.Source, row.Key, row.ContentType, row.CheckedAt) = (name.Source, name.Key, name.ContentType, image.CheckedAt);
+        await SaveAsync(ct);
+
+        // Two games may show one file: it goes only once none does.
+        return replaced is null || replaced == name
+            || await db.Images.AnyAsync(i => i.Kind == replaced.Kind && i.Source == replaced.Source && i.Key == replaced.Key, ct)
+            ? null
+            : replaced;
+    }
+
+    public Task CheckedImageAsync(Guid gameId, string kind, DateTimeOffset at, CancellationToken ct) =>
+        db.Images.Where(i => i.GameId == gameId && i.Kind == kind)
+            .ExecuteUpdateAsync(set => set.SetProperty(i => i.CheckedAt, at), ct);
+
+    private async Task SaveAsync(CancellationToken ct)
+    {
         try
         {
             await db.SaveChangesAsync(ct);

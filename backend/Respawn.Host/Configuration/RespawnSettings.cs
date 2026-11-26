@@ -64,6 +64,17 @@ internal static partial class RespawnSettings
         ApiKeyFile = configuration["RESPAWN_STEAM_API_KEY_FILE"] ?? "/secrets/steam-api-key",
     };
 
+    /// <summary>The data directory, where the covers are kept; null when none is given, and the covers
+    /// are then passed on from their source at each request. No default: an instance keeps images
+    /// only where it was told to, never in a place lost at each restart.</summary>
+    /// <exception cref="FormatException">Not an absolute path.</exception>
+    public static string? DataDirectory(IConfiguration configuration) =>
+        configuration["RESPAWN_DATA_DIR"] is not { Length: > 0 } directory
+            ? null
+            : Path.IsPathFullyQualified(directory)
+                ? directory
+                : throw new FormatException("RESPAWN_DATA_DIR must be an absolute path");
+
     public static EncryptionOptions Encryption(IConfiguration configuration) => new()
     {
         Key = configuration["RESPAWN_ENCRYPTION_KEY"],

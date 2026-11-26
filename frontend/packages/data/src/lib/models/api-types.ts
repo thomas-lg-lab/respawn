@@ -547,7 +547,7 @@ export interface paths {
         };
         /**
          * A game's cover
-         * @description The cover as an image, fetched from a source of the game each time it is asked for: the instance keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in account may ask for the cover of any game; a client that asks for too many at once is answered 429.
+         * @description The cover as an image. An instance given a data directory keeps each cover it serves: fetched from a source of the game the first time it is asked for, then served from there, with an ETag a browser sends back in If-None-Match to be answered 304 while it did not change; still served when its source does not answer or no longer has it. An instance without one fetches the cover each time it is asked for, with no ETag. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in account may ask for the cover of any game; a client that asks for too many at once is answered 429.
          */
         get: {
             parameters: {
@@ -571,6 +571,13 @@ export interface paths {
                         "image/png": components["schemas"]["Stream"];
                         "image/webp": components["schemas"]["Stream"];
                     };
+                };
+                /** @description Not Modified */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Unauthorized */
                 401: {

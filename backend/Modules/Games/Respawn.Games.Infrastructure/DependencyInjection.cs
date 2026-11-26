@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Respawn.Games.Infrastructure.Credentials;
+using Respawn.Games.Infrastructure.Images;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.SharedKernel;
@@ -32,6 +34,17 @@ public static class DependencyInjection
         services.AddScoped<ILibraryStore, EfLibraryStore>();
         services.AddScoped<IYearReviewStore, EfYearReviewStore>();
 
+        return services;
+    }
+
+    /// <summary>Where the images are kept: files of the data directory the host says, or nowhere when
+    /// it says none, the covers being passed on from their source at each request. Nothing is written
+    /// here: the host prepares the directory before the app listens (<see cref="FileImageStore.Prepare"/>).</summary>
+    public static IServiceCollection AddGamesImages(this IServiceCollection services, Func<IServiceProvider, string?> dataDirectory)
+    {
+        services.AddSingleton<IImageStore>(provider => dataDirectory(provider) is { } directory
+            ? new FileImageStore(directory, provider.GetRequiredService<ILogger<FileImageStore>>())
+            : new NoImageStore());
         return services;
     }
 }

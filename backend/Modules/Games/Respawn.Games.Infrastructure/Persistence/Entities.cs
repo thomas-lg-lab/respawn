@@ -222,3 +222,22 @@ public sealed class SyncRunRow
     /// rather than the instance's.</summary>
     public bool OwnCredential { get; set; }
 }
+
+/// <summary>The image a game shows for a kind, kept as a file of the data directory, named by its kind,
+/// its source and its key (<see cref="ImageName"/>), never by the game. Only on an instance that keeps
+/// images.</summary>
+public sealed class ImageRow
+{
+    public Guid GameId { get; set; }
+
+    public string Kind { get; set; } = "";
+
+    public string Source { get; set; } = "";
+
+    public string Key { get; set; } = "";
+
+    public string ContentType { get; set; } = "";
+
+    /// <summary>When its source was last asked for it.</summary>
+    public DateTimeOffset CheckedAt { get; set; }
+}

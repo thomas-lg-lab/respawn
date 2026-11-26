@@ -31,6 +31,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<MonthlyPlaytimeRow> MonthlyPlaytime => Set<MonthlyPlaytimeRow>();
 
+    public DbSet<ImageRow> Images => Set<ImageRow>();
+
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
     /// migration at first connection and the design-time tools.</summary>
     public static void Configure(DbContextOptionsBuilder options, DbDataSource dataSource) =>
@@ -164,6 +166,20 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             month.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(m => m.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
             month.HasOne<StoreEntryRow>().WithMany().HasForeignKey(m => m.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
             month.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(m => m.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ImageRow>(image =>
+        {
+            image.ToTable("images");
+            // One image per game and kind; a file is found again by its name, to know whether another
+            // game still shows it before it is removed.
+            image.HasKey(i => new { i.GameId, i.Kind });
+            image.Property(i => i.Kind).HasMaxLength(Limits.ImageKind);
+            image.Property(i => i.Source).HasMaxLength(Limits.Source);
+            image.Property(i => i.Key).HasMaxLength(Limits.ImageKey);
+            image.Property(i => i.ContentType).HasMaxLength(Limits.ContentType);
+            image.HasIndex(i => new { i.Kind, i.Source, i.Key });
+            image.HasOne<GameRow>().WithMany().HasForeignKey(i => i.GameId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

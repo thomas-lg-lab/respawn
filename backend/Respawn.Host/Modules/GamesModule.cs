@@ -25,6 +25,9 @@ internal static class GamesModule
         // The covers, and where the stores say they are: asked apart from the sync.
         services.AddScoped<ICoverService, CoverService>();
         services.AddSingleton<CoverGate>();
+        // The covers kept in the data directory, when one is given; passed on from their source otherwise.
+        services.AddGamesImages(provider => RespawnSettings.DataDirectory(provider.GetRequiredService<IConfiguration>()));
+        services.AddSingleton<ImageGate>();
         // The syncs on their way: one for the app, which is one replica.
         services.AddSingleton<SyncGate>();
         // The import of the stores' yearly reviews, apart from the sync.

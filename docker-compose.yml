@@ -28,9 +28,13 @@ services:
     environment:
       RESPAWN_DATABASE_URL: postgresql://respawn:respawn@db:5432/respawn
       RESPAWN_COOKIE_SECURE: "false"
+      # The covers, kept between restarts.
+      RESPAWN_DATA_DIR: /data
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - app-data:/data
     ports:
       - "127.0.0.1:8080:8080"
 
@@ -72,6 +76,7 @@ services:
       - nuget-packages:/root/.nuget/packages
 
 volumes:
+  app-data:
   node-modules:
   npm-cache:
   nuget-packages:
