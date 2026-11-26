@@ -250,9 +250,17 @@ public sealed class LibraryService(
             async () =>
             {
                 var removed = await RemovedAsync(ownerId, gameId, ct);
-                if (removed.TrueForAll(owned => owned.Ownership.ListedAgainSince is null))
+                var back = removed.Where(owned => owned.Ownership.ListedAgainSince is not null).ToList();
+                if (back.Count == 0)
                 {
                     throw new GamesException(GamesError.NotBack);
+                }
+
+                // Already dismissed, and nothing back since: no notice is shown, and none is
+                // silenced ahead of time for an entry that is not back.
+                if (back.TrueForAll(owned => owned.Ownership.NoticeDismissedAt is not null))
+                {
+                    return true;
                 }
 
                 // The notice is the game's: every entry taken out, or one a store lists later

@@ -223,7 +223,7 @@ public sealed class HistoryTests
     }
 
     [Fact]
-    public async Task A_game_taken_out_of_the_library_is_out_of_its_history()
+    public async Task A_game_taken_out_of_the_library_is_out_of_its_history_its_years_and_its_months()
     {
         await using var app = await StartAsync();
         using var browser = app.Browser();
@@ -232,13 +232,45 @@ public sealed class HistoryTests
         await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 100), ("400", "Portal", 60));
         var games = await GamesAsync(app);
         Assert.Equal([(Date(2), games["400"], 1800L), (Date(2), games["620"], 600L)], await DaysAsync(browser));
+        Assert.Equal(2400L, await YearSecondsAsync(browser));
+        Assert.Equal(["400", "620"], await MonthGamesAsync(browser, games));
 
-        // Its owner's decision, written here as the table holds it.
-        await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-        var portal = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).Id;
-        TestDatabase.Run($"UPDATE games.ownerships SET unlisted_since = '{Day(3):O}' WHERE store_entry_id = '{portal}'");
+        // The whole library, without Portal: flagged as missing, then taken out by its owner.
+        var reading = new LibraryReading(
+            "owned-games", Day(3), "{}", [new OwnedItem("620", "Portal 2", TimeSpan.FromMinutes(100), LastPlayedAt: null)], Complete: true);
+        await UseAsync(app, library => library.RecordLibraryAsync(account.Id, reading, default));
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync($"/api/v1/library/games/{games["400"]}").StatusAsync());
+
         Assert.Equal([(Date(2), games["620"], 600L)], await DaysAsync(browser));
+        Assert.Equal(600L, await YearSecondsAsync(browser));
+        Assert.Equal(["620"], await MonthGamesAsync(browser, games));
+        // Where the history starts is the library's: Portal 2 was there from the first reading.
+        Assert.Equal(Day(1), await SinceAsync(browser));
+
+        // Put back, it counts again.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.PutAsync($"/api/v1/library/games/{games["400"]}", null).StatusAsync());
+        Assert.Equal([(Date(2), games["400"], 1800L), (Date(2), games["620"], 600L)], await DaysAsync(browser));
+        Assert.Equal(2400L, await YearSecondsAsync(browser));
+    }
+
+    /// <summary>The seconds of 2026, counted from the readings: no store reviewed it.</summary>
+    private static async Task<long> YearSecondsAsync(HttpClient browser)
+    {
+        var year = Assert.Single((await browser.GetAsync("/api/v1/library/years").JsonAsync()).GetProperty("years").EnumerateArray());
+        Assert.Equal((2026, "readings"), (year.GetProperty("year").GetInt32(), year.GetProperty("source").GetString()));
+        return year.GetProperty("seconds").GetInt64();
+    }
+
+    /// <summary>The games of November 2026, by their id in the store, in no order.</summary>
+    private static async Task<string[]> MonthGamesAsync(HttpClient browser, Dictionary<string, Guid> games)
+    {
+        var month = await browser.GetAsync("/api/v1/library/months/2026-11").JsonAsync();
+        return
+        [
+            .. month.GetProperty("games").EnumerateArray()
+                .Select(game => games.Single(pair => pair.Value == game.GetProperty("game_id").GetGuid()).Key)
+                .Order(StringComparer.Ordinal),
+        ];
     }
 
     [Fact]

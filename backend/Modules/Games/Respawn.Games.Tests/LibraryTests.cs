@@ -346,6 +346,53 @@ public sealed class LibraryTests
     }
 
     [Fact]
+    public async Task A_dismissal_with_no_notice_shown_silences_nothing_ahead_of_time()
+    {
+        var clock = new LibraryClock();
+        clock.Set(Day(10));
+        await using var app = await StartAsync(clock);
+        using var browser = app.Browser();
+        var owner = await OwnerAsync(browser);
+        var first = await LinkAsync(app, owner, "76561190000000001");
+        var second = await LinkAsync(app, owner, "76561190000000002");
+        foreach (var account in new[] { first, second })
+        {
+            await ReadAsync(app, account.Id, Day(1), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
+        }
+
+        await ReadAsync(app, first.Id, Day(2), complete: true, ("620", "Portal 2", 90, null));
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        var game = (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.ExternalId == "400")).GameId;
+        var (route, notice) = ($"/api/v1/library/games/{game}", $"/api/v1/library/removed/{game}/notice");
+        async Task<JsonElement> RemovedGameAsync() => Assert.Single(await RemovedAsync(browser));
+        async Task<DateTimeOffset?> DismissedAsync(Guid account) =>
+            Date((await RemovedGameAsync()).GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("linked_account_id").GetGuid() == account), "notice_dismissed_at");
+
+        // The first account's entry goes, its store lists it again, and that notice is dismissed.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(route).StatusAsync());
+        clock.Set(Day(20));
+        await ReadAsync(app, first.Id, Day(11), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
+        Assert.Equal(Day(11), Date(await RemovedGameAsync(), "back_since"));
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(notice).StatusAsync());
+
+        // The second account's entry goes later, while its store does not list it: no notice to show.
+        await ReadAsync(app, second.Id, Day(12), complete: true, ("620", "Portal 2", 90, null));
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(route).StatusAsync());
+        Assert.Null(Date(await RemovedGameAsync(), "back_since"));
+
+        // Dismissing again changes nothing: the entry that is not back is not silenced ahead of time.
+        Assert.Equal(HttpStatusCode.NoContent, await browser.DeleteAsync(notice).StatusAsync());
+        Assert.NotNull(await DismissedAsync(first.Id));
+        Assert.Null(await DismissedAsync(second.Id));
+
+        // So when its store lists it again, the notice is raised.
+        clock.Set(Day(25));
+        await ReadAsync(app, second.Id, Day(21), complete: true, ("620", "Portal 2", 90, null), ("400", "Portal", 30, null));
+        Assert.Equal(Day(21), Date(await RemovedGameAsync(), "back_since"));
+    }
+
+    [Fact]
     public async Task The_library_is_one_item_per_game_read_in_parts_and_in_an_order()
     {
         await using var app = await StartAsync();

@@ -442,11 +442,16 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
 
     public async Task SaveAsync(IReadOnlyCollection<AccountOwnership> owned, CancellationToken ct)
     {
+        // One query for every row: what the pairs ask for is picked out of the few rows the two lists
+        // of ids select.
+        var accounts = owned.Select(o => o.LinkedAccountId).Distinct().ToList();
+        var entries = owned.Select(o => o.Ownership.StoreEntryId).Distinct().ToList();
+        var rows = await db.Ownerships
+            .Where(o => accounts.Contains(o.LinkedAccountId) && entries.Contains(o.StoreEntryId))
+            .ToDictionaryAsync(o => (o.LinkedAccountId, o.StoreEntryId), ct);
         foreach (var (linkedAccountId, ownership) in owned)
         {
-            var row = await db.Ownerships.SingleAsync(
-                o => o.LinkedAccountId == linkedAccountId && o.StoreEntryId == ownership.StoreEntryId, ct);
-            Set(row, ownership);
+            Set(rows[(linkedAccountId, ownership.StoreEntryId)], ownership);
         }
 
         await db.SaveChangesAsync(ct);
