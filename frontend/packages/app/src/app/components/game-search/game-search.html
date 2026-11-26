@@ -97,11 +97,18 @@
               type="button"
               role="option"
               tabindex="-1"
+              class="group relative"
               data-suggestion
               [id]="row.id"
               [attr.aria-selected]="index === active()"
               (click)="ask(row.title)"
             >
+              <!-- The one the arrow keys are on has the field's prompt before it, in the row's
+                   margin so that nothing moves; the plain character has no prompt to draw. -->
+              <span
+                class="pointer-events-none absolute inset-y-0 start-0.5 hidden items-center font-label text-accent-text label-prompt group-aria-selected:flex"
+                aria-hidden="true"
+              ></span>
               <rs-cover class="w-6 shrink-0 rounded-thumb" aria-hidden="true" [hue]="row.hue" />
               <span class="min-w-0 truncate" data-title
                 >{{ row.cut.before
@@ -124,7 +131,14 @@
           }
         </div>
         <div class="border-t border-line p-1">
-          <button rsButton variant="row" type="button" data-search-all (click)="ask(asked())">
+          <button
+            rsButton
+            variant="row"
+            type="button"
+            class="font-label"
+            data-search-all
+            (click)="ask(asked())"
+          >
             {{ t(all().one ? 'seeOne' : 'seeMany', { count: all().count }) }}
           </button>
         </div>
