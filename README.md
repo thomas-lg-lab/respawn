@@ -30,7 +30,7 @@ and where your time went.
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/library-dark.webp">
-        <img src="docs/screenshots/library-light.webp" alt="The library as a list, with each game's playtime, its last two weeks and its last session">
+        <img src="docs/screenshots/library-light.webp" alt="The library as covers, each with its title and its playtime, and the choice of covers or a list beside the sort">
       </picture>
     </td>
     <td width="50%">
@@ -41,7 +41,7 @@ and where your time went.
     </td>
   </tr>
   <tr>
-    <td align="center"><b>The library</b>: search, filter, sort</td>
+    <td align="center"><b>The library</b>: covers or a list; search, filter, sort</td>
     <td align="center"><b>The time map</b>: where the hours went</td>
   </tr>
 </table>
@@ -57,8 +57,10 @@ and where your time went.
 - **The home**: the game to resume, with "Launch in Steam", the ones played lately, your playtime, the last
   two weeks and the games never launched, the time played per year, the most played and their time map,
   three never launched drawn at random, and the latest days played.
-- **The library** as a list, searched, filtered (launched, recent, never launched) and sorted; **the Time
-  tab**, the time map in full.
+- **The library** as covers or as a list, each browser keeping its own choice, searched, filtered (launched,
+  recent, never launched) and sorted; **the Time tab**, the time map in full.
+- **Steam's covers** wherever a game is shown, asked of Steam once and kept by the instance when it has a
+  data directory; a cover is asked for only as it comes near the screen.
 - **The page of a game**, reached from wherever a game is shown and from the search: its time, its rank, this
   year and the last two weeks, its months since 2022 as a calendar, and for a month the other games played
   then; "Launch in Steam" on a computer, and taking a game Steam no longer lists out of the library.
@@ -72,12 +74,11 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next**: the library as covers, beside the list.
-2. **Covers and durations** through IGDB, and with them the backlog in hours; a first try at searching your
-   own backlog by what you feel like playing.
-3. **Statuses and ratings** for each game.
-4. **Tokens for the public API.**
-5. **More stores, next-game suggestions, sharing with a group.**
+1. **Next**: covers and durations through IGDB, and with them the backlog in hours; a first try at
+   searching your own backlog by what you feel like playing.
+2. **Statuses and ratings** for each game.
+3. **Tokens for the public API.**
+4. **More stores, next-game suggestions, sharing with a group.**
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
