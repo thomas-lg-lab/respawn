@@ -15,3 +15,7 @@ connector makes of such an answer, not that the source still answers this way.
 | `steam/year-in-review-none.json` | the same | a year Steam has no review of yet: an empty `response` |
 | `steam/store-items.json` | `IStoreBrowseService/GetItems/v1` with `include_assets`, which takes no key | where the covers of the four games above are: Portal 2 at the address every game had (`library_600x900.jpg`), Half-Life 2 in a folder of its own (a made-up hash), Portal with assets and no cover among them, and the fourth unknown to the store (`success` 15, no assets) |
 | `steam/cover.jpg`, `steam/cover.png` | a file of Steam's image host | not Steam's artwork: a grey JPEG of 8 x 8 pixels and a PNG of 2 x 3, written byte by byte; what matters is that they are images of each kind |
+| `igdb/token.json` | Twitch's `POST oauth2/token`, `grant_type=client_credentials` | a token for the instance, `expires_in` about 58 days; made up, nobody's |
+| `igdb/token-wrong-secret.json` | the same | the 403 Twitch gives for a client id it knows with the wrong secret |
+| `igdb/token-unknown-client.json` | the same | the 400 Twitch gives for a client id it does not know |
+| `igdb/external-games.json` | IGDB's `POST v4/external_games`, `fields game,uid; where external_game_source = 1 & uid = (...)` | seven Steam games and the IGDB game each one is; asked about with an eighth that IGDB does not know, which has no row |
