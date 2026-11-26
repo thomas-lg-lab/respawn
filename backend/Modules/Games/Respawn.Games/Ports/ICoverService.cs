@@ -13,8 +13,9 @@ public interface ICoverService
 
     /// <summary>Asks the store of a linked account where the covers of its games are, for those never
     /// asked about or asked about more than <see cref="CoverSchedule.AskAgainAfter"/> ago, and keeps
-    /// the answers as they come. Returns how many games were asked about: none when the account is
-    /// gone or no connector reads the covers of its store.</summary>
+    /// the answers as they come. A game the store's answer says nothing about is asked about again the
+    /// next time. Returns how many games the store answered about: none when the account is gone or
+    /// no connector reads the covers of its store.</summary>
     /// <exception cref="SourceException">The store could not be read; what it said before is kept.</exception>
     Task<int> ReadCoverPathsAsync(Guid linkedAccountId, CancellationToken ct);
 }

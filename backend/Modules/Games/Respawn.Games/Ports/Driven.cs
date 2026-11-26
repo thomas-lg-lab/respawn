@@ -190,10 +190,11 @@ public interface ICoverSource
     Task<Cover?> ReadCoverAsync(string externalId, string? path, CancellationToken ct);
 
     /// <summary>Where the store says the covers of these games are, by the game's id in the store: a
-    /// short text the connector understands, never an image nor a whole address. A game the store does
-    /// not know, or knows no cover of, is left out.</summary>
+    /// short text the connector understands, never an image nor a whole address; null for a game the
+    /// store answers about and knows no cover of, or does not know. A game the answer says nothing
+    /// about is left out: nothing was learnt of it, and it is to ask about again.</summary>
     /// <param name="externalIds">At most <see cref="PathsPerRequest"/> ids.</param>
     /// <param name="ct">Gives up.</param>
     /// <exception cref="SourceException">The store could not be read.</exception>
-    Task<IReadOnlyDictionary<string, string>> ReadCoverPathsAsync(IReadOnlyCollection<string> externalIds, CancellationToken ct);
+    Task<IReadOnlyDictionary<string, string?>> ReadCoverPathsAsync(IReadOnlyCollection<string> externalIds, CancellationToken ct);
 }

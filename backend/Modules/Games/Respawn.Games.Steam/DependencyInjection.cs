@@ -21,11 +21,11 @@ public static class DependencyInjection
         services.AddSingleton<ICoverSource>(provider => new SteamCoverSource(provider.GetRequiredService<SteamClient>()));
 
         // A client per use: the one that carries a key, and the two that never do.
-        foreach (var (name, address) in new[]
+        foreach (var (name, address, connections) in new[]
         {
-            (SteamLibrarySource.HttpClientName, SteamLibrarySource.Api),
-            (SteamCoverSource.StoreClientName, SteamLibrarySource.Api),
-            (SteamCoverSource.ImagesClientName, SteamCoverSource.Images),
+            (SteamLibrarySource.HttpClientName, SteamLibrarySource.Api, int.MaxValue),
+            (SteamCoverSource.StoreClientName, SteamLibrarySource.Api, int.MaxValue),
+            (SteamCoverSource.ImagesClientName, SteamCoverSource.Images, SteamCoverSource.MaxConnections),
         })
         {
             services
@@ -35,7 +35,7 @@ public static class DependencyInjection
                     // The connector counts the time itself, the body included, and its size too.
                     client.Timeout = Timeout.InfiniteTimeSpan;
                 })
-                .ConfigurePrimaryHttpMessageHandler(Transport);
+                .ConfigurePrimaryHttpMessageHandler(() => Transport(connections));
         }
 
         return services;
@@ -43,5 +43,7 @@ public static class DependencyInjection
 
     /// <summary>How Steam is reached. The key travels in a header: an answer that sends elsewhere is
     /// not followed with it, and an image is taken from the host asked, never from another.</summary>
-    internal static SocketsHttpHandler Transport() => new() { AllowAutoRedirect = false };
+    /// <param name="connections">The most connections kept to one host at once.</param>
+    internal static SocketsHttpHandler Transport(int connections = int.MaxValue) =>
+        new() { AllowAutoRedirect = false, MaxConnectionsPerServer = connections };
 }

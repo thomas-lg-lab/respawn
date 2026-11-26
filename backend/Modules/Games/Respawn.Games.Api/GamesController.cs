@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -54,6 +55,11 @@ public sealed class GamesController(ICoverService covers) : ControllerBase
         }
 
         Response.Headers.CacheControl = KeptAWeek;
-        return File(cover.Bytes.ToArray(), cover.ContentType);
+
+        // The source's own array when the image is the whole of it, which it is: no second copy.
+        var bytes = MemoryMarshal.TryGetArray(cover.Bytes, out var held) && held.Array is { } array && held.Offset == 0 && held.Count == array.Length
+            ? array
+            : cover.Bytes.ToArray();
+        return File(bytes, cover.ContentType);
     }
 }

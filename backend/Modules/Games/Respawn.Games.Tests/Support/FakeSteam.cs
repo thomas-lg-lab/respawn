@@ -51,6 +51,11 @@ internal sealed class FakeSteam
 
     public HttpStatusCode StoreStatus { get; set; } = HttpStatusCode.OK;
 
+    /// <summary>When set, what the store answers a question with, by its rank among the questions
+    /// received (the first is 0), in place of <see cref="StoreStatus"/> and <see cref="StoreBody"/>
+    /// when it gives one.</summary>
+    public Func<int, Uri, (HttpStatusCode Status, string Body)?>? StoreAnswerFor { get; set; }
+
     /// <summary>The questions Steam's store received, with the key each one carried: none, ever.</summary>
     public List<(Uri Address, string? Key)> StoreRequests { get; } = [];
 
@@ -129,10 +134,11 @@ internal sealed class FakeSteam
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            var (status, body) = steam.StoreAnswerFor?.Invoke(steam.StoreRequests.Count, request.RequestUri!) ?? (steam.StoreStatus, steam.StoreBody);
             steam.StoreRequests.Add((request.RequestUri!, KeyOf(request)));
-            var content = new ByteArrayContent(Encoding.UTF8.GetBytes(steam.StoreBody));
+            var content = new ByteArrayContent(Encoding.UTF8.GetBytes(body));
             content.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=UTF-8");
-            return Task.FromResult(new HttpResponseMessage(steam.StoreStatus) { Content = content });
+            return Task.FromResult(new HttpResponseMessage(status) { Content = content });
         }
     }
 

@@ -205,19 +205,25 @@ public sealed class SyncService(
     }
 
     /// <summary>Where the store says the covers of the library's games are, asked once the library is
-    /// kept and apart from it: a store that does not say is not a sync that failed, and the next sync
-    /// asks again about the games left.</summary>
+    /// kept and apart from it. Nothing that goes wrong here is the sync's: the run is kept and says
+    /// what the reading was. A store that does not say, one that takes too long
+    /// (<see cref="CoverSchedule.Budget"/>) or an answer that cannot be kept leaves games to ask about
+    /// at the next sync, and their covers are found without their place, where the connector can.</summary>
+#pragma warning disable CA1031 // whatever fails after the run is kept must not make a sync that ended look like one that did not
     private async Task AskCoversAsync(LinkedAccount account, CancellationToken ct)
     {
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        budget.CancelAfter(CoverSchedule.Budget);
         try
         {
-            await covers.ReadCoverPathsAsync(account.Id, ct);
+            await covers.ReadCoverPathsAsync(account.Id, budget.Token);
         }
-        catch (SourceException)
+        catch (Exception) when (!ct.IsCancellationRequested)
         {
-            // Covers are then found without their place, where the connector can.
+            // The caller giving up is the only thing that goes through.
         }
     }
+#pragma warning restore CA1031
 
     private Task<SyncRun> KeepAsync(LinkedAccount account, Func<Task<SyncRun>> ended, CancellationToken ct) =>
         unitOfWork.RunAsync(

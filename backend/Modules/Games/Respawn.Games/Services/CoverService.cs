@@ -58,16 +58,22 @@ public sealed class CoverService(
             var said = await source.ReadCoverPathsAsync([.. some.Select(entry => entry.ExternalId)], ct);
 
             // Kept batch by batch: a store that stops answering half-way does not cost what it said.
-            // A game it left out has no cover there for now, and that is kept too.
-            await catalogue.SetCoverPathsAsync(
-                [
-                    .. some.Select(entry => new CoverPath(
+            // A game it says it has no cover of is kept as such; one it says nothing about is not,
+            // or an answer gone empty would pass for a month as games without a cover.
+            CoverPath[] learnt =
+            [
+                .. some
+                    .Where(entry => said.ContainsKey(entry.ExternalId))
+                    .Select(entry => new CoverPath(
                         entry.StoreEntryId,
-                        said.TryGetValue(entry.ExternalId, out var path) && path.Length is > 0 and <= Limits.CoverPath ? path : null)),
-                ],
-                now,
-                ct);
-            asked += some.Length;
+                        said[entry.ExternalId] is { Length: > 0 and <= Limits.CoverPath } path ? path : null)),
+            ];
+            if (learnt.Length > 0)
+            {
+                await catalogue.SetCoverPathsAsync(learnt, now, ct);
+            }
+
+            asked += learnt.Length;
         }
 
         return asked;

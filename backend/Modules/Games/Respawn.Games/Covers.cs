@@ -22,4 +22,8 @@ public static class CoverSchedule
     /// <summary>How long a store's word on a cover's place is taken before it is asked again: a store
     /// changes a game's artwork now and then, and gets one for a game it had none for.</summary>
     public static readonly TimeSpan AskAgainAfter = TimeSpan.FromDays(30);
+
+    /// <summary>The most time asking a store about a library's covers may take after a sync, however
+    /// many games are left: the sync waits for it, and the next one goes on from there.</summary>
+    public static readonly TimeSpan Budget = TimeSpan.FromMinutes(2);
 }

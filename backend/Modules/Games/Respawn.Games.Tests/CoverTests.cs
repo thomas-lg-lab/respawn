@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Persistence;
@@ -129,10 +130,12 @@ public sealed class CoverTests
         // The next day, one more game: the store is asked about that one alone.
         steam.Body = FakeSteam.Recorded("owned-games.json").Replace(
             "\"game_count\":4,\"games\":[", "\"game_count\":5,\"games\":[{\"appid\":70,\"name\":\"Half-Life\",\"playtime_forever\":10},", StringComparison.Ordinal);
+        steam.StoreBody = """{"response":{"store_items":[{"id":70,"success":1,"assets":{"library_capsule":"library_600x900.jpg"}}]}}""";
         clock.NextDay();
         Assert.Equal(1, await TurnAsync(app));
         Assert.Equal(2, steam.StoreRequests.Count);
         Assert.Equal([70u], AskedAbout(steam.StoreRequests[1].Address));
+        steam.StoreBody = FakeSteam.Recorded("store-items.json");
 
         // A day with nothing new asks the store nothing.
         clock.NextDay();
@@ -187,15 +190,7 @@ public sealed class CoverTests
     [Fact]
     public async Task A_large_library_is_asked_about_fifty_games_at_a_time()
     {
-        var library = JsonSerializer.Serialize(new
-        {
-            response = new
-            {
-                game_count = 120,
-                games = Enumerable.Range(1, 120).Select(appId => new { appid = appId * 10, name = $"Game {appId}", playtime_forever = appId }),
-            },
-        });
-        var (steam, clock) = (new FakeSteam { Body = library, StoreBody = """{"response":{}}""" }, new TestClock());
+        var (steam, clock) = (new FakeSteam { Body = Library(120), StoreBody = Store(120) }, new TestClock());
         await using var app = await StartAsync(steam, clock);
         using var browser = app.Browser();
         await LinkAsync(app, browser);
@@ -204,7 +199,91 @@ public sealed class CoverTests
 
         Assert.Equal([50, 50, 20], steam.StoreRequests.Select(request => AskedAbout(request.Address).Length));
         Assert.Equal(120, steam.StoreRequests.SelectMany(request => AskedAbout(request.Address)).Distinct().Count());
-        Assert.All(await PathsAsync(app), entry => Assert.Equal((null, clock.Now), (entry.Path, entry.AskedAt)));
+        Assert.All(await PathsAsync(app), entry => Assert.Equal(("library_600x900.jpg", clock.Now), (entry.Path, entry.AskedAt)));
+    }
+
+    [Fact]
+    public async Task A_store_that_stops_answering_half_way_keeps_what_it_said_and_is_asked_the_rest_later()
+    {
+        var (steam, clock) = (new FakeSteam { Body = Library(120), StoreBody = Store(120) }, new TestClock());
+        steam.StoreAnswerFor = (rank, _) => rank == 1 ? (HttpStatusCode.ServiceUnavailable, "") : null;
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        await LinkAsync(app, browser);
+
+        // The second question fails: the first one's fifty games are kept, the third is not asked.
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Equal(2, steam.StoreRequests.Count);
+        Assert.Equal(50, (await PathsAsync(app)).Count(entry => entry.AskedAt is not null));
+
+        // The next sync asks about the seventy left, and no other.
+        steam.StoreAnswerFor = null;
+        clock.NextDay();
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Equal([50, 50, 50, 20], steam.StoreRequests.Select(request => AskedAbout(request.Address).Length));
+        Assert.All(await PathsAsync(app), entry => Assert.NotNull(entry.AskedAt));
+    }
+
+    [Fact]
+    public async Task An_answer_that_names_none_of_the_games_teaches_nothing_about_them()
+    {
+        // The store answers, and says nothing: not four games without a cover for a month.
+        var (steam, clock) = (new FakeSteam { StoreBody = """{"response":{}}""" }, new TestClock());
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        await LinkAsync(app, browser);
+
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.All(await PathsAsync(app), entry => Assert.Equal((null, null), (entry.Path, entry.AskedAt)));
+
+        // The next sync asks about all of them again; a game the store names without a cover is
+        // kept as such, and so is the one it does not know.
+        steam.StoreBody = FakeSteam.Recorded("store-items.json");
+        clock.NextDay();
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Equal(4, AskedAbout(steam.StoreRequests[^1].Address).Length);
+        Assert.All(await PathsAsync(app), entry => Assert.Equal(clock.Now, entry.AskedAt));
+    }
+
+    [Fact]
+    public async Task A_sync_asked_for_by_its_owner_asks_the_store_too()
+    {
+        var (steam, clock) = (new FakeSteam(), new TestClock());
+        await using var app = await StartAsync(steam, clock);
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        var answer = await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
+
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        Assert.Equal("succeeded", (await answer.JsonAsync()).GetProperty("outcome").GetString());
+        Assert.Single(steam.StoreRequests);
+        Assert.Contains(("220", Hashed, clock.Now), await PathsAsync(app));
+    }
+
+    [Fact]
+    public async Task Whatever_goes_wrong_while_the_store_is_asked_the_sync_ended_and_says_so()
+    {
+        // Not a store that fails: the connector itself, as a fault of the app would.
+        var (steam, clock) = (new FakeSteam(), new TestClock());
+        await using var app = await steam.StartAppAsync(services: services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.RemoveAll<ICoverSource>();
+            services.AddSingleton<ICoverSource>(new BrokenCovers());
+        });
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, browser);
+
+        Assert.Equal(1, await TurnAsync(app));
+        clock.Advance(TimeSpan.FromMinutes(5));
+        var answer = await browser.PostAsync($"/api/v1/linked-accounts/{account}/sync", null);
+
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        await using var scope = app.Services.CreateAsyncScope();
+        var runs = await scope.ServiceProvider.GetRequiredService<GamesDbContext>().SyncRuns.AsNoTracking().ToListAsync();
+        Assert.Equal(["succeeded", "succeeded"], runs.Select(run => run.Outcome));
+        Assert.DoesNotContain("did not end", app.Logs.Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -265,11 +344,12 @@ public sealed class CoverTests
         Assert.Equal((HttpStatusCode.NotFound, "no_cover"), await browser.GetAsync(portal2).RefusalAsync());
         Assert.Equal(["620/library_600x900.jpg", "620/portrait.png"], Asked(steam));
 
-        // An answer that sends elsewhere is not a cover, and nothing is asked of where it sends.
+        // An answer that sends elsewhere is not followed: nothing is asked of where it sends, and it
+        // is the host's trouble, not a game without a cover.
         steam.Images["620/library_600x900.jpg"] = new([], "text/html", HttpStatusCode.Found, "https://example.org/cover.jpg");
         steam.Images.Remove("620/portrait.png");
-        Assert.Equal((HttpStatusCode.NotFound, "no_cover"), await browser.GetAsync(portal2).RefusalAsync());
-        Assert.Equal(["620/library_600x900.jpg", "620/portrait.png"], Asked(steam));
+        Assert.Equal((HttpStatusCode.ServiceUnavailable, "cover_unavailable"), await browser.GetAsync(portal2).RefusalAsync());
+        Assert.Equal(["620/library_600x900.jpg"], Asked(steam));
 
         // The kind of image is read from its bytes, whatever the host calls it.
         steam.Images["620/library_600x900.jpg"] = new(Png, "text/html");
@@ -289,7 +369,8 @@ public sealed class CoverTests
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.TooManyRequests)]
-    public async Task An_image_host_that_does_not_answer_is_said_and_not_kept(HttpStatusCode status)
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task An_image_host_that_refuses_or_does_not_answer_is_said_and_not_kept(HttpStatusCode status)
     {
         var (steam, clock) = (new FakeSteam(), new TestClock());
         await using var app = await StartAsync(steam, clock);
@@ -336,6 +417,27 @@ public sealed class CoverTests
         Assert.Single(steam.ImageRequests);
     }
 
+    /// <summary>Steam's answer for a library of that many games, whose app ids are 10, 20, 30...</summary>
+    private static string Library(int games) =>
+        JsonSerializer.Serialize(new
+        {
+            response = new
+            {
+                game_count = games,
+                games = Enumerable.Range(1, games).Select(rank => new { appid = rank * 10, name = $"Game {rank}", playtime_forever = rank }),
+            },
+        });
+
+    /// <summary>The store's answer for the same games, each with its cover where covers used to be.</summary>
+    private static string Store(int games) =>
+        JsonSerializer.Serialize(new
+        {
+            response = new
+            {
+                store_items = Enumerable.Range(1, games).Select(rank => new { id = rank * 10, success = 1, assets = new { library_capsule = "library_600x900.jpg" } }),
+            },
+        });
+
     /// <summary>The files asked of the image host since the last look, in order.</summary>
     private static string[] Asked(FakeSteam steam)
     {
@@ -378,4 +480,18 @@ public sealed class CoverTests
     /// <summary>One turn of the sync's schedule, as the app's timer runs it.</summary>
     private static Task<int> TurnAsync(TestApp app) =>
         Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+
+    /// <summary>A source of covers that fails as no store does.</summary>
+    private sealed class BrokenCovers : ICoverSource
+    {
+        public string Source => "steam";
+
+        public int PathsPerRequest => 50;
+
+        public Task<Cover?> ReadCoverAsync(string externalId, string? path, CancellationToken ct) =>
+            throw new InvalidOperationException("broken");
+
+        public Task<IReadOnlyDictionary<string, string?>> ReadCoverPathsAsync(IReadOnlyCollection<string> externalIds, CancellationToken ct) =>
+            throw new InvalidOperationException("broken");
+    }
 }

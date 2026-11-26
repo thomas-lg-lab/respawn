@@ -15,7 +15,9 @@ namespace Respawn.Games.Steam;
 /// An image is looked for where the store said, when it was asked, then at the two addresses every
 /// game had before the store gave each image a folder of its own: <c>library_600x900.jpg</c>, and
 /// <c>portrait.png</c>, the form of the oldest games. Where the store said comes first: for a game
-/// whose artwork moved, the old address may still answer, with a blank image.
+/// whose artwork moved, the old address may still answer, with a blank image. A place the host says
+/// has nothing (404), or something that is no image, is no cover; any other answer is a host that
+/// could not be read, never a game without a cover.
 ///
 /// Nothing Steam says is passed on as it is. An address is built from an app id made of digits and a
 /// path of a known shape, on one host; an image is one by its first bytes, whatever its headers say.
@@ -34,6 +36,10 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
 
     /// <summary>The folder of every app's images on Steam's image host.</summary>
     public static readonly Uri Images = new("https://shared.steamstatic.com/store_item_assets/steam/apps/");
+
+    /// <summary>The most connections kept to the image host at once: a screen of covers asked for
+    /// together waits here rather than opening as many connections to Steam.</summary>
+    public const int MaxConnections = 16;
 
     /// <summary>How long the image host has to answer, body included.</summary>
     public static readonly TimeSpan Patience = TimeSpan.FromSeconds(10);
@@ -57,31 +63,37 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
         foreach (var place in places)
         {
             var (status, bytes) = await steam.GetImageAsync($"{externalId}/{place}", ct);
-            if (status is HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout or >= HttpStatusCode.InternalServerError)
+            if (status == HttpStatusCode.OK)
             {
-                throw new SourceException(
-                    SourceError.Unavailable,
-                    string.Create(CultureInfo.InvariantCulture, $"Steam's image host asked to come back later ({(int)status})"));
+                // What is there and is no image is no cover: too large, or bytes that are not an
+                // image whatever their headers say.
+                if (bytes is not null && MediaType(bytes) is { } type)
+                {
+                    return new Cover(type, bytes);
+                }
             }
-
-            // Anything else than an image is no cover at that place: not found, sent elsewhere, too
-            // large, or bytes that are not an image whatever their headers say.
-            if (bytes is not null && MediaType(bytes) is { } type)
+            else if (status is not (HttpStatusCode.NotFound or HttpStatusCode.Gone))
             {
-                return new Cover(type, bytes);
+                // Refused, sent elsewhere, asked to come back: the host's trouble, or the
+                // instance's with it. Saying "no cover" would be kept by every browser.
+                throw new SourceException(
+                    status is HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout or >= HttpStatusCode.InternalServerError
+                        ? SourceError.Unavailable
+                        : SourceError.Unreadable,
+                    string.Create(CultureInfo.InvariantCulture, $"Steam's image host answered {(int)status}"));
             }
         }
 
         return null;
     }
 
-    public async Task<IReadOnlyDictionary<string, string>> ReadCoverPathsAsync(IReadOnlyCollection<string> externalIds, CancellationToken ct)
+    public async Task<IReadOnlyDictionary<string, string?>> ReadCoverPathsAsync(IReadOnlyCollection<string> externalIds, CancellationToken ct)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(externalIds.Count, PathsPerRequest);
         string[] ids = [.. externalIds.Where(IsAppId).Distinct(StringComparer.Ordinal)];
         if (ids.Length == 0)
         {
-            return new Dictionary<string, string>(StringComparer.Ordinal);
+            return new Dictionary<string, string?>(StringComparer.Ordinal);
         }
 
         // The assets only: prices, tags and the rest are not asked for. The language and the country
@@ -94,9 +106,11 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
         return Paths(body, ids);
     }
 
-    /// <summary>The covers' places an answer gives, for the games asked about and no other. A game the
-    /// store does not know answers without success and without assets.</summary>
-    private static Dictionary<string, string> Paths(string body, string[] asked)
+    /// <summary>What an answer says of the covers' places, for the games asked about and no other: a
+    /// place, or none for a game it names without one. A game the store does not know is named too,
+    /// without success and without assets; a game the answer does not name is not in what is
+    /// returned.</summary>
+    private static Dictionary<string, string?> Paths(string body, string[] asked)
     {
         try
         {
@@ -108,7 +122,7 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
                 throw new SourceException(SourceError.Unreadable, "Steam's answer has no response");
             }
 
-            var paths = new Dictionary<string, string>(StringComparer.Ordinal);
+            var paths = new Dictionary<string, string?>(StringComparer.Ordinal);
             if (!response.TryGetProperty("store_items", out var items))
             {
                 return paths;
@@ -116,19 +130,27 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
 
             foreach (var item in items.EnumerateArray())
             {
-                if (item.TryGetProperty("success", out var success) && success.GetInt32() == 1
-                    && item.TryGetProperty("id", out var id)
-                    && id.GetUInt32().ToString(CultureInfo.InvariantCulture) is var appId
-                    && asked.Contains(appId, StringComparer.Ordinal)
+                if (item.ValueKind != JsonValueKind.Object
+                    || !item.TryGetProperty("id", out var id)
+                    || id.ValueKind != JsonValueKind.Number
+                    || !id.TryGetUInt32(out var number)
+                    || number.ToString(CultureInfo.InvariantCulture) is not { } appId
+                    || !asked.Contains(appId, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
+                paths[appId] = item.TryGetProperty("success", out var success)
+                    && success.ValueKind == JsonValueKind.Number
+                    && success.TryGetInt32(out var code) && code == 1
                     && item.TryGetProperty("assets", out var assets)
                     && assets.ValueKind == JsonValueKind.Object
                     && assets.TryGetProperty("library_capsule", out var capsule)
                     && capsule.ValueKind == JsonValueKind.String
                     && capsule.GetString() is { } path
-                    && IsPath(path))
-                {
-                    paths[appId] = path;
-                }
+                    && IsPath(path)
+                        ? path
+                        : null;
             }
 
             return paths;
@@ -139,9 +161,11 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
         }
     }
 
-    /// <summary>Whether this is a Steam app id: digits, and nothing else goes in an address.</summary>
+    /// <summary>Whether this is a Steam app id as Steam writes it: a number of 32 bits in digits alone,
+    /// with no zero before it. Nothing else goes in an address or in a question.</summary>
     private static bool IsAppId(string externalId) =>
-        externalId.Length is > 0 and <= 10 && externalId.All(char.IsAsciiDigit);
+        uint.TryParse(externalId, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
+        && number.ToString(CultureInfo.InvariantCulture) == externalId;
 
     /// <summary>Whether this can be where a cover is, under an app's folder: an image file's name, in
     /// one folder at most, of letters, digits, dashes and underscores. Nothing else is kept, and
