@@ -326,8 +326,93 @@ describe('Game', () => {
     const screen = harness.fixture.nativeElement as HTMLElement;
 
     expect(text(screen, '[data-back]')).toBe('Temps');
+    expect(screen.querySelector('[data-back]')?.getAttribute('href')).toBe('/time');
     const back = vi.spyOn(location, 'back');
+    const navigate = vi.spyOn(router, 'navigateByUrl');
     screen.querySelector<HTMLAnchorElement>('[data-back]')!.click();
-    expect(back).toHaveBeenCalled();
+    expect(back).toHaveBeenCalledOnce();
+    // The browser's way back alone: no second navigation to the screen's bare address.
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('leaves a press that opens a new tab to the browser', async () => {
+    const { screen } = await open();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl');
+
+    // What the page did with the press is read once it is through; the test's document then
+    // stays where it is, as it cannot open a window.
+    let prevented: boolean | undefined;
+    screen.addEventListener('click', (event) => {
+      prevented = event.defaultPrevented;
+      event.preventDefault();
+    });
+    const press = new MouseEvent('click', { bubbles: true, cancelable: true, shiftKey: true });
+    screen.querySelector('[data-back]')!.dispatchEvent(press);
+
+    expect(prevented).toBe(false);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('says its own origin and its own refusals for another game opened from it', async () => {
+    const missing = eldenRing({ entries: [entry({ missing_since: '2026-11-12T04:00:00Z' })] });
+    const { harness, server } = await open(missing);
+    const router = TestBed.inject(Router);
+    const location = TestBed.inject(Location);
+
+    // Reached from the time map, and refused a take-out.
+    await router.navigateByUrl('/time');
+    await server.answer('/library?sort=name&offset=0&limit=500', {
+      total: 0,
+      offset: 0,
+      limit: 500,
+      games: [],
+    });
+    await harness.fixture.whenStable();
+    await router.navigate(['/games', ID], { state: { from: 'time' } });
+    await harness.fixture.whenStable();
+    const screen = harness.fixture.nativeElement as HTMLElement;
+    expect(text(screen, '[data-back]')).toBe('Temps');
+    button(screen, 'Retirer de ma bibliothèque').click();
+    await server.refuse(`/library/games/${ID}`, 409, 'still_listed');
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-refused]')).not.toBeNull();
+
+    // Another game, chosen in the search of this page: the same page, with nothing of the first.
+    const OTHER = '0198a1b2-0000-7000-8000-000000000002';
+    await router.navigate(['/games', OTHER]);
+    await server.answer(`/games/${OTHER}`, { ...missing, game_id: OTHER, name: 'Hades' });
+    await server.answer(`/games/${OTHER}/months`, { months: months() });
+    await harness.fixture.whenStable();
+
+    expect(text(screen, 'h1')).toBe('Hades');
+    expect(screen.querySelector('[data-refused]')).toBeNull();
+    expect(text(screen, '[data-back]')).toBe('Bibliothèque');
+    const back = vi.spyOn(location, 'back');
+    // The library's games were read on the time map: the Library asks nothing more.
+    screen.querySelector<HTMLAnchorElement>('[data-back]')!.click();
+    await harness.fixture.whenStable();
+    expect(back).not.toHaveBeenCalled();
+    expect(location.path()).toBe('/library');
+  });
+
+  it('draws no month until the library says which ones were counted', async () => {
+    const { harness, server, screen } = await open(null);
+    await server.answer(`/games/${ID}`, eldenRing());
+    await server.answer(`/games/${ID}/months`, { months: months() });
+    await server.refuse('/library/years', 503, 'database_unavailable');
+    await server.answer('/library/stats', STATS);
+    await harness.fixture.whenStable();
+
+    expect(screen.querySelector('[data-calendar]')).toBeNull();
+    expect(text(screen, '[data-months-refused]')).toBe(
+      'La base de données ne répond pas. Réessayez dans un instant.',
+    );
+
+    button(screen, 'Réessayer').click();
+    await server.answer('/library/years', YEARS);
+    await server.answer(`/library/months/${THIS_MONTH}`, thisMonth());
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-calendar]')).not.toBeNull();
   });
 });

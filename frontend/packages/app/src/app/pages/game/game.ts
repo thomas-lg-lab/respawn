@@ -1,8 +1,8 @@
 import { Location } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideChevronLeft } from '@lucide/angular';
 import { ApiFailure, GameQueries, LibraryQueries } from '@respawn/data';
@@ -28,7 +28,6 @@ import { type MonthKey, calendar, monthDetail, secondsIn } from './game-view';
 @Component({
   selector: 'rs-game',
   imports: [
-    RouterLink,
     TranslocoDirective,
     LucideChevronLeft,
     Banner,
@@ -46,6 +45,7 @@ export class Game {
   private readonly queries = inject(GameQueries);
   private readonly library = inject(LibraryQueries);
   private readonly location = inject(Location);
+  private readonly router = inject(Router);
   private readonly language = inject(LanguageSetting);
 
   protected readonly failureKey = failureKey;
@@ -58,11 +58,22 @@ export class Game {
 
   /**
    * The screen the page was reached from, as the link said it: the back link names it. A page
-   * opened from its address alone leads back to the library.
+   * opened from its address alone leads back to the library. Read again at each navigation:
+   * another game opened from this page (its search) is the same page, and says its own.
    */
-  private readonly cameFrom = originIn(this.location.getState());
-  protected readonly origin: Origin = this.cameFrom ?? 'library';
-  protected readonly back = ORIGINS[this.origin];
+  private readonly cameFrom = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => originIn(this.location.getState())),
+      startWith(originIn(this.location.getState())),
+    ),
+    { requireSync: true },
+  );
+  protected readonly origin = computed((): Origin => this.cameFrom() ?? 'library');
+  /** Where the back link leads, as an address the browser can also open on its own. */
+  protected readonly back = computed(() =>
+    this.location.prepareExternalUrl(ORIGINS[this.origin()]),
+  );
 
   protected readonly game = injectQuery(() => this.queries.game(this.id()));
   protected readonly months = injectQuery(() => this.queries.months(this.id()));
@@ -86,13 +97,11 @@ export class Game {
   protected readonly calendar = computed(() => {
     const game = this.game.data();
     const months = this.months.data();
-    if (!game || !months) return null;
-    return calendar(
-      months.months,
-      this.years.data()?.years ?? [],
-      game.playtime_seconds,
-      this.now(),
-    );
+    // The library's years say which months were counted: without them, an empty month could
+    // not be told from one nothing counted.
+    const years = this.years.data();
+    if (!game || !months || !years) return null;
+    return calendar(months.months, years.years, game.playtime_seconds, this.now());
   });
 
   /** The month pressed; the last month played until one is, and again on another game. */
@@ -177,22 +186,45 @@ export class Game {
   /** A game never launched has no time to show: the page says so in their place. */
   protected readonly neverLaunched = computed(() => this.game.data()?.playtime_seconds === 0);
 
+  /**
+   * What was asked of the library for the game shown, and nothing of another: another game
+   * opened from this page is the same page, and the mutations stay with it.
+   */
+  private readonly asked = computed(() =>
+    [this.takingOut, this.puttingBack, this.dismissing].filter(
+      (mutation) => mutation.variables() === this.id(),
+    ),
+  );
+
   /** What the library's banner is waiting on, or refused. */
-  protected readonly busy = computed(
-    () => this.takingOut.isPending() || this.puttingBack.isPending() || this.dismissing.isPending(),
-  );
+  protected readonly busy = computed(() => this.asked().some((mutation) => mutation.isPending()));
   protected readonly refusal = computed(
-    () => this.takingOut.error() ?? this.puttingBack.error() ?? this.dismissing.error(),
+    () =>
+      this.asked()
+        .find((mutation) => mutation.isError())
+        ?.error() ?? null,
   );
+
+  /** The data the page's history is drawn from could not be read: its months, or the library's years. */
+  protected readonly historyRefusal = computed(() => this.months.error() ?? this.years.error());
 
   /**
    * Back where the page was reached from, as it was left (its search, its filter): the
-   * browser's own way back. A page opened from its address goes to the library instead.
+   * browser's own way back. A page opened from its address goes to the library instead. A
+   * press that opens a new tab or window is the browser's, on the link's address.
    */
   protected goBack(event: MouseEvent): void {
-    if (this.cameFrom === null || event.button !== 0 || event.metaKey || event.ctrlKey) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
     event.preventDefault();
-    this.location.back();
+    if (this.cameFrom() !== null) this.location.back();
+    else void this.router.navigateByUrl(ORIGINS[this.origin()]);
+  }
+
+  protected retryHistory(): void {
+    if (this.months.isError()) void this.months.refetch();
+    if (this.years.isError()) void this.years.refetch();
   }
 
   protected pick(month: MonthKey): void {
@@ -200,7 +232,9 @@ export class Game {
   }
 
   /** Taken out from here: the banner that follows offers to undo it. */
-  protected readonly justTakenOut = computed(() => this.takingOut.isSuccess());
+  protected readonly justTakenOut = computed(
+    () => this.takingOut.isSuccess() && this.takingOut.variables() === this.id(),
+  );
 
   protected takeOut(): void {
     this.reset();

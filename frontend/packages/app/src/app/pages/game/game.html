@@ -2,11 +2,11 @@
   <a
     class="-mb-2 -ms-2.5 inline-flex min-h-touch items-center gap-2 self-start rounded-pill ps-2.5 pe-3.5 font-semibold text-muted transition-colors duration-hover hover:bg-surface-2 hover:text-text"
     data-back
-    [routerLink]="back"
+    [href]="back()"
     (click)="goBack($event)"
   >
     <svg lucideChevronLeft class="size-4.5" [strokeWidth]="2" aria-hidden="true"></svg>
-    {{ t('nav.' + origin) }}
+    {{ t('nav.' + origin()) }}
   </a>
 
   @if (game.data(); as known) {
@@ -132,11 +132,11 @@
             {{ t('game.noHistory') }}
           </p>
         }
-      } @else if (months.isError()) {
+      } @else if (historyRefusal(); as refused) {
         <rs-banner tone="warn" role="alert" data-months-refused>{{
-          t(failureKey(months.error()))
+          t(failureKey(refused))
         }}</rs-banner>
-        <button rsButton type="button" class="self-start" (click)="months.refetch()">
+        <button rsButton type="button" class="self-start" (click)="retryHistory()">
           {{ t('app.retry') }}
         </button>
       } @else {

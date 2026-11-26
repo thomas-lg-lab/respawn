@@ -74,14 +74,20 @@ export class MonthCalendar {
 
   constructor() {
     // Opened on the latest months: where it slides, the current one is at its end. Again
-    // whenever it changes width, so a window narrowed to a phone's opens it there too.
+    // whenever it changes width, so a window narrowed to a phone's opens it there too; never
+    // when only its height does (a row more after a sync), which would undo the reader's slide.
     const destroyed = inject(DestroyRef);
     afterNextRender(() => {
       const slider = this.slider().nativeElement;
       const toEnd = () => (slider.scrollLeft = slider.scrollWidth);
       toEnd();
       if (typeof ResizeObserver === 'undefined') return;
-      const resized = new ResizeObserver(toEnd);
+      let width = slider.clientWidth;
+      const resized = new ResizeObserver(() => {
+        if (slider.clientWidth === width) return;
+        width = slider.clientWidth;
+        toEnd();
+      });
       resized.observe(slider);
       destroyed.onDestroy(() => resized.disconnect());
     });
