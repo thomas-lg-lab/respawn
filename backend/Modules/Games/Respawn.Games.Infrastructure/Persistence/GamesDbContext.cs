@@ -64,6 +64,7 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             entry.Property(e => e.Source).HasMaxLength(Limits.Source);
             entry.Property(e => e.ExternalId).HasMaxLength(Limits.ExternalId);
             entry.Property(e => e.Name).HasMaxLength(Limits.Name);
+            entry.Property(e => e.CoverPath).HasMaxLength(Limits.CoverPath);
             entry.HasIndex(e => new { e.Source, e.ExternalId }).IsUnique();
             entry.HasOne<GameRow>().WithMany().HasForeignKey(e => e.GameId).OnDelete(DeleteBehavior.Restrict);
         });

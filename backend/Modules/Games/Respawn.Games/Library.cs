@@ -222,6 +222,9 @@ public static class Limits
 
     public const int SnapshotKind = 64;
 
+    /// <summary>Where a store says a cover is: a file's name, with a folder at most.</summary>
+    public const int CoverPath = 200;
+
     /// <summary>What is kept of a connector's words when a sync fails.</summary>
     public const int SyncDetail = 500;
 

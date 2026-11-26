@@ -36,8 +36,11 @@
   due and what a run becomes are the core's, `SyncService`; the timer that asks every few minutes is an
   inbound adapter, `SyncScheduler` in `.Api`; tests set the clock and run a turn by hand), and the import of a
   store's yearly reviews, apart from the sync and never needed by it (`YearReviewService`, and
-  `YearReviewScheduler` in `.Api`); and its connectors, one
-  project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API), tested
+  `YearReviewScheduler` in `.Api`), and the covers (`CoverService`: an image is asked of a source at each
+  request and passed on, never kept; what is kept is where a store says a cover is, a short text asked
+  on a schedule of its own, `CoverScheduler` in `.Api`, never by the sync); and its connectors, one
+  project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API, and
+  with no key Steam's store and its image host), tested
   against recorded answers under `Recorded/`, never against the source.
   One test project per module (`Modules/<Name>/Respawn.<Name>.Tests`), `Respawn.Tests` for the host and the
   architecture rules, `Respawn.Testing` for what they share; they start the real app against a real PostgreSQL.

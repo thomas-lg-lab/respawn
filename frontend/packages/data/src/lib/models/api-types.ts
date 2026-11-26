@@ -418,6 +418,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/games/{id}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A game's cover
+         * @description The cover as an image, fetched from a source of the game each time it is asked for: the instance keeps no image. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in account may ask for the cover of any game; a client that asks for too many at once is answered 429.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": components["schemas"]["Stream"];
+                        "image/png": components["schemas"]["Stream"];
+                        "image/webp": components["schemas"]["Stream"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library": {
         parameters: {
             query?: never;
@@ -1185,6 +1265,8 @@ export interface components {
             theme: string;
             character: string;
         };
+        /** Format: binary */
+        Stream: string;
         SyncRunResponse: {
             /** Format: uuid */
             id: string;

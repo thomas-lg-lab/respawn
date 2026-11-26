@@ -121,10 +121,10 @@ and adapters around it.
 | `Modules/Accounts/Respawn.Accounts.Infrastructure` | outbound adapters: EF Core, ASP.NET Core Identity, sessions | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Api` | inbound adapter: the controllers of `/api/v1`, the session cookie, the sign-in through a provider (ASP.NET Core's OpenID Connect handler) | its core, the shared kernel |
 | `Modules/Accounts/Respawn.Accounts.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
-| `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, the sync, the import of a store's yearly reviews, and the ports they need | nothing; no package |
+| `Modules/Games/Respawn.Games` | the core: the catalogue, the libraries, the sync, the import of a store's yearly reviews, the covers, and the ports they need | nothing; no package |
 | `Modules/Games/Respawn.Games.Infrastructure` | outbound adapters: EF Core, and the encryption of the store keys users give (libsodium) | its core, the shared kernel |
-| `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` and `IYearReviewSource` | its core only |
-| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, the schedules of the sync and of the import of the yearly reviews (two timers in the app's process), and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
+| `Modules/Games/Respawn.Games.Steam` | a connector: the Steam Web API behind the core's `ILibrarySource` and `IYearReviewSource`, and Steam's store and image host, asked with no key, behind `ICoverSource` | its core only |
+| `Modules/Games/Respawn.Games.Api` | inbound adapter: the controllers of `/api/v1`, the schedules of the sync, of the import of the yearly reviews and of the covers' places (three timers in the app's process), and "Sign in through Steam", whose exchange with Steam (the browser sent there, its answer checked with it) is a library's | its core, the shared kernel |
 | `Modules/Games/Respawn.Games.Tests` | the tests of the module, which start the real app in-process | its module, the test support |
 | `Respawn.Tests` | the tests of the host and of the solution as a whole: the runtime contract, the database connection, the architecture rules | everything |
 | `Respawn.Testing` | what every test project shares: the app started in-process, the test database; not a test project | the host |
@@ -156,7 +156,9 @@ A connector is tested against recorded answers, never against its source: the an
 `Recorded/` in the module's tests, in the source's own shape and made anonymous (nobody's library, account
 or key), and a fake of the source plays them back in memory. A secret a connector needs is read each time it
 is needed and never at start, from the environment or a file under `/secrets`, sent in a header rather than in an address
-when the source allows it, and never written in a log or in an error.
+when the source allows it, and never written in a log or in an error. What a source gives to anyone is
+asked through a client of its own, which never carries the secret. What a source says is never put in an
+address as it is: an id or a path is checked for its shape first, and the host is the connector's.
 
 ## Dependencies
 

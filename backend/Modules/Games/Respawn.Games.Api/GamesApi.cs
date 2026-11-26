@@ -15,13 +15,17 @@ public static class GamesApi
     /// question to Steam, asked from the instance's address. The host defines it.</summary>
     public const string SteamReturnRateLimit = "games-steam-return";
 
+    /// <summary>The rate-limit policy of the covers: each one asked for costs the instance a question
+    /// or more to a store, from its own address. The host defines it.</summary>
+    public const string CoverRateLimit = "games-cover";
+
     /// <summary>Where the Steam link starts, and under it where Steam sends the browser back. Behind a
     /// reverse proxy the host gives these routes the address the instance is reached at, which the
     /// address Steam is told to come back to is built from.</summary>
     public const string SteamLinkPath = "/api/v1/linked-accounts/steam/link";
 
-    /// <summary>What drives the Games module: its routes, the Steam link, and the schedule of the
-    /// sync. The host registers a <see cref="TimeProvider"/> and a session other routes are
+    /// <summary>What drives the Games module: its routes, the Steam link, and the schedules of the
+    /// sync, of the yearly reviews and of the covers' places. The host registers a <see cref="TimeProvider"/> and a session other routes are
     /// authorized with, and gives <see cref="SteamLinkPath"/> the instance's public address.</summary>
     public static IServiceCollection AddGamesApi(this IServiceCollection services)
     {
@@ -29,6 +33,7 @@ public static class GamesApi
         services.AddAuthentication().AddSteam(SteamLink.Scheme, SteamLink.Configure);
         services.AddHostedService<SyncScheduler>();
         services.AddHostedService<YearReviewScheduler>();
+        services.AddHostedService<CoverScheduler>();
         return services;
     }
 
@@ -45,6 +50,8 @@ public static class GamesApi
         GamesError.SyncTooSoon => Error(429, "too_many_requests", "This store account was read a moment ago. Wait a minute and try again."),
         GamesError.InvalidCredential => Error(400, "invalid_key", "This is not a key of this store."),
         GamesError.CredentialsUnavailable => Error(503, "keys_unavailable", "This instance cannot keep a key: it has no encryption key."),
+        GamesError.UnknownGame => Error(404, "unknown_game", "No such game."),
+        GamesError.NoCover => Error(404, "no_cover", "This game has no cover."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };
 }

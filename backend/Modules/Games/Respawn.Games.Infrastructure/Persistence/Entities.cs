@@ -37,6 +37,14 @@ public sealed class StoreEntryRow
 
     public string? Name { get; set; }
 
+    /// <summary>Where the store says the game's cover is, in the words of the store's connector: a
+    /// short text, never an image nor a whole address. Null while the store was not asked, or knows
+    /// none.</summary>
+    public string? CoverPath { get; set; }
+
+    /// <summary>When the store was last asked where the cover is; null while it never was.</summary>
+    public DateTimeOffset? CoverAskedAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
 

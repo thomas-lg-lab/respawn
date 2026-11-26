@@ -16,7 +16,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261125150529_UnusedSnapshotIndexes";
+    public override string LastMigrationId => "20261126065409_StoreEntryCovers";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -308,6 +308,15 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uuid")
                     .HasColumnName("id");
+
+                b.Property<DateTimeOffset?>("CoverAskedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("cover_asked_at");
+
+                b.Property<string>("CoverPath")
+                    .HasMaxLength(200)
+                    .HasColumnType("character varying(200)")
+                    .HasColumnName("cover_path");
 
                 b.Property<DateTimeOffset>("CreatedAt")
                     .HasColumnType("timestamp with time zone")

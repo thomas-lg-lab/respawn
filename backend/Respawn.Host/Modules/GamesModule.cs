@@ -19,6 +19,9 @@ internal static class GamesModule
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<ICredentialService, CredentialService>();
+        // The covers, and where the stores say they are: asked apart from the sync.
+        services.AddScoped<ICoverService, CoverService>();
+        services.AddSingleton<CoverGate>();
         // The syncs on their way: one for the app, which is one replica.
         services.AddSingleton<SyncGate>();
         // The import of the stores' yearly reviews, apart from the sync.
@@ -40,6 +43,27 @@ internal static class GamesModule
                     _ => new FixedWindowRateLimiterOptions { PermitLimit = http.AuthPermits, Window = http.AuthWindow }));
             }
         });
+
+        // The covers: a screen of a whole library asks for each of its covers once, then the browser
+        // keeps them. A bucket per client address that holds such a screen and fills again slowly:
+        // past it, a client is making the instance ask a store on its behalf, and is refused.
+        services.AddOptions<RateLimiterOptions>().Configure(limiter =>
+            limiter.AddPolicy(GamesApi.CoverRateLimit, context => RateLimitPartition.GetTokenBucketLimiter(
+                AccountsModule.ClientKey(context.Connection.RemoteIpAddress),
+                _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = CoverBurst,
+                    TokensPerPeriod = CoverPerMinute,
+                    ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true,
+                })));
         return services;
     }
+
+    /// <summary>The covers one client address may ask for in a row.</summary>
+    internal const int CoverBurst = 2000;
+
+    /// <summary>The covers it may ask for again each minute after that.</summary>
+    internal const int CoverPerMinute = 600;
 }
