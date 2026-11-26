@@ -418,6 +418,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/games/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One game, as the signed-in account sees it
+         * @description The catalogue's record with what the account owns of it: the entries it is owned through, as in the library, each with its playtime and missing_since, their total, and its rank among the games launched. Any game of the catalogue is answered: one that is not in the library has no entry and no rank. What was played of it over time is its months.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GameResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/games/{id}/months": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the signed-in account played of one game, month by month
+         * @description The months the game was played in and the time of each, the earliest first, counted as the years of the library are: from the store's review when its year has one (exact to the month), from the daily readings otherwise. The months of a year add up to what was played of the game that year; over the same year of the library, that is its share of it, and the library's years say which days are counted at all. A game that is not in the library may have months: a review counts every game played. The day by day is the library's history.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GameMonthsResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/games/{id}/cover": {
         parameters: {
             query?: never;
@@ -703,6 +823,66 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/months/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the signed-in account played in one month, game by game
+         * @description The games played in a month and the time of each, the most played first, counted as the month's year is in the years of the library: from the store's review (every game played, owned or not, which is why each comes with its name) or from the daily readings (the games of the library, over first_day to last_day). A month nothing counts, before the first reading in a year with no review or still to come, is answered with no source and no game.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The month, as YYYY-MM, in UTC. */
+                    month: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LibraryMonthResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1147,6 +1327,42 @@ export interface components {
         ErrorResponse: {
             error?: components["schemas"]["ErrorBody"];
         };
+        GameMonthResponse: {
+            /** Format: date */
+            month: string;
+            /** Format: int64 */
+            seconds: number;
+            source: string;
+        };
+        GameMonthsResponse: {
+            months: components["schemas"]["GameMonthResponse"][];
+        };
+        GameRankResponse: {
+            /** Format: int32 */
+            position: number;
+            /** Format: int32 */
+            launched: number;
+        };
+        GameResponse: {
+            /** Format: uuid */
+            game_id: string;
+            name: null | string;
+            stores: components["schemas"]["GameStoreResponse"][];
+            /** Format: int64 */
+            playtime_seconds: null | number;
+            /** Format: int64 */
+            recent_playtime_seconds: null | number;
+            /** Format: date-time */
+            last_played_at: null | string;
+            entries: components["schemas"]["LibraryEntryResponse"][];
+            rank: null | components["schemas"]["GameRankResponse"];
+        };
+        GameStoreResponse: {
+            /** Format: uuid */
+            store_entry_id: string;
+            source: string;
+            external_id: string;
+        };
         HistoryDayResponse: {
             /** Format: date */
             date: string;
@@ -1195,6 +1411,16 @@ export interface components {
             tracking_since: null | string;
             days: components["schemas"]["HistoryDayResponse"][];
         };
+        LibraryMonthResponse: {
+            /** Format: date */
+            month: string;
+            source: null | string;
+            /** Format: date */
+            first_day: null | string;
+            /** Format: date */
+            last_day: null | string;
+            games: components["schemas"]["MonthGameResponse"][];
+        };
         LibraryResponse: {
             /** Format: int32 */
             total: number;
@@ -1242,6 +1468,13 @@ export interface components {
         LoginRequest: {
             email: string;
             password: string;
+        };
+        MonthGameResponse: {
+            /** Format: uuid */
+            game_id: string;
+            name: null | string;
+            /** Format: int64 */
+            seconds: number;
         };
         OwnKeyRequest: {
             key: string;

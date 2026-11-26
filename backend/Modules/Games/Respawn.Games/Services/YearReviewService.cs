@@ -2,7 +2,7 @@ using Respawn.Games.Ports;
 
 namespace Respawn.Games.Services;
 
-/// <summary>The import of the stores' yearly reviews, and the years of an owner. A connector reads; what
+/// <summary>The import of the stores' yearly reviews. A connector reads; what
 /// a review becomes, and when one is asked for, is decided here.</summary>
 public sealed class YearReviewService(
     IUnitOfWork unitOfWork,
@@ -11,7 +11,6 @@ public sealed class YearReviewService(
     ISnapshotStore snapshots,
     ICatalogue catalogue,
     IYearReviewStore reviews,
-    ILibraryStore library,
     ISyncRunStore runs,
     IEnumerable<IYearReviewSource> sources,
     YearInReviewGate gate,
@@ -138,75 +137,6 @@ public sealed class YearReviewService(
         {
             gate.Leave(account.Id);
         }
-    }
-
-    public async Task<IReadOnlyList<PlayedYear>> GetYearsAsync(Guid ownerId, CancellationToken ct)
-    {
-        var accounts = await linkedAccounts.ListAsync(ownerId, ct);
-        if (accounts.Count == 0)
-        {
-            return [];
-        }
-
-        var entries = await library.ListAsync(ownerId, ct);
-        DateOnly? firstReading = entries.Count > 0 ? DateOnly.FromDateTime(entries.Min(entry => entry.FirstSeenAt).UtcDateTime) : null;
-
-        // A year the readings reach is the reviews' when every linked account has one of it: otherwise
-        // part of the time would be counted from a review and part from readings, which do not count
-        // the same games. A year before the first reading has the reviews only: it is counted from
-        // the accounts that have one, so that an account whose reviews cannot be read hides nothing
-        // of the others.
-        var kept = (await reviews.ListOwnerYearsAsync(ownerId, ct)).ToLookup(pair => pair.Year, pair => pair.LinkedAccountId);
-        var reviewed = kept
-            .Where(year => firstReading is not { } reached || year.Key < reached.Year || accounts.All(account => year.Contains(account.Id)))
-            .Select(year => year.Key)
-            .ToHashSet();
-
-        var years = new Dictionary<int, PlayedYear>();
-        if (reviewed.Count > 0)
-        {
-            var months = (await reviews.ListPlayedAsync(ownerId, ct))
-                .Where(month => reviewed.Contains(month.Month.Year))
-                .ToLookup(month => month.Month.Year, month => month.Playtime);
-            foreach (var year in reviewed)
-            {
-                years[year] = new PlayedYear(
-                    year,
-                    months[year].Aggregate(TimeSpan.Zero, (sum, time) => sum + time),
-                    YearSource.Review,
-                    new DateOnly(year, 1, 1),
-                    new DateOnly(year, 12, 31),
-                    Whole: true);
-            }
-        }
-
-        // The readings, from the first one to today, for the years no review covers.
-        if (firstReading is { } since)
-        {
-            var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-            var played = (await library.ListPlayedAsync(ownerId, since, today, ct))
-                .ToLookup(day => day.Date.Year, day => day.Playtime);
-            for (var year = since.Year; year <= today.Year; year++)
-            {
-                if (years.ContainsKey(year))
-                {
-                    continue;
-                }
-
-                var (first, last) = (new DateOnly(year, 1, 1), new DateOnly(year, 12, 31));
-                var from = since > first ? since : first;
-                var to = today < last ? today : last;
-                years[year] = new PlayedYear(
-                    year,
-                    played[year].Aggregate(TimeSpan.Zero, (sum, time) => sum + time),
-                    YearSource.Readings,
-                    from,
-                    to,
-                    Whole: from == first && to == last);
-            }
-        }
-
-        return [.. years.Values.OrderBy(year => year.Year)];
     }
 
     /// <summary>One year's review, kept with its answer in one transaction (an answer with no review

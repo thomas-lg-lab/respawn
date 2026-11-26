@@ -66,6 +66,13 @@ public interface ICatalogue
     /// does one whose other entries are renamed, even from the same name.</summary>
     Task RenameAsync(IReadOnlyCollection<StoreEntryRename> renames, CancellationToken ct);
 
+    /// <summary>A game with its store entries, in no order. Null when the catalogue has no such game.</summary>
+    Task<CatalogueGame?> FindGameAsync(Guid gameId, CancellationToken ct);
+
+    /// <summary>The names of these games, by game; null for one no source has named. A game the
+    /// catalogue does not have is left out.</summary>
+    Task<IReadOnlyDictionary<Guid, string?>> FindNamesAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct);
+
     /// <summary>The store entries of a game, in no order, each with where its store says its cover is.
     /// Null when the catalogue has no such game.</summary>
     Task<IReadOnlyList<CoverEntry>?> FindCoverEntriesAsync(Guid gameId, CancellationToken ct);
@@ -107,8 +114,9 @@ public interface ILibraryStore
     /// than the one before is played time, dated by the reading that shows it; the first one is where
     /// the count starts and gives nothing, and a total that went down gives nothing either. Only the
     /// days from <paramref name="from"/> to <paramref name="to"/>, both included, when they are given;
-    /// a growth is still counted from the reading before, whatever its day.</summary>
-    Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, DateOnly? from, DateOnly? to, CancellationToken ct);
+    /// a growth is still counted from the reading before, whatever its day. Only one game when
+    /// <paramref name="gameId"/> is given, and then only its readings are read.</summary>
+    Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? from, DateOnly? to, CancellationToken ct);
 }
 
 public interface IYearReviewStore

@@ -1,7 +1,8 @@
 namespace Respawn.Games.Ports;
 
-/// <summary>The import of the past from a store's yearly reviews (<see cref="IYearReviewSource"/>), and
-/// the years it lets an owner see. Apart from the daily sync: whatever happens here, the sync goes on.</summary>
+/// <summary>The import of the past from a store's yearly reviews (<see cref="IYearReviewSource"/>).
+/// Apart from the daily sync: whatever happens here, the sync goes on. What it lets an owner see is read
+/// by <see cref="IPlaytimeService"/>.</summary>
 public interface IYearReviewService
 {
     /// <summary>The linked accounts with a review still to import, the earliest link first: those a
@@ -20,11 +21,4 @@ public interface IYearReviewService
     /// Null when there is nothing to do: the account is gone, is being imported right now, or was tried
     /// less than <see cref="YearInReviewSchedule.RetryAfter"/> ago.</summary>
     Task<YearImport?> ImportAsync(Guid linkedAccountId, CancellationToken ct);
-
-    /// <summary>What an owner played per calendar year (UTC), the earliest first. A year every linked
-    /// account of theirs has a review of is counted from the reviews; the years from the first reading
-    /// on that are not, from the daily readings (<see cref="ILibraryService.GetHistoryAsync"/>), each
-    /// saying the days it covers. A year before the first reading is counted from the reviews of the
-    /// accounts that have one. Empty while nothing was read.</summary>
-    Task<IReadOnlyList<PlayedYear>> GetYearsAsync(Guid ownerId, CancellationToken ct);
 }

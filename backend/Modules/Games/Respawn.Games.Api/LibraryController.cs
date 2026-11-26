@@ -15,7 +15,7 @@ namespace Respawn.Games.Api;
 [Route("api/v1")]
 [Produces("application/json")]
 [GamesRefusals]
-public sealed class LibraryController(ILibraryService library, IYearReviewService reviews) : ControllerBase
+public sealed class LibraryController(ILibraryService library, IPlaytimeService playtime) : ControllerBase
 {
     /// <summary>The games one answer holds when the request names no limit.</summary>
     private const int DefaultLimit = 100;
@@ -86,7 +86,35 @@ public sealed class LibraryController(ILibraryService library, IYearReviewServic
     [ProducesResponseType<LibraryYearsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     public async Task<LibraryYearsResponse> Years(CancellationToken ct) =>
-        LibraryYearsResponse.From(await reviews.GetYearsAsync(Caller.Id(User), ct));
+        LibraryYearsResponse.From(await playtime.GetYearsAsync(Caller.Id(User), ct));
+
+    [HttpGet("library/months/{month}")]
+    [Authorize]
+    [EndpointSummary("What the signed-in account played in one month, game by game")]
+    [EndpointDescription(
+        "The games played in a month and the time of each, the most played first, counted as the month's "
+        + "year is in the years of the library: from the store's review (every game played, owned or not, "
+        + "which is why each comes with its name) or from the daily readings (the games of the library, "
+        + "over first_day to last_day). A month nothing counts, before the first reading in a year with "
+        + "no review or still to come, is answered with no source and no game.")]
+    [ProducesResponseType<LibraryMonthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<LibraryMonthResponse> Month(
+        [RegularExpression(Months.Pattern), Description("The month, as YYYY-MM, in UTC.")]
+        string month,
+        CancellationToken ct) =>
+        LibraryMonthResponse.From(await playtime.GetMonthAsync(Caller.Id(User), Months.Parse(month), ct));
+}
+
+/// <summary>A month, as the API spells it.</summary>
+internal static class Months
+{
+    /// <summary>A year of four digits and a month of two: nothing else is a date.</summary>
+    public const string Pattern = "^[1-9][0-9]{3}-(0[1-9]|1[0-2])$";
+
+    public static DateOnly Parse(string month) =>
+        DateOnly.ParseExact(month + "-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>The orders of a library, as the API spells them.</summary>

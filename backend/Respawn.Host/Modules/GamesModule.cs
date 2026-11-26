@@ -17,6 +17,9 @@ internal static class GamesModule
     public static IServiceCollection AddGames(this IServiceCollection services)
     {
         services.AddScoped<ILibraryService, LibraryService>();
+        // What is read back: one game as its owner sees it, and the time played.
+        services.AddScoped<IGameService, GameService>();
+        services.AddScoped<IPlaytimeService, PlaytimeService>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<ICredentialService, CredentialService>();
         // The covers, and where the stores say they are: asked apart from the sync.

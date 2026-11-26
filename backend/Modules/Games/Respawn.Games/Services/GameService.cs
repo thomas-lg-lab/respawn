@@ -1,0 +1,48 @@
+using Respawn.Games.Ports;
+
+namespace Respawn.Games.Services;
+
+/// <summary>One game as an owner sees it: the catalogue's record and what their library says of it.</summary>
+public sealed class GameService(
+    ICatalogue catalogue,
+    ILibraryStore library,
+    IEnumerable<ILibrarySource> sources,
+    TimeProvider clock) : IGameService
+{
+    public async Task<GameView> GetGameAsync(Guid ownerId, Guid gameId, CancellationToken ct)
+    {
+        var game = await catalogue.FindGameAsync(gameId, ct)
+            ?? throw new GamesException(GamesError.UnknownGame);
+
+        // The whole library, as a rank is a place in it: one reading, a row per game owned.
+        var games = OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow());
+        var owned = games.FirstOrDefault(other => other.GameId == gameId);
+        return new GameView(
+            game with
+            {
+                // An order that does not change from one answer to the next.
+                Stores =
+                [
+                    .. game.Stores
+                        .OrderBy(store => store.Source, StringComparer.Ordinal)
+                        .ThenBy(store => store.ExternalId, StringComparer.Ordinal),
+                ],
+            },
+            owned,
+            Rank(owned, games));
+    }
+
+    /// <summary>The game's place among those launched, the most played first. Two games played as long
+    /// share a position, and the next one is counted after both.</summary>
+    private static GameRank? Rank(OwnedGame? game, List<OwnedGame> games)
+    {
+        if (game is null || !OwnedGames.Launched(game))
+        {
+            return null;
+        }
+
+        var launched = games.Where(OwnedGames.Launched).ToList();
+        var playtime = game.Playtime ?? TimeSpan.Zero;
+        return new GameRank(1 + launched.Count(other => (other.Playtime ?? TimeSpan.Zero) > playtime), launched.Count);
+    }
+}
