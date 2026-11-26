@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { coverAddress } from '@respawn/data';
 import { Cover } from '@respawn/ui';
 import { type SaidPlaytime, formatAgo, saidPlaytime } from '@app/format/format';
 import { cameFrom, gamePage } from '@app/games/game-page';
@@ -12,6 +13,7 @@ interface Shown {
   readonly id: string;
   readonly name: string | null;
   readonly hue: number;
+  readonly cover: string;
   /** The last two weeks, when that is what the games were chosen by. */
   readonly recent: SaidPlaytime | null;
   /** How long ago the last session was, otherwise. */
@@ -49,6 +51,7 @@ export class PlayedRecently {
         id: game.game_id,
         name: game.name,
         hue: coverHue(game.game_id),
+        cover: coverAddress(game.game_id),
         recent: recent === null ? null : saidPlaytime(recent, language),
         ago: last === null ? null : formatAgo(last, this.now(), language),
         total: total === null ? null : saidPlaytime(total, language),

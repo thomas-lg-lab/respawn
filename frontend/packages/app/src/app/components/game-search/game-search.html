@@ -102,7 +102,12 @@
               [attr.aria-selected]="index === active()"
               (click)="choose(row.gameId)"
             >
-              <rs-cover class="w-6 shrink-0 rounded-thumb" aria-hidden="true" [hue]="row.hue" />
+              <rs-cover
+                class="w-6 shrink-0 rounded-thumb"
+                aria-hidden="true"
+                [hue]="row.hue"
+                [src]="row.cover"
+              />
               <span class="min-w-0 truncate" data-title
                 >{{ row.cut.before
                 }}<mark class="bg-transparent font-semibold text-accent-text">{{

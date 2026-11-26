@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideSearch, LucideX } from '@lucide/angular';
-import type { LibraryGame } from '@respawn/data';
+import { type LibraryGame, coverAddress } from '@respawn/data';
 import { Button, Cover, SearchField } from '@respawn/ui';
 import { formatCount, isOne, type SaidPlaytime, saidPlaytime } from '@app/format/format';
 import { coverHue, type FoundTitle, foundIn, letters, suggested } from '@app/games/game-list';
@@ -34,6 +34,7 @@ interface Suggestion {
   readonly title: string;
   readonly cut: FoundTitle;
   readonly hue: number;
+  readonly cover: string;
   /** `never` for a game no store says was played, `unknown` when no store said. */
   readonly time: SaidPlaytime | 'never' | 'unknown';
 }
@@ -102,6 +103,7 @@ export class GameSearch {
         title,
         cut: foundIn(title, this.asked()) ?? { before: title, found: '', after: '' },
         hue: coverHue(game.game_id),
+        cover: coverAddress(game.game_id),
         time:
           game.playtime_seconds === null
             ? 'unknown'

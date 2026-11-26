@@ -1,4 +1,5 @@
-<!-- Decoration: the title it shows is always written beside it. -->
+<!-- Decoration: the title it shows is always written beside it. Asked for only once it comes
+     near the screen: a list of a thousand games does not fetch a thousand images. -->
 @if (src() && !broken()) {
-  <img alt="" decoding="async" [src]="src()" (error)="fail()" />
+  <img alt="" loading="lazy" decoding="async" [src]="src()" (error)="fail()" />
 }

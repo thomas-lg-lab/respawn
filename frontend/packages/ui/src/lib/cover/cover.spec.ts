@@ -33,6 +33,12 @@ describe('Cover', () => {
     expect(image.getAttribute('alt')).toBe('');
   });
 
+  it('asks for the image only once it comes near the screen', async () => {
+    const { element } = await create('/api/v1/games/1/cover');
+
+    expect(element.querySelector('img')!.getAttribute('loading')).toBe('lazy');
+  });
+
   it('leaves the placeholder and says so when the image does not load, until another is given', async () => {
     const { fixture, element } = await create('/api/v1/games/1/cover');
 

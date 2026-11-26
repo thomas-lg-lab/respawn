@@ -314,6 +314,11 @@
       "playtime": "Temps de jeu",
       "name": "Titre"
     },
+    "view": {
+      "label": "Affichage",
+      "covers": "Couvertures",
+      "list": "Liste"
+    },
     "columns": {
       "game": "Jeu",
       "playtime": "Temps de jeu",
