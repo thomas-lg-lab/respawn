@@ -16,7 +16,7 @@ public static class DependencyInjection
             provider.GetRequiredService<IHttpClientFactory>(),
             () => options(provider),
             provider.GetRequiredService<TimeProvider>()));
-        services.AddSingleton<IGameDataSource>(provider => new IgdbMatchSource(
+        services.AddSingleton<IGameDataSource>(provider => new IgdbGameDataSource(
             provider.GetRequiredService<IgdbClient>(),
             provider.GetRequiredService<TimeProvider>()));
 

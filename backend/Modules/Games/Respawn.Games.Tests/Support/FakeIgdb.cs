@@ -32,9 +32,16 @@ internal sealed class FakeIgdb
     /// <summary>The requests Twitch received, with their form.</summary>
     public List<(Uri Address, string Form)> TokenRequests { get; } = [];
 
-    /// <summary>What IGDB answers next.</summary>
+    /// <summary>What IGDB answers next about the games of the stores (<c>external_games</c>).</summary>
     public string Body { get; set; } = Recorded("external-games.json");
 
+    /// <summary>What IGDB answers next about its games (<c>games</c>).</summary>
+    public string GamesBody { get; set; } = Recorded("games.json");
+
+    /// <summary>What IGDB answers next about how long they take (<c>game_time_to_beats</c>).</summary>
+    public string TimesBody { get; set; } = Recorded("game-time-to-beats.json");
+
+    /// <summary>The status of every answer of IGDB.</summary>
     public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
 
     /// <summary>When set, what IGDB answers a question with, by its rank among the questions received
@@ -120,7 +127,12 @@ internal sealed class FakeIgdb
                 throw new HttpRequestException("No such host is known.");
             }
 
-            var (status, body) = igdb.AnswerFor?.Invoke(rank, query) ?? (igdb.Status, igdb.Body);
+            var (status, body) = igdb.AnswerFor?.Invoke(rank, query) ?? (igdb.Status, request.RequestUri!.AbsolutePath switch
+            {
+                "/v4/games" => igdb.GamesBody,
+                "/v4/game_time_to_beats" => igdb.TimesBody,
+                _ => igdb.Body,
+            });
             return Answer(status, body);
         }
     }

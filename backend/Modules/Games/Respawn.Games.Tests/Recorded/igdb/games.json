@@ -1,0 +1,94 @@
+[
+  {
+    "id": 71,
+    "cover": {
+      "id": 100071,
+      "image_id": "co0fake71"
+    },
+    "game_type": 0,
+    "genres": [
+      {
+        "id": 5,
+        "name": "Shooter"
+      },
+      {
+        "id": 9,
+        "name": "Puzzle"
+      }
+    ],
+    "name": "Portal",
+    "slug": "portal",
+    "summary": "A test chamber, a device that opens two linked holes in walls, and a voice that keeps promising cake.",
+    "themes": [
+      {
+        "id": 18,
+        "name": "Science fiction"
+      }
+    ],
+    "url": "https://www.igdb.com/games/portal"
+  },
+  {
+    "id": 72,
+    "cover": {
+      "id": 100072,
+      "image_id": "co0fake72"
+    },
+    "game_type": 0,
+    "genres": [
+      {
+        "id": 5,
+        "name": "Shooter"
+      },
+      {
+        "id": 9,
+        "name": "Puzzle"
+      },
+      {
+        "id": 31,
+        "name": "Adventure"
+      }
+    ],
+    "name": "Portal 2",
+    "slug": "portal-2",
+    "summary": "More test chambers, a second player for the cooperative ones, and a laboratory far older than the first game let on.",
+    "themes": [
+      {
+        "id": 18,
+        "name": "Science fiction"
+      },
+      {
+        "id": 27,
+        "name": "Comedy"
+      }
+    ],
+    "url": "https://www.igdb.com/games/portal-2"
+  },
+  {
+    "id": 233,
+    "cover": {
+      "id": 100233,
+      "image_id": "co0fake233"
+    },
+    "game_type": 0,
+    "genres": [
+      {
+        "id": 5,
+        "name": "Shooter"
+      }
+    ],
+    "name": "Half-Life 2",
+    "slug": "half-life-2",
+    "summary": "A physicist arrives by train in a city under occupation, and leaves it with a crowbar and a gravity gun.",
+    "themes": [
+      {
+        "id": 1,
+        "name": "Action"
+      },
+      {
+        "id": 18,
+        "name": "Science fiction"
+      }
+    ],
+    "url": "https://www.igdb.com/games/half-life-2"
+  }
+]

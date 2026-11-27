@@ -75,8 +75,8 @@ and where your time went.
 **Roadmap**, in order:
 
 1. **Next**: genres, descriptions and durations through IGDB, and with them the backlog in hours; a first
-   try at searching your own backlog by what you feel like playing. The connector that tells which IGDB
-   game each Steam game is comes first; nothing else is read from IGDB yet.
+   try at searching your own backlog by what you feel like playing. What IGDB says of each game is now
+   kept on the server (below); nothing shows it yet.
 2. **Statuses and ratings** for each game.
 3. **Tokens for the public API.**
 4. **More stores, next-game suggestions, sharing with a group.**
@@ -132,8 +132,9 @@ Everything is read from the environment. Nothing is required to start.
 | `RESPAWN_PUBLIC_URL` | none | The address the instance is reached at, scheme and host (`https://respawn.example.org`). Set it behind a reverse proxy: linking a Steam account and signing in through a provider send the browser to Steam or the provider, which send it back to this address. Without it, the address of the request is used |
 | `RESPAWN_STEAM_API_KEY` | none | The instance's [Steam Web API key](https://steamcommunity.com/dev/apikey), which reads the libraries of the linked Steam accounts. A user may give their own key on their linked account, which is then the only one that reads it. Without either, no Steam library is read |
 | `RESPAWN_STEAM_API_KEY_FILE` | `/secrets/steam-api-key` | File holding the key, read when the variable is not set, and read again at each reading |
-| `RESPAWN_IGDB_CLIENT_ID`, `RESPAWN_IGDB_CLIENT_SECRET` | none | The client id and secret of a [Twitch application](https://dev.twitch.tv/console/apps), the instance's access to [IGDB](https://api-docs.igdb.com/), the database of games that will bring genres, descriptions, durations and covers. Optional: without both, IGDB is never asked anything. Nothing is read from IGDB yet |
+| `RESPAWN_IGDB_CLIENT_ID`, `RESPAWN_IGDB_CLIENT_SECRET` | none | The client id and secret of a [Twitch application](https://dev.twitch.tv/console/apps), the instance's access to [IGDB](https://api-docs.igdb.com/), the database of games that will bring genres, descriptions, durations and covers. Optional: without both, IGDB is never asked anything, and the start says so |
 | `RESPAWN_IGDB_CLIENT_ID_FILE`, `RESPAWN_IGDB_CLIENT_SECRET_FILE` | `/secrets/igdb-client-id`, `/secrets/igdb-client-secret` | Files holding them, read when the variables are not set, and read again each time IGDB is asked |
+| `RESPAWN_IGDB_GAMES_PER_TURN` | `100` | The most games IGDB is asked about every five minutes: a library seen for the first time is spread over several turns |
 | `RESPAWN_ENCRYPTION_KEY` | none | 32 random bytes in base64 (`openssl rand -base64 32`; a placeholder such as all zeros is refused), which encrypt the Steam Web API keys users give on their own linked accounts. Without it, nobody can give one. Changed or lost, the keys already given can no longer be read: their syncs fail until each user gives their key again |
 | `RESPAWN_ENCRYPTION_KEY_FILE` | `/secrets/encryption-key` | File holding the encryption key, read when the variable is not set, and read again each time it is needed |
 | `RESPAWN_COOKIE_SECURE` | `true` | Session cookie sent over HTTPS only; `false` for plain HTTP on localhost |
@@ -355,8 +356,24 @@ with no key. A newly synced library gets its covers within minutes; the answer i
 and a store that does not answer is tried again later, without touching the sync. Until the store has said,
 a cover is looked for at Steam's usual address.
 
-These three schedules (the sync, the yearly reviews, the covers) live in the app's process, which is one
-more reason the app runs as one replica.
+### What IGDB says of the games
+
+With IGDB's client id and secret, the app asks IGDB about the catalogue's games apart from the sync: every
+five minutes it takes up to `RESPAWN_IGDB_GAMES_PER_TURN` games never asked about, then the ones asked about
+the longest ago, and asks which IGDB game each one is, then that game's name, page, cover, genres, themes,
+summary (in English) and how long players took to finish it.
+
+- **Once for the instance.** What IGDB says of a game is kept once, whoever owns it. Two store games IGDB
+  takes for the same game share what it says of it and stay two games: nothing is merged. A store game IGDB
+  knows as several is taken as the one with the smallest id.
+- **Asked again** after 30 days for a game IGDB knows, after 7 for one it does not, which it may add later.
+- **A failure** (IGDB refusing the instance's access or not answering) is said once in the log and tried
+  again an hour later; nothing of the batch it failed on is kept, and the sync never waits for it.
+- Each answer is kept as it came, like a reading. Nothing shows this yet: the game page and the backlog in
+  hours come next.
+
+These four schedules (the sync, the yearly reviews, the covers, IGDB) live in the app's process, which is
+one more reason the app runs as one replica.
 
 A breaking change to these routes means a new version beside `/api/v1`, not a change to it.
 
@@ -372,7 +389,7 @@ adapters around it.
 | `Respawn.Persistence` | The database connection: opened on first use, the schemas migrated then, a rotated password followed |
 | `Respawn.SharedKernel` | What modules and the host agree on: the error format, the database contracts, what a navigation may come back to |
 | `Modules/Accounts` | Accounts, sign-in and groups: a core, its infrastructure (EF Core, ASP.NET Core Identity) and its API, which runs the sign-in through a provider |
-| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, the sync that reads each library once a day, the import of a store's yearly reviews, the covers, fetched when asked for and kept as files when the instance has a data directory, and what is read back of it all: the library, one game as its owner sees it, and the time played by year, by month of a game and by game of a month, counted by one rule; and its connectors, one project per outside source behind a port of the core (`Respawn.Games.Steam`, `Respawn.Games.Igdb`) |
+| `Modules/Games` | The catalogue and the libraries: a game as one record whatever the store, the store accounts linked to an account, what each source answered, kept as it came, who owns and played what, the sync that reads each library once a day, the import of a store's yearly reviews, the covers, fetched when asked for and kept as files when the instance has a data directory, what IGDB says of each game, and what is read back of it all: the library, one game as its owner sees it, and the time played by year, by month of a game and by game of a month, counted by one rule; and its connectors, one project per outside source behind a port of the core (`Respawn.Games.Steam`, `Respawn.Games.Igdb`) |
 | `Modules/<Name>/Respawn.<Name>.Tests` | The tests of a module, which start the real app against a real PostgreSQL |
 | `Respawn.Tests`, `Respawn.Testing` | The tests of the host and of the architecture rules; what every test project shares |
 | [`frontend/`](frontend/README.md) | The front: Angular 22, Tailwind 4, Transloco and Vitest, in four packages (the app, the base components and design tokens, the display settings, the API: its types, its client and each feature's queries) |

@@ -45,7 +45,53 @@ public sealed class StoreEntryRow
     /// <summary>When the store was last asked where the cover is; null while it never was.</summary>
     public DateTimeOffset? CoverAskedAt { get; set; }
 
+    /// <summary>Which IGDB game this is (<see cref="IgdbGameRow"/>); null while IGDB was not asked, or
+    /// does not know it. Several entries may be the same IGDB game: they are not merged for it.</summary>
+    public long? IgdbId { get; set; }
+
+    /// <summary>When IGDB was last asked which game this is; null while it never was.</summary>
+    public DateTimeOffset? IgdbAskedAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>What IGDB says of one of its games, once for the whole instance, replaced each time it is
+/// asked again. The store entries that are this game point to it by its id (<see cref="StoreEntryRow.IgdbId"/>),
+/// with no foreign key: an entry may know its game before IGDB answered about it.</summary>
+public sealed class IgdbGameRow
+{
+    public long IgdbId { get; set; }
+
+    public string? Name { get; set; }
+
+    public string? Slug { get; set; }
+
+    /// <summary>Its page on IGDB.</summary>
+    public string? Url { get; set; }
+
+    /// <summary>What names its cover in IGDB's image host.</summary>
+    public string? CoverImageId { get; set; }
+
+    public List<string> Genres { get; set; } = [];
+
+    public List<string> Themes { get; set; } = [];
+
+    /// <summary>What it is about, in IGDB's words (English).</summary>
+    public string? Summary { get; set; }
+
+    /// <summary>How long players took to finish it, in seconds, rushing, at a normal pace, and doing
+    /// everything; null where nobody said.</summary>
+    public int? HastilySeconds { get; set; }
+
+    public int? NormallySeconds { get; set; }
+
+    public int? CompletelySeconds { get; set; }
+
+    /// <summary>How many players those figures rest on; null when there are none.</summary>
+    public int? TimeToBeatCount { get; set; }
+
+    /// <summary>When IGDB said it.</summary>
+    public DateTimeOffset ReadAt { get; set; }
 }
 
 /// <summary>A store account proven to belong to an owner. A store account has one owner.</summary>

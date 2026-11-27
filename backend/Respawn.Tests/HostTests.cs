@@ -37,6 +37,7 @@ public sealed class HostTests
     [InlineData("RESPAWN_TRUSTED_PROXIES", "proxy.example.org")]
     [InlineData("RESPAWN_DATA_DIR", "covers")]
     [InlineData("RESPAWN_AUTH_RATE_LIMIT", "ten/minute")]
+    [InlineData("RESPAWN_IGDB_GAMES_PER_TURN", "0")]
     public async Task A_setting_that_cannot_be_read_stops_the_start_and_the_log_names_it(string name, string value)
     {
         await using var app = TestApp.Create(new() { [name] = value });
