@@ -274,4 +274,13 @@ public static class Limits
 
     /// <summary>The most games one request for a library is answered with.</summary>
     public const int LibraryPage = 500;
+
+    /// <summary>A short word a game database gives: a slug, an image's id, a genre or a theme.</summary>
+    public const int GameDataWord = 200;
+
+    /// <summary>The address of a game's page in a game database.</summary>
+    public const int GameDataUrl = 500;
+
+    /// <summary>What a game database says a game is about.</summary>
+    public const int GameDataSummary = 20_000;
 }

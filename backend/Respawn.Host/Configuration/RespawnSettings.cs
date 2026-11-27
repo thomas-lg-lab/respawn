@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Respawn.Accounts;
+using Respawn.Games;
 using Respawn.Games.Igdb;
 using Respawn.Games.Infrastructure.Credentials;
 using Respawn.Games.Steam;
@@ -72,6 +73,11 @@ internal static partial class RespawnSettings
         ClientSecret = configuration["RESPAWN_IGDB_CLIENT_SECRET"],
         ClientSecretFile = configuration["RESPAWN_IGDB_CLIENT_SECRET_FILE"] ?? "/secrets/igdb-client-secret",
     };
+
+    /// <summary>How many games the game database is asked about at most in one turn of its schedule.</summary>
+    /// <exception cref="FormatException">Not a whole number of at least one.</exception>
+    public static GameDataOptions GameData(IConfiguration configuration) =>
+        new(Number(configuration, "RESPAWN_IGDB_GAMES_PER_TURN", GameDataSchedule.GamesPerTurn));
 
     /// <summary>The data directory, where the covers are kept; null when none is given, and the covers
     /// are then passed on from their source at each request. No default: an instance keeps images

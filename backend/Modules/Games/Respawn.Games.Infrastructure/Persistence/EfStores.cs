@@ -375,6 +375,97 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         db.Images.Where(i => i.GameId == gameId && i.Kind == kind)
             .ExecuteUpdateAsync(set => set.SetProperty(i => i.CheckedAt, at), ct);
 
+    public async Task<IReadOnlyList<string>> ListStoresWithGameDataDueAsync(IReadOnlyCollection<string> stores, GameDataDue due, CancellationToken ct)
+    {
+        string[] asked = [.. stores];
+        return await GameDataDue(db.StoreEntries.AsNoTracking().Where(e => asked.Contains(e.Source)), due)
+            .Select(e => e.Source)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<GameDataEntry>> ListGameDataDueAsync(string store, GameDataDue due, int max, CancellationToken ct) =>
+        await GameDataDue(db.StoreEntries.AsNoTracking().Where(e => e.Source == store), due)
+            // Never asked first; then the oldest asked.
+            .OrderBy(e => e.IgdbAskedAt != null)
+            .ThenBy(e => e.IgdbAskedAt)
+            .ThenBy(e => e.Id)
+            .Take(max)
+            .Select(e => new GameDataEntry(e.Id, e.ExternalId))
+            .ToListAsync(ct);
+
+    private static IQueryable<StoreEntryRow> GameDataDue(IQueryable<StoreEntryRow> entries, GameDataDue due) =>
+        entries.Where(e => e.IgdbAskedAt == null
+            || (e.IgdbId != null && e.IgdbAskedAt < due.MatchedBefore)
+            || (e.IgdbId == null && e.IgdbAskedAt < due.UnknownBefore));
+
+    public async Task SetGameDataAsync(IReadOnlyCollection<GameFacts> games, IReadOnlyCollection<GameDataMatch> matches, DateTimeOffset at, CancellationToken ct)
+    {
+        var said = games
+            .Select(game => (Id: IgdbNumber(game.GameId), Game: game))
+            .Where(game => game.Id is not null)
+            .GroupBy(game => game.Id!.Value)
+            .ToDictionary(group => group.Key, group => group.First().Game);
+        long[] ids = [.. said.Keys];
+        var kept = await db.IgdbGames.Where(g => ids.Contains(g.IgdbId)).ToDictionaryAsync(g => g.IgdbId, ct);
+        foreach (var (id, game) in said)
+        {
+            if (!kept.TryGetValue(id, out var row))
+            {
+                row = new IgdbGameRow { IgdbId = id };
+                db.IgdbGames.Add(row);
+            }
+
+            row.Name = game.Name;
+            row.Slug = game.Slug;
+            row.Url = game.Url;
+            row.CoverImageId = game.CoverImageId;
+            row.Genres = [.. game.Genres];
+            row.Themes = [.. game.Themes];
+            row.Summary = game.Summary;
+            row.HastilySeconds = game.TimeToBeat?.Hastily;
+            row.NormallySeconds = game.TimeToBeat?.Normally;
+            row.CompletelySeconds = game.TimeToBeat?.Completely;
+            row.TimeToBeatCount = game.TimeToBeat?.Count;
+            row.ReadAt = at;
+        }
+
+        Guid[] entryIds = [.. matches.Select(match => match.StoreEntryId)];
+        var entries = await db.StoreEntries.Where(e => entryIds.Contains(e.Id)).ToDictionaryAsync(e => e.Id, ct);
+        var left = new HashSet<long>();
+        foreach (var match in matches)
+        {
+            if (entries.TryGetValue(match.StoreEntryId, out var entry))
+            {
+                var igdbId = match.GameId is null ? null : IgdbNumber(match.GameId);
+                if (entry.IgdbId is { } before && before != igdbId)
+                {
+                    left.Add(before);
+                }
+
+                entry.IgdbId = igdbId;
+                entry.IgdbAskedAt = at;
+            }
+        }
+
+        await SaveAsync(ct);
+
+        // The games no store entry is any more, once these changed theirs: nothing would ask about them again.
+        if (left.Count > 0)
+        {
+            long[] forgotten = [.. left];
+            await db.IgdbGames
+                .Where(g => forgotten.Contains(g.IgdbId) && !db.StoreEntries.Any(e => e.IgdbId == g.IgdbId))
+                .ExecuteDeleteAsync(ct);
+        }
+    }
+
+    /// <summary>An IGDB game's id as the table keeps it; null for what is not one.</summary>
+    private static long? IgdbNumber(string id) =>
+        long.TryParse(id, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number) && number > 0
+            ? number
+            : null;
+
     private async Task SaveAsync(CancellationToken ct)
     {
         try

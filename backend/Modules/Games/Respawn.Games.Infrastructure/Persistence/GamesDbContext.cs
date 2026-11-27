@@ -33,6 +33,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<ImageRow> Images => Set<ImageRow>();
 
+    public DbSet<IgdbGameRow> IgdbGames => Set<IgdbGameRow>();
+
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
     /// migration at first connection and the design-time tools.</summary>
     public static void Configure(DbContextOptionsBuilder options, DbDataSource dataSource) =>
@@ -68,6 +70,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             entry.Property(e => e.Name).HasMaxLength(Limits.Name);
             entry.Property(e => e.CoverPath).HasMaxLength(Limits.CoverPath);
             entry.HasIndex(e => new { e.Source, e.ExternalId }).IsUnique();
+            // A store's entries IGDB is to be asked about: never asked first, then the oldest asked.
+            entry.HasIndex(e => new { e.Source, e.IgdbAskedAt });
             entry.HasOne<GameRow>().WithMany().HasForeignKey(e => e.GameId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -180,6 +184,20 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             image.Property(i => i.ContentType).HasMaxLength(Limits.ContentType);
             image.HasIndex(i => new { i.Kind, i.Source, i.Key });
             image.HasOne<GameRow>().WithMany().HasForeignKey(i => i.GameId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<IgdbGameRow>(game =>
+        {
+            game.ToTable("igdb_games", table => table.HasCheckConstraint(
+                "ck_igdb_games_time_to_beat",
+                "hastily_seconds >= 0 AND normally_seconds >= 0 AND completely_seconds >= 0 AND time_to_beat_count >= 0"));
+            game.HasKey(g => g.IgdbId);
+            game.Property(g => g.IgdbId).ValueGeneratedNever();
+            game.Property(g => g.Name).HasMaxLength(Limits.Name);
+            game.Property(g => g.Slug).HasMaxLength(Limits.GameDataWord);
+            game.Property(g => g.Url).HasMaxLength(Limits.GameDataUrl);
+            game.Property(g => g.CoverImageId).HasMaxLength(Limits.GameDataWord);
+            game.Property(g => g.Summary).HasMaxLength(Limits.GameDataSummary);
         });
     }
 }

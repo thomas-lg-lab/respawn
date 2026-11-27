@@ -350,6 +350,101 @@ public sealed class IgdbTests : IDisposable
         Assert.Empty(igdb.Requests);
     }
 
+    [Fact]
+    public async Task Igdbs_games_and_how_long_they_take_are_read_as_igdb_says_them()
+    {
+        var igdb = new FakeIgdb();
+        await using var app = await igdb.StartAppAsync();
+
+        var reading = await Source(app).ReadGamesAsync(["233", "72", "71"], default);
+
+        // Two questions, each about every game at once.
+        Assert.Equal(
+            [
+                ("https://api.igdb.com/v4/games", "fields name,slug,url,cover.image_id,genres.name,themes.name,summary,game_type,version_parent,parent_game; where id = (71,72,233); sort id asc; limit 500;"),
+                ("https://api.igdb.com/v4/game_time_to_beats", "fields game_id,hastily,normally,completely,count; where game_id = (71,72,233); sort id asc; limit 500;"),
+            ],
+            igdb.Requests.Select(request => (request.Address.ToString(), request.Query)));
+
+        // The answers untouched, to be kept.
+        Assert.Equal(
+            [("games", FakeIgdb.Recorded("games.json")), ("game-time-to-beats", FakeIgdb.Recorded("game-time-to-beats.json"))],
+            reading.Answers.Select(answer => (answer.Kind, answer.Payload)));
+
+        var games = reading.Games.ToDictionary(game => game.GameId);
+        Assert.Equal(["233", "71", "72"], games.Keys.Order(StringComparer.Ordinal));
+        var portal2 = games["72"];
+        Assert.Equal(
+            ("Portal 2", "portal-2", "https://www.igdb.com/games/portal-2", "co0fake72"),
+            (portal2.Name, portal2.Slug, portal2.Url, portal2.CoverImageId));
+        Assert.Equal(["Shooter", "Puzzle", "Adventure"], portal2.Genres);
+        Assert.Equal(["Science fiction", "Comedy"], portal2.Themes);
+        Assert.StartsWith("More test chambers", portal2.Summary, StringComparison.Ordinal);
+        Assert.Equal(new TimeToBeat(26100, 34200, 75600, 412), portal2.TimeToBeat);
+
+        // Some figures said, others not; and a game nobody said anything of.
+        Assert.Equal(new TimeToBeat(39600, 50400, null, 3), games["233"].TimeToBeat);
+        Assert.Null(games["71"].TimeToBeat);
+    }
+
+    [Fact]
+    public async Task What_igdb_gives_in_another_shape_is_left_out()
+    {
+        var igdb = new FakeIgdb
+        {
+            GamesBody = """
+                [7,
+                 {"id":71,"name":42,"slug":"  ","url":"https://elsewhere.example.org/games/portal","cover":"co0fake71",
+                  "genres":[{"name":"Puzzle"},"Shooter",{"name":"Puzzle"},{"name":null}],"themes":{"name":"Action"},"summary":null},
+                 {"id":72,"url":"https://www.igdb.com/games/portal-2"},
+                 {"id":72,"name":"Portal 2 again"},
+                 {"id":"233","name":"Half-Life 2"},
+                 {"id":999,"name":"Not asked"}]
+                """,
+            TimesBody = """
+                [{"game_id":71,"hastily":-1,"normally":"3600","completely":null,"count":5},
+                 {"game_id":72,"normally":9999999999,"count":1},
+                 {"game_id":72,"normally":3600,"count":-2}]
+                """,
+        };
+        await using var app = await igdb.StartAppAsync();
+
+        var reading = await Source(app).ReadGamesAsync(["71", "72", "233"], default);
+
+        var games = reading.Games.ToDictionary(game => game.GameId);
+        Assert.Equal(["71", "72"], games.Keys.Order(StringComparer.Ordinal));
+        // A link that leads elsewhere, words of another kind, and blanks: nothing.
+        var portal = games["71"];
+        Assert.All(new[] { portal.Name, portal.Slug, portal.Url, portal.CoverImageId, portal.Summary }, value => Assert.Null(value));
+        Assert.Equal(["Puzzle"], portal.Genres);
+        Assert.Empty(portal.Themes);
+        Assert.Null(portal.TimeToBeat);
+        // A game is read once, from its first row; a duration once, from the first row that says one.
+        Assert.Equal(("https://www.igdb.com/games/portal-2", (string?)null), (games["72"].Url, games["72"].Name));
+        Assert.Equal(new TimeToBeat(null, 3600, null, null), games["72"].TimeToBeat);
+    }
+
+    [Fact]
+    public async Task What_cannot_be_an_igdb_game_is_not_sent()
+    {
+        var igdb = new FakeIgdb();
+        await using var app = await igdb.StartAppAsync();
+
+        await Source(app).ReadGamesAsync(["72", "abc", "-1", "0", " 71", "72); fields *; (1"], default);
+
+        Assert.All(igdb.Requests, request => Assert.Contains("= (72);", request.Query, StringComparison.Ordinal));
+        Assert.Equal(2, igdb.Requests.Count);
+
+        // None left: nothing is asked, not even a token.
+        igdb.TokenRequests.Clear();
+        var reading = await Source(app).ReadGamesAsync(["abc"], default);
+        Assert.Empty(reading.Answers);
+        Assert.Equal(2, igdb.Requests.Count);
+        Assert.Empty(igdb.TokenRequests);
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            Source(app).ReadGamesAsync([.. Enumerable.Range(1, 501).Select(id => id.ToString(CultureInfo.InvariantCulture))], default));
+    }
+
     /// <summary>An answer of <c>external_games</c> with these rows, Steam's id then IGDB's.</summary>
     private static string Rows(IEnumerable<(string Uid, string Game)> rows) =>
         "[" + string.Join(',', rows.Select((row, rank) => string.Create(

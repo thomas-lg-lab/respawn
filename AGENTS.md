@@ -39,7 +39,9 @@
   `YearReviewScheduler` in `.Api`), and the covers (`CoverService`: given a data directory, an image is asked of a source the first time it
   is asked for and kept as a file, `IImageStore` and its `FileImageStore`, named by kind, source and key, never
   by the game; without one, asked at each request and passed on; where a store says a cover is, a short
-  text, is asked on a schedule of its own, `CoverScheduler` in `.Api`, never by the sync), and what is read back of it all: one game as an owner sees it
+  text, is asked on a schedule of its own, `CoverScheduler` in `.Api`, never by the sync), and what IGDB says
+  of each game (`GameDataService`, and `GameDataScheduler` in `.Api`: a few games a turn, kept once for the
+  instance, a store game pointing to its IGDB game and never merged for it), and what is read back of it all: one game as an owner sees it
   (`GameService`), and the time played by year, by month of a game and by game of a month, counted by one
   rule (`PlaytimeService`); and its connectors, one
   project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API, and

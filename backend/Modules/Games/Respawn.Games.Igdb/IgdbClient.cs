@@ -51,6 +51,10 @@ internal sealed class IgdbClient(IHttpClientFactory http, Func<IgdbOptions> opti
     private long _nextStart;
     private Token? _token;
 
+    /// <summary>Whether the instance has a client id and secret that can be sent, as they are now.</summary>
+    public bool HasAccess =>
+        options().Resolve() is { } access && IgdbOptions.IsCredential(access.ClientId) && IgdbOptions.IsCredential(access.ClientSecret);
+
     /// <summary>Asks IGDB one question, and returns its answer as text with the moment it answered.</summary>
     /// <param name="endpoint">The endpoint, relative to <see cref="Api"/>.</param>
     /// <param name="query">The question, in IGDB's query language.</param>

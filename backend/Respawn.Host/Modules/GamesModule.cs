@@ -34,6 +34,10 @@ internal static class GamesModule
         // The import of the stores' yearly reviews, apart from the sync.
         services.AddScoped<IYearReviewService, YearReviewService>();
         services.AddSingleton<YearInReviewGate>();
+        // What the game database knows of the catalogue's games, asked apart from the sync.
+        services.AddScoped<IGameDataService, GameDataService>();
+        services.AddSingleton<GameDataGate>();
+        services.AddSingleton(provider => RespawnSettings.GameData(provider.GetRequiredService<IConfiguration>()));
         services.AddGamesInfrastructure(provider => RespawnSettings.Encryption(provider.GetRequiredService<IConfiguration>()));
         services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));

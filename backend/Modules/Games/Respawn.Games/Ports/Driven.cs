@@ -103,6 +103,20 @@ public interface ICatalogue
     /// <summary>Says the source of the image a game shows for a kind was asked for it at that moment,
     /// and gave nothing newer.</summary>
     Task CheckedImageAsync(Guid gameId, string kind, DateTimeOffset at, CancellationToken ct);
+
+    /// <summary>The stores, among these, that have a store entry the game database is to be asked
+    /// about: never asked, or asked before the moment <paramref name="due"/> says for what it answered.</summary>
+    Task<IReadOnlyList<string>> ListStoresWithGameDataDueAsync(IReadOnlyCollection<string> stores, GameDataDue due, CancellationToken ct);
+
+    /// <summary>At most <paramref name="max"/> store entries of a store the game database is to be asked
+    /// about: those never asked first, then those asked the longest ago.</summary>
+    Task<IReadOnlyList<GameDataEntry>> ListGameDataDueAsync(string store, GameDataDue due, int max, CancellationToken ct);
+
+    /// <summary>Keeps what the game database said of its games, one record per game for the whole
+    /// instance, in the place of what it said before; then which of its games these store entries are,
+    /// none included, and that it was asked at that moment. A game of the database no store entry is any
+    /// more is forgotten.</summary>
+    Task SetGameDataAsync(IReadOnlyCollection<GameFacts> games, IReadOnlyCollection<GameDataMatch> matches, DateTimeOffset at, CancellationToken ct);
 }
 
 /// <summary>Where the images an instance keeps are written: files of a data directory. An instance
@@ -257,8 +271,28 @@ public interface IGameDataSource
     /// <summary>The database, as the catalogue names it.</summary>
     string Source { get; }
 
+    /// <summary>The stores whose games it is asked about, as store entries name them.</summary>
+    IReadOnlyCollection<string> Stores { get; }
+
+    /// <summary>Whether the instance has an access to it now: when not, nothing is asked. Read again each
+    /// time: an access may be given after the app started.</summary>
+    bool HasAccess { get; }
+
     /// <summary>The most games of a store asked about at once.</summary>
     int MatchesPerRequest { get; }
+
+    /// <summary>The most of its own games asked about at once (<see cref="ReadGamesAsync"/>).</summary>
+    int GamesPerRequest { get; }
+
+    /// <summary>What it knows of some of its games: names, genres, themes, a summary, a cover and how
+    /// long they take. An id that cannot be one of its games is not sent; when none is left, nothing is
+    /// asked.</summary>
+    /// <param name="gameIds">At most <see cref="GamesPerRequest"/> ids of its games, as matches give them.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">The database could not be read, or the instance has no access
+    /// to it (<see cref="SourceError.NotConfigured"/>).</exception>
+    /// <exception cref="ArgumentException">Too many ids.</exception>
+    Task<GamesReading> ReadGamesAsync(IReadOnlyCollection<string> gameIds, CancellationToken ct);
 
     /// <summary>Which games of the database these games of a store are. An id that cannot be a game of
     /// the store is not sent; when none is left, nothing is asked.</summary>

@@ -1,4 +1,5 @@
 using Respawn.Accounts;
+using Respawn.Games;
 using Respawn.Games.Infrastructure.Images;
 using Respawn.Games.Ports;
 
@@ -19,11 +20,13 @@ internal sealed class SettingsCheck(IServiceProvider services, ILogger<SettingsC
     public Task StartingAsync(CancellationToken cancellationToken)
     {
         IImageStore images;
+        GameDataOptions gameData;
         try
         {
             services.GetRequiredService<HttpSettings>();
             services.GetRequiredService<AccountOptions>();
             images = services.GetRequiredService<IImageStore>();
+            gameData = services.GetRequiredService<GameDataOptions>();
         }
         catch (FormatException ex)
         {
@@ -50,6 +53,17 @@ internal sealed class SettingsCheck(IServiceProvider services, ILogger<SettingsC
         else
         {
             logger.LogInformation("no data directory (RESPAWN_DATA_DIR): covers are not kept, each is fetched from its source when it is asked for");
+        }
+
+        // Said once too: whether the games are asked about of IGDB. Its client id and secret are read
+        // again at each turn, so access given later is taken then, and not said.
+        if (services.GetRequiredService<IGameDataSource>().HasAccess)
+        {
+            logger.LogInformation("IGDB is asked about the games, {GamesPerTurn} at most every few minutes", gameData.GamesPerTurn);
+        }
+        else
+        {
+            logger.LogInformation("no IGDB client id and secret (RESPAWN_IGDB_CLIENT_ID, RESPAWN_IGDB_CLIENT_SECRET): IGDB is not asked about the games");
         }
 
         return Task.CompletedTask;

@@ -19,3 +19,5 @@ connector makes of such an answer, not that the source still answers this way.
 | `igdb/token-wrong-secret.json` | the same | the 403 Twitch gives for a client id it knows with the wrong secret |
 | `igdb/token-unknown-client.json` | the same | the 400 Twitch gives for a client id it does not know |
 | `igdb/external-games.json` | IGDB's `POST v4/external_games`, `fields game,uid; where external_game_source = 1 & uid = (...)` | seven Steam games and the IGDB game each one is; asked about with an eighth that IGDB does not know, which has no row |
+| `igdb/games.json` | IGDB's `POST v4/games`, `fields name,slug,url,cover.image_id,genres.name,themes.name,summary,...; where id = (...)` | three of those games (Portal, Portal 2, Half-Life 2) with their page, a made-up cover id, genres, themes and a summary written for the tests |
+| `igdb/game-time-to-beats.json` | IGDB's `POST v4/game_time_to_beats`, `fields game_id,hastily,normally,completely,count; where game_id = (...)` | how long two of them take, in seconds: Portal 2 with all three figures, Half-Life 2 with two and few players; Portal has no row |
