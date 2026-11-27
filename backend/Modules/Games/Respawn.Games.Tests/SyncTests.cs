@@ -621,18 +621,70 @@ public sealed class SyncTests
         // while the others wait: here a request connects, held in its migration.
         TestDatabase.EnsureCreated();
         using var migration = new HeldMigration();
-        await using var app = TestApp.Create(services: services => services.AddSingleton<ISchemaMigrator>(migration));
+        await using var app = TestApp.Create(Debug, services => services.AddSingleton<ISchemaMigrator>(migration));
         using var client = app.CreateClient();
         var connecting = client.GetAsync("/api/v1/config");
-        Assert.True(await migration.Entered.WaitAsync(TimeSpan.FromSeconds(30)), "the request reaches the migration");
+        await migration.EnteredAsync();
 
         Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(1, app.Logs.Count("library sync: skipped a look, the database is being connected to"));
         migration.Release();
         Assert.Equal(HttpStatusCode.OK, (await connecting).StatusCode);
         Assert.Equal(0, await TurnAsync(app));
 
+        Assert.Equal(1, app.Logs.Count("skipped a look"));
         Assert.Equal(0, app.Logs.Count("nothing can be scheduled for now"));
         Assert.Equal(0, app.Logs.Count("the schedule is back"));
+    }
+
+    [Fact]
+    public async Task A_connection_still_under_way_at_the_next_look_is_said_once()
+    {
+        TestDatabase.EnsureCreated();
+        using var migration = new HeldMigration();
+        await using var app = TestApp.Create(services: services => services.AddSingleton<ISchemaMigrator>(migration));
+        using var client = app.CreateClient();
+        var connecting = client.GetAsync("/api/v1/config");
+        await migration.EnteredAsync();
+
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(0, app.Logs.Count("nothing can be scheduled for now"));
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(1, app.Logs.Count("library sync: nothing can be scheduled for now: another request is still connecting"));
+
+        migration.Release();
+        Assert.Equal(HttpStatusCode.OK, (await connecting).StatusCode);
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(1, app.Logs.Count("library sync: the schedule is back"));
+    }
+
+    [Fact]
+    public async Task A_trouble_said_before_a_skipped_look_is_neither_repeated_nor_declared_over()
+    {
+        TestDatabase.EnsureCreated();
+        var clock = new TestClock();
+        using var migration = new HeldMigration { FailFirst = true };
+        await using var app = TestApp.Create(services: services => services
+            .AddSingleton<TimeProvider>(clock)
+            .AddSingleton<ISchemaMigrator>(migration));
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(1, app.Logs.Count("library sync: nothing can be scheduled for now: the schema migration failed"));
+
+        // The pause after a failed migration is over: a request connects, held in its migration.
+        clock.Advance(TimeSpan.FromMinutes(2));
+        using var client = app.CreateClient();
+        var connecting = client.GetAsync("/api/v1/config");
+        await migration.EnteredAsync();
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(1, app.Logs.Count("nothing can be scheduled for now"));
+        Assert.Equal(0, app.Logs.Count("the schedule is back"));
+
+        migration.Release();
+        Assert.Equal(HttpStatusCode.OK, (await connecting).StatusCode);
+        Assert.Equal(0, await TurnAsync(app));
+        Assert.Equal(1, app.Logs.Count("nothing can be scheduled for now"));
+        Assert.Equal(1, app.Logs.Count("library sync: the schedule is back"));
     }
 
     [Fact]
@@ -748,6 +800,9 @@ public sealed class SyncTests
         TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
 
     /// <summary>One turn of the schedule, as the app's timer runs it. Returns how many syncs ended.</summary>
+    /// <summary>Settings that let the schedules' debug lines reach the log.</summary>
+    private static Dictionary<string, string?> Debug => new() { ["Logging:LogLevel:Respawn.Games.Api"] = "Debug" };
+
     private static Task<int> TurnAsync(TestApp app) =>
         Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
 
@@ -816,26 +871,37 @@ public sealed class SyncTests
             Task.FromResult<IReadOnlyDictionary<Guid, LatestRuns>>(linkedAccountIds.ToDictionary(id => id, _ => new LatestRuns(null, null)));
     }
 
-    /// <summary>A last migration that waits for the test, so that the connection stays under way.</summary>
+    /// <summary>A last migration that waits for the test, so that the connection stays under way. It
+    /// fails if the test never lets it go, and lets it go when disposed, so that a failed test does not
+    /// leave a thread waiting.</summary>
     private sealed class HeldMigration : ISchemaMigrator, IDisposable
     {
-        private readonly ManualResetEventSlim _released = new();
+        private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _calls;
 
-        public SemaphoreSlim Entered { get; } = new(0);
+        /// <summary>Whether the first migration fails at once instead of being held.</summary>
+        public bool FailFirst { get; init; }
 
         public void Migrate(DbDataSource dataSource)
         {
-            Entered.Release();
-            _released.Wait(TimeSpan.FromSeconds(30));
+            if (FailFirst && Interlocked.Increment(ref _calls) == 1)
+            {
+                throw new InvalidOperationException("the test fails the first migration");
+            }
+
+            _entered.TrySetResult();
+            if (!_released.Task.Wait(TimeSpan.FromSeconds(30)))
+            {
+                throw new TimeoutException("the test never let the migration go");
+            }
         }
 
-        public void Release() => _released.Set();
+        public Task EnteredAsync() => _entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
 
-        public void Dispose()
-        {
-            _released.Dispose();
-            Entered.Dispose();
-        }
+        public void Release() => _released.TrySetResult();
+
+        public void Dispose() => Release();
     }
 
     /// <summary>A connector to a store that is not Steam, answering what a test makes it say.</summary>
