@@ -34,6 +34,7 @@
       [now]="now()"
       [choosing]="choosingCover()"
       (coverPicked)="chooseCover($event)"
+      (coverOpened)="choosing.reset()"
     />
 
     @if (neverLaunched()) {

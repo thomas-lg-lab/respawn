@@ -39,6 +39,8 @@ export class GameHero {
 
   /** A cover was chosen, by its source; null for the game's own. */
   readonly coverPicked = output<string | null>();
+  /** The covers were opened, to choose again. */
+  readonly coverOpened = output<void>();
 
   private readonly sanitizer = inject(DomSanitizer);
 

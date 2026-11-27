@@ -14,11 +14,12 @@ public interface ICoverService
     ///
     /// With a source, the cover of that source alone, a store or the game database, kept in a slot of
     /// its own (<see cref="ImageSlots"/>) and looked for again the same way. A source that has no cover
-    /// for the game, or that the instance does not read, gives the game's own cover instead.</summary>
+    /// for the game, that the instance does not read, or that does not answer with nothing of it kept,
+    /// gives the game's own cover instead.</summary>
     /// <exception cref="GamesException"><see cref="GamesError.UnknownGame"/>: the catalogue has no such
     /// game.</exception>
     /// <exception cref="SourceException">No source gave a cover, and one of them could not be read: the
-    /// game may have one. With a source: that source could not be read, and nothing of it is kept.</exception>
+    /// game may have one.</exception>
     Task<CoverAnswer> GetCoverAsync(Guid gameId, string? source, CancellationToken ct);
 
     /// <summary>The linked accounts whose store is to ask where covers are, the earliest link first:

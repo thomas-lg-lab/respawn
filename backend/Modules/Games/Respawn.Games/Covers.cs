@@ -111,3 +111,25 @@ public sealed class CoverGate
 /// <param name="SaidAt">When the database last said anything of the game: a store entry asked about, or
 /// its database game read; null when it never did.</param>
 public sealed record GameDataCover(string? ImageId, bool Asked, DateTimeOffset? SaidAt = null);
+
+/// <summary>What a game has a cover from, as far as the catalogue knows: the stores that said where
+/// theirs is, and whether the game database gives one.</summary>
+/// <param name="Stores">The stores, by name, in no order.</param>
+/// <param name="GameData">Whether the game database gives the game a cover.</param>
+public sealed record CoverOrigins(IReadOnlyCollection<string> Stores, bool GameData)
+{
+    public static readonly CoverOrigins None = new([], false);
+
+    /// <summary>The sources, in the order the game's own cover is looked for: the stores by name, then
+    /// the game database. The first is the game's own cover.</summary>
+    public IReadOnlyList<string> Sources(string gameDataSource) =>
+    [
+        .. Stores.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal),
+        .. GameData ? [gameDataSource] : Array.Empty<string>(),
+    ];
+
+    /// <summary>An owner's choice while it still is one: a source the game has a cover from, other than
+    /// its own cover's; null otherwise, the game showing its own.</summary>
+    public static string? Chosen(IReadOnlyList<string> sources, string? choice) =>
+        choice is not null && sources.Skip(1).Contains(choice, StringComparer.Ordinal) ? choice : null;
+}

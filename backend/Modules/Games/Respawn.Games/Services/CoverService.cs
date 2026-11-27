@@ -21,15 +21,30 @@ public sealed class CoverService(
         var entries = await catalogue.FindCoverEntriesAsync(gameId, ct)
             ?? throw new GamesException(GamesError.UnknownGame);
 
-        // A source's own cover, for who chose it; none from it, and the game's own is the answer.
+        // A source's own cover, for who chose it; none from it, or a source that does not answer with
+        // nothing of it kept, and the game's own is the answer.
         if (source is not null
             && (source == gameData.Source || sources.Any(store => store.Source == source))
-            && await GetCoverAsync(gameId, ImageSlots.Of(source), entries, ct) is { Cover: not null } chosen)
+            && await ChosenCoverAsync(gameId, ImageSlots.Of(source), entries, ct) is { Cover: not null } chosen)
         {
             return chosen;
         }
 
         return await GetCoverAsync(gameId, ImageSlots.Own, entries, ct);
+    }
+
+    /// <summary>The cover of one source's slot; null when that source could not be read and nothing of
+    /// it is kept.</summary>
+    private async Task<CoverAnswer?> ChosenCoverAsync(Guid gameId, string slot, IReadOnlyList<CoverEntry> entries, CancellationToken ct)
+    {
+        try
+        {
+            return await GetCoverAsync(gameId, slot, entries, ct);
+        }
+        catch (SourceException)
+        {
+            return null;
+        }
     }
 
     /// <summary>The cover of a slot: the game's own, or one source's.</summary>

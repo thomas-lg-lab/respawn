@@ -60,26 +60,14 @@ public sealed class GameService(
     private async Task<GameCovers> CoversAsync(Guid ownerId, Guid gameId, CancellationToken ct)
     {
         var sources = await CoverSourcesAsync(gameId, ct);
-        var chosen = await library.FindCoverChoiceAsync(ownerId, gameId, ct);
-        return new GameCovers(sources, chosen is not null && sources.Skip(1).Contains(chosen, StringComparer.Ordinal) ? chosen : null);
+        return new GameCovers(sources, CoverOrigins.Chosen(sources, await library.FindCoverChoiceAsync(ownerId, gameId, ct)));
     }
 
     /// <summary>The sources a game has a cover from, in the order its own cover is looked for: the
     /// stores that said where theirs is, then the game database when it gives one.</summary>
-    private async Task<List<string>> CoverSourcesAsync(Guid gameId, CancellationToken ct)
-    {
-        var entries = await catalogue.FindCoverEntriesAsync(gameId, ct) ?? [];
-        var data = await catalogue.FindGameDataCoverAsync(gameId, ct);
-        return
-        [
-            .. entries
-                .Where(entry => entry.CoverPath is not null)
-                .Select(entry => entry.Source)
-                .Distinct(StringComparer.Ordinal)
-                .Order(StringComparer.Ordinal),
-            .. data.ImageId is null ? [] : new[] { gameData.Source },
-        ];
-    }
+    private async Task<IReadOnlyList<string>> CoverSourcesAsync(Guid gameId, CancellationToken ct) =>
+        ((await catalogue.FindCoverOriginsAsync([gameId], ct)).GetValueOrDefault(gameId) ?? CoverOrigins.None)
+            .Sources(gameData.Source);
 
     /// <summary>The game's place among those launched, the most played first. Two games played as long
     /// share a position, and the next one is counted after both.</summary>

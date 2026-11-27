@@ -129,6 +129,46 @@ public sealed class CoverChoiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_chosen_source_that_does_not_answer_gives_the_games_own()
+    {
+        var (steam, igdb) = (new FakeSteam(), new FakeIgdb());
+        steam.Images["620/library_600x900.jpg"] = new(Jpeg);
+        igdb.Images[Portal2Igdb] = new(IgdbJpeg, Status: HttpStatusCode.ServiceUnavailable);
+        await using var app = await StartAsync(steam, igdb, keeps: true);
+        using var browser = app.Browser();
+        var portal2 = (await ReadAllAsync(app, browser))["Portal 2"];
+
+        using var cover = await browser.GetAsync($"/api/v1/games/{portal2}/cover?source=igdb");
+        Assert.Equal(HttpStatusCode.OK, cover.StatusCode);
+        Assert.Equal(Jpeg, await cover.Content.ReadAsByteArrayAsync());
+        Assert.DoesNotContain(Files(), file => file.StartsWith("cover/igdb/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task The_library_names_a_choice_only_while_the_games_page_does()
+    {
+        var (steam, igdb) = (new FakeSteam(), new FakeIgdb());
+        await using var app = await StartAsync(steam, igdb, keeps: false);
+        using var browser = app.Browser();
+        var games = await ReadAllAsync(app, browser);
+
+        // Choices the sources left behind as they changed: Steam's for Portal, whose store names no
+        // cover, and Steam's for Portal 2, its own cover's, which is no choice.
+        TestDatabase.Run(
+            $"""
+            INSERT INTO games.cover_choices (owner_id, game_id, source, chosen_at)
+            SELECT owner_id, chosen.game, chosen.source, now() FROM games.linked_accounts,
+                (VALUES ('{games["Portal"]}'::uuid, 'steam'), ('{games["Portal 2"]}'::uuid, 'steam')) AS chosen (game, source)
+            """);
+
+        foreach (var name in new[] { "Portal", "Portal 2" })
+        {
+            Assert.Null(Covers(await GameAsync(browser, games[name])).Chosen);
+            Assert.Equal(JsonValueKind.Null, (await LibraryGameAsync(browser, games[name])).GetProperty("cover_source").ValueKind);
+        }
+    }
+
+    [Fact]
     public async Task An_instance_that_keeps_no_image_passes_the_chosen_sources_cover_on()
     {
         var (steam, igdb) = (new FakeSteam(), new FakeIgdb());

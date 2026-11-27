@@ -107,6 +107,10 @@ public interface ICatalogue
     /// <summary>The cover the game database gives a game (<see cref="GameDataCover"/>).</summary>
     Task<GameDataCover> FindGameDataCoverAsync(Guid gameId, CancellationToken ct);
 
+    /// <summary>What each of these games has a cover from (<see cref="CoverOrigins"/>); a game with no
+    /// store entry is left out.</summary>
+    Task<IReadOnlyDictionary<Guid, CoverOrigins>> FindCoverOriginsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct);
+
     /// <summary>Whether the catalogue holds anything the game database said of a game.</summary>
     Task<bool> HasGameDataAsync(CancellationToken ct);
 

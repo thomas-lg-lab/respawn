@@ -262,6 +262,7 @@ export class Game {
 
   /** The cover the account sees for the game, by its source; null for the game's own. */
   protected chooseCover(source: string | null): void {
+    this.reset();
     this.choosing.mutate({ id: this.id(), source });
   }
 
@@ -274,5 +275,6 @@ export class Game {
     this.takingOut.reset();
     this.puttingBack.reset();
     this.dismissing.reset();
+    this.choosing.reset();
   }
 }

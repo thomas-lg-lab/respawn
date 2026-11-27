@@ -309,6 +309,22 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             entries.SelectMany(e => new[] { e.IgdbAskedAt, e.ReadAt }).Max());
     }
 
+    public async Task<IReadOnlyDictionary<Guid, CoverOrigins>> FindCoverOriginsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct)
+    {
+        Guid[] ids = [.. gameIds];
+        var rows = await (
+            from e in db.StoreEntries.AsNoTracking().Where(e => ids.Contains(e.GameId))
+            join g in db.IgdbGames.AsNoTracking() on e.IgdbId equals (long?)g.IgdbId into said
+            from g in said.DefaultIfEmpty()
+            select new { e.GameId, e.Source, HasPath = e.CoverPath != null, HasData = g != null && g.CoverImageId != null })
+            .ToListAsync(ct);
+        return rows.GroupBy(row => row.GameId).ToDictionary(
+            game => game.Key,
+            game => new CoverOrigins(
+                [.. game.Where(row => row.HasPath).Select(row => row.Source).Distinct(StringComparer.Ordinal)],
+                game.Any(row => row.HasData)));
+    }
+
     public Task<bool> HasGameDataAsync(CancellationToken ct) => db.IgdbGames.AnyAsync(ct);
 
     /// <summary>A game's store entries, each with what the game database said of its game.</summary>

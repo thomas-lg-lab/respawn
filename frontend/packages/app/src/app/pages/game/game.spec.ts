@@ -195,9 +195,9 @@ describe('Game', () => {
 
     cover.click();
     await harness.fixture.whenStable();
-    const radios = [...screen.querySelectorAll<HTMLButtonElement>('[data-cover-source]')];
+    const sources = [...screen.querySelectorAll<HTMLButtonElement>('[data-cover-source]')];
     expect(
-      radios.map((radio) => [radio.textContent.trim(), radio.getAttribute('aria-checked')]),
+      sources.map((source) => [source.textContent.trim(), source.getAttribute('aria-pressed')]),
     ).toEqual([
       ['Steam', 'true'],
       ['IGDB', 'false'],
@@ -234,12 +234,13 @@ describe('Game', () => {
     expect(cover.querySelector('img')?.getAttribute('src')).toBe(`/api/v1/games/${ID}/cover`);
   });
 
-  it('says a cover could not be chosen', async () => {
+  it('says a cover could not be chosen, until the covers are opened again', async () => {
     const { harness, server, screen } = await open(
       eldenRing({ covers: { sources: ['steam', 'igdb'], chosen: null } }),
     );
 
-    screen.querySelector<HTMLButtonElement>('[data-cover-button]')!.click();
+    const cover = screen.querySelector<HTMLButtonElement>('[data-cover-button]')!;
+    cover.click();
     await harness.fixture.whenStable();
     screen.querySelector<HTMLButtonElement>('[data-cover-source="igdb"]')!.click();
     await server.refuse(`/games/${ID}/cover-choice`, 409, 'no_such_cover');
@@ -248,6 +249,28 @@ describe('Game', () => {
     expect(text(screen, '[data-cover-refused]')).toBe(
       'La jaquette n’a pas pu être changée. Réessayez.',
     );
+
+    cover.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-cover-refused]')).toBeNull();
+  });
+
+  it('keeps the way to choose when the chosen cover cannot be shown', async () => {
+    const { harness, screen } = await open(
+      eldenRing({ covers: { sources: ['steam', 'igdb'], chosen: 'igdb' } }),
+    );
+
+    const cover = screen.querySelector<HTMLButtonElement>('[data-cover-button]')!;
+    cover.querySelector('img')!.dispatchEvent(new Event('error'));
+    await harness.fixture.whenStable();
+
+    // The initial stands in the cover's place, inside the button, which still opens the covers.
+    expect(cover.querySelector('[data-no-cover]')).not.toBeNull();
+    expect(screen.querySelectorAll('[data-cover-button]')).toHaveLength(1);
+    cover.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelector<HTMLElement>('[data-cover-panel]')!.hidden).toBe(false);
+    expect(screen.querySelector('[data-cover-reset]')).not.toBeNull();
   });
 
   it('gives its four figures, each with what it is measured against', async () => {
