@@ -5,16 +5,27 @@
       <h3 class="type-caption font-semibold text-muted">{{ day.name }}</h3>
       <ul class="flex flex-col">
         @for (game of day.games; track game.id) {
+          <!-- A game still in the library leads to its page: the link's box is stretched over
+               the row. One that left it has no page. -->
           <li
-            class="flex min-h-touch items-center justify-between gap-3 border-t border-line px-1.5 py-1.5"
+            class="relative flex min-h-touch items-center justify-between gap-3 border-t border-line px-1.5 py-1.5"
+            [class]="game.gone ? '' : 'transition-colors duration-hover hover:bg-surface-2'"
             [attr.data-game]="game.id"
             [attr.tabindex]="game.id === day.firstOfRest ? -1 : null"
             [attr.data-first-of-rest]="game.id === day.firstOfRest ? '' : null"
           >
             <span class="flex min-w-0 flex-col">
-              <span class="truncate font-semibold" data-name>{{
-                game.gone ? t('activity.gone') : (game.name ?? t('unnamed'))
-              }}</span>
+              @if (game.gone) {
+                <span class="truncate font-semibold" data-name>{{ t('activity.gone') }}</span>
+              } @else {
+                <a
+                  class="truncate font-semibold after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+                  data-name
+                  [routerLink]="gamePage(game.id)"
+                  [state]="from"
+                  >{{ game.name ?? t('unnamed') }}</a
+                >
+              }
               @if (game.total; as total) {
                 <span class="type-caption text-muted tabular-nums" data-total>{{
                   t('activity.total', { total: t('time.' + total.key, { count: total.count }) })

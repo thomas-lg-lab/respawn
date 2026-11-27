@@ -1,8 +1,10 @@
 import { Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { LibraryStats } from '@respawn/data';
 import { SegmentedBar, StatTile } from '@respawn/ui';
 import { formatCount, isOne, playtime } from '@app/format/format';
+import { libraryWords } from '@app/games/game-list';
 
 /** A figure as a tile shows it: a translation key and what goes in it. */
 interface Said {
@@ -13,16 +15,22 @@ interface Said {
 /**
  * The library in figures: the time played in all, over the last two weeks, and the games
  * never launched. Each says what it covers; one the store did not give is said unknown,
- * never shown as zero.
+ * never shown as zero. Each leads to the games it counts: the library, filtered and sorted to
+ * show them.
  */
 @Component({
   selector: 'rs-figures',
-  imports: [TranslocoDirective, SegmentedBar, StatTile],
+  imports: [RouterLink, TranslocoDirective, SegmentedBar, StatTile],
   templateUrl: './figures.html',
 })
 export class Figures {
   readonly stats = input.required<LibraryStats>();
   readonly language = input.required<string>();
+
+  /** Where each figure leads: the library, showing the games it counts. */
+  protected readonly launchedWords = libraryWords({ filter: 'launched', sort: 'playtime' });
+  protected readonly recentWords = libraryWords({ filter: 'recent' });
+  protected readonly neverWords = libraryWords({ filter: 'never' });
 
   protected readonly total = computed(() => this.duration(this.stats().playtime_seconds));
   protected readonly recent = computed(() => this.duration(this.stats().recent_playtime_seconds));

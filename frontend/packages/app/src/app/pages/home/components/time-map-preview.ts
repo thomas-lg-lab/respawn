@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LucideChevronRight } from '@lucide/angular';
 import { Card } from '@respawn/ui';
 import { treemap } from '@app/games/time-map';
 import type { TimeMap } from '@app/games/time-tiles';
@@ -30,7 +31,7 @@ const RATIO = 2.6;
  */
 @Component({
   selector: 'rs-time-map-preview',
-  imports: [RouterLink, TranslocoDirective, Card],
+  imports: [RouterLink, TranslocoDirective, LucideChevronRight, Card],
   templateUrl: './time-map-preview.html',
 })
 export class TimeMapPreview {

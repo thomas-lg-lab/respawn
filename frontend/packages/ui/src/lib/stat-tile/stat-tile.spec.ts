@@ -4,10 +4,16 @@ import { StatTile } from './stat-tile';
 
 @Component({
   imports: [StatTile],
-  template: `<rs-stat-tile caption="Never launched" figure="444" [note]="note()" />`,
+  template: `<rs-stat-tile
+    caption="Never launched"
+    figure="444"
+    [note]="note()"
+    [interactive]="interactive()"
+  />`,
 })
 class Host {
   readonly note = signal<string | undefined>('out of 1,305 games');
+  readonly interactive = signal(false);
 }
 
 describe('StatTile', () => {
@@ -27,5 +33,20 @@ describe('StatTile', () => {
     await fixture.whenStable();
 
     expect((fixture.nativeElement as HTMLElement).querySelector('.note')).toBeNull();
+  });
+
+  it('says it leads somewhere when it is a link’s box, with no word of its own', async () => {
+    const fixture = TestBed.createComponent(Host);
+    await fixture.whenStable();
+    const tile = (fixture.nativeElement as HTMLElement).querySelector('rs-stat-tile')!;
+    expect(tile.hasAttribute('data-interactive')).toBe(false);
+    expect(tile.querySelector('.chevron')).toBeNull();
+
+    fixture.componentInstance.interactive.set(true);
+    await fixture.whenStable();
+
+    expect(tile.hasAttribute('data-interactive')).toBe(true);
+    expect(tile.querySelector('.chevron')?.getAttribute('aria-hidden')).toBe('true');
+    expect(tile.querySelector('.caption')?.textContent).toBe('Never launched');
   });
 });

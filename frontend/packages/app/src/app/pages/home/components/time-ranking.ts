@@ -1,24 +1,30 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LucideChevronRight } from '@lucide/angular';
 import { cameFrom, gamePage } from '@app/games/game-page';
 import { Card, SegmentedBar } from '@respawn/ui';
 import { formatCount, isOne, saidPlaytime } from '@app/format/format';
+import { libraryWords } from '@app/games/game-list';
 import type { Ranking } from '../library-blocks';
 
 /**
  * Where the time went: the most played games, each with a bar against the first, the
- * playtime of the whole library, and what the launched games it does not name add up to.
+ * playtime of the whole library, and what the launched games it does not name add up to. A
+ * game leads to its page; the title and those other games, to the whole ranking: the
+ * library's launched games, the most played first.
  */
 @Component({
   selector: 'rs-time-ranking',
-  imports: [RouterLink, TranslocoDirective, Card, SegmentedBar],
+  imports: [RouterLink, TranslocoDirective, LucideChevronRight, Card, SegmentedBar],
   templateUrl: './time-ranking.html',
 })
 export class TimeRanking {
   /** A game leads to its page, which leads back here. */
   protected readonly gamePage = gamePage;
   protected readonly from = cameFrom('home');
+  /** The whole ranking: the launched games of the library, the most played first. */
+  protected readonly libraryWords = libraryWords({ filter: 'launched', sort: 'playtime' });
 
   readonly ranking = input.required<Ranking>();
   readonly language = input.required<string>();

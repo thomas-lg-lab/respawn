@@ -1,6 +1,16 @@
 <rs-card class="flex flex-col gap-3.5" data-ranking *transloco="let t; prefix: 'home'">
   <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-    <h2 class="type-card-title">{{ t('ranking.title') }}</h2>
+    <!-- The whole ranking is the library's launched games, the most played first. -->
+    <h2 class="type-card-title">
+      <a
+        class="-mx-1 inline-flex items-center gap-1 rounded-thumb px-1 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+        routerLink="/library"
+        data-ranking-link
+        [queryParams]="libraryWords"
+        >{{ t('ranking.title') }}
+        <svg lucideChevronRight class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg
+      ></a>
+    </h2>
     <span class="type-caption text-muted tabular-nums" data-ranking-total>{{
       t('ranking.total', { time: t('time.' + total().key, { count: total().count }) })
     }}</span>
@@ -8,12 +18,12 @@
   <ol class="flex flex-col">
     @for (row of rows(); track row.id) {
       <li
-        class="relative grid min-h-touch grid-cols-[2em_minmax(0,1fr)_auto] items-center gap-3 border-t border-line px-1.5 wide:grid-cols-[2em_minmax(0,11em)_minmax(0,1fr)_4.5em]"
+        class="relative grid min-h-touch grid-cols-[2em_minmax(0,1fr)_auto] items-center gap-3 border-t border-line px-1.5 transition-colors duration-hover hover:bg-surface-2 wide:grid-cols-[2em_minmax(0,11em)_minmax(0,1fr)_4.5em]"
         [attr.data-game]="row.id"
       >
         <span class="type-label text-muted" aria-hidden="true">{{ row.rank }}</span>
         <a
-          class="truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+          class="truncate font-semibold after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
           data-name
           [routerLink]="gamePage(row.id)"
           [state]="from"
@@ -27,11 +37,18 @@
     }
   </ol>
   @if (others(); as rest) {
-    <span class="type-caption text-muted tabular-nums" data-ranking-others>{{
-      t(rest.one ? 'ranking.othersOne' : 'ranking.othersMany', {
-        count: rest.count,
-        time: t('time.' + rest.time.key, { count: rest.time.count }),
-      })
-    }}</span>
+    <a
+      class="-mx-1.5 inline-flex min-h-touch items-center gap-1 self-start rounded-thumb px-1.5 type-caption text-muted tabular-nums transition-colors duration-hover hover:text-text hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+      routerLink="/library"
+      data-ranking-others
+      [queryParams]="libraryWords"
+      >{{
+        t(rest.one ? 'ranking.othersOne' : 'ranking.othersMany', {
+          count: rest.count,
+          time: t('time.' + rest.time.key, { count: rest.time.count }),
+        })
+      }}
+      <svg lucideChevronRight class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg
+    ></a>
   }
 </rs-card>
