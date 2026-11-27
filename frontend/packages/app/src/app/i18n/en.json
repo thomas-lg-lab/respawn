@@ -91,6 +91,7 @@
     "menu": "Account and settings",
     "administrator": "Administrator",
     "settingsKept": "These settings are kept on your account.",
+    "gameDataFrom": "Game data from",
     "settingsNotKept": "Your account could not keep this setting: for now it holds in this browser only.",
     "signOut": "Sign out",
     "providers": "Sign-in providers",
@@ -378,6 +379,7 @@
       "unknown": "Last session unknown"
     },
     "storePage": "Steam page",
+    "gameDataPage": "IGDB page",
     "launch": "Launch in Steam",
     "hours": "{{ count }} h",
     "minutes": "{{ count }} min",

@@ -61,7 +61,7 @@
     }
   </p>
 
-  @if (store() || launch()) {
+  @if (store() || gameData() || launch()) {
     <div
       class="col-span-2 mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-2 wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-center"
     >
@@ -74,6 +74,18 @@
           [href]="address"
         >
           {{ t('storePage') }}
+          <svg lucideArrowUpRight class="size-4" [strokeWidth]="2" aria-hidden="true"></svg>
+        </a>
+      }
+      @if (gameData(); as address) {
+        <a
+          class="inline-flex min-h-touch items-center gap-2 font-semibold hover:underline"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-game-data
+          [href]="address"
+        >
+          {{ t('gameDataPage') }}
           <svg lucideArrowUpRight class="size-4" [strokeWidth]="2" aria-hidden="true"></svg>
         </a>
       }

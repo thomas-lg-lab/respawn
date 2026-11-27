@@ -68,6 +68,15 @@ export type LibraryYear = Schemas['YearResponse'];
  */
 export type Game = Schemas['GameResponse'];
 
+/** A game's page in the game database (IGDB), when it knows the game. */
+export type GameDataPage = Schemas['GameDataPageResponse'];
+
+/** The sources the instance credits (`GET /api/v1/credits`). */
+export type Credits = Schemas['CreditsResponse'];
+
+/** One of them: its name as people know it, and its home page. */
+export type Credit = Schemas['CreditResponse'];
+
 /** A game's rank: its place among the games launched, the most played first, and how many those are. */
 export type GameRank = Schemas['GameRankResponse'];
 

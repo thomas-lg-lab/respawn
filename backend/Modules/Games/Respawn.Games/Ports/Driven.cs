@@ -104,6 +104,12 @@ public interface ICatalogue
     /// and gave nothing newer.</summary>
     Task CheckedImageAsync(Guid gameId, string kind, DateTimeOffset at, CancellationToken ct);
 
+    /// <summary>The cover the game database gives a game (<see cref="GameDataCover"/>).</summary>
+    Task<GameDataCover> FindGameDataCoverAsync(Guid gameId, CancellationToken ct);
+
+    /// <summary>Whether the catalogue holds anything the game database said of a game.</summary>
+    Task<bool> HasGameDataAsync(CancellationToken ct);
+
     /// <summary>The stores, among these, that have a store entry the game database is to be asked
     /// about: never asked, or asked before the moment <paramref name="due"/> says for what it answered.</summary>
     Task<IReadOnlyList<string>> ListStoresWithGameDataDueAsync(IReadOnlyCollection<string> stores, GameDataDue due, CancellationToken ct);
@@ -280,6 +286,18 @@ public interface IGameDataSource
 
     /// <summary>The most games of a store asked about at once.</summary>
     int MatchesPerRequest { get; }
+
+    /// <summary>Its name, as people know it, for the credit its terms ask for.</summary>
+    string Label { get; }
+
+    /// <summary>Its home page, which the credit leads to.</summary>
+    Uri Home { get; }
+
+    /// <summary>A cover from its image host, by the id its games give it (<see cref="GameFacts.CoverImageId"/>),
+    /// or null when the host has no such image. Nothing here needs the instance's access: its images are
+    /// public.</summary>
+    /// <exception cref="SourceException">The image host could not be read.</exception>
+    Task<Cover?> ReadCoverAsync(string imageId, CancellationToken ct);
 
     /// <summary>The most of its own games asked about at once (<see cref="ReadGamesAsync"/>).</summary>
     int GamesPerRequest { get; }

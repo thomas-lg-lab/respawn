@@ -13,6 +13,7 @@ import { filter } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import {
   AccountQueries,
+  GameQueries,
   LibraryQueries,
   LinkedAccountQueries,
   PROVIDER_OUTCOME,
@@ -79,6 +80,7 @@ const SAME_PATH: IsActiveMatchOptions = {
 export class Shell {
   private readonly queries = inject(AccountQueries);
   private readonly linkedAccounts = inject(LinkedAccountQueries);
+  private readonly gameQueries = inject(GameQueries);
   private readonly library = inject(LibraryQueries);
   private readonly router = inject(Router);
 
@@ -95,6 +97,11 @@ export class Shell {
   protected readonly menuOpened = signal(false);
   protected readonly accountProviders = injectQuery(() => ({
     ...this.queries.providers(),
+    enabled: this.menuOpened(),
+  }));
+  /** The sources the instance credits, said in the same menu: asked with it. */
+  protected readonly credits = injectQuery(() => ({
+    ...this.gameQueries.credits(),
     enabled: this.menuOpened(),
   }));
 

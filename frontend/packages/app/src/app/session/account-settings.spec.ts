@@ -34,6 +34,7 @@ describe('the settings on the account', () => {
     if (trigger.getAttribute('aria-expanded') !== 'true') {
       trigger.click();
       // The menu asks for the providers the first time it opens.
+      await api().answer('/credits', { credits: [] });
       await api().answer('/me/providers', []);
       await harness.fixture.whenStable();
     }

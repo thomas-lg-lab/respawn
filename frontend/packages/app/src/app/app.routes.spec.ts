@@ -141,6 +141,7 @@ describe('routes', () => {
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
     // The menu asks for the providers, and which ones the account is linked to.
+    await server.answer('/credits', { credits: [] });
     await server.answer('/me/providers', []);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
@@ -160,6 +161,7 @@ describe('routes', () => {
     const { harness, server, router, screen } = await visit('/', signedIn);
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    await server.answer('/credits', { credits: [] });
     await server.answer('/me/providers', []);
     await harness.fixture.whenStable();
     button(screen, 'Se déconnecter').click();
@@ -210,6 +212,7 @@ describe('routes', () => {
     );
 
     screen.querySelector<HTMLButtonElement>('button[aria-label="Compte et réglages"]')!.click();
+    await server.answer('/credits', { credits: [] });
     await server.answer('/me/providers', [
       { name: 'sso', label: 'Mon SSO', linked: true },
       { name: 'other', label: 'Autre', linked: false },

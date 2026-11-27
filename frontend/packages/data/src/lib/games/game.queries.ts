@@ -2,7 +2,7 @@ import { Service, inject } from '@angular/core';
 import { QueryClient, mutationOptions, queryOptions } from '@tanstack/angular-query';
 import { Api } from '../api/api';
 import { libraryKeys } from '../library/library.queries';
-import type { Game, GameMonths, LibraryMonth } from '../models/models';
+import type { Credits, Game, GameMonths, LibraryMonth } from '../models/models';
 
 /**
  * The keys of what the cache holds about one game and one month. They are under the
@@ -12,6 +12,7 @@ export const gameKeys = {
   one: (id: string) => [...libraryKeys.everything, 'game', id] as const,
   months: (id: string) => [...libraryKeys.everything, 'game', id, 'months'] as const,
   month: (month: string) => [...libraryKeys.everything, 'month', month] as const,
+  credits: ['credits'] as const,
 };
 
 /**
@@ -40,6 +41,15 @@ export class GameQueries {
       queryFn: () => this.api.get<GameMonths>(`/games/${encodeURIComponent(id)}/months`),
       staleTime: Infinity,
       retry: false,
+    });
+  }
+
+  /** The sources the instance credits: IGDB once it is used. It changes with the instance only. */
+  credits() {
+    return queryOptions({
+      queryKey: gameKeys.credits,
+      queryFn: () => this.api.get<Credits>('/credits'),
+      staleTime: Infinity,
     });
   }
 

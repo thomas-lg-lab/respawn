@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import type { Account } from '@respawn/data';
+import type { Account, Credit } from '@respawn/data';
 import { ACCOUNT } from '@app/testing/app-testing';
 import { testTranslations } from '@app/testing/translations';
 import { AccountMenu } from './account-menu';
@@ -13,12 +13,14 @@ import { AccountMenu } from './account-menu';
     theme="system"
     character="pixel"
     [account]="account()"
+    [credits]="credits()"
     (themePicked)="picked.push($event)"
     (signOut)="picked.push('sign-out')"
   />`,
 })
 class Host {
   readonly account = signal<Account>(ACCOUNT);
+  readonly credits = signal<readonly Credit[]>([]);
   readonly picked: string[] = [];
 }
 
@@ -58,6 +60,21 @@ describe('AccountMenu', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(panel.hidden).toBe(false);
     expect(panel.getAttribute('aria-label')).toBe('Compte et réglages');
+  });
+
+  it('credits the sources whose data the instance shows, and none otherwise', async () => {
+    const { fixture, element } = await create();
+    expect(element.querySelector('[data-credit]')).toBeNull();
+
+    fixture.componentInstance.credits.set([
+      { source: 'igdb', label: 'IGDB', url: 'https://www.igdb.com/' },
+    ]);
+    await fixture.whenStable();
+
+    const credit = element.querySelector('[data-credit="igdb"]');
+    expect(credit?.textContent.replace(/\s+/g, ' ').trim()).toBe('Données de jeu : IGDB');
+    expect(credit?.querySelector('a')?.getAttribute('href')).toBe('https://www.igdb.com/');
+    expect(credit?.querySelector('a')?.getAttribute('rel')).toBe('noopener noreferrer');
   });
 
   it('says who is signed in, and that they are the administrator', async () => {

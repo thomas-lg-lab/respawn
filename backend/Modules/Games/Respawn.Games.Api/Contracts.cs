@@ -220,6 +220,8 @@ public sealed record YearResponse(int Year, long Seconds, string Source, DateOnl
 /// <param name="Rank">Where the game stands among the games launched; null when it was never launched.</param>
 /// <param name="Removed">What the account took out of its library of this game, as the removed games
 /// give it; null when nothing was.</param>
+/// <param name="GameData">The game's page in the game database (IGDB), when it knows the game; null
+/// otherwise, or while it was not asked.</param>
 public sealed record GameResponse(
     Guid GameId,
     string? Name,
@@ -229,7 +231,8 @@ public sealed record GameResponse(
     DateTimeOffset? LastPlayedAt,
     IReadOnlyList<LibraryEntryResponse> Entries,
     GameRankResponse? Rank,
-    RemovedGameResponse? Removed)
+    RemovedGameResponse? Removed,
+    GameDataPageResponse? GameData)
 {
     public static GameResponse From(GameView view) =>
         new(
@@ -241,8 +244,26 @@ public sealed record GameResponse(
             view.Owned?.LastPlayedAt,
             [.. (view.Owned?.Entries ?? []).Select(LibraryEntryResponse.From)],
             view.Rank is { } rank ? new GameRankResponse(rank.Position, rank.Launched) : null,
-            view.Removed is { } removed ? RemovedGameResponse.From(removed) : null);
+            view.Removed is { } removed ? RemovedGameResponse.From(removed) : null,
+            view.Game.GameData is { } page ? new GameDataPageResponse(page.Source, page.Url) : null);
 }
+
+/// <param name="Source">The game database: igdb.</param>
+/// <param name="Url">The game's page there, for a person to follow.</param>
+public sealed record GameDataPageResponse(string Source, string Url);
+
+/// <summary>The sources the instance credits.</summary>
+/// <param name="Credits">One per source; empty when none is to be credited.</param>
+public sealed record CreditsResponse(IReadOnlyList<CreditResponse> Credits)
+{
+    public static CreditsResponse From(IReadOnlyList<Credit> credits) =>
+        new([.. credits.Select(credit => new CreditResponse(credit.Source, credit.Label, credit.Url.ToString()))]);
+}
+
+/// <param name="Source">The source, as the API names it: igdb.</param>
+/// <param name="Label">Its name, as people know it.</param>
+/// <param name="Url">Its home page, which the credit leads to.</param>
+public sealed record CreditResponse(string Source, string Label, string Url);
 
 /// <summary>The games the signed-in account took out of its library.</summary>
 /// <param name="Games">One item per game, by name.</param>

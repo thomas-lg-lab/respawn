@@ -217,8 +217,12 @@ public sealed class GameTests
         string[] Fields(string schema) =>
             [.. schemas.GetProperty(schema).GetProperty("properties").EnumerateObject().Select(field => field.Name)];
         Assert.Equal(
-            ["game_id", "name", "stores", "playtime_seconds", "recent_playtime_seconds", "last_played_at", "entries", "rank", "removed"],
+            ["game_id", "name", "stores", "playtime_seconds", "recent_playtime_seconds", "last_played_at", "entries", "rank", "removed", "game_data"],
             Fields("GameResponse"));
+        Assert.Equal(["source", "url"], Fields("GameDataPageResponse"));
+        Assert.Equal(["200", "401"], Statuses("/api/v1/credits"));
+        Assert.Equal(["credits"], Fields("CreditsResponse"));
+        Assert.Equal(["source", "label", "url"], Fields("CreditResponse"));
         Assert.Equal(["store_entry_id", "source", "external_id"], Fields("GameStoreResponse"));
         Assert.Equal(["position", "launched"], Fields("GameRankResponse"));
         Assert.Equal(["games"], Fields("RemovedGamesResponse"));

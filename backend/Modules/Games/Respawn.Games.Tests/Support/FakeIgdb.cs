@@ -61,14 +61,24 @@ internal sealed class FakeIgdb
     public static string Recorded(string file) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Recorded", "igdb", file));
 
+    /// <summary>The images of IGDB's image host, by their path under the host's folder
+    /// (<c>t_cover_big_2x/co0fake71.jpg</c>). A path not here answers 404.</summary>
+    public Dictionary<string, FakeImage> Images { get; } = [];
+
+    /// <summary>The paths the image host was asked for, with the authorization each carried.</summary>
+    public List<(string Path, string? Authorization, string? ClientId)> ImageRequests { get; } = [];
+
+    /// <summary>The settings that give the instance this IGDB's client id and secret.</summary>
+    public static Dictionary<string, string?> Settings() => new()
+    {
+        ["RESPAWN_IGDB_CLIENT_ID"] = ClientId,
+        ["RESPAWN_IGDB_CLIENT_SECRET"] = ClientSecret,
+    };
+
     /// <summary>The app with its database, given a client id and secret and reaching this IGDB in memory.</summary>
     public Task<TestApp> StartAppAsync(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null)
     {
-        var all = new Dictionary<string, string?>
-        {
-            ["RESPAWN_IGDB_CLIENT_ID"] = ClientId,
-            ["RESPAWN_IGDB_CLIENT_SECRET"] = ClientSecret,
-        };
+        var all = Settings();
         foreach (var (key, value) in settings ?? [])
         {
             all[key] = value;
@@ -76,10 +86,41 @@ internal sealed class FakeIgdb
 
         return TestApp.StartAsync(all, collection =>
         {
-            collection.AddHttpClient(IgdbClient.TokenClientName).ConfigurePrimaryHttpMessageHandler(() => new TwitchTransport(this));
-            collection.AddHttpClient(IgdbClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new Transport(this));
+            Reach(collection);
             services?.Invoke(collection);
         });
+    }
+
+    /// <summary>Makes the app reach this IGDB in memory: Twitch, the API and the image host.</summary>
+    public void Reach(IServiceCollection collection)
+    {
+        collection.AddHttpClient(IgdbClient.TokenClientName).ConfigurePrimaryHttpMessageHandler(() => new TwitchTransport(this));
+        collection.AddHttpClient(IgdbClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => new Transport(this));
+        collection.AddHttpClient(IgdbImages.ClientName).ConfigurePrimaryHttpMessageHandler(() => new ImagesTransport(this));
+    }
+
+    private sealed class ImagesTransport(FakeIgdb igdb) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri!.AbsolutePath["/igdb/image/upload/".Length..];
+            lock (igdb.ImageRequests)
+            {
+                igdb.ImageRequests.Add((
+                    path,
+                    request.Headers.Authorization?.ToString(),
+                    request.Headers.TryGetValues("Client-ID", out var ids) ? string.Join(',', ids) : null));
+            }
+
+            if (!igdb.Images.TryGetValue(path, out var image))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            }
+
+            var content = new ByteArrayContent(image.Bytes);
+            content.Headers.TryAddWithoutValidation("Content-Type", image.ContentType);
+            return Task.FromResult(new HttpResponseMessage(image.Status) { Content = content });
+        }
     }
 
     private static HttpResponseMessage Answer(HttpStatusCode status, string body)

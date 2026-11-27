@@ -7,8 +7,14 @@ public sealed class GameService(
     ICatalogue catalogue,
     ILibraryStore library,
     IEnumerable<ILibrarySource> sources,
+    IGameDataSource gameData,
     TimeProvider clock) : IGameService
 {
+    public async Task<IReadOnlyList<Credit>> GetCreditsAsync(CancellationToken ct) =>
+        gameData.HasAccess || await catalogue.HasGameDataAsync(ct)
+            ? [new Credit(gameData.Source, gameData.Label, gameData.Home)]
+            : [];
+
     public async Task<GameView> GetGameAsync(Guid ownerId, Guid gameId, CancellationToken ct)
     {
         var game = await catalogue.FindGameAsync(gameId, ct)

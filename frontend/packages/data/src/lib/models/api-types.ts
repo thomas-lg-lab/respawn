@@ -478,6 +478,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The sources the instance credits
+         * @description The sources whose data the instance shows and whose terms ask for a credit, each with the page it leads to: IGDB once the instance has access to it, or holds anything it said. Empty otherwise.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreditsResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/games/{id}/months": {
         parameters: {
             query?: never;
@@ -1584,12 +1632,24 @@ export interface components {
             password_min_length: number;
             oidc_providers: components["schemas"]["ProviderResponse"][];
         };
+        CreditResponse: {
+            source: string;
+            label: string;
+            url: string;
+        };
+        CreditsResponse: {
+            credits: components["schemas"]["CreditResponse"][];
+        };
         ErrorBody: {
             code: string;
             message: string;
         };
         ErrorResponse: {
             error?: components["schemas"]["ErrorBody"];
+        };
+        GameDataPageResponse: {
+            source: string;
+            url: string;
         };
         GameMonthResponse: {
             /** Format: date */
@@ -1621,6 +1681,7 @@ export interface components {
             entries: components["schemas"]["LibraryEntryResponse"][];
             rank: null | components["schemas"]["GameRankResponse"];
             removed: null | components["schemas"]["RemovedGameResponse"];
+            game_data: null | components["schemas"]["GameDataPageResponse"];
         };
         GameStoreResponse: {
             /** Format: uuid */

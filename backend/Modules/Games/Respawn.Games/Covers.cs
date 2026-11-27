@@ -102,3 +102,10 @@ public sealed class CoverGate
         }
     }
 }
+
+/// <summary>The cover the game database gives a game, as far as the catalogue knows it.</summary>
+/// <param name="ImageId">What names its cover in the database's image host: that of the first of the
+/// game's store entries, in the order covers are looked for, whose database game has one; null when none
+/// has.</param>
+/// <param name="Asked">Whether the database was asked about every store entry of the game.</param>
+public sealed record GameDataCover(string? ImageId, bool Asked);
