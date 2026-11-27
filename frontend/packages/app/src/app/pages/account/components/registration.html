@@ -8,16 +8,31 @@
         {{ t(open() ? 'account.registration.openText' : 'account.registration.closedText') }}
       </p>
     </div>
-    <button
-      rsButton
-      type="button"
-      data-registration-change
-      [disabled]="busy()"
-      (click)="changed.emit(!open())"
-    >
-      {{ t(open() ? 'account.registration.close' : 'account.registration.openIt') }}
-    </button>
+    @if (!confirming()) {
+      <button
+        rsButton
+        type="button"
+        data-registration-change
+        [disabled]="busy()"
+        (click)="open() ? changed.emit(false) : confirm(true)"
+      >
+        {{ t(open() ? 'account.registration.close' : 'account.registration.openIt') }}
+      </button>
+    }
   </div>
+  @if (confirming()) {
+    <p class="max-w-[44em]" role="alert" data-registration-warning>
+      {{ t('account.registration.warning') }}
+    </p>
+    <div class="flex flex-wrap gap-2">
+      <button rsButton variant="primary" type="button" data-registration-confirm (click)="openIt()">
+        {{ t('account.registration.confirm') }}
+      </button>
+      <button rsButton type="button" data-registration-cancel (click)="confirm(false)">
+        {{ t('account.registration.cancel') }}
+      </button>
+    </div>
+  }
   @if (failure(); as key) {
     <rs-banner tone="warn" role="alert" data-registration-failure>{{ t(key) }}</rs-banner>
   }

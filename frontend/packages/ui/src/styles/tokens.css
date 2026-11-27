@@ -98,6 +98,7 @@
   --rs-radius-pill: 999px;
   --rs-radius-hero: 20px;
   --rs-radius-card: 16px;
+  --rs-radius-row: 14px; /* used by nothing yet: kept for the rows to come */
   --rs-radius-field: 12px;
   --rs-radius-thumb: 6px;
 

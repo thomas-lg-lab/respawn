@@ -89,7 +89,7 @@
   </section>
 
   <!-- The instance, for its administrator: nobody else is told what it offers here. -->
-  @if (offered.data(); as options) {
+  @if (me.data()?.is_admin && offered.data(); as options) {
     <section class="flex flex-col gap-4" data-instance>
       <div class="flex flex-col gap-1">
         <h2 class="type-card-title">{{ t('account.instance.title') }}</h2>

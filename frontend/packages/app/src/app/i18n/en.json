@@ -131,6 +131,9 @@
       "closed": "Registration is closed",
       "closedText": "Nobody can create an account, except through a sign-in provider set to create them.",
       "openIt": "Open registration",
+      "warning": "Once open, anyone who can reach this instance can create an account and link a Steam library, read with the instance’s keys. You can close it again at any time.",
+      "confirm": "Open it to everyone",
+      "cancel": "Keep it closed",
       "close": "Close registration"
     },
     "sources": {

@@ -154,7 +154,8 @@ public sealed class SettingsTests
             return await inner.SaveSettingsAsync(accountId, settings, ct);
         }
 
-        public Task SetRegistrationOpenAsync(bool open, CancellationToken ct) => inner.SetRegistrationOpenAsync(open, ct);
+        public Task SetRegistrationOpenAsync(Account actor, bool open, CancellationToken ct) =>
+            inner.SetRegistrationOpenAsync(actor, open, ct);
 
         public Task LogoutAsync(string? sessionToken, CancellationToken ct) => inner.LogoutAsync(sessionToken, ct);
     }

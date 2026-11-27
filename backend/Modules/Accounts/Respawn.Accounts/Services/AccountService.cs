@@ -139,8 +139,11 @@ public sealed partial class AccountService(
     public Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct) =>
         users.SaveSettingsAsync(accountId, settings, ct);
 
-    public Task SetRegistrationOpenAsync(bool open, CancellationToken ct) =>
-        settings.SetFlagAsync(InstanceFlags.RegistrationOpen, open, ct);
+    public Task SetRegistrationOpenAsync(Account actor, bool open, CancellationToken ct) =>
+        // The rule is here, whatever asks: a route today, something else tomorrow.
+        actor.IsAdmin
+            ? settings.SetFlagAsync(InstanceFlags.RegistrationOpen, open, ct)
+            : throw new AccountException(AccountError.Forbidden);
 
     public async Task LogoutAsync(string? sessionToken, CancellationToken ct)
     {

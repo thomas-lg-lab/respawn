@@ -372,6 +372,26 @@ public sealed class HistoryTests
     }
 
     [Fact]
+    public async Task What_a_reading_that_hid_the_playtime_kept_from_being_seen_is_of_the_day_it_is_seen()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 10));
+        // The reading after the 1st says nothing: the store hid the playtime that morning.
+        await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 0));
+        // The next one says what was played the evening of the 1st, a moment before the reading before
+        // it: nothing says the time was not played since, so it is of the day it is seen, once.
+        await RecordAsync(app, account.Id, Day(3), Day(1).AddHours(16), ("620", "Portal 2", 40));
+        var portal2 = (await GamesAsync(app))["620"];
+
+        Assert.Equal([(Date(3), portal2, 1800L)], await DaysAsync(browser));
+        Assert.Empty(await DaysAsync(browser, "?to=2026-11-02"));
+        Assert.Equal([(Date(3), portal2, 1800L)], await DaysAsync(browser, "?from=2026-11-03"));
+    }
+
+    [Fact]
     public async Task A_reading_at_midnight_is_of_the_day_that_starts_and_one_just_before_of_the_day_that_ends()
     {
         await using var app = await StartAsync();

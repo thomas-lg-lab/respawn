@@ -38,7 +38,7 @@ public sealed class ConfigController(IAccountService accounts) : ControllerBase
 [Route("api/v1/instance")]
 [Produces("application/json")]
 [AccountRefusals]
-public sealed class InstanceController(IAccountService accounts) : ControllerBase
+public sealed class InstanceController(IAccountService accounts, ILogger<InstanceController> logger) : ControllerBase
 {
     [HttpPut("registration")]
     [Authorize(Policy = AccountsApi.Administrator)]
@@ -53,7 +53,9 @@ public sealed class InstanceController(IAccountService accounts) : ControllerBas
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> SetRegistration(RegistrationRequest body, CancellationToken ct)
     {
-        await accounts.SetRegistrationOpenAsync(body.Open!.Value, ct);
+        var actor = HttpContext.Features.GetRequiredFeature<Account>();
+        await accounts.SetRegistrationOpenAsync(actor, body.Open!.Value, ct);
+        logger.LogInformation("registration {State} by the administrator {Account}", body.Open.Value ? "opened" : "closed", actor.Id);
         return NoContent();
     }
 }
@@ -90,6 +92,7 @@ public sealed class AuthController(
     public async Task<IActionResult> Logout(CancellationToken ct)
     {
         await accounts.LogoutAsync(SessionCookie.Carried(HttpContext), ct);
+        await SessionCookie.CloseUnprefixedAsync(HttpContext, accounts, cookie, logger);
         SessionCookie.Clear(Response, cookie);
         return NoContent();
     }

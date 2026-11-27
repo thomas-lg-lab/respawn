@@ -337,7 +337,17 @@ describe('Account', () => {
     const { harness, server, screen } = await open([linkedAccount()]);
 
     expect(text(screen, '[data-registration-state]')).toBe('Les inscriptions sont fermées');
+    // Opening is asked twice: the first press only says what it means, and may be taken back.
     click(screen, '[data-registration-change]');
+    await harness.fixture.whenStable();
+    expect(text(screen, '[data-registration-warning]')).toContain('toute personne');
+    click(screen, '[data-registration-cancel]');
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-registration-warning]')).toBeNull();
+
+    click(screen, '[data-registration-change]');
+    await harness.fixture.whenStable();
+    click(screen, '[data-registration-confirm]');
     const sent = await server.request('/instance/registration');
     expect(sent.request.body).toEqual({ open: true });
     sent.flush(null, { status: 204, statusText: '' });
@@ -346,7 +356,7 @@ describe('Account', () => {
     expect(text(screen, '[data-registration-state]')).toBe('Les inscriptions sont ouvertes');
     expect(text(screen, '[data-registration-change]')).toBe('Fermer les inscriptions');
 
-    // Refused: said on the card, and nothing changes.
+    // Closing is one press. Refused: said on the card, and nothing changes.
     click(screen, '[data-registration-change]');
     await server.refuse('/instance/registration', 403, 'forbidden');
     await harness.fixture.whenStable();

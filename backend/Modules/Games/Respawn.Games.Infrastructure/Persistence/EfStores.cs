@@ -897,7 +897,9 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
 
     /// <summary>The readings of every game over the days asked, each with the total before it: {0} is
     /// the owner, {1} and {2} the first instant asked and the first one after the last. The first
-    /// reading at or after {2} is read too: what it found may have been played before.
+    /// reading at or after {2} is read too: what it found may have been played before. Every game
+    /// has a known total in it once it had one (a reading that hides the playtime keeps the total
+    /// known before), so no later reading can date a gain before {2}.
     ///
     /// The observations are asked snapshot by snapshot, and OFFSET 0 is what keeps it so: PostgreSQL
     /// does not merge a subquery that has one into the rest, and would otherwise read the whole table

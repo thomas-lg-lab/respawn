@@ -131,6 +131,9 @@
       "closed": "Les inscriptions sont fermées",
       "closedText": "Personne ne peut créer de compte, sauf par un fournisseur de connexion réglé pour en créer.",
       "openIt": "Ouvrir les inscriptions",
+      "warning": "Une fois ouvertes, toute personne qui atteint cette instance peut y créer un compte et lier une bibliothèque Steam, lue avec les clés de l’instance. Vous pouvez les refermer à tout moment.",
+      "confirm": "Les ouvrir à tous",
+      "cancel": "Les laisser fermées",
       "close": "Fermer les inscriptions"
     },
     "sources": {

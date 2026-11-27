@@ -307,6 +307,37 @@ public sealed class AccountsTests
     }
 
     [Fact]
+    public async Task A_session_of_before_the_prefix_is_closed_at_the_next_sign_in_and_its_cookie_taken_away()
+    {
+        // The same database, read by the app as it was (the plain name) and as it is over HTTPS.
+        await using var before = await TestApp.StartAsync();
+        using var browser = before.Browser();
+        var old = (await browser.RegisterAsync()).Headers.GetValues("Set-Cookie").Single().Split(';')[0];
+        Assert.StartsWith("respawn_session=", old, StringComparison.Ordinal);
+
+        await using var after = TestApp.Create(new() { ["RESPAWN_COOKIE_SECURE"] = "true" });
+        using var updated = after.Browser();
+        using var signIn = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
+        {
+            Content = JsonContent.Create(new { email = "first@example.org", password = TestApp.Password }),
+        };
+        signIn.Headers.Add("Cookie", old);
+        var signedIn = await updated.SendAsync(signIn);
+        Assert.Equal(HttpStatusCode.OK, signedIn.StatusCode);
+
+        // The new session under the prefixed name, and the old cookie told to go.
+        var set = signedIn.Headers.GetValues("Set-Cookie").ToArray();
+        Assert.Contains(set, cookie => cookie.StartsWith("__Host-respawn_session=", StringComparison.Ordinal) && !cookie.StartsWith("__Host-respawn_session=;", StringComparison.Ordinal));
+        Assert.Contains(set, cookie => cookie.StartsWith("respawn_session=;", StringComparison.Ordinal));
+
+        // Its session is closed too: read under the plain name again, it opens nothing.
+        using var replay = before.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/me");
+        request.Headers.Add("Cookie", old);
+        Assert.Equal(HttpStatusCode.Unauthorized, await replay.SendAsync(request).StatusAsync());
+    }
+
+    [Fact]
     public async Task A_sign_in_closes_the_session_the_browser_carried()
     {
         await using var app = await TestApp.StartAsync();

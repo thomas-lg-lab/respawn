@@ -68,7 +68,7 @@ internal static class ProviderSignIn
             ? options.OidcProviders.FirstOrDefault(provider => provider.Name == scheme[SchemePrefix.Length..])
             : null;
 
-    public static void Configure(OpenIdConnectOptions oidc, OidcProvider provider, HttpClient backchannel)
+    public static void Configure(OpenIdConnectOptions oidc, OidcProvider provider, SessionCookieOptions session, HttpClient backchannel)
     {
         oidc.Authority = provider.Issuer;
         oidc.ClientId = provider.ClientId;
@@ -105,11 +105,19 @@ internal static class ProviderSignIn
         // stays good in their browser.
         oidc.RemoteAuthenticationTimeout = TimeSpan.FromMinutes(10);
         // The cookies that tie the provider's answer to the browser that asked: Lax, which the navigation
-        // back follows, and for HTTPS only when the app is reached over HTTPS, so it works on localhost.
+        // back follows. Over HTTPS they are this host's alone, like the session's: another service on a
+        // neighbouring subdomain could otherwise plant the pair of a sign-in it started, and send a
+        // visitor to its end, signed in to an account that is not theirs. The prefix wants Secure and
+        // the whole site as its path. On localhost, for HTTPS only when the app is reached over it.
         foreach (var cookie in new[] { oidc.CorrelationCookie, oidc.NonceCookie })
         {
             cookie.SameSite = SameSiteMode.Lax;
-            cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            cookie.SecurePolicy = session.Secure ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
+            if (session.Secure)
+            {
+                cookie.Name = session.Prefixed(cookie.Name!);
+                cookie.Path = "/";
+            }
         }
 
         oidc.Events = new OpenIdConnectEvents
@@ -280,7 +288,8 @@ internal static class ProviderSignIn
 }
 
 /// <summary>The options of each provider's scheme, from the settings.</summary>
-internal sealed class ProviderSchemeOptions(AccountOptions accounts, IHttpClientFactory http) : IConfigureNamedOptions<OpenIdConnectOptions>
+internal sealed class ProviderSchemeOptions(AccountOptions accounts, SessionCookieOptions session, IHttpClientFactory http)
+    : IConfigureNamedOptions<OpenIdConnectOptions>
 {
     public void Configure(OpenIdConnectOptions options)
     {
@@ -290,7 +299,7 @@ internal sealed class ProviderSchemeOptions(AccountOptions accounts, IHttpClient
     {
         if (ProviderSignIn.Find(accounts, name) is { } provider)
         {
-            ProviderSignIn.Configure(options, provider, http.CreateClient(ProviderSignIn.HttpClientName));
+            ProviderSignIn.Configure(options, provider, session, http.CreateClient(ProviderSignIn.HttpClientName));
         }
     }
 }
