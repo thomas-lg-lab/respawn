@@ -410,10 +410,6 @@
       "since": "counted since {{ date }}",
       "best": "Best month"
     },
-    "never": {
-      "title": "Never launched.",
-      "text": "Its time, month by month, will show here from the first session."
-    },
     "noHistory": "No month of play known yet: its time will show here month by month, as syncs go by.",
     "loading": "Loading the game…",
     "notFound": {

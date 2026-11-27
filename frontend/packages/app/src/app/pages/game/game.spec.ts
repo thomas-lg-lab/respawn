@@ -560,7 +560,7 @@ describe('Game', () => {
     expect(text(screen, '[data-month-place]')).toBe('Le seul jeu joué ce mois-là');
   });
 
-  it('says a game never launched has no time yet, and draws no figure', async () => {
+  it('says a game never launched in the hero alone, and draws no figure', async () => {
     const never = eldenRing({
       playtime_seconds: 0,
       recent_playtime_seconds: 0,
@@ -571,7 +571,7 @@ describe('Game', () => {
     const { screen } = await open(never, []);
 
     expect(text(screen, '[data-status]')).toBe('Jamais lancé');
-    expect(screen.querySelector('[data-never]')).not.toBeNull();
+    expect(screen.querySelector('[data-never]')).toBeNull();
     expect(screen.querySelector('[data-figures]')).toBeNull();
     expect(screen.querySelector('[data-calendar]')).toBeNull();
   });

@@ -110,16 +110,9 @@
       [attr.data-split]="known.game_data?.time_to_beat ? '' : null"
     >
       <div class="contents wide:flex wide:min-w-0 wide:flex-col wide:gap-5">
-        <div class="flex min-w-0 flex-col gap-5">
-          @if (neverLaunched()) {
-            <section
-              class="flex flex-col gap-1.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
-              data-never
-            >
-              <p class="font-semibold">{{ t('game.never.title') }}</p>
-              <p class="text-muted">{{ t('game.never.text') }}</p>
-            </section>
-          } @else {
+        <!-- A game never launched has no time to show: the hero says so, and nothing stands here. -->
+        @if (!neverLaunched()) {
+          <div class="flex min-w-0 flex-col gap-5">
             @if (calendar(); as drawn) {
               @if (drawn.rows.length) {
                 <rs-month-calendar
@@ -161,8 +154,8 @@
                 <span class="sr-only">{{ t('game.loading') }}</span>
               </div>
             }
-          }
-        </div>
+          </div>
+        }
         @if (known.game_data; as said) {
           @if (said.summary || tags().length || said.released_on) {
             <rs-game-about

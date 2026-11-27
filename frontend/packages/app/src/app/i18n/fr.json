@@ -410,10 +410,6 @@
       "since": "compté depuis le {{ date }}",
       "best": "Meilleur mois"
     },
-    "never": {
-      "title": "Jamais lancé.",
-      "text": "Son temps, mois par mois, s’écrira ici dès la première session."
-    },
     "noHistory": "Aucun mois de jeu connu pour l’instant : son temps s’écrira ici mois par mois, au fil des synchronisations.",
     "loading": "Chargement du jeu…",
     "notFound": {
