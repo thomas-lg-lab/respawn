@@ -107,6 +107,37 @@ export const LIBRARY_SEARCH = 'q';
 export const LIBRARY_FILTER = 'filter';
 export const LIBRARY_SORT = 'sort';
 
+/**
+ * A genre or a theme the Library is narrowed to, as the game database names it: a game's page
+ * leads there from each of its own.
+ */
+export const LIBRARY_GENRE = 'genre';
+
+/**
+ * A game's page on IGDB, as the API gives it, or none: an address that does not lead to IGDB's
+ * own site is never followed.
+ */
+export function igdbPage(url: string | null | undefined): string | null {
+  return url?.startsWith('https://www.igdb.com/games/') ? url : null;
+}
+
+/** A game's genres, then its themes, as the game database names them; none while it says none. */
+export function gameTags(
+  said: { genres: string[]; themes: string[] } | null | undefined,
+): string[] {
+  return said ? [...said.genres, ...said.themes] : [];
+}
+
+/** The games that bear a genre or a theme, as the game database names it; all of them for none. */
+export function withGenre(games: readonly LibraryGame[], genre: string): LibraryGame[] {
+  return genre ? games.filter((game) => gameTags(game).includes(genre)) : [...games];
+}
+
+/** The genre an address asks for; none when it is blank. */
+export function askedGenre(asked: string | null): string {
+  return asked?.trim() ?? '';
+}
+
 /** The filter an address asks for; every game when it asks for none it knows. */
 export function askedFilter(asked: string | null): LibraryFilter {
   return FILTERS.find((each) => each === asked) ?? 'all';

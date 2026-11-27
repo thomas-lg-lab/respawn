@@ -111,6 +111,11 @@ public interface ICatalogue
     /// store entry is left out.</summary>
     Task<IReadOnlyDictionary<Guid, CoverOrigins>> FindCoverOriginsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct);
 
+    /// <summary>What the game database said of each of these games: of the first of its store entries,
+    /// in the order the covers are looked for, that the database knows. A game it knows by none of
+    /// them is left out.</summary>
+    Task<IReadOnlyDictionary<Guid, GameFacts>> FindGameFactsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct);
+
     /// <summary>Whether the catalogue holds anything the game database said of a game.</summary>
     Task<bool> HasGameDataAsync(CancellationToken ct);
 

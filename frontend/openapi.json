@@ -1797,10 +1797,14 @@
           }
         }
       },
-      "GameDataPageResponse": {
+      "GameDataResponse": {
         "required": [
           "source",
-          "url"
+          "url",
+          "genres",
+          "themes",
+          "summary",
+          "time_to_beat"
         ],
         "type": "object",
         "properties": {
@@ -1809,6 +1813,34 @@
           },
           "url": {
             "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "themes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "time_to_beat": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TimeToBeatResponse"
+              }
+            ]
           }
         }
       },
@@ -1949,7 +1981,7 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/GameDataPageResponse"
+                "$ref": "#/components/schemas/GameDataResponse"
               }
             ]
           },
@@ -2089,7 +2121,9 @@
           "recent_playtime_seconds",
           "last_played_at",
           "entries",
-          "cover_source"
+          "cover_source",
+          "genres",
+          "themes"
         ],
         "type": "object",
         "properties": {
@@ -2135,6 +2169,18 @@
               "null",
               "string"
             ]
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "themes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2674,6 +2720,45 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "TimeToBeatResponse": {
+        "required": [
+          "hastily_seconds",
+          "normally_seconds",
+          "completely_seconds",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "hastily_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "normally_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "completely_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "count": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },

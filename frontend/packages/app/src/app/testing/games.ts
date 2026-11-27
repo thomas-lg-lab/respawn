@@ -12,6 +12,8 @@ export function game(name: string | null, values: Partial<LibraryGame> = {}): Li
     last_played_at: null,
     entries: [],
     cover_source: null,
+    genres: [],
+    themes: [],
     ...values,
   };
 }

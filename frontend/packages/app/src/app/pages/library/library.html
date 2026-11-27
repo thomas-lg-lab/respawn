@@ -16,12 +16,14 @@
     } @else {
       <rs-library-toolbar
         [search]="search()"
+        [genre]="genre()"
         [filter]="filter()"
         [sort]="sort()"
         [view]="view()"
         [counts]="counts()"
         [language]="currentLanguage()"
         (searchCleared)="clearSearch()"
+        (genreCleared)="clearGenre()"
         (filterPicked)="pickFilter($event)"
         (sortPicked)="pickSort($event)"
         (viewPicked)="pickView($event)"

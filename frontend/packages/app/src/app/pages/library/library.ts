@@ -17,6 +17,7 @@ import { GameTable } from './components/game-table';
 import { LibraryToolbar } from './components/library-toolbar';
 import {
   LIBRARY_FILTER,
+  LIBRARY_GENRE,
   LIBRARY_SEARCH,
   LIBRARY_SORT,
   type LibraryFilter,
@@ -24,6 +25,7 @@ import {
   type LibraryView,
   VIEWS,
   askedFilter,
+  askedGenre,
   askedSort,
   filterCounts,
   kept,
@@ -31,6 +33,7 @@ import {
   longestPlaytime,
   matching,
   sorted,
+  withGenre,
 } from '@app/games/game-list';
 
 /** How many games a "show more" adds: a list of a thousand rows is not drawn at once. */
@@ -101,6 +104,11 @@ export class Library {
    * browser's history leads back, each address shows what it said.
    */
   protected readonly filter = this.asked((words) => askedFilter(words.get(LIBRARY_FILTER)));
+  /**
+   * A genre or a theme the library is narrowed to, as a game's page leads there: the games that
+   * bear it, the filters counted among them.
+   */
+  protected readonly genre = this.asked((words) => askedGenre(words.get(LIBRARY_GENRE)));
   protected readonly sort = this.asked((words) => askedSort(words.get(LIBRARY_SORT)));
   protected readonly view = signal<LibraryView>(readChoice(VIEW_KEY, VIEWS) ?? 'covers');
   /**
@@ -120,15 +128,18 @@ export class Library {
    * back from a game is the entry that was left, with the steps it had.
    */
   private readonly steps = linkedSignal({
-    source: () => [this.search(), this.filter(), this.sort(), this.arrivals()].join('\n'),
+    source: () =>
+      [this.search(), this.genre(), this.filter(), this.sort(), this.arrivals()].join('\n'),
     computation: () => keptSteps(this.location.getState()),
   });
 
   /** How many games the library holds, in the reader's language, and whether that is one. */
   protected readonly owned = computed(() => this.counted(this.games.data()?.length ?? 0));
 
-  /** What the search keeps: the filters count among these. */
-  private readonly found = computed(() => matching(this.games.data() ?? [], this.search()));
+  /** What the search and the genre keep: the filters count among these. */
+  private readonly found = computed(() =>
+    withGenre(matching(this.games.data() ?? [], this.search()), this.genre()),
+  );
   protected readonly counts = computed(() => filterCounts(this.found()));
 
   private readonly listed = computed(() =>
@@ -156,6 +167,11 @@ export class Library {
   /** The whole library again: the title leaves the address, whatever else it says stays. */
   protected clearSearch(): void {
     this.rewrite({ [LIBRARY_SEARCH]: null });
+  }
+
+  /** Every genre again: the genre leaves the address, whatever else it says stays. */
+  protected clearGenre(): void {
+    this.rewrite({ [LIBRARY_GENRE]: null });
   }
 
   /**

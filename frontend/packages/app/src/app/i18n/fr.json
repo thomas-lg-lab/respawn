@@ -345,7 +345,9 @@
     "noMatch": "Aucun jeu ne correspond.",
     "shownOne": "{{ shown }} jeu affiché sur {{ total }}",
     "shownMany": "{{ shown }} jeux affichés sur {{ total }}",
-    "more": "Afficher la suite"
+    "more": "Afficher la suite",
+    "genre": "Genre : « {{ genre }} »",
+    "clearGenre": "Tous les genres"
   },
   "time": {
     "title": "Temps",
@@ -461,6 +463,29 @@
         "putBack": "Remettre dans ma bibliothèque",
         "dismiss": "Le laisser retiré"
       }
+    },
+    "tags": {
+      "label": "Genres et thèmes",
+      "more": "+ {{ count }}",
+      "moreLabel": "Voir tous les genres et thèmes, {{ count }} de plus"
+    },
+    "durations": {
+      "title": "Durées",
+      "you": "Vous · {{ time }}",
+      "hastily": "En allant vite",
+      "normally": "Normalement",
+      "completely": "À 100 %",
+      "left": "reste {{ time }}",
+      "reached": "atteint",
+      "beyond": "atteint, + {{ time }}",
+      "sourceOne": "D’après 1 joueur, sur IGDB",
+      "sourceMany": "D’après {{ count }} joueurs, sur IGDB",
+      "source": "Sur IGDB"
+    },
+    "about": {
+      "title": "À propos",
+      "tags": "Tous ses genres et thèmes",
+      "source": "Données du jeu : IGDB"
     }
   },
   "notFound": {

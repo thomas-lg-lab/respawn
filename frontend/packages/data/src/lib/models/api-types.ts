@@ -1884,9 +1884,13 @@ export interface components {
             sources: string[];
             chosen: null | string;
         };
-        GameDataPageResponse: {
+        GameDataResponse: {
             source: string;
             url: string;
+            genres: string[];
+            themes: string[];
+            summary: null | string;
+            time_to_beat: null | components["schemas"]["TimeToBeatResponse"];
         };
         GameMonthResponse: {
             /** Format: date */
@@ -1918,7 +1922,7 @@ export interface components {
             entries: components["schemas"]["LibraryEntryResponse"][];
             rank: null | components["schemas"]["GameRankResponse"];
             removed: null | components["schemas"]["RemovedGameResponse"];
-            game_data: null | components["schemas"]["GameDataPageResponse"];
+            game_data: null | components["schemas"]["GameDataResponse"];
             covers: components["schemas"]["GameCoversResponse"];
         };
         GameStoreResponse: {
@@ -1970,6 +1974,8 @@ export interface components {
             last_played_at: null | string;
             entries: components["schemas"]["LibraryEntryResponse"][];
             cover_source: null | string;
+            genres: string[];
+            themes: string[];
         };
         LibraryHistoryResponse: {
             /** Format: date-time */
@@ -2112,6 +2118,16 @@ export interface components {
             last: null | components["schemas"]["SyncRunResponse"];
             /** Format: date-time */
             last_succeeded_at: null | string;
+        };
+        TimeToBeatResponse: {
+            /** Format: int32 */
+            hastily_seconds: null | number;
+            /** Format: int32 */
+            normally_seconds: null | number;
+            /** Format: int32 */
+            completely_seconds: null | number;
+            /** Format: int32 */
+            count: null | number;
         };
         UserResponse: {
             /** Format: uuid */

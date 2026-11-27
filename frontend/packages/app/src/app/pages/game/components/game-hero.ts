@@ -4,10 +4,21 @@ import { LucideArrowUpRight, LucidePlay } from '@lucide/angular';
 import { type Game, coverAddress } from '@respawn/data';
 import { Button, Cover } from '@respawn/ui';
 import { formatAgo, formatMoment } from '@app/format/format';
-import { coverHue, isMissing, steamStoreAddress, titleInitial } from '@app/games/game-list';
+import {
+  coverHue,
+  gameTags,
+  igdbPage,
+  isMissing,
+  steamStoreAddress,
+  titleInitial,
+} from '@app/games/game-list';
 import { steamLaunchLink } from '@app/games/steam-launch';
 import { type Recency, recency } from '@app/games/time-map';
 import { CoverChoice } from './cover-choice';
+import { GameTags } from './game-tags';
+
+/** How many genres and themes the hero shows; the page's "About" holds them all. */
+export const HERO_TAGS = 4;
 
 /**
  * Where the game stands for its owner, in one fact under its title: its last session, never
@@ -26,7 +37,15 @@ type Status =
  */
 @Component({
   selector: 'rs-game-hero',
-  imports: [TranslocoDirective, LucideArrowUpRight, LucidePlay, Button, Cover, CoverChoice],
+  imports: [
+    TranslocoDirective,
+    LucideArrowUpRight,
+    LucidePlay,
+    Button,
+    Cover,
+    CoverChoice,
+    GameTags,
+  ],
   templateUrl: './game-hero.html',
 })
 export class GameHero {
@@ -41,6 +60,13 @@ export class GameHero {
   readonly coverPicked = output<string | null>();
   /** The covers were opened, to choose again. */
   readonly coverOpened = output<void>();
+  /** The genres and themes the hero leaves out were asked for. */
+  readonly moreTagsAsked = output<void>();
+
+  /** The game's genres, then its themes, as the game database names them. */
+  protected readonly tags = computed(() => gameTags(this.game().game_data));
+  protected readonly shownTags = computed(() => this.tags().slice(0, HERO_TAGS));
+  protected readonly moreTags = computed(() => Math.max(0, this.tags().length - HERO_TAGS));
 
   protected readonly hue = computed(() => coverHue(this.game().game_id));
   protected readonly cover = computed(() =>
@@ -84,8 +110,5 @@ export class GameHero {
   protected readonly store = computed(() => steamStoreAddress(this.game().stores));
 
   /** The game's page on IGDB, when IGDB knows the game: only an address on IGDB's own site. */
-  protected readonly gameData = computed(() => {
-    const url = this.game().game_data?.url;
-    return url?.startsWith('https://www.igdb.com/games/') ? url : null;
-  });
+  protected readonly gameData = computed(() => igdbPage(this.game().game_data?.url));
 }

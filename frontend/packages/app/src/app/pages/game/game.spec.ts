@@ -1,7 +1,14 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import type { Game, GameMonth, LibraryEntry, LibraryStats, LibraryYears } from '@respawn/data';
+import type {
+  Game,
+  GameData,
+  GameMonth,
+  LibraryEntry,
+  LibraryStats,
+  LibraryYears,
+} from '@respawn/data';
 import { TEST_LIBRARY_STATS, TEST_LINKED_ACCOUNT } from '@respawn/data/testing';
 import { ACCOUNT, LIBRARY_FIRST_PAGE, api, button, start, text } from '@app/testing/app-testing';
 import { ago } from '@app/testing/games';
@@ -33,6 +40,24 @@ function entry(values: Partial<LibraryEntry> = {}): LibraryEntry {
   };
 }
 
+/** What IGDB says of Elden Ring: five genres and themes, and how long it takes. */
+function igdb(values: Partial<GameData> = {}): GameData {
+  return {
+    source: 'igdb',
+    url: 'https://www.igdb.com/games/elden-ring',
+    genres: ['Role-playing (RPG)', 'Adventure'],
+    themes: ['Action', 'Fantasy', 'Open world'],
+    summary: 'An action RPG in a vast open world.',
+    time_to_beat: {
+      hastily_seconds: 58 * HOUR,
+      normally_seconds: 100 * HOUR,
+      completely_seconds: 133 * HOUR,
+      count: 1240,
+    },
+    ...values,
+  };
+}
+
 /** Elden Ring, as its owner sees it: third of the games launched, played yesterday. */
 function eldenRing(values: Partial<Game> = {}): Game {
   return {
@@ -45,7 +70,7 @@ function eldenRing(values: Partial<Game> = {}): Game {
     entries: [entry()],
     rank: { position: 3, launched: 457 },
     removed: null,
-    game_data: { source: 'igdb', url: 'https://www.igdb.com/games/elden-ring' },
+    game_data: igdb(),
     covers: { sources: ['steam'], chosen: null },
     ...values,
   };
@@ -170,9 +195,114 @@ describe('Game', () => {
 
   it('never leads elsewhere for IGDB', async () => {
     const { screen } = await open(
-      eldenRing({ game_data: { source: 'igdb', url: 'https://elsewhere.example.org/games/x' } }),
+      eldenRing({ game_data: igdb({ url: 'https://elsewhere.example.org/games/x' }) }),
     );
     expect(screen.querySelector('[data-game-data]')).toBeNull();
+  });
+
+  it('shows its first genres in the hero, each leading to the library narrowed to it', async () => {
+    const { screen } = await open();
+
+    const shown = [...screen.querySelectorAll('[data-hero] [data-tag]')];
+    expect(shown.map((tag) => tag.textContent.trim())).toEqual([
+      'Role-playing (RPG)',
+      'Adventure',
+      'Action',
+      'Fantasy',
+    ]);
+    // IGDB's words, in English, said as such.
+    expect(shown[0]?.getAttribute('lang')).toBe('en');
+    expect(shown[0]?.getAttribute('href')).toBe('/library?genre=Role-playing%20(RPG)');
+    // The fifth is in "About", which the last pill leads to.
+    expect(text(screen, '[data-more-tags]')).toBe('+ 1');
+    expect(screen.querySelector('[data-more-tags]')?.getAttribute('aria-label')).toBe(
+      'Voir tous les genres et thèmes, 1 de plus',
+    );
+    screen.querySelector<HTMLButtonElement>('[data-more-tags]')!.click();
+    expect(document.activeElement?.id).toBe('about');
+  });
+
+  it('says what IGDB says the game is, with all its genres and where it comes from', async () => {
+    const { screen } = await open();
+
+    expect(text(screen, '[data-about] h2')).toBe('À propos');
+    expect(text(screen, '[data-summary]')).toBe('An action RPG in a vast open world.');
+    expect(screen.querySelector('[data-summary]')?.getAttribute('lang')).toBe('en');
+    expect(screen.querySelectorAll('[data-about] [data-tag]')).toHaveLength(5);
+    expect(text(screen, '[data-about-source]')).toBe('Données du jeu : IGDB');
+    expect(screen.querySelector('[data-about-source]')?.getAttribute('href')).toBe(
+      'https://www.igdb.com/games/elden-ring',
+    );
+  });
+
+  it('sets its time against how long players say it takes', async () => {
+    const { screen } = await open();
+
+    expect(text(screen, '[data-you]')).toBe('Vous · 142 h');
+    const pace = (name: string) => {
+      const row = screen.querySelector(`[data-pace="${name}"]`)!;
+      return [
+        row.getAttribute('data-state'),
+        text(row, '[data-pace-words]')?.replace(/\s+/g, ' '),
+        text(row, '[data-pace-time]'),
+      ];
+    };
+    expect(pace('hastily')).toEqual(['reached', 'En allant vite · atteint', '58 h']);
+    expect(pace('normally')).toEqual(['reached', 'Normalement · atteint', '100 h']);
+    // Past the longest pace, by how much.
+    expect(pace('completely')).toEqual(['beyond', 'À 100 % · atteint, + 9 h', '133 h']);
+    expect(screen.querySelectorAll('[data-durations] rs-segmented-bar')).toHaveLength(3);
+    expect(text(screen, '[data-durations-source]')?.replace(/\s/g, ' ')).toBe(
+      'D’après 1 240 joueurs, sur IGDB',
+    );
+  });
+
+  it('says what is left of each pace, and only the paces players gave', async () => {
+    const { screen } = await open(
+      eldenRing({
+        playtime_seconds: 70 * HOUR,
+        game_data: igdb({
+          time_to_beat: {
+            hastily_seconds: 58 * HOUR,
+            normally_seconds: 100 * HOUR,
+            completely_seconds: null,
+            count: null,
+          },
+        }),
+      }),
+    );
+
+    expect(
+      [...screen.querySelectorAll('[data-pace]')].map((row) => row.getAttribute('data-state')),
+    ).toEqual(['reached', 'left']);
+    expect(text(screen, '[data-pace="normally"]')).toContain('reste 30 h');
+    expect(text(screen, '[data-durations-source]')).toBe('Sur IGDB');
+  });
+
+  it('gives a game never launched how long it takes, with nothing set against it', async () => {
+    const never = eldenRing({
+      playtime_seconds: 0,
+      recent_playtime_seconds: 0,
+      last_played_at: null,
+      rank: null,
+      entries: [entry({ playtime_seconds: 0, recent_playtime_seconds: 0, last_played_at: null })],
+    });
+    const { screen } = await open(never, []);
+
+    expect(screen.querySelectorAll('[data-pace]')).toHaveLength(3);
+    expect(screen.querySelector('[data-you]')).toBeNull();
+    expect(screen.querySelector('[data-durations] rs-segmented-bar')).toBeNull();
+    expect(
+      [...screen.querySelectorAll('[data-pace]')].map((row) => row.getAttribute('data-state')),
+    ).toEqual(['none', 'none', 'none']);
+  });
+
+  it('shows nothing of IGDB where IGDB says nothing of the game', async () => {
+    const { screen } = await open(eldenRing({ game_data: null }));
+
+    expect(screen.querySelector('[data-tags]')).toBeNull();
+    expect(screen.querySelector('[data-about]')).toBeNull();
+    expect(screen.querySelector('[data-durations]')).toBeNull();
   });
 
   it('offers to choose the cover only where the game has more than one', async () => {

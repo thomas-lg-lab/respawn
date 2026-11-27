@@ -20,8 +20,13 @@ import { ago, game } from '@app/testing/games';
 /** A small library, as the API gives it: by title. */
 function library(): LibraryGame[] {
   return [
-    game('Celeste'),
-    game('Hades', { playtime_seconds: 360000, last_played_at: ago(400) }),
+    game('Celeste', { genres: ['Platform', 'Indie'] }),
+    game('Hades', {
+      playtime_seconds: 360000,
+      last_played_at: ago(400),
+      genres: ['Role-playing (RPG)', 'Indie'],
+      themes: ['Action'],
+    }),
     game('Pokémon', { playtime_seconds: null, recent_playtime_seconds: null }),
     game('Portal 2', {
       playtime_seconds: 7200,
@@ -319,6 +324,26 @@ describe('Library', () => {
     sort.dispatchEvent(new Event('change'));
     await harness.fixture.whenStable();
     expect(names(screen)).toEqual(['Celeste', 'Hades', 'Pokémon', 'Portal 2']);
+  });
+
+  it('keeps the genre or theme its address asks for, a game’s page leading there', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?genre=Indie&sort=name');
+
+    expect(text(screen, '[data-genre]')).toBe('Genre : « Indie »');
+    expect(names(screen)).toEqual(['Celeste', 'Hades']);
+    expect(text(screen, '[data-filter="all"]')).toBe('Tous 2');
+    expect(text(screen, '[data-filter="never"]')).toBe('Jamais lancés 1');
+
+    // A theme narrows it the same way.
+    await harness.navigateByUrl('/library?genre=Action');
+    expect(names(screen)).toEqual(['Hades']);
+
+    button(screen, 'Tous les genres').click();
+    await harness.fixture.whenStable();
+
+    expect(names(screen)).toHaveLength(4);
+    expect(screen.querySelector('[data-genre]')).toBeNull();
+    expect(TestBed.inject(Location).path()).toBe('/library');
   });
 
   it('says that no game matches, and lists every game again once the search is cleared', async () => {

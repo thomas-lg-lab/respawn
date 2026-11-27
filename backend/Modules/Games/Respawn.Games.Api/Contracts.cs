@@ -20,6 +20,8 @@ public sealed record LibraryResponse(int Total, int Offset, int Limit, IReadOnly
 /// <param name="Entries">The ways the game is owned: one per store entry and linked account, at least one.</param>
 /// <param name="CoverSource">The source of the cover the account chose for the game, to ask for in the
 /// cover's source parameter; null while it chose none, and the game's own cover is shown.</param>
+/// <param name="Genres">The game's genres, as IGDB names them (English); empty while IGDB says none.</param>
+/// <param name="Themes">The game's themes, likewise.</param>
 public sealed record LibraryGameResponse(
     Guid GameId,
     string? Name,
@@ -27,7 +29,9 @@ public sealed record LibraryGameResponse(
     long? RecentPlaytimeSeconds,
     DateTimeOffset? LastPlayedAt,
     IReadOnlyList<LibraryEntryResponse> Entries,
-    string? CoverSource)
+    string? CoverSource,
+    IReadOnlyList<string> Genres,
+    IReadOnlyList<string> Themes)
 {
     public static LibraryGameResponse From(OwnedGame game) =>
         new(
@@ -37,7 +41,9 @@ public sealed record LibraryGameResponse(
             Seconds.Of(game.RecentPlaytime),
             game.LastPlayedAt,
             [.. game.Entries.Select(LibraryEntryResponse.From)],
-            game.CoverSource);
+            game.CoverSource,
+            game.Genres ?? [],
+            game.Themes ?? []);
 }
 
 /// <param name="StoreEntryId">The game as its store knows it. With <paramref name="LinkedAccountId"/>, unique in a library.</param>
@@ -224,7 +230,7 @@ public sealed record YearResponse(int Year, long Seconds, string Source, DateOnl
 /// <param name="Rank">Where the game stands among the games launched; null when it was never launched.</param>
 /// <param name="Removed">What the account took out of its library of this game, as the removed games
 /// give it; null when nothing was.</param>
-/// <param name="GameData">The game's page in the game database (IGDB), when it knows the game; null
+/// <param name="GameData">What the game database (IGDB) says of the game, when it knows it; null
 /// otherwise, or while it was not asked.</param>
 /// <param name="Covers">The sources the game has a cover from, and the one the account chose.</param>
 public sealed record GameResponse(
@@ -237,7 +243,7 @@ public sealed record GameResponse(
     IReadOnlyList<LibraryEntryResponse> Entries,
     GameRankResponse? Rank,
     RemovedGameResponse? Removed,
-    GameDataPageResponse? GameData,
+    GameDataResponse? GameData,
     GameCoversResponse Covers)
 {
     public static GameResponse From(GameView view) =>
@@ -251,13 +257,44 @@ public sealed record GameResponse(
             [.. (view.Owned?.Entries ?? []).Select(LibraryEntryResponse.From)],
             view.Rank is { } rank ? new GameRankResponse(rank.Position, rank.Launched) : null,
             view.Removed is { } removed ? RemovedGameResponse.From(removed) : null,
-            view.GameData is { } page ? new GameDataPageResponse(page.Source, page.Url) : null,
+            view.GameData is { } said ? GameDataResponse.From(said) : null,
             GameCoversResponse.From(view.Covers));
 }
 
+/// <summary>What the game database says of a game, in its own words (IGDB: English).</summary>
 /// <param name="Source">The game database: igdb.</param>
 /// <param name="Url">The game's page there, for a person to follow.</param>
-public sealed record GameDataPageResponse(string Source, string Url);
+/// <param name="Genres">Its genres, in the database's order; empty when it gave none.</param>
+/// <param name="Themes">Its themes, likewise.</param>
+/// <param name="Summary">What the game is about; null when the database says nothing.</param>
+/// <param name="TimeToBeat">How long players say it takes; null when none said.</param>
+public sealed record GameDataResponse(
+    string Source,
+    string Url,
+    IReadOnlyList<string> Genres,
+    IReadOnlyList<string> Themes,
+    string? Summary,
+    TimeToBeatResponse? TimeToBeat)
+{
+    public static GameDataResponse From(GameDataSaid said) =>
+        new(
+            said.Source,
+            said.Url,
+            said.Genres,
+            said.Themes,
+            said.Summary,
+            said.TimeToBeat is { } time
+                ? new TimeToBeatResponse(time.Hastily, time.Normally, time.Completely, time.Count)
+                : null);
+}
+
+/// <summary>How long the players who said so took to finish a game, in seconds. Each is null when
+/// nobody said.</summary>
+/// <param name="HastilySeconds">Going straight to the end.</param>
+/// <param name="NormallySeconds">At a usual pace, the main story and some of the rest.</param>
+/// <param name="CompletelySeconds">Doing everything the game holds.</param>
+/// <param name="Count">How many players the figures rest on; null when the database did not say.</param>
+public sealed record TimeToBeatResponse(int? HastilySeconds, int? NormallySeconds, int? CompletelySeconds, int? Count);
 
 /// <summary>A game's covers, as the signed-in account sees them.</summary>
 /// <param name="Sources">The sources the game has a cover from (steam, igdb): the stores that said where

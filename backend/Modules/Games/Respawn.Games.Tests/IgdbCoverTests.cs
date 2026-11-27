@@ -216,8 +216,31 @@ public sealed class IgdbCoverTests : IDisposable
         var games = await ReadAllAsync(app, browser);
 
         var portal2 = await browser.GetAsync($"/api/v1/games/{games["Portal 2"]}").JsonAsync();
-        Assert.Equal("igdb", portal2.GetProperty("game_data").GetProperty("source").GetString());
-        Assert.Equal("https://www.igdb.com/games/portal-2", portal2.GetProperty("game_data").GetProperty("url").GetString());
+        var said = portal2.GetProperty("game_data");
+        Assert.Equal("igdb", said.GetProperty("source").GetString());
+        Assert.Equal("https://www.igdb.com/games/portal-2", said.GetProperty("url").GetString());
+
+        // What IGDB says of it, in its words and its order.
+        Assert.Equal(["Shooter", "Puzzle", "Adventure"], Words(said.GetProperty("genres")));
+        Assert.Equal(["Science fiction", "Comedy"], Words(said.GetProperty("themes")));
+        Assert.StartsWith("More test chambers", said.GetProperty("summary").GetString(), StringComparison.Ordinal);
+        var time = said.GetProperty("time_to_beat");
+        Assert.Equal(
+            (26100, 34200, 75600, 412),
+            (time.GetProperty("hastily_seconds").GetInt32(), time.GetProperty("normally_seconds").GetInt32(),
+                time.GetProperty("completely_seconds").GetInt32(), time.GetProperty("count").GetInt32()));
+
+        // A game IGDB knows with no duration said has none.
+        var portal = await browser.GetAsync($"/api/v1/games/{games["Portal"]}").JsonAsync();
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, portal.GetProperty("game_data").GetProperty("time_to_beat").ValueKind);
+
+        // The library says each game's genres and themes, and none for a game IGDB does not know.
+        var library = (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("games").EnumerateArray()
+            .ToDictionary(game => game.GetProperty("name").GetString() ?? "");
+        Assert.Equal(["Shooter", "Puzzle", "Adventure"], Words(library["Portal 2"].GetProperty("genres")));
+        Assert.Equal(["Science fiction", "Comedy"], Words(library["Portal 2"].GetProperty("themes")));
+        Assert.Empty(library[""].GetProperty("genres").EnumerateArray());
+        Assert.Empty(library[""].GetProperty("themes").EnumerateArray());
 
         // A game IGDB does not know has no page there.
         var unknown = await browser.GetAsync($"/api/v1/games/{games[""]}").JsonAsync();
@@ -227,6 +250,8 @@ public sealed class IgdbCoverTests : IDisposable
         Assert.Equal(
             ("igdb", "IGDB", "https://www.igdb.com/"),
             (credit.GetProperty("source").GetString(), credit.GetProperty("label").GetString(), credit.GetProperty("url").GetString()));
+
+        static string[] Words(System.Text.Json.JsonElement words) => [.. words.EnumerateArray().Select(word => word.GetString() ?? "")];
     }
 
     [Fact]

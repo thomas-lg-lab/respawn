@@ -163,7 +163,17 @@ public sealed class LibraryService(
         // is then the same on every database, whatever its collation.
         var games = await GamesAsync(ownerId, ct);
         games.Sort(Order(sort));
-        return new LibraryPage(games.Count, [.. games.Skip(offset).Take(limit)]);
+        List<OwnedGame> page = [.. games.Skip(offset).Take(limit)];
+
+        // What the game database says, read for the games of this page alone.
+        var facts = await catalogue.FindGameFactsAsync([.. page.Select(game => game.GameId)], ct);
+        return new LibraryPage(
+            games.Count,
+            [
+                .. page.Select(game => facts.GetValueOrDefault(game.GameId) is { } said
+                    ? game with { Genres = said.Genres, Themes = said.Themes }
+                    : game with { Genres = [], Themes = [] }),
+            ]);
     }
 
     public async Task<LibraryStats> GetStatsAsync(Guid ownerId, CancellationToken ct)

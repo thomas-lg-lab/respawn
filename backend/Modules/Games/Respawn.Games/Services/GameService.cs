@@ -19,6 +19,7 @@ public sealed class GameService(
     {
         var game = await catalogue.FindGameAsync(gameId, ct)
             ?? throw new GamesException(GamesError.UnknownGame);
+        var facts = (await catalogue.FindGameFactsAsync([gameId], ct)).GetValueOrDefault(gameId);
 
         // The whole library, as a rank is a place in it: one reading, a row per game owned.
         var games = OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow());
@@ -38,7 +39,9 @@ public sealed class GameService(
             Rank(owned, games),
             RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId, ct)).SingleOrDefault(),
             await CoversAsync(ownerId, gameId, ct),
-            game.GameDataUrl is { } url ? new GameDataPage(gameData.Source, url) : null);
+            facts is { Url: { } url }
+                ? new GameDataSaid(gameData.Source, url, facts.Genres, facts.Themes, facts.Summary, facts.TimeToBeat)
+                : null);
     }
 
     public async Task<GameCovers> ChooseCoverAsync(Guid ownerId, Guid gameId, string? source, CancellationToken ct)
