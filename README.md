@@ -61,11 +61,13 @@ and where your time went.
 - **The library** as covers or as a list, each browser keeping its own choice, searched, filtered (launched,
   recent, never launched) and sorted, the filter and the order kept on its address; **the Time tab**, the time
   map in full.
-- **Steam's covers** wherever a game is shown, asked of Steam once and kept by the instance when it has a
-  data directory; a cover is asked for only as it comes near the screen.
+- **Covers** wherever a game is shown: Steam's, IGDB's where Steam has none, and for each account the one
+  it chose on the game's page when a game has both; asked of their source once and kept by the instance when
+  it has a data directory, and asked for only as they come near the screen.
 - **The page of a game**, reached from wherever a game is shown and from the search: its time, its rank, this
   year and the last two weeks, its months since 2022 as a calendar, and for a month the other games played
-  then; "Launch in Steam" on a computer, and taking a game Steam no longer lists out of the library.
+  then; its pages on Steam and IGDB, "Launch in Steam" on a computer, and taking a game Steam no longer lists
+  out of the library.
 - **Accounts**: local accounts (the first one is the administrator), or sign-in through any OpenID Connect
   provider; the language (French or English), the theme and the character of the labels kept on the
   account; the account screen with its linked Steam accounts, a reading on request, your own key and
@@ -158,9 +160,9 @@ up after five seconds.
 ### The data directory
 
 `RESPAWN_DATA_DIR` is the only place, besides `/tmp`, where the app writes. Today it holds the covers: each
-one is fetched from Steam the first time it is shown, written there, and served from that file afterwards.
-The library then loads its covers from the instance itself, and a cover is still shown when Steam does not
-answer or no longer has it.
+one is fetched from its source (Steam, or IGDB) the first time it is shown, written there, and served from
+that file afterwards. The library then loads its covers from the instance itself, and a cover is still shown
+when its source does not answer or no longer has it.
 
 How to set it:
 
@@ -183,7 +185,7 @@ What the app does with it:
   it is (every 30 days); a changed cover is a new file, and the old one is removed once no game shows it.
 - **Losing it** loses nothing else: the database holds everything the app knows, and the covers are fetched
   again as they are asked for. A backup is optional.
-- **Without it**, nothing is kept: each cover is fetched from Steam at each request, and the browser keeps
+- **Without it**, nothing is kept: each cover is fetched from its source at each request, and the browser keeps
   it for a week.
 
 ### The database, when it is not there
