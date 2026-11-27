@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Respawn.SharedKernel;
 
 namespace Respawn.Games.Api;
 
@@ -19,7 +20,8 @@ internal sealed record Trouble(string Error, string? Detail);
 ///
 /// Nothing here can stop the app: a turn that fails says so and the next one tries again. A trouble
 /// that lasts (no database, a key refused) is said once, when it starts or changes, and once more when
-/// it is over.
+/// it is over. A look made while another caller is connecting to the database is skipped in silence:
+/// it is no trouble. A connection still under way at the next look, a whole period later, is one.
 /// </summary>
 /// <param name="scopes">A scope per look and per turn, as a request would have.</param>
 /// <param name="clock">The app's clock, which a test sets.</param>
@@ -33,6 +35,9 @@ internal abstract class DueScheduler<TKey>(
 {
     /// <summary>Why the last look failed, to say it once and not at every turn.</summary>
     private string? _lastFailure;
+
+    /// <summary>Whether the last look was skipped because another caller was connecting.</summary>
+    private bool _skippedBusy;
 
     /// <summary>Why each one's last turn failed. Turns run one after the other: no lock.</summary>
     private readonly Dictionary<TKey, Trouble> _failing = [];
@@ -77,13 +82,26 @@ internal abstract class DueScheduler<TKey>(
                 logger.LogInformation("{Schedule}: the schedule is back", name);
                 _lastFailure = null;
             }
+
+            _skippedBusy = false;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
+        catch (Exception ex) when (!_skippedBusy && DatabaseUnavailableException.OnlyBusy(ex))
+        {
+            // Another schedule or a request is opening the database: the schedules all look at the same
+            // moment after the start, and one of them connects. Nothing is wrong, so nothing is said, and
+            // a trouble said before is neither repeated nor declared over: the next look tells. If that
+            // one finds the connection still under way, it is stuck, and the next catch says so.
+            logger.LogDebug("{Schedule}: skipped a look, the database is being connected to", name);
+            _skippedBusy = true;
+            return 0;
+        }
         catch (Exception ex)
         {
+            _skippedBusy = DatabaseUnavailableException.OnlyBusy(ex);
             // Most often the database is not there yet.
             var reason = FirstLine(ex);
             if (reason != _lastFailure)
