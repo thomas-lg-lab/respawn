@@ -1,4 +1,4 @@
-import { DOCUMENT, Location } from '@angular/common';
+import { DOCUMENT, Location, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
@@ -39,6 +39,7 @@ import { type MonthKey, calendar, monthDetail, secondsIn } from './game-view';
 @Component({
   selector: 'rs-game',
   imports: [
+    NgTemplateOutlet,
     TranslocoDirective,
     LucideChevronLeft,
     Banner,
@@ -215,6 +216,15 @@ export class Game {
 
   /** The games of the library the game database lists as close to this one. */
   protected readonly similar = computed(() => this.game.data()?.game_data?.similar ?? []);
+
+  /**
+   * Where "About" and the close games stand on a wide screen, so that the two columns end close
+   * together: beside how long it takes, the right column holds whichever the calendar leaves no
+   * room for on the left. Read from the game alone, so nothing moves once the history comes.
+   */
+  private readonly split = computed(() => !!this.game.data()?.game_data?.time_to_beat);
+  protected readonly aboutRight = computed(() => this.split() && !this.neverLaunched());
+  protected readonly similarRight = computed(() => this.split() && this.neverLaunched());
 
   /** A game never launched has no time to show: the page says so in their place. */
   protected readonly neverLaunched = computed(() => this.game.data()?.playtime_seconds === 0);

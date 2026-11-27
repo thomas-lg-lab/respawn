@@ -4,7 +4,10 @@
   *transloco="let t"
 >
   <h2 class="type-card-title">{{ t('game.similar.title') }}</h2>
-  <ul class="-mx-2 flex flex-col">
+  <ul
+    class="-mx-2 grid grid-cols-1 gap-x-6 data-two:wide:grid-cols-2"
+    [attr.data-two]="twoColumns() ? '' : null"
+  >
     @for (game of shown(); track game.id) {
       <li class="relative border-t border-line" [attr.data-game]="game.id">
         <div

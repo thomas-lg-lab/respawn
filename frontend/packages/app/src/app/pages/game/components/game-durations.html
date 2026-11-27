@@ -11,51 +11,47 @@
       }}</span>
     }
   </div>
-  <ul class="flex flex-col gap-3">
+  <!-- A tile per pace, filled once the owner's time reached it: words, not a box to tick. -->
+  <ul class="grid grid-cols-3 gap-2">
     @for (row of rows(); track row.pace) {
       <li
-        class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1.5 tabular-nums"
+        class="flex min-w-0 flex-col gap-0.5 rounded-row bg-surface-2 px-3 py-2.5 tabular-nums data-[state=beyond]:bg-accent data-[state=beyond]:text-on-accent data-[state=reached]:bg-accent data-[state=reached]:text-on-accent"
         [attr.data-pace]="row.pace"
         [attr.data-state]="row.state.kind"
       >
-        @if (row.state.kind === 'reached' || row.state.kind === 'beyond') {
-          <span
-            class="flex size-4.5 items-center justify-center rounded-sm bg-accent-text text-surface"
-            aria-hidden="true"
-          >
-            <svg lucideCheck class="size-3.5" [strokeWidth]="3"></svg>
-          </span>
-        } @else {
-          <span class="size-4.5 rounded-sm border border-control-line" aria-hidden="true"></span>
-        }
-        <span class="min-w-0" data-pace-words>
-          <span class="font-semibold">{{ t('game.durations.' + row.pace) }}</span>
-          @if (row.state.kind !== 'none') {
-            <span class="type-caption text-muted">
-              ·
-              {{
-                t('game.durations.' + row.state.kind, {
-                  time: row.state.time
-                    ? t(row.state.time.key, { count: row.state.time.count })
-                    : '',
-                })
-              }}</span
-            >
-          }
-        </span>
-        <span class="font-semibold" data-pace-time>{{
+        <span class="type-caption font-medium opacity-85" data-pace-words>{{
+          t('game.durations.' + row.pace)
+        }}</span>
+        <span class="type-figure" data-pace-time>{{
           t(row.time.key, { count: row.time.count })
         }}</span>
-        @if (you()) {
-          <rs-segmented-bar
-            class="col-span-2 col-start-2"
-            [value]="played() ?? 0"
-            [max]="row.seconds"
-          />
+        @if (row.state.kind !== 'none') {
+          <span class="type-caption font-medium opacity-85" data-pace-state>{{
+            t('game.durations.' + row.state.kind, {
+              time: row.state.time ? t(row.state.time.key, { count: row.state.time.count }) : '',
+            })
+          }}</span>
         }
       </li>
     }
   </ul>
+  <!-- The owner's time on one scale, a mark where each pace stands: where it is between two. -->
+  @if (scale(); as drawn) {
+    <div class="relative h-1.5 rounded-pill bg-surface-2" aria-hidden="true" data-scale>
+      <span
+        class="absolute inset-y-0 start-0 rounded-pill bg-accent"
+        [style.width.%]="drawn.played"
+      ></span>
+      @for (mark of drawn.marks; track $index) {
+        <!-- Dark on the time played, grey on what is left of the scale. -->
+        <span
+          class="absolute -top-1 h-3.5 w-0.5 -translate-x-1/2 rounded-pill bg-muted data-passed:bg-on-accent"
+          [style.left.%]="mark.at"
+          [attr.data-passed]="mark.passed ? '' : null"
+        ></span>
+      }
+    </div>
+  }
   <p class="type-caption text-muted" data-durations-source>
     @if (players(); as said) {
       {{

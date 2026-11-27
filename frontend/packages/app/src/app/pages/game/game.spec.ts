@@ -245,15 +245,21 @@ describe('Game', () => {
       const row = screen.querySelector(`[data-pace="${name}"]`)!;
       return [
         row.getAttribute('data-state'),
-        text(row, '[data-pace-words]')?.replace(/\s+/g, ' '),
+        text(row, '[data-pace-words]'),
         text(row, '[data-pace-time]'),
+        text(row, '[data-pace-state]'),
       ];
     };
-    expect(pace('hastily')).toEqual(['reached', 'En allant vite · atteint', '58 h']);
-    expect(pace('normally')).toEqual(['reached', 'Normalement · atteint', '100 h']);
+    expect(pace('hastily')).toEqual(['reached', 'En allant vite', '58 h', 'atteint']);
+    expect(pace('normally')).toEqual(['reached', 'Normalement', '100 h', 'atteint']);
     // Past the longest pace, by how much.
-    expect(pace('completely')).toEqual(['beyond', 'À 100 % · atteint, + 9 h', '133 h']);
-    expect(screen.querySelectorAll('[data-durations] rs-segmented-bar')).toHaveLength(3);
+    expect(pace('completely')).toEqual(['beyond', 'À 100 %', '133 h', 'atteint, + 9 h']);
+    // One scale: the time played as far as it goes, a mark where each pace stands on it.
+    const scale = screen.querySelector<HTMLElement>('[data-durations] [data-scale]')!;
+    const marks = [...scale.querySelectorAll<HTMLElement>('span')].map(
+      (mark) => mark.style.cssText,
+    );
+    expect(marks).toEqual(['width: 100%;', 'left: 40.8451%;', 'left: 70.4225%;', 'left: 93.662%;']);
     expect(text(screen, '[data-durations-source]')?.replace(/\s/g, ' ')).toBe(
       'D’après 1 240 joueurs, sur IGDB',
     );
@@ -314,7 +320,7 @@ describe('Game', () => {
 
     expect(screen.querySelectorAll('[data-pace]')).toHaveLength(3);
     expect(screen.querySelector('[data-you]')).toBeNull();
-    expect(screen.querySelector('[data-durations] rs-segmented-bar')).toBeNull();
+    expect(screen.querySelector('[data-durations] [data-scale]')).toBeNull();
     expect(
       [...screen.querySelectorAll('[data-pace]')].map((row) => row.getAttribute('data-state')),
     ).toEqual(['none', 'none', 'none']);

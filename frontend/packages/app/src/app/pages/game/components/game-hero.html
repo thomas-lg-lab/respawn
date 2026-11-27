@@ -1,6 +1,6 @@
-<!-- A grid: the cover beside the title and the state under it. The actions stand at the bottom
-     right, on the state's line and centred with it, so the title never runs beside them; on a
-     phone they go under the whole. -->
+<!-- A grid: the cover beside the title and the state under it. The action stands in the bottom
+     right corner, on the last line (the genres', or the state's without them), so the title never
+     runs beside it; on a phone it goes under the whole. -->
 <section
   class="group/hero grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end wide:data-tagged:grid-rows-[1fr_auto_auto] gap-x-7 gap-y-2 rounded-hero border border-line bg-surface p-4 wide:grid-cols-[auto_minmax(0,1fr)_auto] wide:px-7 wide:py-6"
   data-hero
@@ -150,7 +150,7 @@
        is left for it, which would add its own space under the hero. -->
   @if (launch(); as address) {
     <div
-      class="col-span-2 mt-1.5 flex items-center touch-only:hidden wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-center"
+      class="col-span-2 mt-1.5 flex items-center touch-only:hidden wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-end wide:group-data-tagged/hero:row-start-3"
     >
       <a rsButton variant="primary" data-launch [href]="address">
         <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>

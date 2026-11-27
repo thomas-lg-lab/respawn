@@ -1,8 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { LucideCheck } from '@lucide/angular';
 import type { TimeToBeat } from '@respawn/data';
-import { SegmentedBar } from '@respawn/ui';
 import { type SaidPlaytime, formatCount, saidPlaytime } from '@app/format/format';
 
 /** The three paces players say a game takes, in the order they grow. */
@@ -51,13 +49,13 @@ export function paceRows(said: TimeToBeat, played: number | null, language: stri
 }
 
 /**
- * How long players say a game takes, at three paces, beside the owner's own time: each pace
- * with a bar of the time played against it, a mark once it is reached, and what is left or
- * beyond. Who said it, and how many, is written under them.
+ * How long players say a game takes, at three paces, beside the owner's own time: a tile per
+ * pace, filled once it is reached, saying what is left or beyond; under them, the owner's time
+ * on one scale with a mark where each pace stands. Who said it, and how many, is written last.
  */
 @Component({
   selector: 'rs-game-durations',
-  imports: [TranslocoDirective, LucideCheck, SegmentedBar],
+  imports: [TranslocoDirective],
   templateUrl: './game-durations.html',
 })
 export class GameDurations {
@@ -73,6 +71,20 @@ export class GameDurations {
   protected readonly you = computed(() => {
     const played = this.played();
     return played !== null && played > 0 ? saidPlaytime(played, this.language()) : null;
+  });
+  /**
+   * The owner's time and each pace on one scale, in percent of the longer of the two: none
+   * while there is no time to set against them.
+   */
+  protected readonly scale = computed(() => {
+    const played = this.played();
+    const rows = this.rows();
+    if (played === null || played <= 0 || rows.length === 0) return null;
+    const end = Math.max(played, ...rows.map((row) => row.seconds));
+    return {
+      played: (100 * played) / end,
+      marks: rows.map((row) => ({ at: (100 * row.seconds) / end, passed: row.seconds <= played })),
+    };
   });
   protected readonly players = computed(() => {
     const count = this.timeToBeat().count;
