@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { coverAddress } from '@respawn/data';
-import { Cover } from '@respawn/ui';
+import { Cover, Label } from '@respawn/ui';
 import { type SaidPlaytime, formatAgo, saidPlaytime } from '@app/format/format';
 import { cameFrom, gamePage } from '@app/games/game-page';
 import { coverHue } from '@app/games/game-list';
@@ -27,7 +27,7 @@ interface Shown {
  */
 @Component({
   selector: 'rs-played-recently',
-  imports: [RouterLink, TranslocoDirective, Cover],
+  imports: [RouterLink, TranslocoDirective, Cover, Label],
   templateUrl: './played-recently.html',
 })
 export class PlayedRecently {

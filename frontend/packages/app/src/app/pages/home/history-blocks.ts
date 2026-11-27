@@ -74,6 +74,8 @@ export interface PlayedDay {
   readonly date: string;
   readonly games: readonly PlayedGame[];
   readonly others: number;
+  /** The games it does not name at first, `others` of them: shown on request. */
+  readonly rest: readonly PlayedGame[];
 }
 
 /**
@@ -87,20 +89,17 @@ export function activity(
   settled: boolean,
 ): PlayedDay[] {
   const byId = new Map(games.map((game) => [game.game_id, game]));
+  const shown = (played: HistoryDay['games'][number]): PlayedGame => {
+    const game = byId.get(played.game_id) ?? null;
+    return { id: played.game_id, game, gone: settled && game === null, seconds: played.seconds };
+  };
   return history.days
     .slice(-DAYS)
     .reverse()
     .map((day: HistoryDay): PlayedDay => ({
       date: day.date,
-      games: day.games.slice(0, NAMED).map((played) => {
-        const game = byId.get(played.game_id) ?? null;
-        return {
-          id: played.game_id,
-          game,
-          gone: settled && game === null,
-          seconds: played.seconds,
-        };
-      }),
+      games: day.games.slice(0, NAMED).map(shown),
       others: Math.max(0, day.games.length - NAMED),
+      rest: day.games.slice(NAMED).map(shown),
     }));
 }

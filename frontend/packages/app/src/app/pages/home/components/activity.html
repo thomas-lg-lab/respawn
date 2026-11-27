@@ -26,9 +26,17 @@
         }
       </ul>
       @if (day.others; as others) {
-        <span class="type-caption text-muted tabular-nums" data-others>{{
-          t(others.one ? 'activity.othersOne' : 'activity.othersMany', { count: others.count })
-        }}</span>
+        <button
+          type="button"
+          class="-mx-1.5 inline-flex min-h-touch items-center gap-1 self-start rounded-thumb px-1.5 type-caption text-muted tabular-nums transition-colors duration-hover hover:text-text hover:underline"
+          data-others
+          (click)="open(day.date)"
+        >
+          {{
+            t(others.one ? 'activity.othersOne' : 'activity.othersMany', { count: others.count })
+          }}
+          <svg lucideChevronDown class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg>
+        </button>
       }
     </section>
   } @empty {

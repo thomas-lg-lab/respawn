@@ -181,7 +181,6 @@
     }
   },
   "home": {
-    "label": "Partie en cours",
     "title": "Accueil",
     "loading": "Chargement de votre bibliothèque…",
     "noAccount": {
