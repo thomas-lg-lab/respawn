@@ -46,13 +46,23 @@ public sealed record GameCovers(IReadOnlyList<string> Sources, string? Chosen);
 /// <param name="Themes">Its themes, likewise.</param>
 /// <param name="Summary">What it is about, in the database's words (IGDB: English); null when none.</param>
 /// <param name="TimeToBeat">How long players say it takes; null when none said.</param>
+/// <param name="ReleasedOn">The day it first came out; null when the database does not say.</param>
+/// <param name="Similar">The games of the owner's library the database lists as close to this one, in
+/// its order, a few at most; none when it lists none the owner has.</param>
 public sealed record GameDataSaid(
     string Source,
     string? Url,
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Themes,
     string? Summary,
-    TimeToBeat? TimeToBeat);
+    TimeToBeat? TimeToBeat,
+    DateOnly? ReleasedOn,
+    IReadOnlyList<SimilarGame> Similar);
+
+/// <summary>A game of the owner's library close to the one shown, as its row there says it.</summary>
+/// <param name="Game">The game as the library has it: its name, its time, its cover.</param>
+/// <param name="NormallySeconds">How long players say it takes at a normal pace; null when none said.</param>
+public sealed record SimilarGame(OwnedGame Game, int? NormallySeconds);
 
 /// <summary>A source whose data the instance shows, to be credited where its users can see it.</summary>
 /// <param name="Source">The source, as the catalogue names it.</param>

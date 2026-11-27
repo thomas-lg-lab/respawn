@@ -202,6 +202,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             game.Property(g => g.Url).HasMaxLength(Limits.GameDataUrl);
             game.Property(g => g.CoverImageId).HasMaxLength(Limits.GameDataWord);
             game.Property(g => g.Summary).HasMaxLength(Limits.GameDataSummary);
+            // Empty for the games read before IGDB was asked for them, until it is asked again.
+            game.Property(g => g.Similar).HasDefaultValueSql("'{}'");
         });
 
         modelBuilder.Entity<CoverChoiceRow>(choice =>

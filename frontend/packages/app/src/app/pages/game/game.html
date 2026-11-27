@@ -106,7 +106,7 @@
          right; on a phone, one column in that order, how long it takes before the long text. -->
     <div
       class="grid items-start gap-5 wide:data-split:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
-      [attr.data-split]="known.game_data?.time_to_beat ? '' : null"
+      [attr.data-split]="known.game_data?.time_to_beat || similar().length ? '' : null"
     >
       <div class="flex min-w-0 flex-col gap-5 wide:col-start-1">
         @if (neverLaunched()) {
@@ -161,21 +161,37 @@
           }
         }
       </div>
-      @if (known.game_data?.time_to_beat; as time) {
-        <rs-game-durations
-          class="min-w-0 wide:col-start-2 wide:row-span-2 wide:row-start-1"
-          [timeToBeat]="time"
-          [played]="known.playtime_seconds"
-          [language]="currentLanguage()"
-        />
-      }
+      <!-- How long it takes and the games close to it: one column on the right of a wide screen;
+           on a phone, how long it takes before the long text and the close games after it. -->
+      <div
+        class="contents wide:col-start-2 wide:row-span-2 wide:row-start-1 wide:flex wide:min-w-0 wide:flex-col wide:gap-5"
+      >
+        @if (known.game_data?.time_to_beat; as time) {
+          <rs-game-durations
+            class="min-w-0"
+            [timeToBeat]="time"
+            [played]="known.playtime_seconds"
+            [language]="currentLanguage()"
+          />
+        }
+        @if (similar().length) {
+          <rs-game-similar
+            class="order-1 min-w-0 wide:order-none"
+            [games]="similar()"
+            [language]="currentLanguage()"
+            [now]="now()"
+            [origin]="origin()"
+          />
+        }
+      </div>
       @if (known.game_data; as said) {
-        @if (said.summary || tags().length) {
+        @if (said.summary || tags().length || said.released_on) {
           <rs-game-about
             class="min-w-0 wide:col-start-1"
             [summary]="said.summary"
             [tags]="tags()"
             [url]="igdbPage(said.url)"
+            [released]="released()"
           />
         }
       }

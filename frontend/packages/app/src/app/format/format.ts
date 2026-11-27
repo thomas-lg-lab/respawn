@@ -148,6 +148,19 @@ export function formatDate(moment: string, language: string): string {
   return utcDates(language).format(new Date(moment));
 }
 
+const utcMonths = perLanguage(
+  (language) =>
+    new Intl.DateTimeFormat(language, { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+);
+
+/**
+ * The month and year of a day the API gave as `YYYY-MM-DD`: "May 2015", "mai 2015". The day is
+ * UTC's, as the API dates it: no time zone moves the first of a month into the one before.
+ */
+export function formatMonthOf(day: string, language: string): string {
+  return utcMonths(language).format(new Date(`${day}T00:00:00Z`));
+}
+
 /**
  * A day the API gave as `YYYY-MM-DD`, with its weekday: "Saturday, November 21". The day is
  * UTC's and is written as it is: no time zone moves it to the one before.

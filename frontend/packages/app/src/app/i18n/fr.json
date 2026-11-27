@@ -485,7 +485,13 @@
     "about": {
       "title": "À propos",
       "tags": "Tous ses genres et thèmes",
-      "source": "Données du jeu : IGDB"
+      "source": "Données du jeu : IGDB",
+      "released": "Sorti en {{ month }}"
+    },
+    "similar": {
+      "title": "Proches de celui-ci, chez vous",
+      "playedAgo": "{{ ago }} · {{ time }}",
+      "neverTakes": "Jamais lancé · environ {{ time }}"
     }
   },
   "notFound": {

@@ -485,7 +485,13 @@
     "about": {
       "title": "About",
       "tags": "All its genres and themes",
-      "source": "Game data: IGDB"
+      "source": "Game data: IGDB",
+      "released": "Released {{ month }}"
+    },
+    "similar": {
+      "title": "Close to this one, in your library",
+      "playedAgo": "{{ ago }} · {{ time }}",
+      "neverTakes": "Never launched · about {{ time }}"
     }
   },
   "notFound": {

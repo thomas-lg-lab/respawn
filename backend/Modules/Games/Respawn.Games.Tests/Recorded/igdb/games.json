@@ -5,6 +5,7 @@
       "id": 100071,
       "image_id": "co0fake71"
     },
+    "first_release_date": 1191974400,
     "game_type": 0,
     "genres": [
       {
@@ -17,6 +18,11 @@
       }
     ],
     "name": "Portal",
+    "similar_games": [
+      72,
+      233,
+      1020
+    ],
     "slug": "portal",
     "summary": "A test chamber, a device that opens two linked holes in walls, and a voice that keeps promising cake.",
     "themes": [
@@ -33,6 +39,7 @@
       "id": 100072,
       "image_id": "co0fake72"
     },
+    "first_release_date": 1303084800,
     "game_type": 0,
     "genres": [
       {
@@ -49,6 +56,11 @@
       }
     ],
     "name": "Portal 2",
+    "similar_games": [
+      1020,
+      71,
+      233
+    ],
     "slug": "portal-2",
     "summary": "More test chambers, a second player for the cooperative ones, and a laboratory far older than the first game let on.",
     "themes": [

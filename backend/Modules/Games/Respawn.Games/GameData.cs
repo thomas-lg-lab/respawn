@@ -26,6 +26,10 @@ public sealed record GameMatch(string ExternalId, string GameId);
 /// <param name="Themes">Its themes, in the database's words.</param>
 /// <param name="Summary">What it is about, in the database's words (IGDB: English).</param>
 /// <param name="TimeToBeat">How long players say it takes; null when none said.</param>
+/// <param name="ReleasedOn">The day it first came out, anywhere, as the database dates it (IGDB: UTC);
+/// null when it does not say.</param>
+/// <param name="Similar">The database's games it lists as close to this one, by their ids, in its
+/// order; none when it lists none.</param>
 public sealed record GameFacts(
     string GameId,
     string? Name,
@@ -35,7 +39,9 @@ public sealed record GameFacts(
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Themes,
     string? Summary,
-    TimeToBeat? TimeToBeat);
+    TimeToBeat? TimeToBeat,
+    DateOnly? ReleasedOn = null,
+    IReadOnlyList<string>? Similar = null);
 
 /// <summary>How long the players who said so took to finish a game, in seconds: rushing it, at a normal
 /// pace, and doing everything. Each is null when nobody said.</summary>

@@ -329,7 +329,9 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             game.Summary,
             hastily is null && normally is null && completely is null
                 ? null
-                : new TimeToBeat(hastily, normally, completely, game.TimeToBeatCount));
+                : new TimeToBeat(hastily, normally, completely, game.TimeToBeatCount),
+            game.ReleasedOn,
+            [.. game.Similar.Select(id => id.ToString(CultureInfo.InvariantCulture))]);
 
         static int? Said(int? seconds) => seconds > 0 ? seconds : null;
     }
@@ -362,6 +364,26 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
                 [.. game.Where(row => row.HasPath).Select(row => new StoreCoverSaid(row.Source, row.CoverAskedAt))],
                 game.Any(row => row.HasData),
                 shown.GetValueOrDefault(game.Key)));
+    }
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<Guid>>> FindGamesOfGameDataAsync(IReadOnlyCollection<string> gameDataIds, CancellationToken ct)
+    {
+        long[] ids = [.. gameDataIds.Select(IgdbNumber).OfType<long>().Distinct()];
+        if (ids.Length == 0)
+        {
+            return new Dictionary<string, IReadOnlyList<Guid>>();
+        }
+
+        var rows = await db.StoreEntries.AsNoTracking()
+            .Where(e => e.IgdbId != null && ids.Contains(e.IgdbId.Value))
+            .Select(e => new { IgdbId = e.IgdbId!.Value, e.GameId })
+            .Distinct()
+            .ToListAsync(ct);
+        return rows
+            .GroupBy(row => row.IgdbId)
+            .ToDictionary(
+                game => game.Key.ToString(CultureInfo.InvariantCulture),
+                IReadOnlyList<Guid> (game) => [.. game.Select(row => row.GameId).Order()]);
     }
 
     public Task<bool> HasGameDataAsync(CancellationToken ct) => db.IgdbGames.AnyAsync(ct);
@@ -524,6 +546,8 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             row.NormallySeconds = game.TimeToBeat?.Normally;
             row.CompletelySeconds = game.TimeToBeat?.Completely;
             row.TimeToBeatCount = game.TimeToBeat?.Count;
+            row.ReleasedOn = game.ReleasedOn;
+            row.Similar = [.. (game.Similar ?? []).Select(IgdbNumber).OfType<long>()];
             row.ReadAt = at;
         }
 

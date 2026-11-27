@@ -40,8 +40,59 @@ public sealed class GameService(
             RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId, ct)).SingleOrDefault(),
             await CoversAsync(ownerId, gameId, ct),
             facts is { } said
-                ? new GameDataSaid(gameData.Source, said.Url, said.Genres, said.Themes, said.Summary, said.TimeToBeat)
+                ? new GameDataSaid(
+                    gameData.Source, said.Url, said.Genres, said.Themes, said.Summary, said.TimeToBeat, said.ReleasedOn,
+                    await SimilarAsync(gameId, said.Similar ?? [], games, ct))
                 : null);
+    }
+
+    /// <summary>How many games close to one its page lists.</summary>
+    public const int SimilarShown = 4;
+
+    /// <summary>The games of the library the database lists as close to this one, in its order, each
+    /// once and never the game itself: the first few the owner has.</summary>
+    private async Task<IReadOnlyList<SimilarGame>> SimilarAsync(
+        Guid gameId, IReadOnlyList<string> similar, List<OwnedGame> games, CancellationToken ct)
+    {
+        if (similar.Count == 0)
+        {
+            return [];
+        }
+
+        var catalogued = await catalogue.FindGamesOfGameDataAsync(similar, ct);
+        var owned = games.ToDictionary(game => game.GameId);
+        List<OwnedGame> close =
+        [
+            .. similar
+                .SelectMany(id => catalogued.GetValueOrDefault(id) ?? [])
+                .Where(id => id != gameId)
+                .Distinct()
+                .Select(id => owned.GetValueOrDefault(id))
+                .OfType<OwnedGame>()
+                .Take(SimilarShown),
+        ];
+        if (close.Count == 0)
+        {
+            return [];
+        }
+
+        Guid[] ids = [.. close.Select(game => game.GameId)];
+        var facts = await catalogue.FindGameFactsAsync(ids, ct);
+        // The cover each row shows is the one its owner chose while it still is one, as in the library.
+        var origins = await catalogue.FindCoverOriginsAsync(ids, ct);
+        return
+        [
+            .. close.Select(game => new SimilarGame(
+                game with
+                {
+                    CoverSource = game.CoverSource is null
+                        ? null
+                        : CoverOrigins.Chosen(
+                            (origins.GetValueOrDefault(game.GameId) ?? CoverOrigins.None).Sources(gameData.Source),
+                            game.CoverSource),
+                },
+                facts.GetValueOrDefault(game.GameId)?.TimeToBeat?.Normally)),
+        ];
     }
 
     public async Task<GameCovers> ChooseCoverAsync(Guid ownerId, Guid gameId, string? source, CancellationToken ct)

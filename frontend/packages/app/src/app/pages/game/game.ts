@@ -12,6 +12,7 @@ import { failureKey } from '@app/errors/failure-message';
 import {
   formatCount,
   formatDate,
+  formatMonthOf,
   formatShare,
   ordinalForm,
   saidPlaytime,
@@ -22,6 +23,7 @@ import { LanguageSetting } from '@app/i18n/language';
 import { GameAbout } from './components/game-about';
 import { GameDurations } from './components/game-durations';
 import { GameHero } from './components/game-hero';
+import { GameSimilar } from './components/game-similar';
 import { LibraryNotice } from './components/library-notice';
 import { MonthCalendar, monthName } from './components/month-calendar';
 import { MonthDetail } from './components/month-detail';
@@ -46,6 +48,7 @@ import { type MonthKey, calendar, monthDetail, secondsIn } from './game-view';
     GameAbout,
     GameDurations,
     GameHero,
+    GameSimilar,
     LibraryNotice,
     MonthCalendar,
     MonthDetail,
@@ -203,6 +206,15 @@ export class Game {
 
   /** Every genre and theme the game database gives the game: the hero shows the first ones. */
   protected readonly tags = computed(() => gameTags(this.game.data()?.game_data));
+
+  /** The month the game came out, in the reader's language; none while the database says none. */
+  protected readonly released = computed(() => {
+    const day = this.game.data()?.game_data?.released_on;
+    return day ? formatMonthOf(day, this.language.current()) : null;
+  });
+
+  /** The games of the library the game database lists as close to this one. */
+  protected readonly similar = computed(() => this.game.data()?.game_data?.similar ?? []);
 
   /** A game never launched has no time to show: the page says so in their place. */
   protected readonly neverLaunched = computed(() => this.game.data()?.playtime_seconds === 0);

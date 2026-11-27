@@ -268,13 +268,19 @@ public sealed record GameResponse(
 /// <param name="Themes">Its themes, likewise.</param>
 /// <param name="Summary">What the game is about; null when the database says nothing.</param>
 /// <param name="TimeToBeat">How long players say it takes; null when none said.</param>
+/// <param name="ReleasedOn">The day the game first came out, anywhere (IGDB dates it in UTC); null when
+/// the database does not say.</param>
+/// <param name="Similar">The games of the account's library the database lists as close to this one, in
+/// its order, four at most; empty when it lists none the account has.</param>
 public sealed record GameDataResponse(
     string Source,
     string? Url,
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Themes,
     string? Summary,
-    TimeToBeatResponse? TimeToBeat)
+    TimeToBeatResponse? TimeToBeat,
+    DateOnly? ReleasedOn,
+    IReadOnlyList<SimilarGameResponse> Similar)
 {
     public static GameDataResponse From(GameDataSaid said) =>
         new(
@@ -285,7 +291,34 @@ public sealed record GameDataResponse(
             said.Summary,
             said.TimeToBeat is { } time
                 ? new TimeToBeatResponse(time.Hastily, time.Normally, time.Completely, time.Count)
-                : null);
+                : null,
+            said.ReleasedOn,
+            [.. said.Similar.Select(SimilarGameResponse.From)]);
+}
+
+/// <summary>A game of the account's library close to the one shown, as its row there says it.</summary>
+/// <param name="GameId">The game, as the library has it.</param>
+/// <param name="Name">Null when no source has named it.</param>
+/// <param name="PlaytimeSeconds">As in the library: null when no store says.</param>
+/// <param name="LastPlayedAt">As in the library: null when no store says, or it was never launched.</param>
+/// <param name="CoverSource">As in the library: the cover the account chose, null for the game's own.</param>
+/// <param name="NormallySeconds">How long players say it takes at a normal pace; null when none said.</param>
+public sealed record SimilarGameResponse(
+    Guid GameId,
+    string? Name,
+    long? PlaytimeSeconds,
+    DateTimeOffset? LastPlayedAt,
+    string? CoverSource,
+    int? NormallySeconds)
+{
+    public static SimilarGameResponse From(SimilarGame similar) =>
+        new(
+            similar.Game.GameId,
+            similar.Game.Name,
+            Seconds.Of(similar.Game.Playtime),
+            similar.Game.LastPlayedAt,
+            similar.Game.CoverSource,
+            similar.NormallySeconds);
 }
 
 /// <summary>How long the players who said so took to finish a game, in seconds. Each is null when

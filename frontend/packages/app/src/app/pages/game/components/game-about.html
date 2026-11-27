@@ -13,16 +13,26 @@
   @if (tags().length) {
     <rs-game-tags [tags]="tags()" [label]="t('tags')" />
   }
-  @if (url(); as address) {
-    <a
-      class="inline-flex items-center gap-0.5 self-start type-caption text-muted hover:text-text hover:underline touch-only:min-h-touch"
-      target="_blank"
-      rel="noopener noreferrer"
-      data-about-source
-      [href]="address"
-    >
-      {{ t('source') }}
-      <svg lucideArrowUpRight class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg>
-    </a>
+  @if (released() || url()) {
+    <p class="flex flex-wrap items-center gap-x-2 type-caption text-muted">
+      @if (released(); as month) {
+        <span data-released>{{ t('released', { month }) }}</span>
+      }
+      @if (released() && url()) {
+        <span aria-hidden="true">·</span>
+      }
+      @if (url(); as address) {
+        <a
+          class="inline-flex items-center gap-0.5 hover:text-text hover:underline touch-only:min-h-touch"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-about-source
+          [href]="address"
+        >
+          {{ t('source') }}
+          <svg lucideArrowUpRight class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg>
+        </a>
+      }
+    </p>
   }
 </section>

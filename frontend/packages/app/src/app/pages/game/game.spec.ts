@@ -54,6 +54,8 @@ function igdb(values: Partial<GameData> = {}): GameData {
       completely_seconds: 133 * HOUR,
       count: 1240,
     },
+    released_on: '2022-02-25',
+    similar: [],
     ...values,
   };
 }
@@ -326,6 +328,69 @@ describe('Game', () => {
     expect(screen.querySelector('[data-hero]')?.hasAttribute('data-tagged')).toBe(false);
     expect(screen.querySelector('[data-about]')).toBeNull();
     expect(screen.querySelector('[data-durations]')).toBeNull();
+    expect(screen.querySelector('[data-similar]')).toBeNull();
+  });
+
+  it('says the month it came out, beside where its data comes from', async () => {
+    const { screen } = await open(eldenRing());
+
+    expect(text(screen, '[data-released]')).toBe('Sorti en février 2022');
+    expect(screen.querySelector('[data-about] [data-about-source]')).not.toBeNull();
+  });
+
+  it('says nothing of when it came out when IGDB does not', async () => {
+    const { screen } = await open(eldenRing({ game_data: igdb({ released_on: null }) }));
+
+    expect(screen.querySelector('[data-released]')).toBeNull();
+  });
+
+  it('lists the games of the library close to it, each leading to its page', async () => {
+    const sekiro = '0198a1b2-0000-7000-8000-0000000000a1';
+    const hades = '0198a1b2-0000-7000-8000-0000000000a2';
+    const unnamed = '0198a1b2-0000-7000-8000-0000000000a3';
+    const { screen } = await open(
+      eldenRing({
+        game_data: igdb({
+          similar: [
+            {
+              game_id: sekiro,
+              name: 'Sekiro',
+              playtime_seconds: 48 * HOUR,
+              last_played_at: ago(400),
+              cover_source: null,
+              normally_seconds: 30 * HOUR,
+            },
+            {
+              game_id: hades,
+              name: 'Hades',
+              playtime_seconds: 0,
+              last_played_at: null,
+              cover_source: 'igdb',
+              normally_seconds: 22 * HOUR,
+            },
+            {
+              game_id: unnamed,
+              name: null,
+              playtime_seconds: 0,
+              last_played_at: null,
+              cover_source: null,
+              normally_seconds: null,
+            },
+          ],
+        }),
+      }),
+    );
+
+    const rows = [...screen.querySelectorAll('[data-similar] li')];
+    expect(rows.map((row) => row.getAttribute('data-game'))).toEqual([sekiro, hades, unnamed]);
+    // Played: how long ago, then its time; never launched: how long it would take, when said.
+    expect(rows.map((row) => row.querySelector('[data-said]')?.textContent?.trim())).toEqual([
+      'Il y a 1 an · 48 h',
+      'Jamais lancé · environ 22 h',
+      'Jamais lancé',
+    ]);
+    expect(rows[2]?.querySelector('[data-name]')?.textContent?.trim()).toBe('Jeu sans nom');
+    expect(rows[0]?.querySelector('a')?.getAttribute('href')).toBe(`/games/${sekiro}`);
   });
 
   it('offers to choose the cover only where the game has more than one', async () => {
