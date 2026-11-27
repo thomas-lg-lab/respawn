@@ -89,6 +89,17 @@ describe('Library', () => {
     expect(row(screen, 'Pokémon').querySelector('[data-playtime]')).toBeNull();
   });
 
+  it('shows the cover the account chose for a game, by its own address', async () => {
+    const games = library();
+    games[0] = { ...games[0]!, cover_source: 'igdb' };
+    const { screen } = await open(games);
+
+    const celeste = row(screen, 'Celeste');
+    expect(celeste.querySelector('img')?.getAttribute('src')).toBe(
+      `/api/v1/games/${celeste.getAttribute('data-game')}/cover?source=igdb`,
+    );
+  });
+
   it('shows the same games as a list on request, and this browser remembers it', async () => {
     const { harness, screen } = await open();
 

@@ -46,6 +46,7 @@ function eldenRing(values: Partial<Game> = {}): Game {
     rank: { position: 3, launched: 457 },
     removed: null,
     game_data: { source: 'igdb', url: 'https://www.igdb.com/games/elden-ring' },
+    covers: { sources: ['steam'], chosen: null },
     ...values,
   };
 }
@@ -174,6 +175,79 @@ describe('Game', () => {
       eldenRing({ game_data: { source: 'igdb', url: 'https://elsewhere.example.org/games/x' } }),
     );
     expect(screen.querySelector('[data-game-data]')).toBeNull();
+  });
+
+  it('offers to choose the cover only where the game has more than one', async () => {
+    const { screen } = await open();
+    expect(screen.querySelector('[data-cover-button]')).toBeNull();
+    expect(screen.querySelector('[data-cover]')).not.toBeNull();
+  });
+
+  it('chooses IGDB’s cover for the account, and goes back to Steam’s', async () => {
+    const two = { sources: ['steam', 'igdb'], chosen: null };
+    const { harness, server, screen } = await open(eldenRing({ covers: two }));
+
+    // The cover is the button, named for what it does; the choice is hidden until it is pressed.
+    const cover = screen.querySelector<HTMLButtonElement>('[data-cover-button]')!;
+    expect(cover.getAttribute('aria-label')).toBe('Changer la jaquette');
+    expect(cover.querySelector('img')?.getAttribute('src')).toBe(`/api/v1/games/${ID}/cover`);
+    expect(screen.querySelector<HTMLElement>('[data-cover-panel]')!.hidden).toBe(true);
+
+    cover.click();
+    await harness.fixture.whenStable();
+    const radios = [...screen.querySelectorAll<HTMLButtonElement>('[data-cover-source]')];
+    expect(
+      radios.map((radio) => [radio.textContent.trim(), radio.getAttribute('aria-checked')]),
+    ).toEqual([
+      ['Steam', 'true'],
+      ['IGDB', 'false'],
+    ]);
+    const igdb = screen.querySelector<HTMLButtonElement>('[data-cover-source="igdb"]')!;
+    expect(igdb.querySelector('img')?.getAttribute('src')).toBe(
+      `/api/v1/games/${ID}/cover?source=igdb`,
+    );
+    expect(text(screen, '[data-cover-hint]')).toBe(
+      'Celle de Steam par défaut. Pour vous uniquement.',
+    );
+
+    igdb.click();
+    const chosen = await server.request(`/games/${ID}/cover-choice`);
+    expect(chosen.request.method).toBe('PUT');
+    expect(chosen.request.body).toEqual({ source: 'igdb' });
+    chosen.flush({ sources: ['steam', 'igdb'], chosen: 'igdb' });
+    await harness.fixture.whenStable();
+
+    expect(cover.querySelector('img')?.getAttribute('src')).toBe(
+      `/api/v1/games/${ID}/cover?source=igdb`,
+    );
+    cover.click();
+    await harness.fixture.whenStable();
+    expect(text(screen, '[data-cover-hint]')).toBe(
+      'Pour vous uniquement. Revenir à celle de Steam',
+    );
+
+    screen.querySelector<HTMLButtonElement>('[data-cover-reset]')!.click();
+    const forgotten = await server.request(`/games/${ID}/cover-choice`);
+    expect(forgotten.request.method).toBe('DELETE');
+    forgotten.flush(two);
+    await harness.fixture.whenStable();
+    expect(cover.querySelector('img')?.getAttribute('src')).toBe(`/api/v1/games/${ID}/cover`);
+  });
+
+  it('says a cover could not be chosen', async () => {
+    const { harness, server, screen } = await open(
+      eldenRing({ covers: { sources: ['steam', 'igdb'], chosen: null } }),
+    );
+
+    screen.querySelector<HTMLButtonElement>('[data-cover-button]')!.click();
+    await harness.fixture.whenStable();
+    screen.querySelector<HTMLButtonElement>('[data-cover-source="igdb"]')!.click();
+    await server.refuse(`/games/${ID}/cover-choice`, 409, 'no_such_cover');
+    await harness.fixture.whenStable();
+
+    expect(text(screen, '[data-cover-refused]')).toBe(
+      'La jaquette n’a pas pu être changée. Réessayez.',
+    );
   });
 
   it('gives its four figures, each with what it is measured against', async () => {

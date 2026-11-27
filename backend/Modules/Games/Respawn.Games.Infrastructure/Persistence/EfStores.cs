@@ -389,20 +389,20 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         await SaveAsync(ct);
     }
 
-    public async Task<KeptImage?> FindImageAsync(Guid gameId, string kind, CancellationToken ct) =>
+    public async Task<KeptImage?> FindImageAsync(Guid gameId, string kind, string slot, CancellationToken ct) =>
         await db.Images.AsNoTracking()
-            .Where(i => i.GameId == gameId && i.Kind == kind)
+            .Where(i => i.GameId == gameId && i.Kind == kind && i.Slot == slot)
             .Select(i => new KeptImage(new ImageName(i.Kind, i.Source, i.Key, i.ContentType), i.CheckedAt))
             .FirstOrDefaultAsync(ct);
 
-    public async Task<ImageName?> KeepImageAsync(Guid gameId, KeptImage image, CancellationToken ct)
+    public async Task<ImageName?> KeepImageAsync(Guid gameId, string slot, KeptImage image, CancellationToken ct)
     {
         var name = image.Name;
-        var row = await db.Images.FirstOrDefaultAsync(i => i.GameId == gameId && i.Kind == name.Kind, ct);
+        var row = await db.Images.FirstOrDefaultAsync(i => i.GameId == gameId && i.Kind == name.Kind && i.Slot == slot, ct);
         var replaced = row is null ? null : new ImageName(row.Kind, row.Source, row.Key, row.ContentType);
         if (row is null)
         {
-            row = new ImageRow { GameId = gameId, Kind = name.Kind };
+            row = new ImageRow { GameId = gameId, Kind = name.Kind, Slot = slot };
             db.Images.Add(row);
         }
 
@@ -411,12 +411,12 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         return replaced == name ? null : replaced;
     }
 
-    // Two games may show one file: it goes only once none does.
+    // Two games, or two slots of one, may show one file: it goes only once none does.
     public Task<bool> IsImageShownAsync(ImageName image, CancellationToken ct) =>
         db.Images.AnyAsync(i => i.Kind == image.Kind && i.Source == image.Source && i.Key == image.Key, ct);
 
-    public Task CheckedImageAsync(Guid gameId, string kind, DateTimeOffset at, CancellationToken ct) =>
-        db.Images.Where(i => i.GameId == gameId && i.Kind == kind)
+    public Task CheckedImageAsync(Guid gameId, string kind, string slot, DateTimeOffset at, CancellationToken ct) =>
+        db.Images.Where(i => i.GameId == gameId && i.Kind == kind && i.Slot == slot)
             .ExecuteUpdateAsync(set => set.SetProperty(i => i.CheckedAt, at), ct);
 
     public async Task<IReadOnlyList<string>> ListStoresWithGameDataDueAsync(IReadOnlyCollection<string> stores, GameDataDue due, CancellationToken ct)
@@ -736,6 +736,8 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             where account.OwnerId == ownerId && ownership.UnlistedSince == null
             join entry in db.StoreEntries on ownership.StoreEntryId equals entry.Id
             join game in db.Games on entry.GameId equals game.Id
+            join choice in db.CoverChoices.Where(c => c.OwnerId == ownerId) on game.Id equals choice.GameId into chosen
+            from choice in chosen.DefaultIfEmpty()
             select new
             {
                 GameId = game.Id,
@@ -750,6 +752,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 ownership.FirstSeenAt,
                 ownership.AsOf,
                 ownership.MissingSince,
+                CoverSource = choice == null ? null : choice.Source,
             })
             .ToListAsync(ct);
         return [.. rows.Select(row => new OwnedEntry(
@@ -764,7 +767,31 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             row.LastPlayedAt,
             row.FirstSeenAt,
             row.AsOf,
-            row.MissingSince))];
+            row.MissingSince,
+            row.CoverSource))];
+    }
+
+    public Task<string?> FindCoverChoiceAsync(Guid ownerId, Guid gameId, CancellationToken ct) =>
+        db.CoverChoices.AsNoTracking()
+            .Where(c => c.OwnerId == ownerId && c.GameId == gameId)
+            .Select(c => c.Source)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task SetCoverChoiceAsync(Guid ownerId, Guid gameId, string? source, DateTimeOffset at, CancellationToken ct)
+    {
+        if (source is null)
+        {
+            await db.CoverChoices.Where(c => c.OwnerId == ownerId && c.GameId == gameId).ExecuteDeleteAsync(ct);
+            return;
+        }
+
+        // One statement: two choices made at once leave one row, the later one's.
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO games.cover_choices (owner_id, game_id, source, chosen_at) VALUES ({ownerId}, {gameId}, {source}, {at})
+            ON CONFLICT (owner_id, game_id) DO UPDATE SET source = excluded.source, chosen_at = excluded.chosen_at
+            """,
+            ct);
     }
 
     public async Task<DateTimeOffset?> FindFirstSeenAsync(Guid ownerId, CancellationToken ct) =>

@@ -23,7 +23,18 @@
       (dismiss)="dismiss()"
     />
 
-    <rs-game-hero [game]="known" [language]="currentLanguage()" [now]="now()" />
+    @if (coverRefused()) {
+      <rs-banner tone="warn" role="alert" data-cover-refused>{{
+        t('game.cover.failed')
+      }}</rs-banner>
+    }
+    <rs-game-hero
+      [game]="known"
+      [language]="currentLanguage()"
+      [now]="now()"
+      [choosing]="choosingCover()"
+      (coverPicked)="chooseCover($event)"
+    />
 
     @if (neverLaunched()) {
       <section

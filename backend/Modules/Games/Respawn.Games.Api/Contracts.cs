@@ -18,13 +18,16 @@ public sealed record LibraryResponse(int Total, int Offset, int Limit, IReadOnly
 /// older than its window.</param>
 /// <param name="LastPlayedAt">Null when no store says, or the game was never launched.</param>
 /// <param name="Entries">The ways the game is owned: one per store entry and linked account, at least one.</param>
+/// <param name="CoverSource">The source of the cover the account chose for the game, to ask for in the
+/// cover's source parameter; null while it chose none, and the game's own cover is shown.</param>
 public sealed record LibraryGameResponse(
     Guid GameId,
     string? Name,
     long? PlaytimeSeconds,
     long? RecentPlaytimeSeconds,
     DateTimeOffset? LastPlayedAt,
-    IReadOnlyList<LibraryEntryResponse> Entries)
+    IReadOnlyList<LibraryEntryResponse> Entries,
+    string? CoverSource)
 {
     public static LibraryGameResponse From(OwnedGame game) =>
         new(
@@ -33,7 +36,8 @@ public sealed record LibraryGameResponse(
             Seconds.Of(game.Playtime),
             Seconds.Of(game.RecentPlaytime),
             game.LastPlayedAt,
-            [.. game.Entries.Select(LibraryEntryResponse.From)]);
+            [.. game.Entries.Select(LibraryEntryResponse.From)],
+            game.CoverSource);
 }
 
 /// <param name="StoreEntryId">The game as its store knows it. With <paramref name="LinkedAccountId"/>, unique in a library.</param>
@@ -222,6 +226,7 @@ public sealed record YearResponse(int Year, long Seconds, string Source, DateOnl
 /// give it; null when nothing was.</param>
 /// <param name="GameData">The game's page in the game database (IGDB), when it knows the game; null
 /// otherwise, or while it was not asked.</param>
+/// <param name="Covers">The sources the game has a cover from, and the one the account chose.</param>
 public sealed record GameResponse(
     Guid GameId,
     string? Name,
@@ -232,7 +237,8 @@ public sealed record GameResponse(
     IReadOnlyList<LibraryEntryResponse> Entries,
     GameRankResponse? Rank,
     RemovedGameResponse? Removed,
-    GameDataPageResponse? GameData)
+    GameDataPageResponse? GameData,
+    GameCoversResponse Covers)
 {
     public static GameResponse From(GameView view) =>
         new(
@@ -245,12 +251,31 @@ public sealed record GameResponse(
             [.. (view.Owned?.Entries ?? []).Select(LibraryEntryResponse.From)],
             view.Rank is { } rank ? new GameRankResponse(rank.Position, rank.Launched) : null,
             view.Removed is { } removed ? RemovedGameResponse.From(removed) : null,
-            view.Game.GameData is { } page ? new GameDataPageResponse(page.Source, page.Url) : null);
+            view.Game.GameData is { } page ? new GameDataPageResponse(page.Source, page.Url) : null,
+            GameCoversResponse.From(view.Covers ?? new GameCovers([], null)));
 }
 
 /// <param name="Source">The game database: igdb.</param>
 /// <param name="Url">The game's page there, for a person to follow.</param>
 public sealed record GameDataPageResponse(string Source, string Url);
+
+/// <summary>A game's covers, as the signed-in account sees them.</summary>
+/// <param name="Sources">The sources the game has a cover from (steam, igdb): the stores that said where
+/// theirs is, then IGDB when it has one. The first is the game's own cover, shown to whoever chose
+/// none. Empty when none has.</param>
+/// <param name="Chosen">The source the account chose, one of the others; null while it chose none,
+/// or what it chose is gone.</param>
+public sealed record GameCoversResponse(IReadOnlyList<string> Sources, string? Chosen)
+{
+    public static GameCoversResponse From(GameCovers covers) => new(covers.Sources, covers.Chosen);
+}
+
+/// <param name="Source">The source of the cover to show: one of the game's covers' sources (steam, igdb).</param>
+public sealed class CoverChoiceRequest
+{
+    [Required, StringLength(Limits.Source)]
+    public string Source { get; init; } = "";
+}
 
 /// <summary>The sources the instance credits.</summary>
 /// <param name="Credits">One per source; empty when none is to be credited.</param>

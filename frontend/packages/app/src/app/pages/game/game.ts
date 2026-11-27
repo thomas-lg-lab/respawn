@@ -21,8 +21,8 @@ import { type MonthKey, calendar, monthDetail, secondsIn } from './game-view';
 /**
  * The page of one game, as its owner sees it: where it stands, its figures, what was played of
  * it month by month and, for a month pressed, what else was played then; the way to launch it
- * in Steam; and, for a game its store no longer lists, taking it out of the library or putting
- * it back. Reached from the library, the home, the time map and the search, it leads back to
+ * in Steam; the cover it shows, among its sources'; and, for a game its store no longer lists,
+ * taking it out of the library or putting it back. Reached from the library, the home, the time map and the search, it leads back to
  * where it was reached from.
  */
 @Component({
@@ -84,6 +84,15 @@ export class Game {
   protected readonly takingOut = injectMutation(() => this.queries.takeOut());
   protected readonly puttingBack = injectMutation(() => this.queries.putBack());
   protected readonly dismissing = injectMutation(() => this.queries.dismissNotice());
+  protected readonly choosing = injectMutation(() => this.queries.chooseCover());
+
+  /** A choice of cover for the game shown: on its way, or refused. */
+  protected readonly choosingCover = computed(
+    () => this.choosing.isPending() && this.choosing.variables()?.id === this.id(),
+  );
+  protected readonly coverRefused = computed(
+    () => this.choosing.isError() && this.choosing.variables()?.id === this.id(),
+  );
 
   /** "Ago" is counted from the moment the game was read, so it follows each new reading. */
   protected readonly now = computed(() => this.game.dataUpdatedAt() || Date.now());
@@ -249,6 +258,11 @@ export class Game {
   protected dismiss(): void {
     this.reset();
     this.dismissing.mutate(this.id());
+  }
+
+  /** The cover the account sees for the game, by its source; null for the game's own. */
+  protected chooseCover(source: string | null): void {
+    this.choosing.mutate({ id: this.id(), source });
   }
 
   protected retryMonth(): void {

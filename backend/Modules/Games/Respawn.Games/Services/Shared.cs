@@ -71,7 +71,8 @@ internal static class OwnedGames
             Sum(entries.Select(entry => entry.Playtime)),
             Sum(entries.Select(entry => entry.RecentPlaytime)),
             entries.Max(entry => entry.LastPlayedAt),
-            entries);
+            entries,
+            entries[0].CoverSource);
     }
 }
 

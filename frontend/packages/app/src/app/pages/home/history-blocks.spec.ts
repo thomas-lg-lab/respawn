@@ -9,6 +9,7 @@ function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
     recent_playtime_seconds: 0,
     last_played_at: null,
     entries: [],
+    cover_source: null,
     ...values,
   };
 }

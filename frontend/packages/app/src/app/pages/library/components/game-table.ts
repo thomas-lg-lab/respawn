@@ -70,7 +70,7 @@ export class GameTable {
         rank: String(index + 1).padStart(2, '0'),
         name: game.name,
         hue: coverHue(game.game_id),
-        cover: coverAddress(game.game_id),
+        cover: coverAddress(game.game_id, game.cover_source),
         missing: isMissing(game),
         seconds: total,
         total: total === null ? null : this.duration(total),

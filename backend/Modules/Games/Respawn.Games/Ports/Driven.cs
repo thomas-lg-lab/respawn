@@ -89,20 +89,20 @@ public interface ICatalogue
     /// asked at that moment.</summary>
     Task SetCoverPathsAsync(IReadOnlyCollection<CoverPath> paths, DateTimeOffset at, CancellationToken ct);
 
-    /// <summary>The image a game shows for a kind, when one is kept.</summary>
-    Task<KeptImage?> FindImageAsync(Guid gameId, string kind, CancellationToken ct);
+    /// <summary>The image a game shows for a kind in a slot (<see cref="ImageSlots"/>), when one is kept.</summary>
+    Task<KeptImage?> FindImageAsync(Guid gameId, string kind, string slot, CancellationToken ct);
 
-    /// <summary>Makes this the image the game shows for its kind, in the place of the one it showed.
-    /// Returns that one when it was another, whose file may go once no game shows it
-    /// (<see cref="IsImageShownAsync"/>); null otherwise.</summary>
-    Task<ImageName?> KeepImageAsync(Guid gameId, KeptImage image, CancellationToken ct);
+    /// <summary>Makes this the image the game shows for its kind in a slot, in the place of the one it
+    /// showed there. Returns that one when it was another, whose file may go once no game shows it in
+    /// any slot (<see cref="IsImageShownAsync"/>); null otherwise.</summary>
+    Task<ImageName?> KeepImageAsync(Guid gameId, string slot, KeptImage image, CancellationToken ct);
 
-    /// <summary>Whether a game shows this image: its file is removed only once none does.</summary>
+    /// <summary>Whether a game shows this image, in any slot: its file is removed only once none does.</summary>
     Task<bool> IsImageShownAsync(ImageName image, CancellationToken ct);
 
-    /// <summary>Says the source of the image a game shows for a kind was asked for it at that moment,
-    /// and gave nothing newer.</summary>
-    Task CheckedImageAsync(Guid gameId, string kind, DateTimeOffset at, CancellationToken ct);
+    /// <summary>Says the source of the image a game shows for a kind in a slot was asked for it at that
+    /// moment, and gave nothing newer.</summary>
+    Task CheckedImageAsync(Guid gameId, string kind, string slot, DateTimeOffset at, CancellationToken ct);
 
     /// <summary>The cover the game database gives a game (<see cref="GameDataCover"/>).</summary>
     Task<GameDataCover> FindGameDataCoverAsync(Guid gameId, CancellationToken ct);
@@ -174,8 +174,16 @@ public interface ILibraryStore
         CancellationToken ct);
 
     /// <summary>Every way the owner owns a game today, in no order: the ownerships of their linked
-    /// accounts, those noted as missing included, without those that left the library.</summary>
+    /// accounts, those noted as missing included, without those that left the library. Each with the
+    /// source of the cover the owner chose for its game.</summary>
     Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct);
+
+    /// <summary>The source of the cover the owner chose for a game; null while they chose none.</summary>
+    Task<string?> FindCoverChoiceAsync(Guid ownerId, Guid gameId, CancellationToken ct);
+
+    /// <summary>Keeps the owner's choice of a cover for a game, made at that moment, in the place of the
+    /// one they made before; null forgets it.</summary>
+    Task SetCoverChoiceAsync(Guid ownerId, Guid gameId, string? source, DateTimeOffset at, CancellationToken ct);
 
     /// <summary>What is known of a game through each of an owner's linked accounts, in the library or
     /// out of it, in no order. Empty when they never owned it.</summary>

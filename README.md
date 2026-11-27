@@ -78,8 +78,8 @@ and where your time went.
 
 1. **Next**: genres, descriptions and durations through IGDB, and with them the backlog in hours; a first
    try at searching your own backlog by what you feel like playing. What IGDB says of each game is now
-   kept on the server (below); its covers fill in where Steam has none, and a game's page links to IGDB.
-   Then a choice of cover per game, between Steam's and IGDB's.
+   kept on the server (below); its covers fill in where Steam has none, a game's page links to IGDB, and
+   each account chooses, game by game, between Steam's cover and IGDB's.
 2. **Statuses and ratings** for each game.
 3. **Tokens for the public API.**
 4. **More stores, next-game suggestions, sharing with a group.**
@@ -278,9 +278,11 @@ part of the API.
 | `PUT /api/v1/library/games/{id}` | Puts back everything the account took out of that game, whether its store lists it again or not: an entry the store does not list comes back flagged as missing. `404` with `not_removed` |
 | `GET /api/v1/library/removed` | The games the account took out of its library, by name, with the entries taken out (`removed_at`, `listed_again_since`, `notice_dismissed_at`). `back_since` is the notice to show: a store lists the game again since that date, and the notice was not dismissed |
 | `DELETE /api/v1/library/removed/{id}/notice` | Dismisses that notice, for good: the game stays out, and nothing its store says later raises it again; the game can still be put back. `404` with `not_removed`, `409` with `not_back` when no store lists it again |
-| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, in `removed` what the account took out of its library of it, and in `game_data` its page on IGDB when IGDB knows it. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
+| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, in `removed` what the account took out of its library of it, in `game_data` its page on IGDB when IGDB knows it, and in `covers` the `sources` it has a cover from (the game's own first) and the one the account `chosen`. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
+| `PUT /api/v1/games/{id}/cover-choice` | Chooses the cover the account sees for that game, by its `source`, one of `covers.sources`; choosing the first, the game's own, is choosing none. For this account alone: the game's page and the library (`cover_source` of each game) show it. Answers the game's `covers`. `409` with `no_such_cover` when the game has no cover from that source |
+| `DELETE /api/v1/games/{id}/cover-choice` | Goes back to the game's own cover. Answers the game's `covers` |
 | `GET /api/v1/games/{id}/months` | The months that game was played in, the earliest first, each with its `seconds` and its `source`, counted as in `/library/years`: the months of a year add up to the game's part of that year there. A month with nothing played is left out |
-| `GET /api/v1/games/{id}/cover` | A game's cover, as an image (JPEG, PNG or WebP). With `RESPAWN_DATA_DIR` set, the instance keeps each cover it serves: fetched from Steam, or from IGDB when Steam has none, the first time it is asked for, then served from the file with an `ETag` (`304` to a browser that holds it), fetched again once Steam's store said again where it is, and still served when Steam does not answer or no longer has it. Without it, the cover is fetched from Steam at each request. `Cache-Control` lets the browser keep it for a week (an hour until Steam's store has said where the cover is, a few minutes after the first sync). `404` with `no_cover` when the game has none, `503` with `cover_unavailable` when Steam does not answer, `429` for a client that asks for too many. For any signed-in account and any game |
+| `GET /api/v1/games/{id}/cover` | A game's cover, as an image (JPEG, PNG or WebP). With `RESPAWN_DATA_DIR` set, the instance keeps each cover it serves: fetched from Steam, or from IGDB when Steam has none, the first time it is asked for, then served from the file with an `ETag` (`304` to a browser that holds it), fetched again once Steam's store said again where it is, and still served when Steam does not answer or no longer has it. Without it, the cover is fetched from Steam at each request. `Cache-Control` lets the browser keep it for a week (an hour until Steam's store has said where the cover is, a few minutes after the first sync). `404` with `no_cover` when the game has none, `503` with `cover_unavailable` when Steam does not answer, `429` for a client that asks for too many. With `source` (`steam`, `igdb`), the cover of that source alone, as a choice names it, kept apart; the game's own when that source has none. For any signed-in account and any game |
 | `GET /api/v1/credits` | The sources the instance credits, each with its `label` and the `url` it leads to: IGDB once the instance has access to it or holds anything it said, as its terms ask. The front says it under the settings |
 
 Errors always have the same shape, whatever answered:
@@ -365,6 +367,11 @@ IGDB's image host with no token, once IGDB was asked about the game (below); it 
 `images/cover/igdb/` like Steam's under `images/cover/steam/`, and gives way to Steam's when Steam's store
 later names one. A Steam cover the instance kept is never replaced by IGDB's, even once Steam no longer
 has it.
+
+An account may choose, game by game, the cover it sees: pressing a game's cover on its page shows those of
+its sources side by side. The choice is that account's alone, and the library follows it. The cover of the
+source chosen is kept beside the game's own (the same file when they are one image), and asked for again
+the same way.
 
 ### What IGDB says of the games
 

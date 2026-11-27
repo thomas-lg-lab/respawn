@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,39 @@ public sealed class GamesController(ICoverService covers, IGameService games, IP
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<GameResponse> Get([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct) =>
         GameResponse.From(await games.GetGameAsync(Caller.Id(User), id, ct));
+
+    [HttpPut("games/{id:guid}/cover-choice")]
+    [Authorize]
+    [Produces("application/json")]
+    [EndpointSummary("Choose the cover the signed-in account sees for a game")]
+    [EndpointDescription(
+        "By its source, one of the game's covers' sources (covers.sources of the game). For this account "
+        + "alone: the game shows it in its page and in the library, whose items name it in cover_source, to "
+        + "ask the cover with. Choosing the game's own cover, the first source, is the same as choosing none. "
+        + "409 no_such_cover when the game has no cover from that source.")]
+    [ProducesResponseType<GameCoversResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<GameCoversResponse> ChooseCover(
+        [Description("The game, by its id in the catalogue.")] Guid id, CoverChoiceRequest request, CancellationToken ct) =>
+        GameCoversResponse.From(await games.ChooseCoverAsync(Caller.Id(User), id, request.Source, ct));
+
+    [HttpDelete("games/{id:guid}/cover-choice")]
+    [Authorize]
+    [Produces("application/json")]
+    [EndpointSummary("Go back to a game's own cover")]
+    [EndpointDescription(
+        "Forgets the account's choice of a cover for the game: it shows the game's own again. Forgetting a "
+        + "choice that was not made changes nothing.")]
+    [ProducesResponseType<GameCoversResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<GameCoversResponse> ForgetCover([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct) =>
+        GameCoversResponse.From(await games.ChooseCoverAsync(Caller.Id(User), id, null, ct));
 
     [HttpGet("credits")]
     [Authorize]
@@ -82,20 +116,25 @@ public sealed class GamesController(ICoverService covers, IGameService games, IP
         + "it is asked for, with no ETag. Cache-Control lets the browser keep it for a week. A game without a "
         + "cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, "
         + "503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a "
-        + "few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in "
-        + "account may ask for the cover of any game; a client that asks for too many at once is answered 429.")]
+        + "few minutes after a sync, a cover is kept for an hour and no_cover is not kept. With source, the "
+        + "cover of that source alone (one of the game's covers' sources, as an account's choice names it), "
+        + "kept apart; the game's own cover when that source has none. Any signed-in account may ask for the "
+        + "cover of any game; a client that asks for too many at once is answered 429.")]
     [ProducesResponseType<Stream>(StatusCodes.Status200OK, "image/jpeg", "image/png", "image/webp")]
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized, "application/json")]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound, "application/json")]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status429TooManyRequests, "application/json")]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status503ServiceUnavailable, "application/json")]
-    public async Task<IActionResult> Cover([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct)
+    public async Task<IActionResult> Cover(
+        [Description("The game, by its id in the catalogue.")] Guid id,
+        [FromQuery, StringLength(Limits.Source), Description("A source whose cover to give (steam, igdb), as a choice names it.")] string? source,
+        CancellationToken ct)
     {
         CoverAnswer answer;
         try
         {
-            answer = await covers.GetCoverAsync(id, ct);
+            answer = await covers.GetCoverAsync(id, source, ct);
         }
         catch (SourceException)
         {

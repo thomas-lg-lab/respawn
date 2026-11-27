@@ -25,6 +25,8 @@
   --color-warn-line: var(--rs-warn-line);
   --color-inverse: var(--rs-inverse);
   --color-on-inverse: var(--rs-on-inverse);
+  --color-scrim: var(--rs-scrim);
+  --color-on-scrim: var(--rs-on-scrim);
   --color-recency-1: var(--rs-recency-1);
   --color-on-recency-1: var(--rs-on-recency-1);
   --color-recency-2: var(--rs-recency-2);

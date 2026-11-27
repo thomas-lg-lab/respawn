@@ -10,12 +10,16 @@ public interface ICoverService
     /// kept: the kept one while it is current, asked of its source once its store said again where it
     /// is or <see cref="CoverSchedule.AskAgainAfter"/> after it was last asked for, and still served
     /// when that source does not answer or has none any more. A cover found before the store said
-    /// where it is is passed on and not kept.</summary>
+    /// where it is is passed on and not kept.
+    ///
+    /// With a source, the cover of that source alone, a store or the game database, kept in a slot of
+    /// its own (<see cref="ImageSlots"/>) and looked for again the same way. A source that has no cover
+    /// for the game, or that the instance does not read, gives the game's own cover instead.</summary>
     /// <exception cref="GamesException"><see cref="GamesError.UnknownGame"/>: the catalogue has no such
     /// game.</exception>
     /// <exception cref="SourceException">No source gave a cover, and one of them could not be read: the
-    /// game may have one.</exception>
-    Task<CoverAnswer> GetCoverAsync(Guid gameId, CancellationToken ct);
+    /// game may have one. With a source: that source could not be read, and nothing of it is kept.</exception>
+    Task<CoverAnswer> GetCoverAsync(Guid gameId, string? source, CancellationToken ct);
 
     /// <summary>The linked accounts whose store is to ask where covers are, the earliest link first:
     /// those a connector reads the covers of, owning a game never asked about or asked about more

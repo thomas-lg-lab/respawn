@@ -16,6 +16,17 @@
       <span class="type-page-title">{{ initial() }}</span>
       <span class="type-caption">{{ t('noCover') }}</span>
     </div>
+  } @else if (choosable()) {
+    <!-- More than one source has a cover: the cover is the way to choose among them. -->
+    <rs-cover-choice
+      class="row-span-2 w-22 shrink-0 wide:w-37"
+      [gameId]="game().game_id"
+      [hue]="hue()"
+      [covers]="game().covers"
+      [pending]="choosing()"
+      (picked)="coverPicked.emit($event)"
+      (failed)="noCover.set(true)"
+    />
   } @else {
     <rs-cover
       class="row-span-2 w-22 shrink-0 shadow-raised wide:w-37"

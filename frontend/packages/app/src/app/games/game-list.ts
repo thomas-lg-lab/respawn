@@ -219,7 +219,7 @@ export function sorted(
 }
 
 /** No store lists the game any more: every copy of it is flagged. */
-export function isMissing(game: LibraryGame): boolean {
+export function isMissing(game: Pick<LibraryGame, 'entries'>): boolean {
   return game.entries.length > 0 && game.entries.every((entry) => entry.missing_since !== null);
 }
 
@@ -228,7 +228,7 @@ export function isMissing(game: LibraryGame): boolean {
  * and the game's number at Steam. `null` when no copy of it is still listed there, or when
  * what the store gave as its number is not one: nothing else ever goes into that address.
  */
-export function steamLaunchAddress(game: LibraryGame): string | null {
+export function steamLaunchAddress(game: Pick<LibraryGame, 'entries'>): string | null {
   const owned = game.entries.find(
     (entry) =>
       entry.source === 'steam' && entry.missing_since === null && /^\d+$/.test(entry.external_id),

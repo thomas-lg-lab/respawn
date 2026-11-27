@@ -722,6 +722,8 @@ describe('Home', () => {
         stores: [],
         rank: { position: 1, launched: 1 },
         removed: null,
+        game_data: null,
+        covers: { sources: [], chosen: null },
       });
       await server.answer(`/games/${elden.game_id}/months`, { months: [] });
       await harness.fixture.whenStable();

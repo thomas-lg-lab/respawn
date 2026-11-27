@@ -70,6 +70,7 @@ describe('the time map', () => {
       recent_playtime_seconds: 0,
       last_played_at: null,
       entries: [],
+      cover_source: null,
       ...values,
     });
     const now = Date.parse('2026-11-24T12:00:00Z');

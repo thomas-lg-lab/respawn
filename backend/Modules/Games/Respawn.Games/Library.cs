@@ -150,7 +150,8 @@ public sealed record RemovedEntry(
 public sealed record RemovedGame(Guid GameId, string? Name, DateTimeOffset? BackSince, IReadOnlyList<RemovedEntry> Entries);
 
 /// <summary>One way an owner owns a game: a store entry, through one of their linked accounts. The pair
-/// of the two ids is unique in a library.</summary>
+/// of the two ids is unique in a library. With it, the source of the cover the owner chose for the
+/// game, when they chose one.</summary>
 public sealed record OwnedEntry(
     Guid GameId,
     string? GameName,
@@ -163,7 +164,8 @@ public sealed record OwnedEntry(
     DateTimeOffset? LastPlayedAt,
     DateTimeOffset FirstSeenAt,
     DateTimeOffset AsOf,
-    DateTimeOffset? MissingSince = null);
+    DateTimeOffset? MissingSince = null,
+    string? CoverSource = null);
 
 /// <summary>A game of an owner's library, once, however many store entries it is owned through: after
 /// a merge, or with two accounts of one store, a game has several.</summary>
@@ -174,13 +176,15 @@ public sealed record OwnedEntry(
 /// window; null while none said.</param>
 /// <param name="LastPlayedAt">The latest over its entries.</param>
 /// <param name="Entries">The ways it is owned, at least one.</param>
+/// <param name="CoverSource">The source of the cover the owner chose for it; null while they chose none.</param>
 public sealed record OwnedGame(
     Guid GameId,
     string? Name,
     TimeSpan? Playtime,
     TimeSpan? RecentPlaytime,
     DateTimeOffset? LastPlayedAt,
-    IReadOnlyList<OwnedEntry> Entries);
+    IReadOnlyList<OwnedEntry> Entries,
+    string? CoverSource = null);
 
 /// <summary>The orders a library is read in. Whatever the order, the games it cannot place (no name,
 /// no playtime said, never launched) come last.</summary>

@@ -55,7 +55,7 @@ export class GameGrid {
         id: game.game_id,
         name: game.name,
         hue: coverHue(game.game_id),
-        cover: coverAddress(game.game_id),
+        cover: coverAddress(game.game_id, game.cover_source),
         missing: isMissing(game),
         total: total === null ? null : total === 0 ? 'never' : saidPlaytime(total, this.language()),
       };

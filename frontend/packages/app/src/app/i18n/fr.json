@@ -369,6 +369,18 @@
   "game": {
     "unnamed": "Jeu sans nom",
     "noCover": "Pas de jaquette",
+    "cover": {
+      "change": "Changer la jaquette",
+      "title": "Jaquette",
+      "own": "Celle de {{ source }} par défaut. Pour vous uniquement.",
+      "chosen": "Pour vous uniquement.",
+      "backTo": "Revenir à celle de {{ source }}",
+      "failed": "La jaquette n’a pas pu être changée. Réessayez.",
+      "sources": {
+        "steam": "Steam",
+        "igdb": "IGDB"
+      }
+    },
     "status": {
       "last": "Dernière session {{ ago }}",
       "never": "Jamais lancé",

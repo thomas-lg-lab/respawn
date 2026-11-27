@@ -478,6 +478,152 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/games/{id}/cover-choice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose the cover the signed-in account sees for a game
+         * @description By its source, one of the game's covers' sources (covers.sources of the game). For this account alone: the game shows it in its page and in the library, whose items name it in cover_source, to ask the cover with. Choosing the game's own cover, the first source, is the same as choosing none. 409 no_such_cover when the game has no cover from that source.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CoverChoiceRequest"];
+                    "text/json": components["schemas"]["CoverChoiceRequest"];
+                    "application/*+json": components["schemas"]["CoverChoiceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GameCoversResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Go back to a game's own cover
+         * @description Forgets the account's choice of a cover for the game: it shows the game's own again. Forgetting a choice that was not made changes nothing.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game, by its id in the catalogue. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GameCoversResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credits": {
         parameters: {
             query?: never;
@@ -595,11 +741,14 @@ export interface paths {
         };
         /**
          * A game's cover
-         * @description The cover as an image. An instance given a data directory keeps each cover it serves: fetched from a source of the game the first time it is asked for, then served from there, with an ETag a browser sends back in If-None-Match to be answered 304 while it did not change; still served when its source does not answer or no longer has it. An instance without one fetches the cover each time it is asked for, with no ETag. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few minutes after a sync, a cover is kept for an hour and no_cover is not kept. Any signed-in account may ask for the cover of any game; a client that asks for too many at once is answered 429.
+         * @description The cover as an image. An instance given a data directory keeps each cover it serves: fetched from a source of the game the first time it is asked for, then served from there, with an ETag a browser sends back in If-None-Match to be answered 304 while it did not change; still served when its source does not answer or no longer has it. An instance without one fetches the cover each time it is asked for, with no ETag. Cache-Control lets the browser keep it for a week. A game without a cover answers 404 no_cover, which the browser keeps for an hour; a source that does not answer, 503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a few minutes after a sync, a cover is kept for an hour and no_cover is not kept. With source, the cover of that source alone (one of the game's covers' sources, as an account's choice names it), kept apart; the game's own cover when that source has none. Any signed-in account may ask for the cover of any game; a client that asks for too many at once is answered 429.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description A source whose cover to give (steam, igdb), as a choice names it. */
+                    source?: string;
+                };
                 header?: never;
                 path: {
                     /** @description The game, by its id in the catalogue. */
@@ -1632,6 +1781,9 @@ export interface components {
             password_min_length: number;
             oidc_providers: components["schemas"]["ProviderResponse"][];
         };
+        CoverChoiceRequest: {
+            source: string;
+        };
         CreditResponse: {
             source: string;
             label: string;
@@ -1646,6 +1798,10 @@ export interface components {
         };
         ErrorResponse: {
             error?: components["schemas"]["ErrorBody"];
+        };
+        GameCoversResponse: {
+            sources: string[];
+            chosen: null | string;
         };
         GameDataPageResponse: {
             source: string;
@@ -1682,6 +1838,7 @@ export interface components {
             rank: null | components["schemas"]["GameRankResponse"];
             removed: null | components["schemas"]["RemovedGameResponse"];
             game_data: null | components["schemas"]["GameDataPageResponse"];
+            covers: components["schemas"]["GameCoversResponse"];
         };
         GameStoreResponse: {
             /** Format: uuid */
@@ -1731,6 +1888,7 @@ export interface components {
             /** Format: date-time */
             last_played_at: null | string;
             entries: components["schemas"]["LibraryEntryResponse"][];
+            cover_source: null | string;
         };
         LibraryHistoryResponse: {
             /** Format: date-time */

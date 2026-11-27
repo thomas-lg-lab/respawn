@@ -36,7 +36,49 @@ public sealed class GameService(
             },
             owned,
             Rank(owned, games),
-            RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId, ct)).SingleOrDefault());
+            RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId, ct)).SingleOrDefault(),
+            await CoversAsync(ownerId, gameId, ct));
+    }
+
+    public async Task<GameCovers> ChooseCoverAsync(Guid ownerId, Guid gameId, string? source, CancellationToken ct)
+    {
+        _ = await catalogue.FindGameAsync(gameId, ct) ?? throw new GamesException(GamesError.UnknownGame);
+        var sources = await CoverSourcesAsync(gameId, ct);
+        if (source is not null && !sources.Contains(source, StringComparer.Ordinal))
+        {
+            throw new GamesException(GamesError.NoSuchCover);
+        }
+
+        // The game's own cover is no choice: it is what the game shows to whoever chose none, and it
+        // follows the sources when they change.
+        var chosen = source == sources.FirstOrDefault() ? null : source;
+        await library.SetCoverChoiceAsync(ownerId, gameId, chosen, clock.GetUtcNow(), ct);
+        return new GameCovers(sources, chosen);
+    }
+
+    /// <summary>The covers of a game, and the owner's choice while it is still one of them.</summary>
+    private async Task<GameCovers> CoversAsync(Guid ownerId, Guid gameId, CancellationToken ct)
+    {
+        var sources = await CoverSourcesAsync(gameId, ct);
+        var chosen = await library.FindCoverChoiceAsync(ownerId, gameId, ct);
+        return new GameCovers(sources, chosen is not null && sources.Skip(1).Contains(chosen, StringComparer.Ordinal) ? chosen : null);
+    }
+
+    /// <summary>The sources a game has a cover from, in the order its own cover is looked for: the
+    /// stores that said where theirs is, then the game database when it gives one.</summary>
+    private async Task<List<string>> CoverSourcesAsync(Guid gameId, CancellationToken ct)
+    {
+        var entries = await catalogue.FindCoverEntriesAsync(gameId, ct) ?? [];
+        var data = await catalogue.FindGameDataCoverAsync(gameId, ct);
+        return
+        [
+            .. entries
+                .Where(entry => entry.CoverPath is not null)
+                .Select(entry => entry.Source)
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal),
+            .. data.ImageId is null ? [] : new[] { gameData.Source },
+        ];
     }
 
     /// <summary>The game's place among those launched, the most played first. Two games played as long
