@@ -41,14 +41,14 @@ public sealed record GameCovers(IReadOnlyList<string> Sources, string? Chosen);
 
 /// <summary>What the game database says of a game, as its page shows it.</summary>
 /// <param name="Source">The database, as the catalogue names it.</param>
-/// <param name="Url">The game's page there, for a person to follow.</param>
+/// <param name="Url">The game's page there, for a person to follow; null when the database gave none.</param>
 /// <param name="Genres">Its genres, in the database's words and order; empty when it gave none.</param>
 /// <param name="Themes">Its themes, likewise.</param>
 /// <param name="Summary">What it is about, in the database's words (IGDB: English); null when none.</param>
 /// <param name="TimeToBeat">How long players say it takes; null when none said.</param>
 public sealed record GameDataSaid(
     string Source,
-    string Url,
+    string? Url,
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Themes,
     string? Summary,

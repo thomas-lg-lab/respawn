@@ -34,18 +34,19 @@ export function paceRows(said: TimeToBeat, played: number | null, language: stri
     normally: said.normally_seconds,
     completely: said.completely_seconds,
   };
-  return PACES.flatMap((pace) => {
-    const each = seconds[pace];
-    if (each === null || !(each > 0)) return [];
+  const given = PACES.filter((pace) => (seconds[pace] ?? 0) > 0);
+  const last = given.at(-1);
+  return given.map((pace) => {
+    const each = seconds[pace] ?? 0;
     const state = ((): PaceState => {
       if (played === null || played <= 0) return { kind: 'none' };
       if (played < each) return { kind: 'left', time: saidPlaytime(each - played, language) };
-      // An hour past the longest pace is worth saying; a minute past any pace is just reached.
-      return pace === 'completely' && played - each >= 3600
+      // An hour past the longest pace given is worth saying; a minute past any pace is just reached.
+      return pace === last && played - each >= 3600
         ? { kind: 'beyond', time: saidPlaytime(played - each, language) }
         : { kind: 'reached' };
     })();
-    return [{ pace, seconds: each, time: saidPlaytime(each, language), state }];
+    return { pace, seconds: each, time: saidPlaytime(each, language), state };
   });
 }
 

@@ -1,6 +1,8 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Games.Api;
+using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
@@ -241,6 +243,23 @@ public sealed class IgdbCoverTests : IDisposable
         Assert.Equal(["Science fiction", "Comedy"], Words(library["Portal 2"].GetProperty("themes")));
         Assert.Empty(library[""].GetProperty("genres").EnumerateArray());
         Assert.Empty(library[""].GetProperty("themes").EnumerateArray());
+
+        // Without a page there, or with durations of nothing, the rest of what IGDB says still shows.
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+            await db.IgdbGames.Where(g => g.IgdbId == 72).ExecuteUpdateAsync(g => g
+                .SetProperty(x => x.Url, (string?)null)
+                .SetProperty(x => x.HastilySeconds, 0)
+                .SetProperty(x => x.NormallySeconds, 0)
+                .SetProperty(x => x.CompletelySeconds, 0));
+        }
+
+        var bare = (await browser.GetAsync($"/api/v1/games/{games["Portal 2"]}").JsonAsync()).GetProperty("game_data");
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, bare.GetProperty("url").ValueKind);
+        Assert.Equal(["Shooter", "Puzzle", "Adventure"], Words(bare.GetProperty("genres")));
+        Assert.StartsWith("More test chambers", bare.GetProperty("summary").GetString(), StringComparison.Ordinal);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, bare.GetProperty("time_to_beat").ValueKind);
 
         // A game IGDB does not know has no page there.
         var unknown = await browser.GetAsync($"/api/v1/games/{games[""]}").JsonAsync();

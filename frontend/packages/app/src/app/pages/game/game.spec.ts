@@ -279,6 +279,27 @@ describe('Game', () => {
     expect(text(screen, '[data-durations-source]')).toBe('Sur IGDB');
   });
 
+  it('says how far past the longest pace players gave, even short of 100 %', async () => {
+    const { screen } = await open(
+      eldenRing({
+        playtime_seconds: 130 * HOUR,
+        game_data: igdb({
+          time_to_beat: {
+            hastily_seconds: 58 * HOUR,
+            normally_seconds: 100 * HOUR,
+            completely_seconds: null,
+            count: null,
+          },
+        }),
+      }),
+    );
+
+    expect(
+      [...screen.querySelectorAll('[data-pace]')].map((row) => row.getAttribute('data-state')),
+    ).toEqual(['reached', 'beyond']);
+    expect(text(screen, '[data-pace="normally"]')).toContain('atteint, + 30 h');
+  });
+
   it('gives a game never launched how long it takes, with nothing set against it', async () => {
     const never = eldenRing({
       playtime_seconds: 0,
@@ -301,6 +322,8 @@ describe('Game', () => {
     const { screen } = await open(eldenRing({ game_data: null }));
 
     expect(screen.querySelector('[data-tags]')).toBeNull();
+    // No row is kept in the hero for the genres it does not have.
+    expect(screen.querySelector('[data-hero]')?.hasAttribute('data-tagged')).toBe(false);
     expect(screen.querySelector('[data-about]')).toBeNull();
     expect(screen.querySelector('[data-durations]')).toBeNull();
   });

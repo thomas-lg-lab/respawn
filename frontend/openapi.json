@@ -1812,7 +1812,10 @@
             "type": "string"
           },
           "url": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "genres": {
             "type": "array",

@@ -2,15 +2,16 @@
      right, on the state's line and centred with it, so the title never runs beside them; on a
      phone they go under the whole. -->
 <section
-  class="grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end wide:grid-rows-[1fr_auto_auto] gap-x-7 gap-y-2 rounded-hero border border-line bg-surface p-4 wide:grid-cols-[auto_minmax(0,1fr)_auto] wide:px-7 wide:py-6"
+  class="group/hero grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end wide:data-tagged:grid-rows-[1fr_auto_auto] gap-x-7 gap-y-2 rounded-hero border border-line bg-surface p-4 wide:grid-cols-[auto_minmax(0,1fr)_auto] wide:px-7 wide:py-6"
   data-hero
+  [attr.data-tagged]="tags().length ? '' : null"
   *transloco="let t; prefix: 'game'"
 >
   <!-- Decoration: the title is written beside it. With more than one source of a cover, the cover
        is the way to choose among them, and stays one when it could not be shown. -->
   @if (choosable()) {
     <rs-cover-choice
-      class="row-span-2 w-22 shrink-0 wide:row-span-3 wide:w-37"
+      class="row-span-2 w-22 shrink-0 wide:w-37 wide:group-data-tagged/hero:row-span-3"
       [gameId]="game().game_id"
       [hue]="hue()"
       [covers]="game().covers"
@@ -23,7 +24,7 @@
     />
   } @else if (noCover()) {
     <div
-      class="row-span-2 flex aspect-[2/3] w-22 wide:row-span-3 shrink-0 flex-col items-center justify-center gap-1 rounded-field border-2 border-dashed border-control-line p-2 text-center text-muted wide:w-37"
+      class="row-span-2 flex aspect-[2/3] w-22 wide:group-data-tagged/hero:row-span-3 shrink-0 flex-col items-center justify-center gap-1 rounded-field border-2 border-dashed border-control-line p-2 text-center text-muted wide:w-37"
       aria-hidden="true"
       data-no-cover
     >
@@ -32,7 +33,7 @@
     </div>
   } @else {
     <rs-cover
-      class="row-span-2 w-22 shrink-0 shadow-raised wide:row-span-3 wide:w-37"
+      class="row-span-2 w-22 shrink-0 shadow-raised wide:w-37 wide:group-data-tagged/hero:row-span-3"
       aria-hidden="true"
       data-cover
       eager

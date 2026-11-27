@@ -329,7 +329,7 @@ describe('Library', () => {
   it('keeps the genre or theme its address asks for, a game’s page leading there', async () => {
     const { harness, screen } = await open(library(), 'fr', '/library?genre=Indie&sort=name');
 
-    expect(text(screen, '[data-genre]')).toBe('Genre : « Indie »');
+    expect(text(screen, '[data-genre]')).toBe('Genre ou thème : « Indie »');
     expect(names(screen)).toEqual(['Celeste', 'Hades']);
     expect(text(screen, '[data-filter="all"]')).toBe('Tous 2');
     expect(text(screen, '[data-filter="never"]')).toBe('Jamais lancés 1');
@@ -338,7 +338,7 @@ describe('Library', () => {
     await harness.navigateByUrl('/library?genre=Action');
     expect(names(screen)).toEqual(['Hades']);
 
-    button(screen, 'Tous les genres').click();
+    button(screen, 'Tous les genres et thèmes').click();
     await harness.fixture.whenStable();
 
     expect(names(screen)).toHaveLength(4);

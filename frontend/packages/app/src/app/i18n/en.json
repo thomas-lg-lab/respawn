@@ -346,8 +346,8 @@
     "shownOne": "{{ shown }} game shown out of {{ total }}",
     "shownMany": "{{ shown }} games shown out of {{ total }}",
     "more": "Show more",
-    "genre": "Genre: “{{ genre }}”",
-    "clearGenre": "All genres"
+    "genre": "Genre or theme: “{{ genre }}”",
+    "clearGenre": "All genres and themes"
   },
   "time": {
     "title": "Time",

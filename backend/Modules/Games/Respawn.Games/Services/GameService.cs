@@ -39,8 +39,8 @@ public sealed class GameService(
             Rank(owned, games),
             RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId, ct)).SingleOrDefault(),
             await CoversAsync(ownerId, gameId, ct),
-            facts is { Url: { } url }
-                ? new GameDataSaid(gameData.Source, url, facts.Genres, facts.Themes, facts.Summary, facts.TimeToBeat)
+            facts is { } said
+                ? new GameDataSaid(gameData.Source, said.Url, said.Genres, said.Themes, said.Summary, said.TimeToBeat)
                 : null);
     }
 

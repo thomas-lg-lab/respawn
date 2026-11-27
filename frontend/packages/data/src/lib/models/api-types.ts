@@ -1886,7 +1886,7 @@ export interface components {
         };
         GameDataResponse: {
             source: string;
-            url: string;
+            url: null | string;
             genres: string[];
             themes: string[];
             summary: null | string;

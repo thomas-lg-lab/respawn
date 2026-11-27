@@ -263,14 +263,14 @@ public sealed record GameResponse(
 
 /// <summary>What the game database says of a game, in its own words (IGDB: English).</summary>
 /// <param name="Source">The game database: igdb.</param>
-/// <param name="Url">The game's page there, for a person to follow.</param>
+/// <param name="Url">The game's page there, for a person to follow; null when the database gave none.</param>
 /// <param name="Genres">Its genres, in the database's order; empty when it gave none.</param>
 /// <param name="Themes">Its themes, likewise.</param>
 /// <param name="Summary">What the game is about; null when the database says nothing.</param>
 /// <param name="TimeToBeat">How long players say it takes; null when none said.</param>
 public sealed record GameDataResponse(
     string Source,
-    string Url,
+    string? Url,
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Themes,
     string? Summary,

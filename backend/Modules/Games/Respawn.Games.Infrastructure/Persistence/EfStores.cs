@@ -314,8 +314,11 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
                 game => Facts(game.OrderBy(row => row.Source, StringComparer.Ordinal).ThenBy(row => row.EntryId).First().Game));
     }
 
-    private static GameFacts Facts(IgdbGameRow game) =>
-        new(
+    private static GameFacts Facts(IgdbGameRow game)
+    {
+        // A duration of nothing says nothing: kept as it came, never shown as a pace.
+        int? hastily = Said(game.HastilySeconds), normally = Said(game.NormallySeconds), completely = Said(game.CompletelySeconds);
+        return new(
             game.IgdbId.ToString(CultureInfo.InvariantCulture),
             game.Name,
             game.Slug,
@@ -324,9 +327,12 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             game.Genres,
             game.Themes,
             game.Summary,
-            game.HastilySeconds is null && game.NormallySeconds is null && game.CompletelySeconds is null
+            hastily is null && normally is null && completely is null
                 ? null
-                : new TimeToBeat(game.HastilySeconds, game.NormallySeconds, game.CompletelySeconds, game.TimeToBeatCount));
+                : new TimeToBeat(hastily, normally, completely, game.TimeToBeatCount));
+
+        static int? Said(int? seconds) => seconds > 0 ? seconds : null;
+    }
 
     public async Task<GameDataCover> FindGameDataCoverAsync(Guid gameId, CancellationToken ct)
     {
