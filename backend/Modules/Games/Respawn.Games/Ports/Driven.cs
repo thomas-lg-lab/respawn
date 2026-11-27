@@ -114,7 +114,8 @@ public interface ICatalogue
 
     /// <summary>Keeps what the game database said of its games, one record per game for the whole
     /// instance, in the place of what it said before; then which of its games these store entries are,
-    /// none included, and that it was asked at that moment.</summary>
+    /// none included, and that it was asked at that moment. A game of the database no store entry is any
+    /// more is forgotten.</summary>
     Task SetGameDataAsync(IReadOnlyCollection<GameFacts> games, IReadOnlyCollection<GameDataMatch> matches, DateTimeOffset at, CancellationToken ct);
 }
 

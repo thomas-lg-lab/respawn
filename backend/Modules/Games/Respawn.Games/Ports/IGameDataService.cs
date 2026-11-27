@@ -16,8 +16,11 @@ public interface IGameDataService
     /// <see cref="GameDataOptions.GamesPerTurn"/> of them, never asked first: which of its games each one
     /// is, then what it knows of those. Kept batch by batch, each in its own transaction: the answers as
     /// snapshots, the database's games, and the store entries' matches. A store entry the database knows
-    /// as several of its games is taken as the one with the smallest id. A database that cannot be read
-    /// stops the run there.
+    /// as several of its games is taken as the one with the smallest id, and one it names but says
+    /// nothing of as unknown. A database that cannot be read stops the run there; when the same games
+    /// leave its answer unreadable <see cref="GameDataSchedule.UnreadableBeforeSetAside"/> turns in a row,
+    /// they are set aside as unknown, for the games after them to be asked about. Any other failure
+    /// leaves the store alone for <see cref="GameDataSchedule.RetryAfter"/> too, and is thrown.
     /// Null when there is nothing to do: no access, a store it is not asked about, a turn already on its
     /// way, one that failed less than <see cref="GameDataSchedule.RetryAfter"/> ago, or nothing due.</summary>
     Task<GameDataRead?> ReadAsync(string store, CancellationToken ct);

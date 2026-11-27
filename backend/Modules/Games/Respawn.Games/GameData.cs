@@ -39,8 +39,8 @@ public sealed record GameFacts(
 
 /// <summary>How long the players who said so took to finish a game, in seconds: rushing it, at a normal
 /// pace, and doing everything. Each is null when nobody said.</summary>
-/// <param name="Count">How many players the figures rest on.</param>
-public sealed record TimeToBeat(int? Hastily, int? Normally, int? Completely, int Count);
+/// <param name="Count">How many players the figures rest on; null when the database did not say.</param>
+public sealed record TimeToBeat(int? Hastily, int? Normally, int? Completely, int? Count);
 
 /// <summary>One answer of a source, untouched, to keep as a snapshot.</summary>
 /// <param name="Kind">Which of the source's answers it is.</param>
@@ -92,6 +92,11 @@ public static class GameDataSchedule
     /// asked again at every turn.</summary>
     public static readonly TimeSpan RetryAfter = TimeSpan.FromHours(1);
 
+    /// <summary>How many times in a row the same games may leave the database's answer unreadable before
+    /// they are set aside as unknown, to be asked about again after <see cref="UnknownAskAgainAfter"/>:
+    /// a batch whose answer cannot be read must not hold back every game after it.</summary>
+    public const int UnreadableBeforeSetAside = 3;
+
     /// <summary>The most games asked about in one turn, unless the instance says otherwise: a library
     /// read for the first time is spread over several turns, never asked about all at once.</summary>
     public const int GamesPerTurn = 100;
@@ -109,7 +114,7 @@ public sealed record GameDataOptions(int GamesPerTurn = GameDataSchedule.GamesPe
 public sealed class GameDataGate
 {
     private readonly HashSet<string> _running = [];
-    private readonly Dictionary<string, DateTimeOffset> _failed = [];
+    private readonly Dictionary<string, (DateTimeOffset At, int Unreadable)> _failed = [];
 
     public bool TryEnter(string store)
     {
@@ -133,15 +138,32 @@ public sealed class GameDataGate
     {
         lock (_running)
         {
-            return _failed.TryGetValue(store, out var at) ? at : null;
+            return _failed.TryGetValue(store, out var failed) ? failed.At : null;
         }
     }
 
-    public void Failed(string store, DateTimeOffset at)
+    /// <summary>Says the database could not be read about this store's games at that moment. Returns how
+    /// many turns in a row ended with an answer that could not be read, this one included: 0 when this
+    /// failure was of another kind.</summary>
+    public int Failed(string store, DateTimeOffset at, bool unreadable)
     {
         lock (_running)
         {
-            _failed[store] = at;
+            var count = unreadable ? _failed.GetValueOrDefault(store).Unreadable + 1 : 0;
+            _failed[store] = (at, count);
+            return count;
+        }
+    }
+
+    /// <summary>Says the games that kept failing were set aside: the count starts again.</summary>
+    public void SetAside(string store)
+    {
+        lock (_running)
+        {
+            if (_failed.TryGetValue(store, out var failed))
+            {
+                _failed[store] = (failed.At, 0);
+            }
         }
     }
 

@@ -367,8 +367,12 @@ summary (in English) and how long players took to finish it.
   takes for the same game share what it says of it and stay two games: nothing is merged. A store game IGDB
   knows as several is taken as the one with the smallest id.
 - **Asked again** after 30 days for a game IGDB knows, after 7 for one it does not, which it may add later.
+  A game IGDB names but says nothing of counts as one it does not know, and what IGDB said of a game no
+  store game is any more is forgotten.
 - **A failure** (IGDB refusing the instance's access or not answering) is said once in the log and tried
-  again an hour later; nothing of the batch it failed on is kept, and the sync never waits for it.
+  again an hour later; nothing of the batch it failed on is kept, and the sync never waits for it. Games
+  whose answer cannot be read three turns in a row are set aside as unknown, for the games after them to
+  be asked about.
 - Each answer is kept as it came, like a reading. Nothing shows this yet: the game page and the backlog in
   hours come next.
 

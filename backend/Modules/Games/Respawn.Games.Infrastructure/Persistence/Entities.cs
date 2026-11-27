@@ -56,8 +56,9 @@ public sealed class StoreEntryRow
 }
 
 /// <summary>What IGDB says of one of its games, once for the whole instance, replaced each time it is
-/// asked again. The store entries that are this game point to it by its id (<see cref="StoreEntryRow.IgdbId"/>),
-/// with no foreign key: an entry may know its game before IGDB answered about it.</summary>
+/// asked again, and removed once no store entry is this game any more. The store entries that are this
+/// game point to it by its id (<see cref="StoreEntryRow.IgdbId"/>), with no foreign key: the two are
+/// written together, the row first.</summary>
 public sealed class IgdbGameRow
 {
     public long IgdbId { get; set; }
@@ -87,7 +88,7 @@ public sealed class IgdbGameRow
 
     public int? CompletelySeconds { get; set; }
 
-    /// <summary>How many players those figures rest on; null when there are none.</summary>
+    /// <summary>How many players those figures rest on; null when IGDB gave no figure, or no count.</summary>
     public int? TimeToBeatCount { get; set; }
 
     /// <summary>When IGDB said it.</summary>

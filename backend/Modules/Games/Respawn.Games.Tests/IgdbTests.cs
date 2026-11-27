@@ -421,7 +421,7 @@ public sealed class IgdbTests : IDisposable
         Assert.Null(portal.TimeToBeat);
         // A game is read once, from its first row; a duration once, from the first row that says one.
         Assert.Equal(("https://www.igdb.com/games/portal-2", (string?)null), (games["72"].Url, games["72"].Name));
-        Assert.Equal(new TimeToBeat(null, 3600, null, 0), games["72"].TimeToBeat);
+        Assert.Equal(new TimeToBeat(null, 3600, null, null), games["72"].TimeToBeat);
     }
 
     [Fact]

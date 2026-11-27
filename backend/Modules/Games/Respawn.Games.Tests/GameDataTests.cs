@@ -214,6 +214,99 @@ public sealed class GameDataTests
         }
     }
 
+    [Fact]
+    public async Task A_game_igdb_names_but_says_nothing_of_is_taken_as_unknown_and_asked_again_within_a_week()
+    {
+        var (igdb, clock) = (new FakeIgdb(), new TestClock());
+        // IGDB says Steam's 400 is its game 71, then nothing of game 71.
+        igdb.GamesBody = """[{"id":72,"name":"Portal 2"},{"id":233,"name":"Half-Life 2"}]""";
+        await using var app = await StartAsync(igdb, clock);
+        await AddGamesAsync(app, AppIds);
+
+        Assert.Equal(1, await TurnAsync(app));
+
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+            var asked = await db.StoreEntries.AsNoTracking().ToDictionaryAsync(e => e.ExternalId, e => e.IgdbId);
+            Assert.Null(asked["400"]);
+            Assert.Equal(72L, asked["620"]);
+            Assert.Equal([72L, 233L], (await db.IgdbGames.AsNoTracking().Select(g => g.IgdbId).ToListAsync()).Order());
+        }
+
+        Assert.Contains("the game database knows 2 of the games asked about, and not 2", app.Logs.Text, StringComparison.Ordinal);
+
+        // A week on, asked again with the game IGDB does not know.
+        clock.Advance(TimeSpan.FromDays(7) + TimeSpan.FromMinutes(1));
+        Assert.Equal(1, await TurnAsync(app));
+        Assert.Equal(["3999990", "400"], Uids(igdb.Requests.Last(request => request.Address.AbsolutePath == "/v4/external_games")).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task What_igdb_said_of_a_game_no_store_game_is_any_more_is_forgotten()
+    {
+        var (igdb, clock) = (new FakeIgdb(), new TestClock());
+        await using var app = await StartAsync(igdb, clock);
+        await AddGamesAsync(app, ["620", "1620", "400"]);
+        igdb.Body = """
+            [{"id":1,"game":72,"uid":"620","external_game_source":1},
+             {"id":2,"game":72,"uid":"1620","external_game_source":1},
+             {"id":3,"game":71,"uid":"400","external_game_source":1}]
+            """;
+        Assert.Equal(1, await TurnAsync(app));
+
+        // A month on, IGDB knows 400 no more, and takes 1620 for Half-Life 2.
+        igdb.Body = """
+            [{"id":1,"game":72,"uid":"620","external_game_source":1},
+             {"id":2,"game":233,"uid":"1620","external_game_source":1}]
+            """;
+        clock.Advance(TimeSpan.FromDays(30) + TimeSpan.FromMinutes(1));
+        Assert.Equal(1, await TurnAsync(app));
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        // Portal is no store game's any more; Portal 2 is still 620's.
+        Assert.Equal([72L, 233L], (await db.IgdbGames.AsNoTracking().Select(g => g.IgdbId).ToListAsync()).Order());
+    }
+
+    [Fact]
+    public async Task Games_whose_answer_cannot_be_read_three_turns_in_a_row_are_set_aside_for_the_others()
+    {
+        var (igdb, clock) = (new FakeIgdb(), new TestClock());
+        await using var app = await StartAsync(igdb, clock, new() { ["RESPAWN_IGDB_GAMES_PER_TURN"] = "3" });
+        await AddGamesAsync(app, AppIds);
+
+        // The same first three games, an answer that cannot be read: twice, nothing is kept.
+        igdb.AnswerFor = (_, query) => query.StartsWith("fields game,uid", StringComparison.Ordinal) ? (HttpStatusCode.OK, "not a list") : null;
+        Assert.Equal(1, await TurnAsync(app));
+        clock.Advance(TimeSpan.FromMinutes(61));
+        Assert.Equal(1, await TurnAsync(app));
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+            Assert.All(await db.StoreEntries.AsNoTracking().ToListAsync(), entry => Assert.Null(entry.IgdbAskedAt));
+        }
+
+        // The third time, they are set aside as unknown, and the log says so.
+        clock.Advance(TimeSpan.FromMinutes(61));
+        Assert.Equal(1, await TurnAsync(app));
+        var firstThree = Uids(igdb.Requests.Last());
+        Assert.Contains("3 games set aside after 3 unreadable answers in a row", app.Logs.Text, StringComparison.Ordinal);
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+            var asked = await db.StoreEntries.AsNoTracking().ToDictionaryAsync(e => e.ExternalId, e => (e.IgdbId, e.IgdbAskedAt));
+            Assert.All(firstThree, id => Assert.Equal(((long?)null, (DateTimeOffset?)clock.Now), asked[id]));
+        }
+
+        // An hour on, the game after them is asked about.
+        igdb.AnswerFor = null;
+        clock.Advance(TimeSpan.FromMinutes(61));
+        Assert.Equal(1, await TurnAsync(app));
+        var last = Uids(igdb.Requests.Last(request => request.Address.AbsolutePath == "/v4/external_games"));
+        Assert.Equal(AppIds.Except(firstThree, StringComparer.Ordinal), last);
+    }
+
     private static Task<TestApp> StartAsync(FakeIgdb igdb, TestClock clock, Dictionary<string, string?>? settings = null) =>
         igdb.StartAppAsync(settings, services => services.AddSingleton<TimeProvider>(clock));
 

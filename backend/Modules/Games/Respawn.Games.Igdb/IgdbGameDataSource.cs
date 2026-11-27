@@ -196,7 +196,7 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, TimeProvider clock) : 
                 continue;
             }
 
-            var time = new TimeToBeat(Whole(row, "hastily"), Whole(row, "normally"), Whole(row, "completely"), Whole(row, "count") ?? 0);
+            var time = new TimeToBeat(Whole(row, "hastily"), Whole(row, "normally"), Whole(row, "completely"), Whole(row, "count"));
             if (time is not { Hastily: null, Normally: null, Completely: null })
             {
                 times.TryAdd(id.ToString(CultureInfo.InvariantCulture), time);

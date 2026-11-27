@@ -432,16 +432,32 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
 
         Guid[] entryIds = [.. matches.Select(match => match.StoreEntryId)];
         var entries = await db.StoreEntries.Where(e => entryIds.Contains(e.Id)).ToDictionaryAsync(e => e.Id, ct);
+        var left = new HashSet<long>();
         foreach (var match in matches)
         {
             if (entries.TryGetValue(match.StoreEntryId, out var entry))
             {
-                entry.IgdbId = match.GameId is null ? null : IgdbNumber(match.GameId);
+                var igdbId = match.GameId is null ? null : IgdbNumber(match.GameId);
+                if (entry.IgdbId is { } before && before != igdbId)
+                {
+                    left.Add(before);
+                }
+
+                entry.IgdbId = igdbId;
                 entry.IgdbAskedAt = at;
             }
         }
 
         await SaveAsync(ct);
+
+        // The games no store entry is any more, once these changed theirs: nothing would ask about them again.
+        if (left.Count > 0)
+        {
+            long[] forgotten = [.. left];
+            await db.IgdbGames
+                .Where(g => forgotten.Contains(g.IgdbId) && !db.StoreEntries.Any(e => e.IgdbId == g.IgdbId))
+                .ExecuteDeleteAsync(ct);
+        }
     }
 
     /// <summary>An IGDB game's id as the table keeps it; null for what is not one.</summary>

@@ -36,9 +36,10 @@ public sealed class GameDataService(
         }
 
         var (matched, unknown) = (0, 0);
+        var now = clock.GetUtcNow();
+        GameDataEntry[]? asking = null;
         try
         {
-            var now = clock.GetUtcNow();
             if (gate.FailedAt(store) > now - GameDataSchedule.RetryAfter)
             {
                 return null;
@@ -52,6 +53,7 @@ public sealed class GameDataService(
 
             foreach (var some in due.Chunk(Math.Max(1, source.MatchesPerRequest)))
             {
+                asking = some;
                 var reading = await source.MatchAsync(store, [.. some.Select(entry => entry.ExternalId)], ct);
 
                 // One of the database's games per store entry: the smallest id, the same every time.
@@ -71,7 +73,15 @@ public sealed class GameDataService(
                     games.AddRange(read.Games);
                 }
 
-                GameDataMatch[] matches = [.. some.Select(entry => new GameDataMatch(entry.StoreEntryId, chosen.GetValueOrDefault(entry.ExternalId)))];
+                // A game the database names but says nothing of is taken as one it does not know: asked
+                // about again within days, not left pointing to nothing for a month.
+                var said = games.Select(game => game.GameId).ToHashSet(StringComparer.Ordinal);
+                GameDataMatch[] matches =
+                [
+                    .. some.Select(entry => new GameDataMatch(
+                        entry.StoreEntryId,
+                        chosen.GetValueOrDefault(entry.ExternalId) is { } gameId && said.Contains(gameId) ? gameId : null)),
+                ];
 
                 // Kept batch by batch: a database that stops answering half-way does not cost what it said.
                 await work.RunAsync(
@@ -97,8 +107,34 @@ public sealed class GameDataService(
         }
         catch (SourceException ex)
         {
-            gate.Failed(store, clock.GetUtcNow());
-            return new GameDataRead(matched, unknown, ex.Error, ex.Message is { Length: > Limits.SyncDetail } detail ? detail[..Limits.SyncDetail] : ex.Message);
+            var detail = ex.Message;
+            var unreadable = gate.Failed(store, clock.GetUtcNow(), ex.Error == SourceError.Unreadable);
+            if (unreadable >= GameDataSchedule.UnreadableBeforeSetAside && asking is { Length: > 0 } stuck)
+            {
+                // The same games, the first due, made the answer unreadable at every turn: set aside as
+                // unknown, they let the games after them be asked about, and are asked about again later.
+                await work.RunAsync(
+                    async () =>
+                    {
+                        await catalogue.SetGameDataAsync([], [.. stuck.Select(entry => new GameDataMatch(entry.StoreEntryId, null))], now, ct);
+                        return true;
+                    },
+                    ct);
+                gate.SetAside(store);
+                unknown += stuck.Length;
+                detail = string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{stuck.Length} games set aside after {unreadable} unreadable answers in a row, asked about again in {GameDataSchedule.UnknownAskAgainAfter.TotalDays} days; {detail}");
+            }
+
+            return new GameDataRead(matched, unknown, ex.Error, detail is { Length: > Limits.SyncDetail } ? detail[..Limits.SyncDetail] : detail);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            // Not the database's doing (the catalogue could not keep it, say): left alone for as long, so
+            // the schedule does not run into it again at every turn. The schedule says what it was.
+            gate.Failed(store, clock.GetUtcNow(), unreadable: false);
+            throw;
         }
         finally
         {
