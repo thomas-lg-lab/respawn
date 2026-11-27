@@ -126,6 +126,74 @@ public sealed class IgdbCoverTests : IDisposable
     }
 
     [Fact]
+    public async Task A_kept_store_cover_the_store_no_longer_has_is_never_replaced_by_igdbs()
+    {
+        var (steam, igdb, clock) = (new FakeSteam(), new FakeIgdb(), new TestClock());
+        steam.Images["620/library_600x900.jpg"] = new(Jpeg);
+        igdb.Images["t_cover_big_2x/co0fake72.jpg"] = new(IgdbJpeg);
+        await using var app = await StartAsync(steam, igdb, clock);
+        using var browser = app.Browser();
+        var portal2 = (await ReadAllAsync(app, browser))["Portal 2"];
+        using (var first = await browser.GetAsync($"/api/v1/games/{portal2}/cover"))
+        {
+            Assert.Equal(Jpeg, await first.Content.ReadAsByteArrayAsync());
+        }
+
+        // A month on, Steam's store names no cover for Portal 2 any more, and its image is gone.
+        steam.StoreBody = steam.StoreBody.Replace(
+            "\"library_capsule\":\"library_600x900.jpg\",\"library_capsule_2x\":\"library_600x900_2x.jpg\",\"library_hero\":\"library_hero.jpg\",\"community_icon\":\"2e478fc6874d06ae5baf0d147f6f21203291aa02\"",
+            "\"library_hero\":\"library_hero.jpg\",\"community_icon\":\"2e478fc6874d06ae5baf0d147f6f21203291aa02\"",
+            StringComparison.Ordinal);
+        steam.Images.Remove("620/library_600x900.jpg");
+        clock.Advance(TimeSpan.FromDays(31));
+        await CoversAsync(app);
+
+        using var cover = await browser.GetAsync($"/api/v1/games/{portal2}/cover");
+        Assert.Equal(Jpeg, await cover.Content.ReadAsByteArrayAsync());
+        Assert.Equal($"\"steam-620-{Hash(Jpeg)}\"", cover.Headers.ETag?.Tag);
+        Assert.Empty(igdb.ImageRequests);
+        Assert.Contains($"cover/steam/620-{Hash(Jpeg)}.jpg", Files());
+    }
+
+    [Fact]
+    public async Task A_kept_igdb_cover_igdb_no_longer_has_is_looked_for_once_not_at_every_request()
+    {
+        var (steam, igdb, clock) = (new FakeSteam(), new FakeIgdb(), new TestClock());
+        igdb.Images[PortalCover] = new(IgdbJpeg);
+        await using var app = await StartAsync(steam, igdb, clock);
+        using var browser = app.Browser();
+        var portal = (await ReadAllAsync(app, browser))["Portal"];
+        using (var first = await browser.GetAsync($"/api/v1/games/{portal}/cover"))
+        {
+            Assert.Equal(IgdbJpeg, await first.Content.ReadAsByteArrayAsync());
+        }
+
+        // A month on, IGDB gives Portal another cover, which its image host does not have.
+        igdb.GamesBody = igdb.GamesBody.Replace("co0fake71", "co0gone71", StringComparison.Ordinal);
+        clock.Advance(TimeSpan.FromDays(31));
+        await CoversAsync(app);
+        await GameDataAsync(app);
+
+        // Looked for once: the kept image stays the game's.
+        using (var looked = await browser.GetAsync($"/api/v1/games/{portal}/cover"))
+        {
+            Assert.Equal(IgdbJpeg, await looked.Content.ReadAsByteArrayAsync());
+        }
+
+        Assert.Contains(igdb.ImageRequests, request => request.Path == "t_cover_big_2x/co0gone71.jpg");
+        var (igdbAsked, steamAsked) = (igdb.ImageRequests.Count, steam.ImageRequests.Count);
+
+        // Then served from the file, asking no host.
+        using (var again = await browser.GetAsync($"/api/v1/games/{portal}/cover"))
+        {
+            Assert.Equal(IgdbJpeg, await again.Content.ReadAsByteArrayAsync());
+            Assert.Equal($"\"igdb-co0fake71-{Hash(IgdbJpeg)}\"", again.Headers.ETag?.Tag);
+        }
+
+        Assert.Equal((igdbAsked, steamAsked), (igdb.ImageRequests.Count, steam.ImageRequests.Count));
+    }
+
+    [Fact]
     public async Task Igdbs_image_host_that_does_not_answer_is_said_and_one_without_the_image_is_no_cover()
     {
         var (steam, igdb, clock) = (new FakeSteam(), new FakeIgdb(), new TestClock());

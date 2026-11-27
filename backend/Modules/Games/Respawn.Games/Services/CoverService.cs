@@ -20,10 +20,9 @@ public sealed class CoverService(
     {
         var entries = await catalogue.FindCoverEntriesAsync(gameId, ct)
             ?? throw new GamesException(GamesError.UnknownGame);
-        var data = await catalogue.FindGameDataCoverAsync(gameId, ct);
         if (!images.Keeps)
         {
-            var passed = await FetchAsync(entries, data, ct);
+            var passed = await FetchAsync(entries, await catalogue.FindGameDataCoverAsync(gameId, ct), ct);
             return new CoverAnswer(passed.Cover is { } cover ? Passed(cover, null) : null, passed.Settled);
         }
 
@@ -31,7 +30,17 @@ public sealed class CoverService(
         await using var turn = await imageGate.EnterAsync(gameId, ct);
         var now = clock.GetUtcNow();
         var kept = await catalogue.FindImageAsync(gameId, ImageKinds.Cover, ct);
-        if (kept is not null && IsCurrent(kept, entries, data, now) && await OpenAsync(kept, ct) is { } current)
+        var keptFromStore = kept is not null && kept.Name.Source != gameData.Source;
+
+        // A store's kept image stands on the stores' word alone: what the game database says is asked
+        // only for its own image, or for a fetch.
+        if (kept is not null && keptFromStore && IsStoreImageCurrent(kept, entries, now) && await OpenAsync(kept, ct) is { } fromStore)
+        {
+            return new CoverAnswer(fromStore, true);
+        }
+
+        var data = await catalogue.FindGameDataCoverAsync(gameId, ct);
+        if (kept is not null && !keptFromStore && IsGameDataImageCurrent(kept, entries, data, now) && await OpenAsync(kept, ct) is { } current)
         {
             return new CoverAnswer(current, true);
         }
@@ -39,7 +48,9 @@ public sealed class CoverService(
         Fetched fetched;
         try
         {
-            fetched = await FetchAsync(entries, data, ct);
+            // A store's image the store no longer has stays the game's: it is the art made for a
+            // library, which the game database's never replaces.
+            fetched = await FetchAsync(entries, keptFromStore ? data with { ImageId = null } : data, ct);
         }
         catch (SourceException) when (kept is not null)
         {
@@ -83,18 +94,32 @@ public sealed class CoverService(
         return new CoverAnswer(null, fetched.Settled);
     }
 
-    /// <summary>Whether the kept image still stands: it was asked for less than
-    /// <see cref="CoverSchedule.AskAgainAfter"/> ago. A store's: after its store last said where the
-    /// cover is, a store entry of its source still being the game's. The game database's: it is still
-    /// the cover the database gives the game, and no store said anything since, which may be a cover of
-    /// its own, the one a game shows first.</summary>
-    private bool IsCurrent(KeptImage kept, IReadOnlyList<CoverEntry> entries, GameDataCover data, DateTimeOffset now) =>
+    /// <summary>Whether a store's kept image still stands: it was asked for less than
+    /// <see cref="CoverSchedule.AskAgainAfter"/> ago, after its store last said where the cover is, a
+    /// store entry of its source still being the game's.</summary>
+    private static bool IsStoreImageCurrent(KeptImage kept, IReadOnlyList<CoverEntry> entries, DateTimeOffset now) =>
         kept.CheckedAt > now - CoverSchedule.AskAgainAfter
-        && (kept.Name.Source == gameData.Source
-            ? data.ImageId is { } image
-                && kept.Name.Key.StartsWith(image + "-", StringComparison.Ordinal)
-                && entries.All(entry => entry.AskedAt is { } asked && kept.CheckedAt >= asked)
-            : entries.Any(entry => entry.Source == kept.Name.Source && entry.AskedAt is { } asked && kept.CheckedAt >= asked));
+        && entries.Any(entry => entry.Source == kept.Name.Source && entry.AskedAt is { } asked && kept.CheckedAt >= asked);
+
+    /// <summary>Whether the game database's kept image still stands: it was asked for less than
+    /// <see cref="CoverSchedule.AskAgainAfter"/> ago; no store with covers said anything since, which
+    /// may be a cover of its own, the one a game shows first; and it is still the cover the database
+    /// gives the game, or the database said nothing since it was last looked for. A database that now
+    /// gives none, or one its host does not have, leaves it standing once looked for, as a store's page
+    /// that is gone does.</summary>
+    private bool IsGameDataImageCurrent(KeptImage kept, IReadOnlyList<CoverEntry> entries, GameDataCover data, DateTimeOffset now) =>
+        kept.CheckedAt > now - CoverSchedule.AskAgainAfter
+        && WithCovers(entries).All(entry => entry.AskedAt is { } asked && kept.CheckedAt >= asked)
+        && ((data.ImageId is { } image && kept.Name.Key.StartsWith(image + "-", StringComparison.Ordinal))
+            || !(data.SaidAt > kept.CheckedAt));
+
+    /// <summary>The entries of the stores that give covers, in the order they are asked: the same entry
+    /// first every time, so that a game owned in two stores keeps one cover.</summary>
+    private IEnumerable<CoverEntry> WithCovers(IReadOnlyList<CoverEntry> entries) =>
+        entries
+            .Where(entry => sources.Any(source => source.Source == entry.Source))
+            .OrderBy(entry => entry.Source, StringComparer.Ordinal)
+            .ThenBy(entry => entry.StoreEntryId);
 
     /// <summary>Writes the image and makes it the one the game shows, in its file's turn, then removes the
     /// file it showed before once no game shows it, in that file's turn: a file another game is being
@@ -183,15 +208,11 @@ public sealed class CoverService(
     /// <exception cref="SourceException">None did, and a source could not be read.</exception>
     private async Task<Fetched> FetchAsync(IReadOnlyList<CoverEntry> entries, GameDataCover data, CancellationToken ct)
     {
-        // The same entry first every time, so that a game owned in two stores keeps one cover.
         SourceException? trouble = null;
         var settled = true;
-        foreach (var entry in entries.OrderBy(entry => entry.Source, StringComparer.Ordinal).ThenBy(entry => entry.StoreEntryId))
+        foreach (var entry in WithCovers(entries))
         {
-            if (sources.FirstOrDefault(source => source.Source == entry.Source) is not { } source)
-            {
-                continue;
-            }
+            var source = sources.First(source => source.Source == entry.Source);
 
             try
             {

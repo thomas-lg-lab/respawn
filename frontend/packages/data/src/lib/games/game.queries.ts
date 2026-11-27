@@ -44,12 +44,14 @@ export class GameQueries {
     });
   }
 
-  /** The sources the instance credits: IGDB once it is used. It changes with the instance only. */
+  /**
+   * The sources the instance credits: IGDB once it is used. Stale at once, so asked again when
+   * the tab comes back to the front: the instance may start using IGDB while a tab is open.
+   */
   credits() {
     return queryOptions({
       queryKey: gameKeys.credits,
       queryFn: () => this.api.get<Credits>('/credits'),
-      staleTime: Infinity,
     });
   }
 

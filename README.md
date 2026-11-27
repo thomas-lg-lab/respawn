@@ -361,7 +361,8 @@ a cover is looked for at Steam's usual address.
 Steam's cover comes first: it is the art made for a library. A game Steam has none for shows IGDB's, from
 IGDB's image host with no token, once IGDB was asked about the game (below); it is kept under
 `images/cover/igdb/` like Steam's under `images/cover/steam/`, and gives way to Steam's when Steam's store
-later names one.
+later names one. A Steam cover the instance kept is never replaced by IGDB's, even once Steam no longer
+has it.
 
 ### What IGDB says of the games
 

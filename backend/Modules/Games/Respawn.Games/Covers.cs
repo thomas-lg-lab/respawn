@@ -108,4 +108,6 @@ public sealed class CoverGate
 /// game's store entries, in the order covers are looked for, whose database game has one; null when none
 /// has.</param>
 /// <param name="Asked">Whether the database was asked about every store entry of the game.</param>
-public sealed record GameDataCover(string? ImageId, bool Asked);
+/// <param name="SaidAt">When the database last said anything of the game: a store entry asked about, or
+/// its database game read; null when it never did.</param>
+public sealed record GameDataCover(string? ImageId, bool Asked, DateTimeOffset? SaidAt = null);
