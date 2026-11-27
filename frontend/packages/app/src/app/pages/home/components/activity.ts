@@ -1,4 +1,13 @@
-import { Component, computed, input, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideChevronDown } from '@lucide/angular';
 import { Card } from '@respawn/ui';
@@ -27,6 +36,9 @@ export class Activity {
     return since === null ? null : formatDate(since, this.language());
   });
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
   /** The days whose every game was asked for: the others name their most played only. */
   private readonly opened = signal<ReadonlySet<string>>(new Set());
 
@@ -49,19 +61,32 @@ export class Activity {
               game?.playtime_seconds == null ? null : saidPlaytime(game.playtime_seconds, language),
           }),
         ),
+        /** The first game shown on request: where the focus goes once the button is gone. */
+        firstOfRest: whole ? (day.rest[0]?.id ?? null) : null,
         others:
-          whole || day.others === 0
+          whole || day.rest.length === 0
             ? null
             : {
-                one: isOne(day.others, language),
-                count: formatCount(day.others, language),
+                one: isOne(day.rest.length, language),
+                count: formatCount(day.rest.length, language),
               },
       };
     });
   });
 
-  /** Names every game of the day, its most played still first. */
+  /**
+   * Names every game of the day, its most played still first. The button asking for them goes
+   * away, so the focus moves to the first game it brought rather than falling to the page.
+   */
   protected open(date: string): void {
     this.opened.update((opened) => new Set([...opened, date]));
+    afterNextRender(
+      () => {
+        this.host.nativeElement
+          .querySelector<HTMLElement>(`[data-day="${date}"] [data-first-of-rest]`)
+          ?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 }

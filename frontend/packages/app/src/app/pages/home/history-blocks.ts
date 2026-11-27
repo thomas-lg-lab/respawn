@@ -73,8 +73,7 @@ export interface PlayedDay {
   /** The day, as the API writes it: `YYYY-MM-DD`, in UTC. */
   readonly date: string;
   readonly games: readonly PlayedGame[];
-  readonly others: number;
-  /** The games it does not name at first, `others` of them: shown on request. */
+  /** The games it does not name at first, its least played: shown on request. */
   readonly rest: readonly PlayedGame[];
 }
 
@@ -99,7 +98,6 @@ export function activity(
     .map((day: HistoryDay): PlayedDay => ({
       date: day.date,
       games: day.games.slice(0, NAMED).map(shown),
-      others: Math.max(0, day.games.length - NAMED),
       rest: day.games.slice(NAMED).map(shown),
     }));
 }

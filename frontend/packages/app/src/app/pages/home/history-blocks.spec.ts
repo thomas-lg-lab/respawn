@@ -125,7 +125,6 @@ describe('the blocks of the home made of the history', () => {
             { id: 'id-a', game: games[0], gone: false, seconds: 3600 },
             { id: 'id-b', game: games[1], gone: false, seconds: 60 },
           ],
-          others: 0,
           rest: [],
         },
       ]);
@@ -139,7 +138,6 @@ describe('the blocks of the home made of the history', () => {
       const [only] = activity(history, games, true);
 
       expect(only?.games.map((each) => each.id)).toEqual(['id-a', 'id-b', 'id-c', 'id-d']);
-      expect(only?.others).toBe(2);
       expect(only?.rest.map((each) => each.id)).toEqual(['id-e', 'id-f']);
     });
 

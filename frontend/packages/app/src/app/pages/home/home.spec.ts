@@ -987,6 +987,7 @@ describe('Home', () => {
         'Inside',
       ]);
       expect(screen.querySelector('[data-day="2026-11-21"] [data-others]')).toBeNull();
+      expect(document.activeElement?.getAttribute('data-game')).toBe(games[4]!.game_id);
     });
 
     it('lists the latest days played, the latest first, each game with its time', async () => {
