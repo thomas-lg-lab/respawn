@@ -185,22 +185,6 @@
   text-transform: uppercase;
 }
 
-/* The prompt before the main label of a screen: drawn in the `pixel` character only. It blinks a
-   few times and then stays lit: nothing on a page blinks without end, since nothing here could
-   pause it. */
-@utility label-prompt {
-  &::before {
-    content: var(--rs-label-prompt);
-    margin-inline-end: 0.5ch;
-    animation: rs-blink var(--rs-duration-blink) steps(2, start) var(--rs-blink-count);
-  }
-}
-@keyframes rs-blink {
-  to {
-    visibility: hidden;
-  }
-}
-
 @layer base {
   html {
     background: var(--rs-bg);

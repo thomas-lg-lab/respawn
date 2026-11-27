@@ -12,7 +12,7 @@ import {
   steamLinkAddress,
   steamLinkOutcome,
 } from '@respawn/data';
-import { Banner, Button, Label, Skeleton } from '@respawn/ui';
+import { Banner, Button, Skeleton } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { formatMoment } from '@app/format/format';
@@ -81,7 +81,6 @@ type View = 'loading' | 'unavailable' | SyncView;
     LucideRefreshCw,
     Banner,
     Button,
-    Label,
     Skeleton,
     Activity,
     Figures,

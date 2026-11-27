@@ -49,10 +49,7 @@
     }
     @default {
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div class="flex flex-col gap-2">
-          <p rsLabel main>{{ t('home.label') }}</p>
-          <h1 class="type-page-title">{{ t('home.title') }}</h1>
-        </div>
+        <h1 class="type-page-title">{{ t('home.title') }}</h1>
         <div class="flex items-center gap-3">
           @if (lastSuccess(); as date) {
             <span class="type-caption text-muted" data-last-sync>{{

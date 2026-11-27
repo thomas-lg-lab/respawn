@@ -181,7 +181,6 @@
     }
   },
   "home": {
-    "label": "Game in progress",
     "title": "Home",
     "loading": "Loading your library…",
     "noAccount": {

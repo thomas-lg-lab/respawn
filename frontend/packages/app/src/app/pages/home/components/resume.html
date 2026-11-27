@@ -1,6 +1,6 @@
 <section [attr.aria-label]="t('resume.name')" data-resume *transloco="let t; prefix: 'home'">
   <rs-hero [hue]="hue()" [letter]="initial()">
-    <p rsLabel main class="relative" data-resume-label [attr.title]="last()?.moment">
+    <p rsLabel class="relative" data-resume-label [attr.title]="last()?.moment">
       {{ last() ? t('resume.label', { ago: last()?.ago }) : t('resume.name') }}
     </p>
     <h2 class="relative type-hero wrap-anywhere" data-resume-name>

@@ -125,12 +125,12 @@ describe('the blocks of the home made of the history', () => {
             { id: 'id-a', game: games[0], gone: false, seconds: 3600 },
             { id: 'id-b', game: games[1], gone: false, seconds: 60 },
           ],
-          others: 0,
+          rest: [],
         },
       ]);
     });
 
-    it('names four games of a day and counts the others', () => {
+    it('names four games of a day and counts the others, kept for when they are asked for', () => {
       const history: LibraryHistory = {
         tracking_since: '2026-11-01T00:00:00Z',
         days: [day('2026-11-02', ['a', 6], ['b', 5], ['c', 4], ['d', 3], ['e', 2], ['f', 1])],
@@ -138,7 +138,7 @@ describe('the blocks of the home made of the history', () => {
       const [only] = activity(history, games, true);
 
       expect(only?.games.map((each) => each.id)).toEqual(['id-a', 'id-b', 'id-c', 'id-d']);
-      expect(only?.others).toBe(2);
+      expect(only?.rest.map((each) => each.id)).toEqual(['id-e', 'id-f']);
     });
 
     it('keeps a game the library no longer has, without a name', () => {

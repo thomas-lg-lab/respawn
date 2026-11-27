@@ -20,8 +20,8 @@
     box-shadow: 0 0 0 1px var(--rs-focus);
   }
 
-  /* In the `pixel` character (the default) the field is a terminal's line: the labels' prompt
-     stands before what is typed, written like them, and the caret is a block of the focus
+  /* In the `pixel` character (the default) the field is a terminal's line: a prompt stands
+     before what is typed, written like the labels, and the caret is a block of the focus
      colour. In `plain` it is a search field: the magnifier, the body font, the browser's caret. */
   .prompt {
     flex-shrink: 0;
@@ -31,7 +31,7 @@
     color: var(--rs-accent-text);
   }
   .prompt::before {
-    content: var(--rs-label-prompt);
+    content: var(--rs-prompt);
   }
 
   .icon {

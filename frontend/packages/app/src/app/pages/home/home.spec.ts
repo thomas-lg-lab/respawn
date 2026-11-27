@@ -945,6 +945,52 @@ describe('Home', () => {
       expect(text(screen, '[data-year="2025"] .said')).toBe('4 h');
     });
 
+    it('names the most played games of a day, and the others on request', async () => {
+      const games = ['Celeste', 'Elden Ring', 'Hades', 'Portal 2', 'Tunic', 'Inside'].map((name) =>
+        game(name, { playtime_seconds: 3600 }),
+      );
+      const history: LibraryHistory = {
+        tracking_since: '2026-11-18T10:05:00Z',
+        days: [
+          {
+            date: '2026-11-21',
+            games: games.map((each, index) => ({
+              game_id: each.game_id,
+              seconds: (6 - index) * 600,
+            })),
+          },
+        ],
+      };
+      const { harness, screen } = await open([account()], { games, history });
+
+      expect(all(screen, '[data-day="2026-11-21"] [data-name]')).toEqual([
+        'Celeste',
+        'Elden Ring',
+        'Hades',
+        'Portal 2',
+      ]);
+      const others = screen.querySelector<HTMLButtonElement>(
+        '[data-day="2026-11-21"] [data-others]',
+      )!;
+      expect(others.tagName).toBe('BUTTON');
+      expect(others.getAttribute('aria-expanded')).toBe('false');
+      expect(others.textContent.trim()).toBe('et 2 autres jeux');
+
+      others.click();
+      await harness.fixture.whenStable();
+
+      expect(all(screen, '[data-day="2026-11-21"] [data-name]')).toEqual([
+        'Celeste',
+        'Elden Ring',
+        'Hades',
+        'Portal 2',
+        'Tunic',
+        'Inside',
+      ]);
+      expect(screen.querySelector('[data-day="2026-11-21"] [data-others]')).toBeNull();
+      expect(document.activeElement?.getAttribute('data-game')).toBe(games[4]!.game_id);
+    });
+
     it('lists the latest days played, the latest first, each game with its time', async () => {
       const games = played();
       const { screen } = await open([account()], { games, history: readings(games) });

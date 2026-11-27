@@ -1,5 +1,15 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LucideChevronDown } from '@lucide/angular';
 import { Card } from '@respawn/ui';
 import { formatCount, formatDate, formatDay, isOne, saidPlaytime } from '@app/format/format';
 import type { PlayedDay } from '../history-blocks';
@@ -7,11 +17,12 @@ import type { PlayedDay } from '../history-blocks';
 /**
  * The activity: the latest days something was played, each with its games and the time of
  * that day, as the daily readings tell it. Before a second reading there is no day to show:
- * the block says when the tracking began, and that the days will come.
+ * the block says when the tracking began, and that the days will come. A day names its most
+ * played games, and the others on request.
  */
 @Component({
   selector: 'rs-activity',
-  imports: [TranslocoDirective, Card],
+  imports: [TranslocoDirective, LucideChevronDown, Card],
   templateUrl: './activity.html',
 })
 export class Activity {
@@ -25,27 +36,57 @@ export class Activity {
     return since === null ? null : formatDate(since, this.language());
   });
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
+  /** The days whose every game was asked for: the others name their most played only. */
+  private readonly opened = signal<ReadonlySet<string>>(new Set());
+
   protected readonly shown = computed(() => {
     const language = this.language();
-    return this.days().map((day) => ({
-      date: day.date,
-      name: formatDay(day.date, language),
-      games: day.games.map(({ id, game, gone, seconds }) => ({
-        id,
-        /** No longer a game of the library: there is no name to give it. */
-        gone,
-        name: game?.name ?? null,
-        time: saidPlaytime(seconds, language),
-        total:
-          game?.playtime_seconds == null ? null : saidPlaytime(game.playtime_seconds, language),
-      })),
-      others:
-        day.others === 0
-          ? null
-          : {
-              one: isOne(day.others, language),
-              count: formatCount(day.others, language),
-            },
-    }));
+    const opened = this.opened();
+    return this.days().map((day) => {
+      const whole = opened.has(day.date);
+      return {
+        date: day.date,
+        name: formatDay(day.date, language),
+        games: (whole ? [...day.games, ...day.rest] : day.games).map(
+          ({ id, game, gone, seconds }) => ({
+            id,
+            /** No longer a game of the library: there is no name to give it. */
+            gone,
+            name: game?.name ?? null,
+            time: saidPlaytime(seconds, language),
+            total:
+              game?.playtime_seconds == null ? null : saidPlaytime(game.playtime_seconds, language),
+          }),
+        ),
+        /** The first game shown on request: where the focus goes once the button is gone. */
+        firstOfRest: whole ? (day.rest[0]?.id ?? null) : null,
+        others:
+          whole || day.rest.length === 0
+            ? null
+            : {
+                one: isOne(day.rest.length, language),
+                count: formatCount(day.rest.length, language),
+              },
+      };
+    });
   });
+
+  /**
+   * Names every game of the day, its most played still first. The button asking for them goes
+   * away, so the focus moves to the first game it brought rather than falling to the page.
+   */
+  protected open(date: string): void {
+    this.opened.update((opened) => new Set([...opened, date]));
+    afterNextRender(
+      () => {
+        this.host.nativeElement
+          .querySelector<HTMLElement>(`[data-day="${date}"] [data-first-of-rest]`)
+          ?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
 }
