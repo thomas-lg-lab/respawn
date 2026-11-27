@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Respawn.SharedKernel;
 
 namespace Respawn.Games.Api;
 
@@ -19,7 +20,8 @@ internal sealed record Trouble(string Error, string? Detail);
 ///
 /// Nothing here can stop the app: a turn that fails says so and the next one tries again. A trouble
 /// that lasts (no database, a key refused) is said once, when it starts or changes, and once more when
-/// it is over.
+/// it is over. A look made while another caller is connecting to the database is skipped in silence:
+/// it is no trouble.
 /// </summary>
 /// <param name="scopes">A scope per look and per turn, as a request would have.</param>
 /// <param name="clock">The app's clock, which a test sets.</param>
@@ -81,6 +83,14 @@ internal abstract class DueScheduler<TKey>(
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
+        }
+        catch (Exception ex) when (DatabaseUnavailableException.OnlyBusy(ex))
+        {
+            // Another schedule or a request is opening the database: the schedules all look at the same
+            // moment after the start, and one of them connects. Nothing is wrong, so nothing is said, and
+            // a trouble said before is neither repeated nor declared over: the next look tells.
+            logger.LogDebug("{Schedule}: skipped a look, the database is being connected to", name);
+            return 0;
         }
         catch (Exception ex)
         {

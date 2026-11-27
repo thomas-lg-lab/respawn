@@ -73,7 +73,7 @@ internal sealed class Database(
 
         if (!_gate.TryEnter(Patience))
         {
-            throw new DatabaseUnavailableException("another request is still connecting");
+            throw new DatabaseUnavailableException("another request is still connecting", busy: true);
         }
 
         try

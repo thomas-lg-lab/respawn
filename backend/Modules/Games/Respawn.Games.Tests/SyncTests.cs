@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
@@ -10,6 +11,7 @@ using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
+using Respawn.SharedKernel;
 using Respawn.Testing;
 
 namespace Respawn.Games.Tests;
@@ -613,6 +615,27 @@ public sealed class SyncTests
     }
 
     [Fact]
+    public async Task A_look_while_another_caller_connects_to_the_database_is_no_trouble()
+    {
+        // After a start the schedules all look at the same moment, and one of them connects and migrates
+        // while the others wait: here a request connects, held in its migration.
+        TestDatabase.EnsureCreated();
+        using var migration = new HeldMigration();
+        await using var app = TestApp.Create(services: services => services.AddSingleton<ISchemaMigrator>(migration));
+        using var client = app.CreateClient();
+        var connecting = client.GetAsync("/api/v1/config");
+        Assert.True(await migration.Entered.WaitAsync(TimeSpan.FromSeconds(30)), "the request reaches the migration");
+
+        Assert.Equal(0, await TurnAsync(app));
+        migration.Release();
+        Assert.Equal(HttpStatusCode.OK, (await connecting).StatusCode);
+        Assert.Equal(0, await TurnAsync(app));
+
+        Assert.Equal(0, app.Logs.Count("nothing can be scheduled for now"));
+        Assert.Equal(0, app.Logs.Count("the schedule is back"));
+    }
+
+    [Fact]
     public async Task The_description_says_what_a_sync_answers()
     {
         await using var app = await TestApp.StartAsync();
@@ -791,6 +814,28 @@ public sealed class SyncTests
 
         public Task<IReadOnlyDictionary<Guid, LatestRuns>> FindLatestAsync(IReadOnlyCollection<Guid> linkedAccountIds, CancellationToken ct) =>
             Task.FromResult<IReadOnlyDictionary<Guid, LatestRuns>>(linkedAccountIds.ToDictionary(id => id, _ => new LatestRuns(null, null)));
+    }
+
+    /// <summary>A last migration that waits for the test, so that the connection stays under way.</summary>
+    private sealed class HeldMigration : ISchemaMigrator, IDisposable
+    {
+        private readonly ManualResetEventSlim _released = new();
+
+        public SemaphoreSlim Entered { get; } = new(0);
+
+        public void Migrate(DbDataSource dataSource)
+        {
+            Entered.Release();
+            _released.Wait(TimeSpan.FromSeconds(30));
+        }
+
+        public void Release() => _released.Set();
+
+        public void Dispose()
+        {
+            _released.Dispose();
+            Entered.Dispose();
+        }
     }
 
     /// <summary>A connector to a store that is not Steam, answering what a test makes it say.</summary>
