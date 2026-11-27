@@ -1,7 +1,7 @@
 import { Component, type Signal, computed, inject, linkedSignal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, type ParamMap, Router, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
+import { ActivatedRoute, NavigationEnd, type ParamMap, Router, RouterLink } from '@angular/router';
+import { filter, map, scan } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
@@ -92,9 +92,20 @@ export class Library {
   protected readonly filter = this.asked((words) => askedFilter(words.get(LIBRARY_FILTER)));
   protected readonly sort = this.asked((words) => askedSort(words.get(LIBRARY_SORT)));
   protected readonly view = signal<LibraryView>(readChoice(VIEW_KEY, VIEWS) ?? 'covers');
-  /** How many steps of the list are shown: back to one whenever the list changes. */
+  /**
+   * Each navigation that ends here: a title searched again from the header leaves the address
+   * as it was, and still shows the first games that bear it.
+   */
+  private readonly arrivals = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      scan((count) => count + 1, 0),
+    ),
+    { initialValue: 0 },
+  );
+  /** How many steps of the list are shown: back to one whenever the list is asked for anew. */
   private readonly steps = linkedSignal({
-    source: () => [this.search(), this.filter(), this.sort()].join('\n'),
+    source: () => [this.search(), this.filter(), this.sort(), this.arrivals()].join('\n'),
     computation: () => 1,
   });
 

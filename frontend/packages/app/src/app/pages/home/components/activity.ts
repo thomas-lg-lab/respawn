@@ -81,15 +81,17 @@ export class Activity {
 
   /**
    * Names every game of the day, its most played still first. The button asking for them goes
-   * away, so the focus moves to the first game it brought rather than falling to the page.
+   * away, so the focus moves to the first game it brought (its link, or the row of a game the
+   * library no longer has) rather than falling to the page.
    */
   protected open(date: string): void {
     this.opened.update((opened) => new Set([...opened, date]));
     afterNextRender(
       () => {
-        this.host.nativeElement
-          .querySelector<HTMLElement>(`[data-day="${date}"] [data-first-of-rest]`)
-          ?.focus();
+        const row = this.host.nativeElement.querySelector<HTMLElement>(
+          `[data-day="${date}"] [data-first-of-rest]`,
+        );
+        (row?.querySelector<HTMLElement>('a[data-name]') ?? row)?.focus();
       },
       { injector: this.injector },
     );

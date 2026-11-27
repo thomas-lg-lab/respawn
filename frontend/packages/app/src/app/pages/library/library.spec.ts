@@ -355,6 +355,17 @@ describe('Library', () => {
     await harness.navigateByUrl('/library?q=game');
     await harness.fixture.whenStable();
     expect(names(screen)).toHaveLength(100);
+
+    // The same title, asked again in the header: the address does not change, the list does.
+    button(screen, 'Afficher la suite').click();
+    await harness.fixture.whenStable();
+    expect(names(screen)).toHaveLength(200);
+    const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+    type(search, 'game');
+    await harness.fixture.whenStable();
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await harness.fixture.whenStable();
+    expect(names(screen)).toHaveLength(100);
   });
 
   it('flags a game no store lists any more', async () => {
