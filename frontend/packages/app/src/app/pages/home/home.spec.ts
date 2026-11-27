@@ -973,6 +973,7 @@ describe('Home', () => {
         '[data-day="2026-11-21"] [data-others]',
       )!;
       expect(others.tagName).toBe('BUTTON');
+      expect(others.getAttribute('aria-expanded')).toBe('false');
       expect(others.textContent.trim()).toBe('et 2 autres jeux');
 
       others.click();
