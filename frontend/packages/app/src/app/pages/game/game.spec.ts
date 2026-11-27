@@ -164,9 +164,8 @@ describe('Game', () => {
 
     expect(text(screen, 'h1')).toBe('Elden Ring');
     expect(text(screen, '[data-status]')).toBe('Dernière session hier');
-    expect(screen.querySelector('[data-status] [data-recency]')?.getAttribute('data-recency')).toBe(
-      '1',
-    );
+    // Words only: no square beside them.
+    expect(screen.querySelector('[data-status] [data-recency]')).toBeNull();
     expect(screen.querySelector('[data-launch]')?.getAttribute('href')).toBe('steam://run/1245620');
     expect(screen.querySelector('[data-store]')?.getAttribute('href')).toBe(
       'https://store.steampowered.com/app/1245620/',
@@ -253,7 +252,7 @@ describe('Game', () => {
     expect(pace('hastily')).toEqual(['reached', 'En allant vite', '58 h', 'atteint']);
     expect(pace('normally')).toEqual(['reached', 'Normalement', '100 h', 'atteint']);
     // Past the longest pace, by how much.
-    expect(pace('completely')).toEqual(['beyond', 'À 100 %', '133 h', 'atteint, + 9 h']);
+    expect(pace('completely')).toEqual(['beyond', 'À 100 %', '133 h', '+ 9 h']);
     // One scale: the time played as far as it goes, a mark where each pace stands on it.
     const scale = screen.querySelector<HTMLElement>('[data-durations] [data-scale]')!;
     const marks = [...scale.querySelectorAll<HTMLElement>('span')].map(
@@ -305,7 +304,7 @@ describe('Game', () => {
     expect(
       [...screen.querySelectorAll('[data-pace]')].map((row) => row.getAttribute('data-state')),
     ).toEqual(['reached', 'beyond']);
-    expect(text(screen, '[data-pace="normally"]')).toContain('atteint, + 30 h');
+    expect(text(screen, '[data-pace="normally"]')).toContain('+ 30 h');
   });
 
   it('gives a game never launched how long it takes, with nothing set against it', async () => {

@@ -13,7 +13,6 @@ import {
   titleInitial,
 } from '@app/games/game-list';
 import { steamLaunchLink } from '@app/games/steam-launch';
-import { type Recency, recency } from '@app/games/time-map';
 import { CoverChoice } from './cover-choice';
 import { GameTags } from './game-tags';
 
@@ -96,12 +95,6 @@ export class GameHero {
       ago: ago.charAt(0).toLocaleLowerCase(this.language()) + ago.slice(1),
       moment: formatMoment(game.last_played_at, this.language()),
     };
-  });
-
-  /** The colour of the last session, as the time map gives it; none where there was none. */
-  protected readonly recency = computed((): Recency | null => {
-    const game = this.game();
-    return this.status().kind === 'last' ? recency(game.last_played_at, this.now()) : null;
   });
 
   /** The link that launches the game in the Steam client, where a copy of it is listed. */

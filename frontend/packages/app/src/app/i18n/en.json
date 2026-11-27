@@ -473,7 +473,7 @@
       "completely": "At 100%",
       "left": "{{ time }} left",
       "reached": "reached",
-      "beyond": "reached, + {{ time }}",
+      "beyond": "+ {{ time }}",
       "sourceOne": "From 1 player, on IGDB",
       "sourceMany": "From {{ count }} players, on IGDB",
       "source": "On IGDB"

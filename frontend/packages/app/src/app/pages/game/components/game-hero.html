@@ -43,9 +43,10 @@
     />
   }
 
-  <!-- Cut after two lines on a wide screen, three on a phone: the whole title is the page's name. -->
+  <!-- Cut after two lines on a wide screen, three on a phone: the whole title is the page's name.
+       Drawn back by its first letter's side bearing, so that it lines up with the lines under it. -->
   <h1
-    class="line-clamp-3 type-hero text-balance wrap-anywhere wide:line-clamp-2"
+    class="-ms-[0.05em] line-clamp-3 type-hero text-balance wrap-anywhere wide:line-clamp-2"
     data-title
     [attr.title]="game().name"
   >
@@ -56,22 +57,9 @@
     class="col-start-2 flex flex-wrap items-center gap-2 self-start type-caption text-muted wide:self-center"
     data-status-line
   >
-    <span class="flex items-center gap-2" data-status>
-      <span
-        class="size-2.5 shrink-0 border"
-        [class.border-dashed]="said.kind === 'never'"
-        [class.border-muted]="said.kind === 'never'"
-        [class.border-transparent]="said.kind !== 'never'"
-        [class.bg-warn]="said.kind === 'missing' || said.kind === 'removed'"
-        [class.bg-recency-1]="recency() === 1"
-        [class.bg-recency-2]="recency() === 2"
-        [class.bg-recency-3]="recency() === 3"
-        [class.bg-recency-4]="
-          recency() === 4 || said.kind === 'unknown' || said.kind === 'notOwned'
-        "
-        aria-hidden="true"
-        [attr.data-recency]="recency()"
-      ></span>
+    <!-- Words only: a coloured square beside them said the same, and read as a box to tick. A
+         game no store lists any more is said in the warning's colour. -->
+    <span [class.text-warn]="said.kind === 'missing' || said.kind === 'removed'" data-status>
       @if (said.kind === 'last') {
         <span [attr.title]="said.moment">{{ t('status.last', { ago: said.ago }) }}</span>
       } @else {

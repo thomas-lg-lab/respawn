@@ -12,7 +12,7 @@
     }
   </div>
   <!-- A tile per pace, filled once the owner's time reached it: words, not a box to tick. -->
-  <ul class="grid grid-cols-3 gap-2">
+  <ul class="grid auto-cols-fr grid-flow-col gap-2">
     @for (row of rows(); track row.pace) {
       <li
         class="flex min-w-0 flex-col gap-0.5 rounded-row bg-surface-2 px-3 py-2.5 tabular-nums data-[state=beyond]:bg-accent data-[state=beyond]:text-on-accent data-[state=reached]:bg-accent data-[state=reached]:text-on-accent"
