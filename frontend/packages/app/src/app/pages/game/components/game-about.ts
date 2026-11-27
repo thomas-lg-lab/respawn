@@ -4,10 +4,9 @@ import { LucideArrowUpRight } from '@lucide/angular';
 import { GameTags } from './game-tags';
 
 /**
- * What the game database says the game is: its summary and every genre and theme it gives,
- * in its own words (IGDB: English, so marked as such), when it came out, and where it all
- * comes from. The hero
- * shows the first few genres; this card holds them all.
+ * What the game database says the game is: its summary and every genre and theme it gives, in
+ * its own words (IGDB: English, so marked as such), when it came out, and where it all comes
+ * from. The hero shows the first few genres, and the rest on asking.
  */
 @Component({
   selector: 'rs-game-about',

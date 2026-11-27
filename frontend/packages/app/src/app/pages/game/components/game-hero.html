@@ -109,9 +109,9 @@
     }
   </p>
 
-  <!-- The first genres and themes, each leading to the library narrowed to it; the rest are in
-       the page's "About", which the last pill leads to. Under the title on a wide screen,
-       across the whole hero on a phone. -->
+  <!-- The first genres and themes, each leading to the library narrowed to it; the last pill
+       shows the rest in place, and folds them again. Under the title on a wide screen, across the
+       whole hero on a phone. -->
   @if (tags().length) {
     <rs-game-tags
       class="col-span-2 mt-1 wide:col-span-1 wide:col-start-2"
@@ -124,10 +124,11 @@
             type="button"
             class="inline-flex min-h-8 items-center rounded-pill border border-control-line px-3 type-caption font-medium text-muted transition-colors duration-hover hover:text-text touch-only:min-h-touch"
             data-more-tags
-            [attr.aria-label]="t('tags.moreLabel', { count: more })"
-            (click)="moreTagsAsked.emit()"
+            [attr.aria-expanded]="allTags()"
+            [attr.aria-label]="allTags() ? null : t('tags.moreLabel', { count: more })"
+            (click)="allTags.set(!allTags())"
           >
-            {{ t('tags.more', { count: more }) }}
+            {{ allTags() ? t('tags.less') : t('tags.more', { count: more }) }}
           </button>
         </li>
       }

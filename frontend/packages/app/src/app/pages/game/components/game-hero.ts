@@ -1,4 +1,4 @@
-import { Component, computed, input, linkedSignal, output } from '@angular/core';
+import { Component, computed, input, linkedSignal, output, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideArrowUpRight, LucidePlay } from '@lucide/angular';
 import { type Game, coverAddress } from '@respawn/data';
@@ -16,7 +16,7 @@ import { steamLaunchLink } from '@app/games/steam-launch';
 import { CoverChoice } from './cover-choice';
 import { GameTags } from './game-tags';
 
-/** How many genres and themes the hero shows; the page's "About" holds them all. */
+/** How many genres and themes the hero shows at first; its last pill shows the rest in place. */
 export const HERO_TAGS = 4;
 
 /**
@@ -59,12 +59,13 @@ export class GameHero {
   readonly coverPicked = output<string | null>();
   /** The covers were opened, to choose again. */
   readonly coverOpened = output<void>();
-  /** The genres and themes the hero leaves out were asked for. */
-  readonly moreTagsAsked = output<void>();
-
   /** The game's genres, then its themes, as the game database names them. */
   protected readonly tags = computed(() => gameTags(this.game().game_data));
-  protected readonly shownTags = computed(() => this.tags().slice(0, HERO_TAGS));
+  /** Whether the genres and themes past the first few are shown, as the last pill asked. */
+  protected readonly allTags = signal(false);
+  protected readonly shownTags = computed(() =>
+    this.allTags() ? this.tags() : this.tags().slice(0, HERO_TAGS),
+  );
   protected readonly moreTags = computed(() => Math.max(0, this.tags().length - HERO_TAGS));
 
   protected readonly hue = computed(() => coverHue(this.game().game_id));

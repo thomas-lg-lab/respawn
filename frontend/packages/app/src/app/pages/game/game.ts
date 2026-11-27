@@ -1,4 +1,4 @@
-import { DOCUMENT, Location, NgTemplateOutlet } from '@angular/common';
+import { Location, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
@@ -62,7 +62,6 @@ export class Game {
   private readonly location = inject(Location);
   private readonly router = inject(Router);
   private readonly language = inject(LanguageSetting);
-  private readonly document = inject(DOCUMENT);
 
   protected readonly failureKey = failureKey;
   protected readonly igdbPage = igdbPage;
@@ -208,6 +207,15 @@ export class Game {
   /** Every genre and theme the game database gives the game: the hero shows the first ones. */
   protected readonly tags = computed(() => gameTags(this.game.data()?.game_data));
 
+  /**
+   * A game last played before this year has nothing to say of this year or these two weeks: read
+   * from the game alone, so the figures do not change once the history comes.
+   */
+  protected readonly quiet = computed(() => {
+    const last = this.game.data()?.last_played_at;
+    return !!last && Date.parse(last) < Date.UTC(new Date(this.now()).getUTCFullYear(), 0, 1);
+  });
+
   /** The month the game came out, in the reader's language; none while the database says none. */
   protected readonly released = computed(() => {
     const day = this.game.data()?.game_data?.released_on;
@@ -257,15 +265,6 @@ export class Game {
     event.preventDefault();
     if (this.cameFrom() !== null) this.location.back();
     else void this.router.navigateByUrl(ORIGINS[this.origin()]);
-  }
-
-  /** The genres the hero leaves out are in "About": there, and focused for those who hear it. */
-  protected showAbout(): void {
-    const about = this.document.getElementById('about');
-    if (!about) return;
-    about.focus({ preventScroll: true });
-    // Not every environment scrolls: the focus is what matters to those who hear the page.
-    if ('scrollIntoView' in about) about.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   protected retryHistory(): void {

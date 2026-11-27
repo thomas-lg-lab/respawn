@@ -463,7 +463,8 @@
     "tags": {
       "label": "Genres et thèmes",
       "more": "+ {{ count }}",
-      "moreLabel": "Voir tous les genres et thèmes, {{ count }} de plus"
+      "moreLabel": "Voir tous les genres et thèmes, {{ count }} de plus",
+      "less": "Moins"
     },
     "durations": {
       "title": "Durées",

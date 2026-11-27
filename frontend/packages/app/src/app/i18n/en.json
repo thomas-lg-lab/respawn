@@ -463,7 +463,8 @@
     "tags": {
       "label": "Genres and themes",
       "more": "+ {{ count }}",
-      "moreLabel": "See all genres and themes, {{ count }} more"
+      "moreLabel": "See all genres and themes, {{ count }} more",
+      "less": "Fewer"
     },
     "durations": {
       "title": "How long it takes",

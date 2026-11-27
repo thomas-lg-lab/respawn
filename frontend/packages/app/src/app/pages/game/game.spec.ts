@@ -202,7 +202,7 @@ describe('Game', () => {
   });
 
   it('shows its first genres in the hero, each leading to the library narrowed to it', async () => {
-    const { screen } = await open();
+    const { harness, screen } = await open();
 
     const shown = [...screen.querySelectorAll('[data-hero] [data-tag]')];
     expect(shown.map((tag) => tag.textContent.trim())).toEqual([
@@ -214,13 +214,19 @@ describe('Game', () => {
     // IGDB's words, in English, said as such.
     expect(shown[0]?.getAttribute('lang')).toBe('en');
     expect(shown[0]?.getAttribute('href')).toBe('/library?genre=Role-playing%20(RPG)');
-    // The fifth is in "About", which the last pill leads to.
-    expect(text(screen, '[data-more-tags]')).toBe('+ 1');
-    expect(screen.querySelector('[data-more-tags]')?.getAttribute('aria-label')).toBe(
-      'Voir tous les genres et thèmes, 1 de plus',
-    );
-    screen.querySelector<HTMLButtonElement>('[data-more-tags]')!.click();
-    expect(document.activeElement?.id).toBe('about');
+    // The last pill shows the fifth in place, and folds it again.
+    const more = screen.querySelector<HTMLButtonElement>('[data-more-tags]')!;
+    expect(more.textContent.trim()).toBe('+ 1');
+    expect(more.getAttribute('aria-label')).toBe('Voir tous les genres et thèmes, 1 de plus');
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    more.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(5);
+    expect(more.textContent.trim()).toBe('Moins');
+    expect(more.getAttribute('aria-expanded')).toBe('true');
+    more.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(4);
   });
 
   it('says what IGDB says the game is, with all its genres and where it comes from', async () => {
@@ -573,6 +579,22 @@ describe('Game', () => {
     expect(screen.querySelector('[data-never]')).toBeNull();
     expect(screen.querySelector('[data-figures]')).toBeNull();
     expect(screen.querySelector('[data-calendar]')).toBeNull();
+  });
+
+  it('draws two figures for a game last played before this year', async () => {
+    const { screen } = await open(
+      eldenRing({
+        recent_playtime_seconds: 0,
+        last_played_at: `${YEAR - 1}-06-01T20:00:00Z`,
+        entries: [
+          entry({ recent_playtime_seconds: 0, last_played_at: `${YEAR - 1}-06-01T20:00:00Z` }),
+        ],
+      }),
+    );
+
+    expect(
+      [...screen.querySelectorAll('[data-figure]')].map((tile) => tile.getAttribute('data-figure')),
+    ).toEqual(['total', 'best']);
   });
 
   it('takes a game its store no longer lists out of the library, and puts it back', async () => {
