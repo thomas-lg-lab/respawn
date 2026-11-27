@@ -2,7 +2,8 @@ import { Component, booleanAttribute, input } from '@angular/core';
 
 /**
  * A card: a surface with a hairline border. No shadow anywhere: surfaces are told apart by
- * their fill and by that line. `interactive` adds the hover lift.
+ * their fill and by that line. `interactive`: the whole card is a link, and it fills on hover
+ * like every target of the app that is more than a line of text.
  */
 @Component({
   selector: 'rs-card',

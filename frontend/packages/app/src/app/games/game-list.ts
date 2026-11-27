@@ -98,6 +98,38 @@ export function suggested(
 /** The title the Library is searched for, written on its address: the header's search leads there. */
 export const LIBRARY_SEARCH = 'q';
 
+/**
+ * The filter and the order the Library shows, written on its address when they are not the
+ * first ones: a reload or a copy of the address shows the same games, and another screen
+ * can lead to a part of the library.
+ */
+export const LIBRARY_FILTER = 'filter';
+export const LIBRARY_SORT = 'sort';
+
+/** The filter an address asks for; every game when it asks for none it knows. */
+export function askedFilter(asked: string | null): LibraryFilter {
+  return FILTERS.find((each) => each === asked) ?? 'all';
+}
+
+/** The order an address asks for; the last session first when it asks for none it knows. */
+export function askedSort(asked: string | null): LibrarySort {
+  return SORTS.find((each) => each === asked) ?? 'last_played';
+}
+
+/**
+ * The words of the Library's address that show a part of it: a filter or an order left out,
+ * or the first one, is not written.
+ */
+export function libraryWords(part: {
+  filter?: LibraryFilter;
+  sort?: LibrarySort;
+}): Record<string, string> {
+  const words: Record<string, string> = {};
+  if (part.filter && part.filter !== 'all') words[LIBRARY_FILTER] = part.filter;
+  if (part.sort && part.sort !== 'last_played') words[LIBRARY_SORT] = part.sort;
+  return words;
+}
+
 /** A title cut around what was typed, to show where it was found. */
 export interface FoundTitle {
   readonly before: string;

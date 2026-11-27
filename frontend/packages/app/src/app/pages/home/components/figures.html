@@ -3,30 +3,55 @@
   [attr.aria-label]="t('label')"
   *transloco="let t; prefix: 'home.figures'"
 >
-  <rs-stat-tile
-    data-figure="total"
-    [caption]="t('total')"
-    [figure]="t(total().key, { count: total().count })"
-    [note]="t(launched().key, { count: launched().count })"
-  />
-  <rs-stat-tile
-    data-figure="recent"
-    [caption]="t('recent')"
-    [figure]="t(recent().key, { count: recent().count })"
-    [note]="
-      stats().recent_playtime_seconds === null
-        ? t('recentUnknown')
-        : t(recentlyPlayed().key, { count: recentlyPlayed().count })
-    "
-  />
-  <rs-stat-tile
-    data-figure="never-launched"
-    [caption]="t('neverLaunched')"
-    [figure]="neverLaunched() ?? t('unknown')"
-    [note]="t(owned().key, { count: owned().count })"
+  <!-- Each figure leads to the games it counts: the library, filtered and sorted to show them. -->
+  <a
+    class="rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+    routerLink="/library"
+    data-figure-link="total"
+    [queryParams]="launchedWords"
   >
-    @if (neverLaunched() !== null) {
-      <rs-segmented-bar class="my-1" [value]="stats().never_launched" [max]="stats().games" />
-    }
-  </rs-stat-tile>
+    <rs-stat-tile
+      interactive
+      data-figure="total"
+      [caption]="t('total')"
+      [figure]="t(total().key, { count: total().count })"
+      [note]="t(launched().key, { count: launched().count })"
+    />
+  </a>
+  <a
+    class="rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+    routerLink="/library"
+    data-figure-link="recent"
+    [queryParams]="recentWords"
+  >
+    <rs-stat-tile
+      interactive
+      data-figure="recent"
+      [caption]="t('recent')"
+      [figure]="t(recent().key, { count: recent().count })"
+      [note]="
+        stats().recent_playtime_seconds === null
+          ? t('recentUnknown')
+          : t(recentlyPlayed().key, { count: recentlyPlayed().count })
+      "
+    />
+  </a>
+  <a
+    class="rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+    routerLink="/library"
+    data-figure-link="never-launched"
+    [queryParams]="neverWords"
+  >
+    <rs-stat-tile
+      interactive
+      data-figure="never-launched"
+      [caption]="t('neverLaunched')"
+      [figure]="neverLaunched() ?? t('unknown')"
+      [note]="t(owned().key, { count: owned().count })"
+    >
+      @if (neverLaunched() !== null) {
+        <rs-segmented-bar class="my-1" [value]="stats().never_launched" [max]="stats().games" />
+      }
+    </rs-stat-tile>
+  </a>
 </section>

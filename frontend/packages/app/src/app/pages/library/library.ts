@@ -1,13 +1,7 @@
-import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import {
-  ActivatedRoute,
-  NavigationEnd,
-  NavigationStart,
-  Router,
-  RouterLink,
-} from '@angular/router';
-import { map } from 'rxjs';
+import { Component, type Signal, computed, inject, linkedSignal, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, NavigationEnd, type ParamMap, Router, RouterLink } from '@angular/router';
+import { filter, map, scan } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
@@ -21,11 +15,15 @@ import { GameGrid } from './components/game-grid';
 import { GameTable } from './components/game-table';
 import { LibraryToolbar } from './components/library-toolbar';
 import {
+  LIBRARY_FILTER,
   LIBRARY_SEARCH,
+  LIBRARY_SORT,
   type LibraryFilter,
   type LibrarySort,
   type LibraryView,
   VIEWS,
+  askedFilter,
+  askedSort,
   filterCounts,
   kept,
   letters,
@@ -84,15 +82,32 @@ export class Library {
    * stays on it, so a reload or a copy of the address shows the same games. A title made of
    * nothing the search reads (spaces, signs) is no search.
    */
-  protected readonly search = toSignal(
-    this.route.queryParamMap.pipe(map((asked) => searched(asked.get(LIBRARY_SEARCH)))),
-    { initialValue: searched(this.route.snapshot.queryParamMap.get(LIBRARY_SEARCH)) },
-  );
-  protected readonly filter = signal<LibraryFilter>('all');
-  protected readonly sort = signal<LibrarySort>('last_played');
+  protected readonly search = this.asked((words) => searched(words.get(LIBRARY_SEARCH)));
+  /**
+   * The filter and the order, on the address too. A title searched from the header writes
+   * neither: every game that bears it is shown, since a filter left on would hide the very
+   * game that was asked for. Clearing the search asks for nothing new: they stay. When the
+   * browser's history leads back, each address shows what it said.
+   */
+  protected readonly filter = this.asked((words) => askedFilter(words.get(LIBRARY_FILTER)));
+  protected readonly sort = this.asked((words) => askedSort(words.get(LIBRARY_SORT)));
   protected readonly view = signal<LibraryView>(readChoice(VIEW_KEY, VIEWS) ?? 'covers');
-  /** How many steps of the list are shown: back to one whenever the list changes. */
-  private readonly steps = linkedSignal({ source: this.search, computation: () => 1 });
+  /**
+   * Each navigation that ends here: a title searched again from the header leaves the address
+   * as it was, and still shows the first games that bear it.
+   */
+  private readonly arrivals = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      scan((count) => count + 1, 0),
+    ),
+    { initialValue: 0 },
+  );
+  /** How many steps of the list are shown: back to one whenever the list is asked for anew. */
+  private readonly steps = linkedSignal({
+    source: () => [this.search(), this.filter(), this.sort(), this.arrivals()].join('\n'),
+    computation: () => 1,
+  });
 
   /** How many games the library holds, in the reader's language, and whether that is one. */
   protected readonly owned = computed(() => this.counted(this.games.data()?.length ?? 0));
@@ -116,42 +131,37 @@ export class Library {
   /** A full bar is the most played game of the library, whatever is searched or filtered. */
   protected readonly scale = computed(() => longestPlaytime(this.games.data() ?? []));
 
-  constructor() {
-    // Back to every game whenever a title is searched, the one already shown too: the search
-    // comes from the header, and a filter left on would hide the very game that was asked
-    // for. Clearing the search asks for nothing new: the filter stays. So does it when the
-    // browser's history leads back to a title: nothing was searched then.
-    let throughHistory = false;
-    this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {
-      if (event instanceof NavigationStart) {
-        throughHistory = event.navigationTrigger === 'popstate';
-      }
-      if (!(event instanceof NavigationEnd) || throughHistory || !this.search()) return;
-      this.filter.set('all');
-      this.steps.set(1);
+  /** What the address says, read again at each of its changes. */
+  private asked<T>(read: (words: ParamMap) => T): Signal<T> {
+    return toSignal(this.route.queryParamMap.pipe(map(read)), {
+      initialValue: read(this.route.snapshot.queryParamMap),
     });
   }
 
-  /**
-   * The whole library again: the title leaves the address, whatever else it says stays. Not
-   * the words it carried for one arrival, which the router still holds: they were said.
-   */
+  /** The whole library again: the title leaves the address, whatever else it says stays. */
   protected clearSearch(): void {
-    const there = this.router.parseUrl(withoutSaidOnce(this.router, this.router.url));
-    there.queryParams = Object.fromEntries(
-      Object.entries(there.queryParams).filter(([word]) => word !== LIBRARY_SEARCH),
-    );
-    void this.router.navigateByUrl(there);
+    this.rewrite({ [LIBRARY_SEARCH]: null });
   }
 
+  /** Another filter or order: the address says it in place, the history gains no step. */
   protected pickFilter(filter: LibraryFilter): void {
-    this.filter.set(filter);
-    this.steps.set(1);
+    this.rewrite({ [LIBRARY_FILTER]: filter === 'all' ? null : filter }, true);
   }
 
   protected pickSort(sort: LibrarySort): void {
-    this.sort.set(sort);
-    this.steps.set(1);
+    this.rewrite({ [LIBRARY_SORT]: sort === 'last_played' ? null : sort }, true);
+  }
+
+  /**
+   * This address with some of its words changed, `null` taking one off. Not with the words it
+   * carried for one arrival, which the router still holds: they were said.
+   */
+  private rewrite(words: Record<string, string | null>, inPlace = false): void {
+    const there = this.router.parseUrl(withoutSaidOnce(this.router, this.router.url));
+    there.queryParams = Object.fromEntries(
+      Object.entries({ ...there.queryParams, ...words }).filter(([, value]) => value !== null),
+    );
+    void this.router.navigateByUrl(there, { replaceUrl: inPlace });
   }
 
   /** Another way to show the same games: the games already shown stay. */

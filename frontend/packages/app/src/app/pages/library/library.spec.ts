@@ -265,6 +265,44 @@ describe('Library', () => {
     expect(screen.querySelector('rs-banner')).toBeNull();
   });
 
+  it('opens on the filter and the order its address asks for, as the home links to them', async () => {
+    const { screen } = await open(library(), 'fr', '/library?filter=launched&sort=playtime');
+
+    expect(names(screen)).toEqual(['Hades', 'Portal 2']);
+    expect(pill(screen, 'launched').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.querySelector<HTMLSelectElement>('[data-sort]')!.value).toBe('playtime');
+  });
+
+  it('takes a filter or an order it does not know for the first one', async () => {
+    const { screen } = await open(library(), 'fr', '/library?filter=played&sort=size');
+
+    expect(names(screen)).toEqual(['Portal 2', 'Hades', 'Celeste', 'Pokémon']);
+    expect(pill(screen, 'all').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('writes the filter and the order picked on its address, in place', async () => {
+    const { harness, screen } = await open(library(), 'fr', '/library?q=po');
+    const location = TestBed.inject(Location);
+    const going = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+
+    pill(screen, 'never').click();
+    await harness.fixture.whenStable();
+    const sort = screen.querySelector<HTMLSelectElement>('[data-sort]')!;
+    sort.value = 'name';
+    sort.dispatchEvent(new Event('change'));
+    await harness.fixture.whenStable();
+    expect(location.path()).toBe('/library?q=po&filter=never&sort=name');
+
+    // The first ones are not written.
+    pill(screen, 'all').click();
+    await harness.fixture.whenStable();
+    expect(location.path()).toBe('/library?q=po&sort=name');
+    expect(names(screen)).toEqual(['Pokémon', 'Portal 2']);
+    // In place: the browser's history gains no step.
+    expect(going.mock.calls.every(([, extras]) => extras?.replaceUrl)).toBe(true);
+    expect(going).toHaveBeenCalledTimes(3);
+  });
+
   it('sorts by playtime or by title', async () => {
     const { harness, screen } = await open();
     const sort = screen.querySelector<HTMLSelectElement>('[data-sort]')!;
@@ -315,6 +353,17 @@ describe('Library', () => {
 
     // Another title is searched from the header: the address changes, the screen stays.
     await harness.navigateByUrl('/library?q=game');
+    await harness.fixture.whenStable();
+    expect(names(screen)).toHaveLength(100);
+
+    // The same title, asked again in the header: the address does not change, the list does.
+    button(screen, 'Afficher la suite').click();
+    await harness.fixture.whenStable();
+    expect(names(screen)).toHaveLength(200);
+    const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
+    type(search, 'game');
+    await harness.fixture.whenStable();
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await harness.fixture.whenStable();
     expect(names(screen)).toHaveLength(100);
   });

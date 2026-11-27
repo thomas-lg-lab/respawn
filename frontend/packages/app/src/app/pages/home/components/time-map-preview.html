@@ -27,11 +27,12 @@
     <h2 class="type-card-title">
       <!-- The whole card leads to the Time tab: the link's box is stretched over it. -->
       <a
-        class="after:absolute after:inset-0 after:rounded-card focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-focus"
+        class="inline-flex items-center gap-1 after:absolute after:inset-0 after:rounded-card focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-focus"
         routerLink="/time"
         data-time-link
-        >{{ t('timeMap.title') }}</a
-      >
+        >{{ t('timeMap.title') }}
+        <svg lucideChevronRight class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg
+      ></a>
     </h2>
     <p class="type-caption text-muted">{{ t('timeMap.caption', { count: map().tiles.length }) }}</p>
   </div>

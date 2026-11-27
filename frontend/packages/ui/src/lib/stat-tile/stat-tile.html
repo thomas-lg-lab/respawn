@@ -4,3 +4,6 @@
 @if (note(); as said) {
   <span class="note">{{ said }}</span>
 }
+@if (interactive()) {
+  <svg lucideChevronRight class="chevron" [strokeWidth]="2" aria-hidden="true"></svg>
+}

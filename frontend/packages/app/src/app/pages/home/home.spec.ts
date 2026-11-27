@@ -304,6 +304,12 @@ describe('Home', () => {
     expect(text(screen, '[data-figure="recent"] .note')).toBe('sur 3 jeux');
     expect(text(screen, '[data-figure="never-launched"] .figure')).toBe('444');
     expect(text(screen, '[data-last-sync]')).toContain('Dernière synchronisation réussie');
+    // Each figure leads to the games it counts.
+    const link = (figure: string) =>
+      screen.querySelector(`[data-figure-link="${figure}"]`)?.getAttribute('href');
+    expect(link('total')).toBe('/library?filter=launched&sort=playtime');
+    expect(link('recent')).toBe('/library?filter=recent');
+    expect(link('never-launched')).toBe('/library?filter=never');
     expect(screen.querySelector('[data-sync-notice]')).toBeNull();
   });
 
@@ -555,6 +561,10 @@ describe('Home', () => {
       ]);
       expect(text(screen, '[data-ranking-total]')).toBe('244 h au total');
       expect(text(screen, '[data-ranking-others]')).toBe('Les 3 autres jeux lancés : 6 min.');
+      // The title and the others lead to the whole ranking: the library, by playtime.
+      const whole = '/library?filter=launched&sort=playtime';
+      expect(screen.querySelector('[data-ranking-link]')?.getAttribute('href')).toBe(whole);
+      expect(screen.querySelector('[data-ranking-others]')?.getAttribute('href')).toBe(whole);
     });
 
     it('draws the time map of the most played games, coloured by their last session', async () => {
@@ -988,7 +998,10 @@ describe('Home', () => {
         'Inside',
       ]);
       expect(screen.querySelector('[data-day="2026-11-21"] [data-others]')).toBeNull();
-      expect(document.activeElement?.getAttribute('data-game')).toBe(games[4]!.game_id);
+      expect(document.activeElement?.closest('[data-game]')?.getAttribute('data-game')).toBe(
+        games[4]!.game_id,
+      );
+      expect(document.activeElement?.tagName).toBe('A');
     });
 
     it('lists the latest days played, the latest first, each game with its time', async () => {
@@ -1013,6 +1026,12 @@ describe('Home', () => {
         '10 min',
       ]);
       expect(screen.querySelector('[data-activity-empty]')).toBeNull();
+      // A game still in the library leads to its page; the one that left it, nowhere.
+      const rows = [...screen.querySelectorAll('[data-day="2026-11-20"] [data-game]')];
+      const page = (row: Element) => `/games/${row.getAttribute('data-game')}`;
+      expect(
+        rows.map((row) => row.querySelector('a[data-name]')?.getAttribute('href') ?? null),
+      ).toEqual([...rows.slice(0, 2).map(page), null]);
     });
 
     it('says when the tracking began while no day was played, and draws no year', async () => {

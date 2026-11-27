@@ -8,24 +8,29 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideChevronDown } from '@lucide/angular';
 import { Card } from '@respawn/ui';
 import { formatCount, formatDate, formatDay, isOne, saidPlaytime } from '@app/format/format';
+import { cameFrom, gamePage } from '@app/games/game-page';
 import type { PlayedDay } from '../history-blocks';
 
 /**
  * The activity: the latest days something was played, each with its games and the time of
  * that day, as the daily readings tell it. Before a second reading there is no day to show:
  * the block says when the tracking began, and that the days will come. A day names its most
- * played games, and the others on request.
+ * played games, and the others on request; a game still in the library leads to its page.
  */
 @Component({
   selector: 'rs-activity',
-  imports: [TranslocoDirective, LucideChevronDown, Card],
+  imports: [RouterLink, TranslocoDirective, LucideChevronDown, Card],
   templateUrl: './activity.html',
 })
 export class Activity {
+  protected readonly gamePage = gamePage;
+  protected readonly from = cameFrom('home');
+
   readonly days = input.required<readonly PlayedDay[]>();
   /** When the history starts: the first sync, said in UTC. `null` while no reading listed a game. */
   readonly since = input.required<string | null>();
@@ -76,15 +81,17 @@ export class Activity {
 
   /**
    * Names every game of the day, its most played still first. The button asking for them goes
-   * away, so the focus moves to the first game it brought rather than falling to the page.
+   * away, so the focus moves to the first game it brought (its link, or the row of a game the
+   * library no longer has) rather than falling to the page.
    */
   protected open(date: string): void {
     this.opened.update((opened) => new Set([...opened, date]));
     afterNextRender(
       () => {
-        this.host.nativeElement
-          .querySelector<HTMLElement>(`[data-day="${date}"] [data-first-of-rest]`)
-          ?.focus();
+        const row = this.host.nativeElement.querySelector<HTMLElement>(
+          `[data-day="${date}"] [data-first-of-rest]`,
+        );
+        (row?.querySelector<HTMLElement>('a[data-name]') ?? row)?.focus();
       },
       { injector: this.injector },
     );

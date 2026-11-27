@@ -12,6 +12,33 @@
     background-color: var(--rs-surface);
   }
 
+  /* A fill, never a movement, as an interactive card: only for a pointer that can hover. */
+  :host([data-interactive]) {
+    height: 100%;
+    transition: background-color var(--rs-duration-hover);
+  }
+  @media (hover: hover) {
+    :host([data-interactive]:hover) {
+      background-color: var(--rs-surface-2);
+    }
+  }
+
+  /* In the corner, level with what the tile counts, which keeps its whole width. */
+  :host {
+    position: relative;
+  }
+  .caption {
+    padding-right: 1.25rem;
+  }
+  .chevron {
+    position: absolute;
+    top: 1.125rem;
+    right: 1.25rem;
+    width: 1rem;
+    height: 1rem;
+    color: var(--rs-muted);
+  }
+
   .caption,
   .note {
     color: var(--rs-muted);

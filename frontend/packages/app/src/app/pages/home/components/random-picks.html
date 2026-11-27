@@ -7,9 +7,12 @@
       </button>
     }
   </div>
-  <ul class="flex flex-col gap-2.5">
+  <ul class="flex flex-col gap-0.5">
     @for (pick of picks(); track pick.id) {
-      <li class="relative flex items-center gap-3" [attr.data-game]="pick.id">
+      <li
+        class="relative -mx-1.5 flex items-center gap-3 rounded-thumb px-1.5 py-1 transition-colors duration-hover hover:bg-surface-2"
+        [attr.data-game]="pick.id"
+      >
         <rs-cover
           class="w-7.5 shrink-0 rounded-thumb"
           aria-hidden="true"
@@ -17,7 +20,7 @@
           [src]="pick.cover"
         />
         <a
-          class="min-w-0 truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+          class="min-w-0 truncate font-semibold after:absolute after:inset-0 after:rounded-thumb focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-focus"
           data-name
           [routerLink]="gamePage(pick.id)"
           [state]="from"

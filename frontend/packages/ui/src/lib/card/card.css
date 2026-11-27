@@ -14,10 +14,13 @@
     }
   }
 
+  /* A fill, never a movement: only a pointer that can hover shows it, a finger does not. */
   :host([data-interactive]) {
-    transition: translate var(--rs-duration-hover);
+    transition: background-color var(--rs-duration-hover);
   }
-  :host([data-interactive]:hover) {
-    translate: 0 calc(-1 * var(--rs-lift));
+  @media (hover: hover) {
+    :host([data-interactive]:hover) {
+      background-color: var(--rs-surface-2);
+    }
   }
 }
