@@ -71,7 +71,7 @@ describe('LanguageSetting', () => {
 
     expect(setting.current()).toBe('fr');
     expect(root.lang).toBe('fr');
-    expect(transloco.translate('foundations.label')).toBe('Fondations');
+    expect(transloco.translate('settings.theme')).toBe('Thème');
   });
 
   it('still starts, in the fallback language, when the kept one cannot be fetched', async () => {
@@ -83,7 +83,7 @@ describe('LanguageSetting', () => {
     expect(setting.current()).toBe('en');
     expect(root.lang).toBe('en');
     expect(transloco.getActiveLang()).toBe('en');
-    expect(transloco.translate('foundations.label')).toBe('Foundations');
+    expect(transloco.translate('settings.theme')).toBe('Theme');
     // The choice was not at fault: it is still there for the next visit.
     expect(localStorage.getItem('respawn.language')).toBe('fr');
   });
@@ -119,7 +119,7 @@ describe('LanguageSetting', () => {
 
     expect(switched).toBe('shown');
     expect(setting.current()).toBe('fr');
-    expect(transloco.translate('foundations.label')).toBe('Fondations');
+    expect(transloco.translate('settings.theme')).toBe('Thème');
     expect(localStorage.getItem('respawn.language')).toBe('fr');
   });
 

@@ -1,4 +1,5 @@
 import type { LibraryGame } from '@respawn/data';
+import { compareTitles } from '@app/format/format';
 
 /**
  * What the screens make of the games the browser holds: which ones a search and a filter
@@ -204,12 +205,11 @@ export function sorted(
   sort: LibrarySort,
   language: string,
 ): LibraryGame[] {
-  const titles = new Intl.Collator(language, { sensitivity: 'base', numeric: true });
   // A game no source has named yet comes after every title.
   const byTitle = (a: LibraryGame, b: LibraryGame) =>
     a.name === null || b.name === null
       ? Number(a.name === null) - Number(b.name === null)
-      : titles.compare(a.name, b.name);
+      : compareTitles(a.name, b.name, language);
   const first: Record<LibrarySort, (a: LibraryGame, b: LibraryGame) => number> = {
     last_played: (a, b) => larger(moment(a.last_played_at), moment(b.last_played_at)),
     playtime: (a, b) => larger(a.playtime_seconds, b.playtime_seconds),
@@ -221,6 +221,14 @@ export function sorted(
 /** No store lists the game any more: every copy of it is flagged. */
 export function isMissing(game: Pick<LibraryGame, 'entries'>): boolean {
   return game.entries.length > 0 && game.entries.every((entry) => entry.missing_since !== null);
+}
+
+/**
+ * The first character of a title, whole (an emoji is one, though it is two in a string), in
+ * capitals; empty for a game no source has named.
+ */
+export function titleInitial(name: string | null, language: string): string {
+  return ([...(name ?? '').trim()][0] ?? '').toLocaleUpperCase(language);
 }
 
 /**

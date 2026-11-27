@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { LibraryStats } from '@respawn/data';
 import { SegmentedBar, StatTile } from '@respawn/ui';
-import { formatCount, isOne, playtime } from '@app/format/format';
+import { formatCount, isOne, saidPlaytime } from '@app/format/format';
 import { libraryWords } from '@app/games/game-list';
 
 /** A figure as a tile shows it: a translation key and what goes in it. */
@@ -49,14 +49,16 @@ export class Figures {
   );
 
   private duration(seconds: number | null): Said {
-    if (seconds === null) return { key: 'unknown' };
-    const { unit, count } = playtime(seconds);
-    return { key: unit, count: formatCount(count, this.language()) };
+    if (seconds === null) return { key: 'app.unknown' };
+    return saidPlaytime(seconds, this.language());
   }
 
   /** One game or several is the language's to say: French counts none as one. */
   private games(count: number): Said {
     const one = isOne(count, this.language());
-    return { key: one ? 'ofOne' : 'ofMany', count: formatCount(count, this.language()) };
+    return {
+      key: one ? 'home.figures.ofOne' : 'home.figures.ofMany',
+      count: formatCount(count, this.language()),
+    };
   }
 }

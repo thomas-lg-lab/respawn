@@ -2,8 +2,8 @@
      screen says in words what it waits for. -->
 <ul
   class="grid grid-cols-3 gap-x-3 gap-y-5 wide:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] wide:gap-x-4"
-  *transloco="let t; prefix: 'library'"
-  [attr.aria-label]="loading() ? null : t('title')"
+  *transloco="let t"
+  [attr.aria-label]="loading() ? null : t('library.title')"
   [attr.aria-hidden]="loading() ? 'true' : null"
 >
   @for (tile of placeholders(); track tile) {
@@ -25,15 +25,15 @@
           [class.text-muted]="tile.name === null"
           [routerLink]="gamePage(tile.id)"
           [state]="from"
-          >{{ tile.name ?? t('unnamed') }}</a
+          >{{ tile.name ?? t('game.unnamed') }}</a
         >
         @if (tile.total; as total) {
           <span class="type-caption text-muted tabular-nums" data-playtime>{{
-            total === 'never' ? t('never') : t(total.key, { count: total.count })
+            total === 'never' ? t('library.never') : t(total.key, { count: total.count })
           }}</span>
         }
         @if (tile.missing) {
-          <span class="type-caption text-muted" data-missing>{{ t('missing') }}</span>
+          <span class="type-caption text-muted" data-missing>{{ t('library.missing') }}</span>
         }
       </span>
     </li>

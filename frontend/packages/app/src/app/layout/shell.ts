@@ -93,6 +93,8 @@ export class Shell {
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly signingOut = injectMutation(() => this.queries.signOut());
   protected readonly savingSettings = injectMutation(() => this.queries.saveSettings());
+  /** The language last picked could not be loaded. */
+  protected readonly languageUnavailable = signal(false);
   /** The providers, and which ones the account is linked to, asked once the menu that shows them is opened. */
   protected readonly menuOpened = signal(false);
   protected readonly accountProviders = injectQuery(() => ({
@@ -157,9 +159,15 @@ export class Shell {
       });
   }
 
-  /** A language is kept only once its translations are there, and shown. */
+  /**
+   * A language is kept only once its translations are there, and shown. One that cannot be
+   * loaded (offline, or a tab older than the version now served) is said, until a pick works.
+   */
   protected async pickLanguage(language: Language): Promise<void> {
-    if ((await this.language.use(language)) === 'shown') this.saveSettings();
+    const outcome = await this.language.use(language);
+    if (outcome === 'superseded') return;
+    this.languageUnavailable.set(outcome === 'unavailable');
+    if (outcome === 'shown') this.saveSettings();
   }
 
   protected pickTheme(theme: Theme): void {

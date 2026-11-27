@@ -41,7 +41,7 @@ function restrictedImports(pkg, extra = []) {
               'its @respawn/x barrel, which is what decides what it exposes.',
           },
           {
-            group: ['**/packages/*/src/**'],
+            regex: `^(\\.\\./)+(${PACKAGES.filter((p) => p !== pkg).join('|')})/src/`,
             message:
               'A relative path into another package walks past its public-api.ts. Import the ' +
               '@respawn/x barrel instead.',

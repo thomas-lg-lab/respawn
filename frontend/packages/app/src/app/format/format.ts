@@ -33,6 +33,25 @@ const agoInFigures = perLanguage(
 );
 
 const plurals = perLanguage((language) => new Intl.PluralRules(language));
+const wholeShares = perLanguage(
+  (language) => new Intl.NumberFormat(language, { style: 'percent', maximumFractionDigits: 0 }),
+);
+const smallShares = perLanguage(
+  (language) => new Intl.NumberFormat(language, { style: 'percent', maximumFractionDigits: 1 }),
+);
+const titles = perLanguage(
+  (language) => new Intl.Collator(language, { sensitivity: 'base', numeric: true }),
+);
+
+/** The order of two titles in the language: no case, no accent, "Part 2" before "Part 10". */
+export function compareTitles(a: string, b: string, language: string): number {
+  return titles(language).compare(a, b);
+}
+
+/** A share of a whole, as a percentage: whole, unless that says nothing of a small one. */
+export function formatShare(fraction: number, language: string): string {
+  return (fraction > 0 && fraction < 0.005 ? smallShares : wholeShares)(language).format(fraction);
+}
 
 /** Whether a count takes the singular in the language: 1 in English, 0 and 1 in French. */
 export function isOne(count: number, language: string): boolean {
@@ -58,15 +77,18 @@ export function playtime(seconds: number): Playtime {
     : { unit: 'hours', count: Math.round(seconds / 3600) };
 }
 
-/** A playtime as a translation says it: the key of its unit and its count in the language. */
+/**
+ * A playtime as a translation says it: the key of its unit, the same on every screen, and
+ * its count in the language.
+ */
 export interface SaidPlaytime {
-  readonly key: 'hours' | 'minutes';
+  readonly key: 'duration.hours' | 'duration.minutes';
   readonly count: string;
 }
 
 export function saidPlaytime(seconds: number, language: string): SaidPlaytime {
   const { unit, count } = playtime(seconds);
-  return { key: unit, count: formatCount(count, language) };
+  return { key: `duration.${unit}`, count: formatCount(count, language) };
 }
 
 /** A moment, to the minute, in the reader's own time zone: "20 Nov 2026, 05:02". */

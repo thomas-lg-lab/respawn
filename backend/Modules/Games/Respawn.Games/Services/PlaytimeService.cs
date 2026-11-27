@@ -41,7 +41,7 @@ public sealed class PlaytimeService(
         [
             .. months
                 .GroupBy(month => month.Month)
-                .Select(month => new GameMonth(month.Key, Sum(month.Select(account => account.Playtime)), YearSource.Review))
+                .Select(month => new GameMonth(month.Key, Sum(month.Select(game => game.Playtime)), YearSource.Review))
                 .Concat(days
                     .GroupBy(day => new DateOnly(day.Date.Year, day.Date.Month, 1))
                     .Select(month => new GameMonth(month.Key, Sum(month.Select(day => day.Playtime)), YearSource.Readings)))

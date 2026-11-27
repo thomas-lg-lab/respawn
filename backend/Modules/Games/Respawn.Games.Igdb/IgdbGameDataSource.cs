@@ -67,7 +67,7 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, IgdbImages images, Tim
         ArgumentOutOfRangeException.ThrowIfGreaterThan(externalIds.Count, MatchesPerRequest, nameof(externalIds));
 
         // Nothing that cannot be a game of the store goes in a question: Steam's app ids are whole numbers.
-        var asked = externalIds.Where(IsAppId).ToHashSet(StringComparer.Ordinal);
+        var asked = externalIds.Where(StoreIds.IsSteamAppId).ToHashSet(StringComparer.Ordinal);
         if (asked.Count == 0)
         {
             return new MatchReading(Kind, clock.GetUtcNow(), [], []);
@@ -132,11 +132,6 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, IgdbImages images, Tim
             [new SourceAnswer(GamesKind, gamesAt, games), new SourceAnswer(TimeToBeatsKind, timesAt, times)],
             [.. ReadGames(games, asked).Select(game => game with { TimeToBeat = durations.GetValueOrDefault(game.GameId) })]);
     }
-
-    /// <summary>A Steam app id: a 32-bit whole number, written plainly.</summary>
-    private static bool IsAppId(string id) =>
-        id.Length is > 0 and <= 10 && id.All(char.IsAsciiDigit)
-        && uint.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out _);
 
     /// <summary>An IGDB game's id: a whole number of at least one, written plainly; 0 for what is not.</summary>
     private static long GameNumber(string id) =>

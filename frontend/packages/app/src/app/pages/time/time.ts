@@ -5,7 +5,8 @@ import { LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton } from '@respawn/ui';
 import { injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
-import { formatAgo, formatCount, isOne, saidPlaytime } from '@app/format/format';
+import { formatAgo, formatCount, formatShare, isOne, saidPlaytime } from '@app/format/format';
+import { libraryWords } from '@app/games/game-list';
 import { cameFrom, gamePage } from '@app/games/game-page';
 import { LanguageSetting } from '@app/i18n/language';
 import { TimeMap } from './components/time-map';
@@ -32,6 +33,8 @@ export class Time {
   protected readonly recencies = RECENCIES;
   /** The game pressed leads to its page, which leads back here. */
   protected readonly gamePage = gamePage;
+  /** The other games are launched ones: the library opens on those, the most played first. */
+  protected readonly othersWords = libraryWords({ filter: 'launched', sort: 'playtime' });
   protected readonly from = cameFrom('time');
   protected readonly currentLanguage = this.language.current;
   protected readonly games = injectQuery(() => this.queries.games());
@@ -78,7 +81,7 @@ export class Time {
             }
           : null,
       time: saidPlaytime(tile.seconds, language),
-      share: share(tile.seconds / map.seconds, language),
+      share: formatShare(tile.seconds / map.seconds, language),
       // The sentence goes on after "Last session": it is not its start.
       ago: ago && ago.charAt(0).toLocaleLowerCase(language) + ago.slice(1),
     };
@@ -87,14 +90,4 @@ export class Time {
   protected pick(id: string): void {
     this.picked.set(id);
   }
-}
-
-/** A share of the whole, as a percentage: whole, unless that says nothing of a small one. */
-function share(fraction: number, language: string): string {
-  const whole = new Intl.NumberFormat(language, { style: 'percent', maximumFractionDigits: 0 });
-  return fraction > 0 && fraction < 0.005
-    ? new Intl.NumberFormat(language, { style: 'percent', maximumFractionDigits: 1 }).format(
-        fraction,
-      )
-    : whole.format(fraction);
 }

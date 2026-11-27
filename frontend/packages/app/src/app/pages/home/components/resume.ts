@@ -1,13 +1,13 @@
-import { Component, computed, inject, input } from '@angular/core';
-import { DomSanitizer } from '@angular/platform-browser';
+import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucidePlay } from '@lucide/angular';
 import type { LibraryGame } from '@respawn/data';
 import { Button, Hero, Label } from '@respawn/ui';
 import { formatAgo, formatMoment, saidPlaytime } from '@app/format/format';
-import { coverHue, steamLaunchAddress } from '@app/games/game-list';
+import { coverHue, titleInitial } from '@app/games/game-list';
 import { cameFrom, gamePage } from '@app/games/game-page';
+import { steamLaunchLink } from '@app/games/steam-launch';
 
 /**
  * The game to resume, the one played last, as a banner: its title, how long ago its last
@@ -26,27 +26,15 @@ export class Resume {
   /** The moment "ago" is counted from. */
   readonly now = input.required<number>();
 
-  private readonly sanitizer = inject(DomSanitizer);
-
   /** Its title leads to its page, which leads back here. */
   protected readonly gamePage = gamePage;
   protected readonly from = cameFrom('home');
 
-  /**
-   * The link that launches the game in the Steam client. Angular takes any address that is
-   * not the web's for a dangerous one and would write it off; this one is trusted because
-   * `steamLaunchAddress` only ever gives `steam://run/` followed by digits.
-   */
-  protected readonly launch = computed(() => {
-    const address = steamLaunchAddress(this.game());
-    return address === null ? null : this.sanitizer.bypassSecurityTrustUrl(address);
-  });
+  /** The link that launches the game in the Steam client, where a copy of it is listed. */
+  protected readonly launch = steamLaunchLink(this.game);
 
   protected readonly hue = computed(() => coverHue(this.game().game_id));
-  /** The first character of the title, whole: an emoji is one, though it is two in a string. */
-  protected readonly initial = computed(() =>
-    ([...(this.game().name ?? '').trim()][0] ?? '').toLocaleUpperCase(this.language()),
-  );
+  protected readonly initial = computed(() => titleInitial(this.game().name, this.language()));
 
   /** The last session, as it reads inside a sentence: "yesterday", "3 days ago". */
   protected readonly last = computed(() => {

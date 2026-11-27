@@ -25,9 +25,6 @@ export type SettingsRequest = Schemas['SettingsRequest'];
 /** What the sign-in page may offer (`GET /api/v1/config`). */
 export type SignInOptions = Schemas['ConfigResponse'];
 
-/** An OpenID Connect provider to sign in with. */
-export type SignInProvider = Schemas['ProviderResponse'];
-
 /** A provider as the signed-in account sees it: linked to it or not (`GET /api/v1/me/providers`). */
 export type AccountProvider = Schemas['AccountProviderResponse'];
 
@@ -68,9 +65,6 @@ export type LibraryYear = Schemas['YearResponse'];
  */
 export type Game = Schemas['GameResponse'];
 
-/** A game's page in the game database (IGDB), when it knows the game. */
-export type GameDataPage = Schemas['GameDataPageResponse'];
-
 /**
  * A game's covers: the sources it has one from, the game's own first, and the one the account
  * chose among the others (null while it chose none).
@@ -83,9 +77,6 @@ export type Credits = Schemas['CreditsResponse'];
 /** One of them: its name as people know it, and its home page. */
 export type Credit = Schemas['CreditResponse'];
 
-/** A game's rank: its place among the games launched, the most played first, and how many those are. */
-export type GameRank = Schemas['GameRankResponse'];
-
 /** What was played of a game month by month (`GET /api/v1/games/{id}/months`), the earliest first. */
 export type GameMonths = Schemas['GameMonthsResponse'];
 
@@ -95,23 +86,11 @@ export type GameMonth = Schemas['GameMonthResponse'];
 /** The games played in one month (`GET /api/v1/library/months/{month}`), the most played first. */
 export type LibraryMonth = Schemas['LibraryMonthResponse'];
 
-/** A game of that month and its time. */
-export type MonthGame = Schemas['MonthGameResponse'];
-
-/**
- * A game the account took out of its library. `back_since` is the notice to show: a store
- * lists it again since then, and the notice was not dismissed.
- */
-export type RemovedGame = Schemas['RemovedGameResponse'];
-
 /** The linked store accounts (`GET /api/v1/linked-accounts`). */
 export type LinkedAccounts = Schemas['LinkedAccountsResponse'];
 
 /** A store account linked to the signed-in account, with the state of its sync. */
 export type LinkedAccount = Schemas['LinkedAccountResponse'];
-
-/** Where the sync of a linked account stands: running or not, its last run, its last success. */
-export type SyncState = Schemas['SyncStateResponse'];
 
 /**
  * One reading of a linked account's library, finished. `outcome` is `succeeded`,

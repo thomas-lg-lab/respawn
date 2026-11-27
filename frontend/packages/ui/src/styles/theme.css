@@ -17,14 +17,11 @@
   --color-text: var(--rs-text);
   --color-muted: var(--rs-muted);
   --color-accent: var(--rs-accent);
-  --color-on-accent: var(--rs-on-accent);
   --color-accent-text: var(--rs-accent-text);
   --color-focus: var(--rs-focus);
   --color-warn: var(--rs-warn);
   --color-warn-bg: var(--rs-warn-bg);
   --color-warn-line: var(--rs-warn-line);
-  --color-inverse: var(--rs-inverse);
-  --color-on-inverse: var(--rs-on-inverse);
   --color-scrim: var(--rs-scrim);
   --color-on-scrim: var(--rs-on-scrim);
   --color-recency-1: var(--rs-recency-1);
@@ -54,7 +51,6 @@
   --radius-pill: var(--rs-radius-pill);
   --radius-hero: var(--rs-radius-hero);
   --radius-card: var(--rs-radius-card);
-  --radius-row: var(--rs-radius-row);
   --radius-field: var(--rs-radius-field);
   --radius-thumb: var(--rs-radius-thumb);
 
@@ -67,10 +63,6 @@
   --spacing-button: var(--rs-size-button);
   --spacing-row: var(--rs-size-row);
   --spacing-icon: var(--rs-size-icon);
-  --spacing-avatar: var(--rs-size-avatar);
-  --spacing-segment: var(--rs-segment-height);
-  --spacing-segment-gap: var(--rs-segment-gap);
-  --spacing-lift: var(--rs-lift);
 
   --transition-duration-hover: var(--rs-duration-hover);
   --shadow-raised: var(--rs-shadow-raised);

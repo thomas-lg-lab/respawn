@@ -27,6 +27,13 @@ public sealed record UserResponse(Guid Id, string? Email, string DisplayName, bo
 /// <param name="Character">pixel or plain: what the labels look like.</param>
 public sealed record SettingsResponse(string Language, string Theme, string Character);
 
+/// <summary>Whether anyone may register.</summary>
+public sealed class RegistrationRequest
+{
+    [Required]
+    public bool? Open { get; init; }
+}
+
 /// <summary>The settings of the interface, the three together: they replace the ones the account had.</summary>
 public sealed class SettingsRequest
 {

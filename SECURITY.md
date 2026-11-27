@@ -5,4 +5,4 @@ Please report vulnerabilities privately through GitHub's
 vulnerability), not in a public issue.
 
 Only the latest published release is supported. Fixes ship as a new release; the `latest` image
-moves when it is published.
+moves when it is published. Until the first release, `edge` is what gets fixed.

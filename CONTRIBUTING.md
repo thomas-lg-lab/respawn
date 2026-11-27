@@ -6,6 +6,7 @@ run directly (the tests then reach the database on `localhost`, their default).
 
 ```bash
 docker compose up -d db
+# The network is named after the checkout's directory: <directory>_default.
 docker run --rm --network respawn_default -v "$PWD:/work" -w /work \
   -e RESPAWN_TEST_DATABASE_URL=postgresql://respawn:respawn@db:5432/respawn_test \
   mcr.microsoft.com/dotnet/sdk:11.0 sh -c '

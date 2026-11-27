@@ -1,12 +1,12 @@
 <section
   class="flex flex-col gap-3.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
   data-calendar
-  *transloco="let t; prefix: 'game.calendar'"
+  *transloco="let t"
 >
   <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
-    <h2 class="type-card-title">{{ t('title') }}</h2>
+    <h2 class="type-card-title">{{ t('game.calendar.title') }}</h2>
     <span class="flex items-center gap-1.5 type-caption text-muted" aria-hidden="true" data-legend>
-      {{ t('less') }}
+      {{ t('game.calendar.less') }}
       @for (shade of shades; track shade) {
         <span
           class="size-3.5"
@@ -16,7 +16,7 @@
           [class.bg-accent-text]="shade === 4"
         ></span>
       }
-      {{ t('more') }}
+      {{ t('game.calendar.more') }}
     </span>
   </div>
 
@@ -47,10 +47,10 @@
           class="sticky left-0 flex h-5 w-[calc(100cqw-4rem-2px)] items-center gap-2.5 type-caption text-muted tabular-nums wide:static wide:w-auto"
           data-unplaced
         >
-          <span class="shrink-0">{{ t('unplacedLabel') }}</span>
+          <span class="shrink-0">{{ t('game.calendar.unplacedLabel') }}</span>
           <span class="flex-1 border-t border-dashed border-control-line" aria-hidden="true"></span>
           <span class="shrink-0">{{
-            t('unplaced', { time: t(spent.key, { count: spent.count }) })
+            t('game.calendar.unplaced', { time: t(spent.key, { count: spent.count }) })
           }}</span>
         </p>
       }
@@ -62,7 +62,10 @@
             class="grid grid-cols-[4.5rem_repeat(12,2.125rem)] items-center gap-1 tabular-nums wide:grid-cols-[2.75rem_repeat(12,minmax(0,1fr))_3.5rem]"
             role="group"
             [attr.aria-label]="
-              t('year', { year: row.year, time: t(total.key, { count: total.count }) })
+              t('game.calendar.year', {
+                year: row.year,
+                time: t(total.key, { count: total.count }),
+              })
             "
             [attr.data-year]="row.year"
           >
@@ -80,7 +83,10 @@
               @if (cell.kind === 'played') {
                 @let spent = said(cell.seconds);
                 @let label =
-                  t('cell', { month: name(cell), time: t(spent.key, { count: spent.count }) });
+                  t('game.calendar.cell', {
+                    month: name(cell),
+                    time: t(spent.key, { count: spent.count }),
+                  });
                 <button
                   type="button"
                   class="h-8.5 min-w-0 transition-[filter] duration-hover hover:brightness-115 aria-pressed:outline-2 aria-pressed:outline-offset-1 aria-pressed:outline-text wide:h-7.5"
@@ -119,13 +125,15 @@
             data-gap
           >
             <span class="shrink-0">{{
-              row.from === row.to ? row.from : t('years', { from: row.from, to: row.to })
+              row.from === row.to
+                ? row.from
+                : t('game.calendar.years', { from: row.from, to: row.to })
             }}</span>
             <span
               class="flex-1 border-t border-dashed border-control-line"
               aria-hidden="true"
             ></span>
-            <span class="shrink-0">{{ t('gap.' + row.said) }}</span>
+            <span class="shrink-0">{{ t('game.calendar.gap.' + row.said) }}</span>
           </p>
         }
       }
@@ -135,9 +143,9 @@
   <ng-content />
 
   <p class="type-caption text-muted">
-    {{ t('hint') }}
+    {{ t('game.calendar.hint') }}
     @if (uncounted()) {
-      {{ t('uncounted') }}
+      {{ t('game.calendar.uncounted') }}
     }
   </p>
 </section>

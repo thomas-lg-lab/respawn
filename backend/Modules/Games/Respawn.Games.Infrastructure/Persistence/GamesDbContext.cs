@@ -60,7 +60,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
         {
             game.ToTable("games");
             game.Property(g => g.Name).HasMaxLength(Limits.Name);
-            // One canonical record per IGDB game; the records without an id are not concerned.
+            // One canonical record per IGDB game, for the merges planned later; the records without an
+            // id, all of them today, are not concerned.
             game.HasIndex(g => g.IgdbId).IsUnique();
         });
 

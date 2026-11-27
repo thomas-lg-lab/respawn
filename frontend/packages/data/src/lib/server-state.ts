@@ -20,6 +20,8 @@ export function serverState(sessionEnded: () => void = () => undefined): QueryCl
     }
   };
   const client = new QueryClient({
+    // A refusal is an answer, shown as it came: asking again is the visitor's to decide.
+    defaultOptions: { queries: { retry: false } },
     queryCache: new QueryCache({ onError: refused }),
     mutationCache: new MutationCache({ onError: refused }),
   });

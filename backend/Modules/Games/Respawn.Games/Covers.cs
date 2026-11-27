@@ -9,7 +9,27 @@ namespace Respawn.Games;
 /// <param name="ContentType">The image's media type, as the connector made sure of it; never the
 /// source's word alone.</param>
 /// <param name="Bytes">The image.</param>
-public sealed record Cover(string ContentType, ReadOnlyMemory<byte> Bytes);
+public sealed record Cover(string ContentType, ReadOnlyMemory<byte> Bytes)
+{
+    /// <summary>What kind of image these bytes start as, among those passed on: JPEG, PNG or WebP; null
+    /// for anything else. Every connector makes sure of a cover this way, whatever its source says.</summary>
+    public static string? MediaTypeOf(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.StartsWith<byte>([0xFF, 0xD8, 0xFF]))
+        {
+            return "image/jpeg";
+        }
+
+        if (bytes.StartsWith<byte>([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+        {
+            return "image/png";
+        }
+
+        return bytes.Length >= 12 && bytes.StartsWith("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8)
+            ? "image/webp"
+            : null;
+    }
+}
 
 /// <summary>A cover as the route sends it.</summary>
 /// <param name="ContentType">The image's media type.</param>
@@ -65,43 +85,7 @@ public static class CoverSchedule
 /// <summary>The questions on their way, in this process, and when each linked account's store was last
 /// asked: one at a time per account, and not again before <see cref="CoverSchedule.RetryAfter"/>. A
 /// restart forgets it, and asks once more.</summary>
-public sealed class CoverGate
-{
-    private readonly HashSet<Guid> _running = [];
-    private readonly Dictionary<Guid, DateTimeOffset> _tried = [];
-
-    public bool TryEnter(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            return _running.Add(linkedAccountId);
-        }
-    }
-
-    public void Leave(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            _running.Remove(linkedAccountId);
-        }
-    }
-
-    public DateTimeOffset? TriedAt(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            return _tried.TryGetValue(linkedAccountId, out var at) ? at : null;
-        }
-    }
-
-    public void Tried(Guid linkedAccountId, DateTimeOffset at)
-    {
-        lock (_running)
-        {
-            _tried[linkedAccountId] = at;
-        }
-    }
-}
+public sealed class CoverGate : Gate<Guid>;
 
 /// <summary>The cover the game database gives a game, as far as the catalogue knows it.</summary>
 /// <param name="ImageId">What names its cover in the database's image host: that of the first of the

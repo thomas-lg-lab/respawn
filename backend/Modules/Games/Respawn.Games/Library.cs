@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Respawn.Games;
 
 // The words of the module. A game is one canonical record whatever the store; a store entry is that
@@ -229,9 +231,10 @@ public sealed record LibraryStats(
 
 /// <summary>What an owner played of a game on one day, as the readings show it: the growth of its
 /// totals between two readings in a row, over every entry the game is owned through.</summary>
-/// <param name="Date">The day, in UTC, of the reading that showed the growth: the time was played
-/// between that reading and the one before, which with one reading a day is the day before as often
-/// as that day.</param>
+/// <param name="Date">The day, in UTC, the time was played on, as far as the store says: the day the
+/// game was last played, when the store gives that moment and it lies between the reading that showed
+/// the growth and the one before; otherwise the day of that reading. A reading of the small hours
+/// holds the evening before it, and this is what keeps that evening in its own day, month and year.</param>
 /// <param name="GameId">The canonical record.</param>
 /// <param name="Playtime">More than zero.</param>
 public sealed record PlayedDay(DateOnly Date, Guid GameId, TimeSpan Playtime);
@@ -287,4 +290,15 @@ public static class Limits
 
     /// <summary>What a game database says a game is about.</summary>
     public const int GameDataSummary = 20_000;
+}
+
+/// <summary>The ids stores give their games, as a connector checks one before it goes in an address or
+/// in a question.</summary>
+public static class StoreIds
+{
+    /// <summary>Whether this is a Steam app id as Steam writes it: a number of 32 bits in digits alone,
+    /// with no zero before it.</summary>
+    public static bool IsSteamAppId(string externalId) =>
+        uint.TryParse(externalId, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
+        && number.ToString(CultureInfo.InvariantCulture) == externalId;
 }

@@ -1,7 +1,18 @@
 {
   "app": {
     "loading": "Chargement…",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "unknown": "—"
+  },
+  "duration": {
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min"
+  },
+  "ordinal": {
+    "one": "{{ rank }}er",
+    "two": "{{ rank }}e",
+    "few": "{{ rank }}e",
+    "other": "{{ rank }}e"
   },
   "settings": {
     "language": "Langue",
@@ -9,6 +20,7 @@
       "fr": "Français",
       "en": "English"
     },
+    "languageUnavailable": "Cette langue n’a pas pu être chargée. Vérifiez votre connexion, ou rechargez la page.",
     "theme": "Thème",
     "themes": {
       "system": "Système",
@@ -31,7 +43,6 @@
     "noAccount": "Pas encore de compte ?",
     "create": "Créer un compte",
     "loading": "Chargement…",
-    "retry": "Réessayer",
     "localDisabled": "La connexion par compte local est désactivée sur cette instance.",
     "or": "ou",
     "withProvider": "Continuer avec {{ provider }}"
@@ -74,6 +85,7 @@
     "invalid_email": "Cette adresse e-mail n’est pas valide.",
     "weak_password": "Ce mot de passe est trop court.",
     "invalid_request": "La demande n’a pas été comprise. Vérifiez les champs.",
+    "forbidden": "Seul un administrateur de cette instance peut faire cela.",
     "cross_site_request": "La demande a été refusée : elle semble venir d’un autre site. Rechargez la page.",
     "sync_in_progress": "Une synchronisation est déjà en cours.",
     "unknown_linked_account": "Ce compte lié n’existe plus. Rechargez la page.",
@@ -84,6 +96,8 @@
     "still_listed": "Steam liste toujours ce jeu : seul un jeu qu’il ne liste plus peut être retiré.",
     "not_in_library": "Ce jeu n’est pas dans votre bibliothèque.",
     "not_removed": "Ce jeu est déjà dans votre bibliothèque.",
+    "not_back": "Steam ne liste plus ce jeu à nouveau : il n’y a plus rien à écarter.",
+    "unknown_game": "Ce jeu n’est plus connu ici.",
     "network_error": "Le serveur ne répond pas. Vérifiez votre connexion et réessayez.",
     "unknown": "Quelque chose s’est mal passé. Réessayez dans un instant."
   },
@@ -106,6 +120,18 @@
       "none": "Aucun compte de jeu n’est encore lié.",
       "another": "Lier un autre compte Steam",
       "first": "Lier mon compte Steam"
+    },
+    "instance": {
+      "title": "Cette instance",
+      "text": "Ce que vous décidez ici comme administrateur vaut pour tout le monde."
+    },
+    "registration": {
+      "open": "Les inscriptions sont ouvertes",
+      "openText": "Toute personne qui atteint cette instance peut y créer un compte.",
+      "closed": "Les inscriptions sont fermées",
+      "closedText": "Personne ne peut créer de compte, sauf par un fournisseur de connexion réglé pour en créer.",
+      "openIt": "Ouvrir les inscriptions",
+      "close": "Fermer les inscriptions"
     },
     "sources": {
       "steam": "Steam"
@@ -152,10 +178,7 @@
     "unreadable": "Vos jeux n’ont pas pu être lus. Entrée cherche quand même dans la bibliothèque.",
     "seeOne": "Voir {{ count }} jeu dans la bibliothèque",
     "seeMany": "Voir les {{ count }} jeux dans la bibliothèque",
-    "hours": "{{ count }} h",
-    "minutes": "{{ count }} min",
-    "never": "Jamais lancé",
-    "unknown": "—"
+    "never": "Jamais lancé"
   },
   "nav": {
     "label": "Navigation principale",
@@ -201,7 +224,6 @@
       "label": "Première synchronisation",
       "title": "La synchronisation avec Steam a échoué",
       "kept": "Aucun jeu n’a pu être importé. Votre compte Steam reste lié.",
-      "retry": "Réessayer",
       "note": "respawn réessaiera de lui-même à la prochaine synchronisation."
     },
     "nothingVisible": {
@@ -218,7 +240,6 @@
     },
     "sync": {
       "now": "Synchroniser maintenant",
-      "retry": "Réessayer",
       "dismiss": "Masquer",
       "running": "Synchronisation avec Steam en cours. Vous pouvez continuer à parcourir.",
       "last": "Dernière synchronisation réussie : {{ date }}",
@@ -232,17 +253,9 @@
       "recent": "Deux dernières semaines",
       "recentUnknown": "Steam ne le dit pas pour ce profil",
       "neverLaunched": "Jamais lancés",
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min",
-      "unknown": "—",
       "ofOne": "sur {{ count }} jeu",
       "ofMany": "sur {{ count }} jeux"
     },
-    "time": {
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min"
-    },
-    "unnamed": "Jeu sans nom",
     "resume": {
       "name": "Reprendre",
       "label": "Reprendre · dernière session {{ ago }}",
@@ -282,7 +295,7 @@
       "gone": "Un jeu qui n’est plus dans votre bibliothèque",
       "othersOne": "et {{ count }} autre jeu",
       "othersMany": "et {{ count }} autres jeux",
-      "note": "Un jour montre ce que sa lecture a trouvé depuis la précédente.",
+      "note": "Un jour montre ce qui y a été joué quand Steam dit quand, et sinon ce que sa lecture a trouvé depuis la précédente.",
       "empty": {
         "title": "Le suivi a commencé le {{ date }}",
         "text": "Steam ne donne pas le détail des sessions passées. respawn relève vos temps de jeu une fois par jour : ce que vous jouez s’affichera ici après la prochaine lecture."
@@ -294,7 +307,6 @@
     "countOne": "{{ count }} jeu, depuis Steam",
     "countMany": "{{ count }} jeux, depuis Steam",
     "loading": "Chargement de vos jeux…",
-    "retry": "Réessayer",
     "empty": {
       "text": "Aucun jeu ici pour l’instant. L’accueil dit où en est votre bibliothèque.",
       "home": "Aller à l’accueil"
@@ -325,11 +337,7 @@
       "recent": "2 dern. semaines",
       "lastPlayed": "Dernière session"
     },
-    "hours": "{{ count }} h",
-    "minutes": "{{ count }} min",
-    "unknown": "—",
     "never": "Jamais lancé",
-    "unnamed": "Jeu sans nom",
     "missing": "N’est plus listé par Steam",
     "noMatch": "Aucun jeu ne correspond.",
     "shownOne": "{{ shown }} jeu affiché sur {{ total }}",
@@ -349,25 +357,19 @@
     },
     "othersBand": "+ {{ others }}",
     "othersCaption": "Les autres jeux sont réunis sous la carte, sans en suivre l’échelle.",
-    "othersOne": "{{ count }} autre jeu",
-    "othersMany": "{{ count }} autres jeux",
     "othersLink": "Les parcourir dans la bibliothèque",
     "share": "{{ time }}, soit {{ share }} de votre temps de jeu.",
     "lastSession": "Dernière session {{ ago }}.",
-    "unnamed": "Jeu sans nom",
-    "playtime": {
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min"
-    },
     "empty": {
       "text": "La carte a besoin d’au moins deux jeux lancés. L’accueil dit où en est la bibliothèque.",
       "home": "Aller à l’accueil"
     },
-    "loading": "Chargement de la carte",
-    "retry": "Réessayer"
+    "loading": "Chargement de la carte"
   },
   "game": {
     "unnamed": "Jeu sans nom",
+    "othersOne": "{{ count }} autre jeu",
+    "othersMany": "{{ count }} autres jeux",
     "noCover": "Pas de jaquette",
     "cover": {
       "change": "Changer la jaquette",
@@ -394,15 +396,6 @@
     "gameDataLink": "IGDB",
     "storeLink": "Steam",
     "launch": "Lancer dans Steam",
-    "hours": "{{ count }} h",
-    "minutes": "{{ count }} min",
-    "unknown": "—",
-    "ordinal": {
-      "one": "{{ rank }}er",
-      "two": "{{ rank }}e",
-      "few": "{{ rank }}e",
-      "other": "{{ rank }}e"
-    },
     "figures": {
       "total": "Temps total",
       "rank": "{{ rank }} de vos {{ launched }} jeux lancés",
@@ -426,8 +419,6 @@
       "title": "Votre temps, mois par mois",
       "less": "moins",
       "more": "plus",
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min",
       "year": "{{ year }} : {{ time }}",
       "cell": "{{ month }} : {{ time }}",
       "years": "{{ from }} – {{ to }}",
@@ -442,23 +433,11 @@
       "uncounted": "Une case vide est un mois que rien n’a compté : ni bilan de l’année de Steam, ni synchronisation."
     },
     "month": {
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min",
-      "ordinal": {
-        "one": "{{ rank }}er",
-        "two": "{{ rank }}e",
-        "few": "{{ rank }}e",
-        "other": "{{ rank }}e"
-      },
       "only": "Le seul jeu joué ce mois-là",
       "place": "{{ rank }} des {{ count }} jeux joués ce mois-là · {{ share }} de vos {{ total }}",
       "games": "Jeux joués en {{ month }}",
-      "unnamed": "Jeu sans nom",
-      "othersOne": "{{ count }} autre jeu",
-      "othersMany": "{{ count }} autres jeux",
       "loading": "Chargement du mois…",
-      "failed": "Les autres jeux de ce mois n’ont pas pu être lus.",
-      "retry": "Réessayer"
+      "failed": "Les autres jeux de ce mois n’ont pas pu être lus."
     },
     "notice": {
       "missing": {
@@ -486,70 +465,5 @@
     "title": "Cette page n’existe pas",
     "text": "L’adresse ne mène à aucun écran de respawn.",
     "back": "Revenir à l’accueil"
-  },
-  "foundations": {
-    "label": "Fondations",
-    "title": "Les fondations visuelles",
-    "intro": "Les couleurs, la typographie et les composants de base. Tout suit le thème, le caractère et la langue choisis ci-dessous.",
-    "settings": "Réglages",
-    "type": {
-      "label": "Typographie",
-      "hero": "Titre vedette",
-      "pageTitle": "Titre de page",
-      "figureCaption": "jeux dans la bibliothèque",
-      "cardTitle": "Titre de carte",
-      "body": "Texte courant : 142 h au total, dernière session hier.",
-      "caption": "Légende, en couleur atténuée."
-    },
-    "components": {
-      "label": "Composants",
-      "buttons": "Boutons",
-      "primary": "Bouton principal",
-      "outlined": "Bouton secondaire",
-      "disabled": "Indisponible",
-      "sync": "Synchroniser",
-      "rows": "Lignes d’un menu",
-      "rowFirst": "Mon compte",
-      "rowSecond": "Se déconnecter",
-      "pills": "Pastilles",
-      "lines": "Pastilles en rangée de filtres",
-      "filters": {
-        "all": "Tous",
-        "recent": "Récents",
-        "never": "Jamais lancés"
-      },
-      "bar": "Barre segmentée",
-      "chart": "Histogramme",
-      "hours": "{{ count }} h",
-      "banners": "Bandeaux",
-      "status": "Synchronisation en cours : vos jeux restent affichés.",
-      "warning": "Synchronisation impossible. Vos jeux restent affichés tels qu’hier.",
-      "avatar": "Avatar",
-      "tabs": "Onglets",
-      "search": "Champ de recherche",
-      "searchHint": "Un titre",
-      "select": "Liste de choix",
-      "sortBy": "Trier par",
-      "disclosure": "Panneau dépliant",
-      "open": "Afficher le panneau",
-      "panel": "Un panneau qui se ferme avec Échap ou un clic à côté."
-    },
-    "form": {
-      "label": "Formulaire",
-      "name": "Nom affiché",
-      "nameHint": "Le nom que les autres membres verront.",
-      "email": "E-mail",
-      "submit": "Bouton de formulaire"
-    },
-    "library": {
-      "label": "Les blocs de la bibliothèque",
-      "heroLetter": "H",
-      "heroLabel": "Reprendre",
-      "heroTitle": "Hades",
-      "tileCaption": "Temps de jeu",
-      "tileNote": "sur 12 jeux",
-      "covers": "Jaquettes, en attendant leur image",
-      "skeleton": "Quelque chose arrive"
-    }
   }
 }

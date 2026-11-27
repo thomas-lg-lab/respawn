@@ -374,7 +374,7 @@ public sealed class CoverService(
         }
         catch (SourceException ex)
         {
-            return new CoverPathsRead(learnt, ex.Error, ex.Message is { Length: > Limits.SyncDetail } detail ? detail[..Limits.SyncDetail] : ex.Message);
+            return new CoverPathsRead(learnt, ex.Error, Details.Cut(ex.Message));
         }
         finally
         {

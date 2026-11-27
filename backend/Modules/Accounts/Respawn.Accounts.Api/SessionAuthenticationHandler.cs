@@ -27,7 +27,7 @@ internal sealed class SessionAuthenticationHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var token = Request.Cookies[SessionCookie.Name];
+        var token = SessionCookie.Carried(Context);
         if (string.IsNullOrEmpty(token) || Context.GetEndpoint()?.Metadata.GetMetadata<IAuthorizeData>() is null)
         {
             return AuthenticateResult.NoResult();
@@ -44,6 +44,11 @@ internal sealed class SessionAuthenticationHandler(
 
         Context.Features.Set(account);
         var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, account.Id.ToString())], Scheme.Name);
+        if (account.IsAdmin)
+        {
+            identity.AddClaim(new Claim(ClaimTypes.Role, AccountsApi.Administrator));
+        }
+
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
     }
 

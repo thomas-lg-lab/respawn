@@ -30,8 +30,9 @@ public sealed record MonthItem(string ExternalId, DateOnly Month, TimeSpan Playt
 /// <summary>One game in one month, kept from a review: the store entry it is in the catalogue.</summary>
 public sealed record MonthPlayed(Guid StoreEntryId, DateOnly Month, TimeSpan Playtime, int Sessions);
 
-/// <summary>What an owner played of a game in one month, from the reviews of their linked accounts.</summary>
-public sealed record PlayedMonth(Guid LinkedAccountId, DateOnly Month, Guid GameId, TimeSpan Playtime, int Sessions);
+/// <summary>What an owner played of a game in one month, from the reviews of their linked accounts,
+/// added up.</summary>
+public sealed record PlayedMonth(DateOnly Month, Guid GameId, TimeSpan Playtime);
 
 /// <summary>How the time of a year was counted.</summary>
 public enum YearSource
@@ -84,43 +85,7 @@ public static class YearInReviewSchedule
 /// <summary>The imports on their way, in this process, and when each linked account was last tried: one
 /// import of an account at a time, and the years still missing not asked again before
 /// <see cref="YearInReviewSchedule.RetryAfter"/>. A restart forgets it, and asks once more.</summary>
-public sealed class YearInReviewGate
-{
-    private readonly HashSet<Guid> _running = [];
-    private readonly Dictionary<Guid, DateTimeOffset> _tried = [];
-
-    public bool TryEnter(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            return _running.Add(linkedAccountId);
-        }
-    }
-
-    public void Leave(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            _running.Remove(linkedAccountId);
-        }
-    }
-
-    public DateTimeOffset? TriedAt(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            return _tried.TryGetValue(linkedAccountId, out var at) ? at : null;
-        }
-    }
-
-    public void Tried(Guid linkedAccountId, DateTimeOffset at)
-    {
-        lock (_running)
-        {
-            _tried[linkedAccountId] = at;
-        }
-    }
-}
+public sealed class YearInReviewGate : Gate<Guid>;
 
 /// <summary>How the import of one linked account's reviews ended.</summary>
 /// <param name="Imported">The years imported by this run, those kept with nothing played included.</param>

@@ -1,7 +1,7 @@
 <section
   class="grid grid-cols-1 gap-3 wide:grid-cols-3"
-  [attr.aria-label]="t('label')"
-  *transloco="let t; prefix: 'home.figures'"
+  [attr.aria-label]="t('home.figures.label')"
+  *transloco="let t"
 >
   <!-- Each figure leads to the games it counts: the library, filtered and sorted to show them. -->
   <a
@@ -13,7 +13,7 @@
     <rs-stat-tile
       interactive
       data-figure="total"
-      [caption]="t('total')"
+      [caption]="t('home.figures.total')"
       [figure]="t(total().key, { count: total().count })"
       [note]="t(launched().key, { count: launched().count })"
     />
@@ -27,11 +27,11 @@
     <rs-stat-tile
       interactive
       data-figure="recent"
-      [caption]="t('recent')"
+      [caption]="t('home.figures.recent')"
       [figure]="t(recent().key, { count: recent().count })"
       [note]="
         stats().recent_playtime_seconds === null
-          ? t('recentUnknown')
+          ? t('home.figures.recentUnknown')
           : t(recentlyPlayed().key, { count: recentlyPlayed().count })
       "
     />
@@ -45,8 +45,8 @@
     <rs-stat-tile
       interactive
       data-figure="never-launched"
-      [caption]="t('neverLaunched')"
-      [figure]="neverLaunched() ?? t('unknown')"
+      [caption]="t('home.figures.neverLaunched')"
+      [figure]="neverLaunched() ?? t('app.unknown')"
       [note]="t(owned().key, { count: owned().count })"
     >
       @if (neverLaunched() !== null) {

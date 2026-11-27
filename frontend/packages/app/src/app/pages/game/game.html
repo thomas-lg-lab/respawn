@@ -52,14 +52,12 @@
             data-figure="total"
             [caption]="t('game.figures.total')"
             [figure]="
-              said.total
-                ? t('game.' + said.total.key, { count: said.total.count })
-                : t('game.unknown')
+              said.total ? t(said.total.key, { count: said.total.count }) : t('app.unknown')
             "
             [note]="
               said.rank
                 ? t('game.figures.rank', {
-                    rank: t('game.ordinal.' + said.rank.form, { rank: said.rank.position }),
+                    rank: t('ordinal.' + said.rank.form, { rank: said.rank.position }),
                     launched: said.rank.launched,
                   })
                 : undefined
@@ -68,13 +66,11 @@
           <rs-stat-tile
             data-figure="year"
             [caption]="t('game.figures.year')"
-            [figure]="
-              said.year ? t('game.' + said.year.key, { count: said.year.count }) : t('game.unknown')
-            "
+            [figure]="said.year ? t(said.year.key, { count: said.year.count }) : t('app.unknown')"
             [note]="
               said.yearShare
                 ? t('game.figures.share', {
-                    whole: t('game.' + said.yearShare.whole.key, {
+                    whole: t(said.yearShare.whole.key, {
                       count: said.yearShare.whole.count,
                     }),
                     share: said.yearShare.share,
@@ -88,14 +84,12 @@
             data-figure="recent"
             [caption]="t('game.figures.recent')"
             [figure]="
-              said.recent
-                ? t('game.' + said.recent.key, { count: said.recent.count })
-                : t('game.unknown')
+              said.recent ? t(said.recent.key, { count: said.recent.count }) : t('app.unknown')
             "
             [note]="
               said.recentShare
                 ? t('game.figures.share', {
-                    whole: t('game.' + said.recentShare.whole.key, {
+                    whole: t(said.recentShare.whole.key, {
                       count: said.recentShare.whole.count,
                     }),
                     share: said.recentShare.share,
@@ -107,9 +101,7 @@
             data-figure="best"
             [caption]="t('game.figures.best')"
             [figure]="
-              said.best
-                ? t('game.' + said.best.time.key, { count: said.best.time.count })
-                : t('game.unknown')
+              said.best ? t(said.best.time.key, { count: said.best.time.count }) : t('app.unknown')
             "
             [note]="said.best?.month"
           />

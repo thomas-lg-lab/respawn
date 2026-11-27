@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import type { SignInOptions } from '@respawn/data';
-import type { Language } from '@app/i18n/language';
+import { type Language, LanguageSetting } from '@app/i18n/language';
 import {
   ACCOUNT,
   SIGN_IN_OPTIONS,
@@ -267,6 +267,26 @@ describe('SignIn', () => {
     await vi.waitFor(() => expect(title(screen)).toBe('Créer le premier compte'));
     await fixture.whenStable();
     expect(localStorage.getItem('respawn.language')).toBe('fr');
+  });
+
+  it('says that a language could not be loaded, until a pick works', async () => {
+    const { fixture, screen } = await open();
+    const warning = () => screen.querySelector('[data-language-unavailable]');
+    // The file of the language cannot be fetched: offline, or a tab older than what is served.
+    vi.spyOn(TestBed.inject(LanguageSetting), 'use').mockResolvedValueOnce('unavailable');
+
+    screen.querySelector<HTMLButtonElement>('[data-language-choice="en"]')!.click();
+    await fixture.whenStable();
+
+    expect(warning()?.textContent.trim()).toBe(
+      'Cette langue n’a pas pu être chargée. Vérifiez votre connexion, ou rechargez la page.',
+    );
+    expect(warning()?.getAttribute('role')).toBe('alert');
+    expect(title(screen)).toBe('Connexion');
+
+    screen.querySelector<HTMLButtonElement>('[data-language-choice="en"]')!.click();
+    await vi.waitFor(() => expect(title(screen)).toBe('Sign in'));
+    expect(warning()).toBeNull();
   });
 
   describe('through a provider', () => {

@@ -37,7 +37,8 @@ public sealed class GameService(
             owned,
             Rank(owned, games),
             RemovedGames.Of(await library.ListRemovedAsync(ownerId, gameId, ct)).SingleOrDefault(),
-            await CoversAsync(ownerId, gameId, ct));
+            await CoversAsync(ownerId, gameId, ct),
+            game.GameDataUrl is { } url ? new GameDataPage(gameData.Source, url) : null);
     }
 
     public async Task<GameCovers> ChooseCoverAsync(Guid ownerId, Guid gameId, string? source, CancellationToken ct)

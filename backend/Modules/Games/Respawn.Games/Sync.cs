@@ -96,60 +96,6 @@ public static class SyncSchedule
 /// is read by one at a time, and not again at once when a sync left no run behind (a request given up,
 /// a run that could not be kept). One for the whole app, which runs as one replica; a restart forgets
 /// it, and the runs kept in the database still say most of it.</summary>
-public sealed class SyncGate
-{
-    private readonly HashSet<Guid> _running = [];
-    private readonly Dictionary<(Guid, SyncTrigger), DateTimeOffset> _started = [];
-
-    public bool TryEnter(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            return _running.Add(linkedAccountId);
-        }
-    }
-
-    public void Leave(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            _running.Remove(linkedAccountId);
-        }
-    }
-
-    /// <summary>Whether a sync of that account is on its way in this process.</summary>
-    public bool IsRunning(Guid linkedAccountId)
-    {
-        lock (_running)
-        {
-            return _running.Contains(linkedAccountId);
-        }
-    }
-
-    /// <summary>When a sync of that account last started for that reason, since the app started.</summary>
-    public DateTimeOffset? StartedAt(Guid linkedAccountId, SyncTrigger trigger)
-    {
-        lock (_running)
-        {
-            return _started.TryGetValue((linkedAccountId, trigger), out var at) ? at : null;
-        }
-    }
-
-    public void Started(Guid linkedAccountId, SyncTrigger trigger, DateTimeOffset at)
-    {
-        lock (_running)
-        {
-            _started[(linkedAccountId, trigger)] = at;
-        }
-    }
-
-    /// <summary>Forgets when the last sync of that account started for that reason: its run is kept,
-    /// and says it from now on.</summary>
-    public void Forget(Guid linkedAccountId, SyncTrigger trigger)
-    {
-        lock (_running)
-        {
-            _started.Remove((linkedAccountId, trigger));
-        }
-    }
-}
+/// <remarks>What is remembered of a try is the account and why it was read: a sync its owner asked
+/// for and the reading of the day do not hold each other back.</remarks>
+public sealed class SyncGate : Gate<(Guid LinkedAccountId, SyncTrigger Trigger)>;

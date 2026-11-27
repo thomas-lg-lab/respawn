@@ -58,6 +58,8 @@ export class AccountMenu {
   readonly language = input.required<Language>();
   readonly theme = input.required<Theme>();
   readonly character = input.required<Character>();
+  /** The language last picked could not be loaded. */
+  readonly languageUnavailable = input(false);
   /**
    * The instance's providers: one linked already is said, following another links it to the
    * account (a navigation, not a call).

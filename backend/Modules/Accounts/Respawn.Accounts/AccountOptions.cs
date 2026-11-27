@@ -16,7 +16,8 @@ public sealed class AccountOptions
 }
 
 /// <summary>Instance settings kept in the database, by their stored key: read at each request, so a
-/// change needs no restart. No route writes them yet.</summary>
+/// change needs no restart. An administrator opens and closes registration; no route turns local
+/// sign-in off yet, which could leave an instance nobody can sign in to.</summary>
 public static class InstanceFlags
 {
     public const string LocalSignIn = "local_sign_in_enabled";

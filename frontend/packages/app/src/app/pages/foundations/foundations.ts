@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormField, FormRoot, email, form, required } from '@angular/forms/signals';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { LucideRefreshCw } from '@lucide/angular';
 import {
   Avatar,
@@ -40,6 +40,9 @@ type Filter = (typeof FILTERS)[number];
  * with the three settings that change them. Not a screen of the app: it is in the development
  * build only (`dev-routes.ts`), at an address nothing links to, and needs no session. A base
  * component added to `@respawn/ui` is shown here too.
+ *
+ * Its sentences are a scope of their own (`i18n/` beside it, read as `foundations.*`), fetched
+ * by this screen alone: the translations every visitor loads do not carry them.
  */
 @Component({
   selector: 'rs-foundations',
@@ -71,6 +74,12 @@ type Filter = (typeof FILTERS)[number];
     TextField,
     SettingsChoices,
     LucideRefreshCw,
+  ],
+  providers: [
+    provideTranslocoScope({
+      scope: 'foundations',
+      loader: { fr: () => import('./i18n/fr.json'), en: () => import('./i18n/en.json') },
+    }),
   ],
   host: { class: 'mx-auto block max-w-7xl px-4 py-6 wide:px-10 wide:py-10' },
   templateUrl: './foundations.html',

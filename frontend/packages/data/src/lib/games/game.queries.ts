@@ -30,7 +30,6 @@ export class GameQueries {
       queryKey: gameKeys.one(id),
       queryFn: () => this.api.get<Game>(`/games/${encodeURIComponent(id)}`),
       staleTime: Infinity,
-      retry: false,
     });
   }
 
@@ -40,7 +39,6 @@ export class GameQueries {
       queryKey: gameKeys.months(id),
       queryFn: () => this.api.get<GameMonths>(`/games/${encodeURIComponent(id)}/months`),
       staleTime: Infinity,
-      retry: false,
     });
   }
 
@@ -61,7 +59,6 @@ export class GameQueries {
       queryKey: gameKeys.month(month),
       queryFn: () => this.api.get<LibraryMonth>(`/library/months/${encodeURIComponent(month)}`),
       staleTime: Infinity,
-      retry: false,
     });
   }
 
@@ -110,7 +107,8 @@ export class GameQueries {
     return mutationOptions({
       mutationFn: (id: string) =>
         this.api.delete<void>(`/library/removed/${encodeURIComponent(id)}/notice`),
-      onSuccess: (_, id) => this.client.invalidateQueries({ queryKey: gameKeys.one(id) }),
+      onSuccess: (_, id) =>
+        this.client.invalidateQueries({ queryKey: gameKeys.one(id), exact: true }),
     });
   }
 

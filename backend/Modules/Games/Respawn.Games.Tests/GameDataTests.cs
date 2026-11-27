@@ -1,11 +1,11 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -333,7 +333,7 @@ public sealed class GameDataTests
     /// <summary>One turn of the schedule, as the app's timer runs it. Returns how many stores' games
     /// were asked about.</summary>
     private static Task<int> TurnAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<GameDataScheduler>()).RunDueAsync(default);
+        TurnAsync<GameDataScheduler>(app);
 
     /// <summary>The Steam app ids a question about the games of the store names.</summary>
     private static string[] Uids(IgdbRequest request)

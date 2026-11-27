@@ -87,4 +87,20 @@
       </div>
     }
   </section>
+
+  <!-- The instance, for its administrator: nobody else is told what it offers here. -->
+  @if (offered.data(); as options) {
+    <section class="flex flex-col gap-4" data-instance>
+      <div class="flex flex-col gap-1">
+        <h2 class="type-card-title">{{ t('account.instance.title') }}</h2>
+        <p class="max-w-[44em] text-muted">{{ t('account.instance.text') }}</p>
+      </div>
+      <rs-registration
+        [open]="options.registration_open"
+        [busy]="settingRegistration.isPending()"
+        [failure]="settingRegistration.isError() ? failureKey(settingRegistration.error()) : null"
+        (changed)="settingRegistration.mutate($event)"
+      />
+    </section>
+  }
 </div>

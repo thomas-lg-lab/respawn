@@ -19,7 +19,9 @@
     background-color: transparent;
     font-weight: 600;
   }
-  :host([data-quiet]:hover) {
-    background-color: var(--rs-surface-2);
+  @media (hover: hover) {
+    :host([data-quiet]:hover) {
+      background-color: var(--rs-surface-2);
+    }
   }
 }

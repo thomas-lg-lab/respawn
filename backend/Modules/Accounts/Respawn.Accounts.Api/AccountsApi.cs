@@ -18,6 +18,12 @@ public sealed class SessionCookieOptions
 {
     /// <summary>Sent over HTTPS only; false for plain HTTP on localhost.</summary>
     public bool Secure { get; init; } = true;
+
+    /// <summary>The cookie's name. Over HTTPS it carries the <c>__Host-</c> prefix: a browser then takes
+    /// it from this host only, for every path and with no Domain, so another service on a neighbouring
+    /// subdomain cannot plant a session of its own in a visitor's browser. The prefix needs Secure,
+    /// which plain HTTP on localhost does not have.</summary>
+    public string Name => Secure ? "__Host-respawn_session" : "respawn_session";
 }
 
 public static class AccountsApi
@@ -55,9 +61,13 @@ public static class AccountsApi
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
 
         services.AddAuthorizationBuilder()
-            .SetDefaultPolicy(new AuthorizationPolicyBuilder(SessionAuthenticationHandler.SchemeName).RequireAuthenticatedUser().Build());
+            .SetDefaultPolicy(new AuthorizationPolicyBuilder(SessionAuthenticationHandler.SchemeName).RequireAuthenticatedUser().Build())
+            .AddPolicy(Administrator, policy => policy.AddAuthenticationSchemes(SessionAuthenticationHandler.SchemeName).RequireRole(Administrator));
         return services;
     }
+
+    /// <summary>The role of an administrator, and the policy a route asks for it with.</summary>
+    internal const string Administrator = "administrator";
 
     internal static ObjectResult Error(int status, string code, string message) =>
         new(new ErrorResponse(code, message)) { StatusCode = status };
@@ -96,10 +106,12 @@ internal sealed class AccountRefusalsAttribute : ExceptionFilterAttribute
 /// <summary>The session cookie: an opaque token, HttpOnly, whose SHA-256 names a row of the database.</summary>
 internal static class SessionCookie
 {
-    public const string Name = "respawn_session";
+    /// <summary>The token the request carries, if any.</summary>
+    public static string? Carried(HttpContext http) =>
+        http.Request.Cookies[http.RequestServices.GetRequiredService<SessionCookieOptions>().Name];
 
     public static void Set(HttpResponse response, string token, AccountOptions accounts, SessionCookieOptions cookie) =>
-        response.Cookies.Append(Name, token, new CookieOptions
+        response.Cookies.Append(cookie.Name, token, new CookieOptions
         {
             MaxAge = TimeSpan.FromDays(accounts.SessionDays),
             HttpOnly = true,
@@ -114,7 +126,7 @@ internal static class SessionCookie
     public static async Task ReplaceAsync(
         HttpContext http, IAccountService accountService, string token, AccountOptions accounts, SessionCookieOptions cookie, ILogger logger)
     {
-        var carried = http.Request.Cookies[Name];
+        var carried = Carried(http);
         Set(http.Response, token, accounts, cookie);
         try
         {
@@ -126,5 +138,8 @@ internal static class SessionCookie
         }
     }
 
-    public static void Clear(HttpResponse response) => response.Cookies.Delete(Name, new CookieOptions { Path = "/" });
+    /// <summary>Takes the cookie away, said as it was set: a browser ignores what a prefixed cookie is
+    /// told without Secure.</summary>
+    public static void Clear(HttpResponse response, SessionCookieOptions cookie) =>
+        response.Cookies.Delete(cookie.Name, new CookieOptions { Path = "/", Secure = cookie.Secure });
 }

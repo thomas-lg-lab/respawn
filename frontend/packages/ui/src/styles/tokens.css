@@ -54,6 +54,7 @@
   --rs-on-recency-3: #07111c;
   --rs-recency-4: #33415a;
   --rs-on-recency-4: #eef1f5;
+  /* Colour: groups. Used by nothing yet, and kept for when they are drawn. */
   --rs-group-0: #33415a;
   --rs-on-group-0: #eef1f5;
   --rs-group-1: #3f5fb5;
@@ -97,7 +98,6 @@
   --rs-radius-pill: 999px;
   --rs-radius-hero: 20px;
   --rs-radius-card: 16px;
-  --rs-radius-row: 14px;
   --rs-radius-field: 12px;
   --rs-radius-thumb: 6px;
 

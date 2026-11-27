@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import type { Game, GameMonth, LibraryEntry, LibraryStats, LibraryYears } from '@respawn/data';
 import { TEST_LIBRARY_STATS, TEST_LINKED_ACCOUNT } from '@respawn/data/testing';
-import { ACCOUNT, api, button, start } from '@app/testing/app-testing';
+import { ACCOUNT, LIBRARY_FIRST_PAGE, api, button, start, text } from '@app/testing/app-testing';
 import { ago } from '@app/testing/games';
 import '../../layout/shell';
 import './game';
@@ -123,8 +123,6 @@ describe('Game', () => {
     if (played.length) await server.answer(`/library/months/${THIS_MONTH}`, thisMonth());
   }
 
-  const text = (within: Element, selector: string) =>
-    within.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim();
   /** A figure's three parts, each read on its own: what it counts, the figure, what it covers. */
   const figure = (screen: HTMLElement, name: string) =>
     [...screen.querySelectorAll(`[data-figure="${name}"] span`)]
@@ -421,8 +419,7 @@ describe('Game', () => {
       ...back,
       removed: { ...back.removed!, back_since: null },
     });
-    // Its months are the game's too, asked again with it.
-    await server.answer(`/games/${ID}/months`, { months: months() });
+    // A notice changes none of its months: they are not asked again.
     await harness.fixture.whenStable();
 
     expect(screen.querySelector('[data-notice="back"]')).toBeNull();
@@ -446,7 +443,7 @@ describe('Game', () => {
     const location = TestBed.inject(Location);
 
     await router.navigateByUrl('/time');
-    await server.answer('/library?sort=name&offset=0&limit=500', {
+    await server.answer(LIBRARY_FIRST_PAGE, {
       total: 0,
       offset: 0,
       limit: 500,
@@ -494,7 +491,7 @@ describe('Game', () => {
 
     // Reached from the time map, and refused a take-out.
     await router.navigateByUrl('/time');
-    await server.answer('/library?sort=name&offset=0&limit=500', {
+    await server.answer(LIBRARY_FIRST_PAGE, {
       total: 0,
       offset: 0,
       limit: 500,

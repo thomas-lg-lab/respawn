@@ -139,6 +139,9 @@ public sealed partial class AccountService(
     public Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct) =>
         users.SaveSettingsAsync(accountId, settings, ct);
 
+    public Task SetRegistrationOpenAsync(bool open, CancellationToken ct) =>
+        settings.SetFlagAsync(InstanceFlags.RegistrationOpen, open, ct);
+
     public async Task LogoutAsync(string? sessionToken, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(sessionToken))

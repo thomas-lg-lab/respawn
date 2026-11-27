@@ -46,6 +46,7 @@ import {
   accountInView,
   syncErrorKey,
   syncNotice,
+  syncRefusalKey,
   syncView,
   syncsWord,
 } from '@app/sync/sync-view';
@@ -219,17 +220,11 @@ export class Home {
    */
   private readonly refused = signal<{ failure: unknown; stood: string } | null>(null);
 
-  /**
-   * Why a "sync now" was refused, as a translation key. Too soon after the last one has a
-   * sentence of its own: the API takes one a minute, which is not "too many attempts".
-   */
+  /** Why a "sync now" was refused, as a translation key. */
   protected readonly syncRefusal = computed(() => {
     const refused = this.refused();
     if (!refused || refused.stood !== syncsWord(this.accounts.data() ?? [])) return null;
-    const { failure } = refused;
-    return failure instanceof ApiFailure && failure.code === 'too_many_requests'
-      ? 'sync.tooSoon'
-      : failureKey(failure);
+    return syncRefusalKey(refused.failure);
   });
 
   /** The account the screen speaks of, and the one "sync now" reads. */

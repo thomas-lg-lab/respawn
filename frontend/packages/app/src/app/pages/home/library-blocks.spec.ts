@@ -1,4 +1,5 @@
-import type { LibraryEntry, LibraryGame } from '@respawn/data';
+import type { LibraryGame } from '@respawn/data';
+import { entry, game } from '@app/testing/games';
 import {
   drawn,
   keptDraw,
@@ -7,34 +8,6 @@ import {
   playedRecently,
   ranking,
 } from './library-blocks';
-
-function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
-  return {
-    game_id: `id-${name}`,
-    name,
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    entries: [],
-    cover_source: null,
-    ...values,
-  };
-}
-
-function entry(missingSince: string | null): LibraryEntry {
-  return {
-    store_entry_id: 'e',
-    linked_account_id: 'a',
-    source: 'steam',
-    external_id: '620',
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    first_seen_at: '2026-11-18T10:05:00Z',
-    as_of: '2026-11-20T04:02:05Z',
-    missing_since: missingSince,
-  };
-}
 
 const names = (games: readonly LibraryGame[]) => games.map((each) => each.name);
 
@@ -67,7 +40,7 @@ describe('the blocks of the home', () => {
   });
 
   it('resumes no game that no store lists any more', () => {
-    const gone = { ...portal, entries: [entry('2026-11-20T04:00:00Z')] };
+    const gone = { ...portal, entries: [entry({ missing_since: '2026-11-20T04:00:00Z' })] };
 
     expect(lastPlayed([celeste, hades, gone, tunic], 'en')).toBe(hades);
   });
@@ -117,7 +90,7 @@ describe('the blocks of the home', () => {
   });
 
   it('lists no game that no store lists any more', () => {
-    const gone = { ...hades, entries: [entry('2026-11-20T04:00:00Z')] };
+    const gone = { ...hades, entries: [entry({ missing_since: '2026-11-20T04:00:00Z' })] };
     const also = game('Also', { recent_playtime_seconds: 60 });
 
     expect(names(playedRecently([gone, also, portal], portal, 'en').games)).toEqual(['Also']);
@@ -141,8 +114,8 @@ describe('the blocks of the home', () => {
   });
 
   it('draws among the games never launched that a store still lists', () => {
-    const gone = game('Gone', { entries: [entry('2026-11-19T04:00:00Z')] });
-    const kept = game('Kept', { entries: [entry(null)] });
+    const gone = game('Gone', { entries: [entry({ missing_since: '2026-11-19T04:00:00Z' })] });
+    const kept = game('Kept', { entries: [entry()] });
 
     // One whose playtime is unknown counts as never launched, as in the Library's filter.
     expect(names(neverLaunched([...games, gone, kept]))).toEqual(['Celeste', 'Pokémon', 'Kept']);

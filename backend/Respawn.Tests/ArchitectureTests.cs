@@ -1,4 +1,6 @@
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NetArchTest.Rules;
 using Npgsql;
 using Respawn.Persistence;
@@ -158,7 +160,7 @@ public sealed class ArchitectureTests
             Assert.All(
                 assembly.GetReferencedAssemblies().Select(reference => reference.Name!),
                 name => Assert.True(
-                    name.StartsWith("System.", StringComparison.Ordinal),
+                    File.Exists(Path.Combine(Path.GetDirectoryName(typeof(object).Assembly.Location)!, name + ".dll")),
                     $"{assembly.GetName().Name} references {name}: a core and the shared kernel bring no package"));
         }
     }
@@ -208,6 +210,15 @@ public sealed class ArchitectureTests
             Modules.Select(module => module.Schema).Order(),
             Rows(connection, "SELECT table_schema FROM information_schema.tables WHERE table_name = '__EFMigrationsHistory'").Order());
         Assert.Empty(Rows(connection, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"));
+
+        // And by the model each module wrote: a table mapped into another module's schema would be
+        // in none of the answers above.
+        await using var scope = app.Services.CreateAsyncScope();
+        foreach (var module in Modules)
+        {
+            var context = (DbContext)scope.ServiceProvider.GetRequiredService(Assert.Single(module.Outbound.GetTypes(), IsDatabaseContext));
+            Assert.All(context.Model.GetEntityTypes(), entity => Assert.Equal(module.Schema, entity.GetSchema()));
+        }
 
         Assert.Empty(Rows(
             connection,

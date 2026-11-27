@@ -35,6 +35,30 @@ public sealed class ConfigController(IAccountService accounts) : ControllerBase
 }
 
 [ApiController]
+[Route("api/v1/instance")]
+[Produces("application/json")]
+[AccountRefusals]
+public sealed class InstanceController(IAccountService accounts) : ControllerBase
+{
+    [HttpPut("registration")]
+    [Authorize(Policy = AccountsApi.Administrator)]
+    [EndpointSummary("Open or close registration, as an administrator")]
+    [EndpointDescription(
+        "Open, anyone may create a local account or come in through a provider; closed, only the providers set "
+        + "to create accounts still do. /api/v1/config says which it is. 403 forbidden: the signed-in account "
+        + "is not an administrator.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> SetRegistration(RegistrationRequest body, CancellationToken ct)
+    {
+        await accounts.SetRegistrationOpenAsync(body.Open!.Value, ct);
+        return NoContent();
+    }
+}
+
+[ApiController]
 [Route("api/v1/auth")]
 [Produces("application/json")]
 [AccountRefusals]
@@ -65,8 +89,8 @@ public sealed class AuthController(
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout(CancellationToken ct)
     {
-        await accounts.LogoutAsync(Request.Cookies[SessionCookie.Name], ct);
-        SessionCookie.Clear(Response);
+        await accounts.LogoutAsync(SessionCookie.Carried(HttpContext), ct);
+        SessionCookie.Clear(Response, cookie);
         return NoContent();
     }
 
@@ -175,7 +199,7 @@ public sealed class ProviderSignInController(AccountOptions options, ILogger<Pro
                 // Resolved here, not injected: the account service comes with the database, which a
                 // sign-in does not need to start.
                 var accounts = HttpContext.RequestServices.GetRequiredService<IAccountService>();
-                owner = await accounts.FindSignedInAsync(Request.Cookies[SessionCookie.Name], HttpContext.RequestAborted);
+                owner = await accounts.FindSignedInAsync(SessionCookie.Carried(HttpContext), HttpContext.RequestAborted);
             }
             catch (Exception ex) when (DatabaseUnavailableException.Among(ex))
             {

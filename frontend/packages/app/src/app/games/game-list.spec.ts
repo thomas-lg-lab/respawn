@@ -1,4 +1,5 @@
-import type { LibraryEntry, LibraryGame } from '@respawn/data';
+import type { LibraryGame } from '@respawn/data';
+import { entry, game } from '@app/testing/games';
 import {
   coverHue,
   filterCounts,
@@ -12,34 +13,6 @@ import {
   sorted,
   steamLaunchAddress,
 } from '@app/games/game-list';
-
-function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
-  return {
-    game_id: `id-${name}`,
-    name,
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    entries: [],
-    cover_source: null,
-    ...values,
-  };
-}
-
-function entry(missingSince: string | null): LibraryEntry {
-  return {
-    store_entry_id: 'e',
-    linked_account_id: 'a',
-    source: 'steam',
-    external_id: '620',
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    first_seen_at: '2026-11-18T10:05:00Z',
-    as_of: '2026-11-20T04:02:05Z',
-    missing_since: missingSince,
-  };
-}
 
 const names = (games: LibraryGame[]) => games.map((each) => each.name);
 
@@ -179,10 +152,14 @@ describe('library view', () => {
   });
 
   it('flags a game once no store lists any copy of it', () => {
-    expect(isMissing(game('Gone', { entries: [entry('2026-11-19T04:00:00Z')] }))).toBe(true);
-    expect(isMissing(game('Half', { entries: [entry('2026-11-19T04:00:00Z'), entry(null)] }))).toBe(
-      false,
-    );
+    expect(
+      isMissing(game('Gone', { entries: [entry({ missing_since: '2026-11-19T04:00:00Z' })] })),
+    ).toBe(true);
+    expect(
+      isMissing(
+        game('Half', { entries: [entry({ missing_since: '2026-11-19T04:00:00Z' }), entry()] }),
+      ),
+    ).toBe(false);
     expect(isMissing(game('Bare'))).toBe(false);
   });
 
@@ -201,14 +178,12 @@ describe('library view', () => {
   });
 
   it('gives the address that launches a game in Steam, from its number there', () => {
-    expect(steamLaunchAddress(game('Portal 2', { entries: [entry(null)] }))).toBe(
-      'steam://run/620',
-    );
+    expect(steamLaunchAddress(game('Portal 2', { entries: [entry()] }))).toBe('steam://run/620');
   });
 
   it('gives no address to launch a game Steam no longer lists, or one from another store', () => {
-    const gone = game('Gone', { entries: [entry('2026-11-19T04:00:00Z')] });
-    const elsewhere = game('Elsewhere', { entries: [{ ...entry(null), source: 'gog' }] });
+    const gone = game('Gone', { entries: [entry({ missing_since: '2026-11-19T04:00:00Z' })] });
+    const elsewhere = game('Elsewhere', { entries: [{ ...entry(), source: 'gog' }] });
 
     expect(steamLaunchAddress(gone)).toBeNull();
     expect(steamLaunchAddress(elsewhere)).toBeNull();
@@ -216,7 +191,7 @@ describe('library view', () => {
   });
 
   it('never writes into the address a number that is not one', () => {
-    const odd = game('Odd', { entries: [{ ...entry(null), external_id: '620/../x' }] });
+    const odd = game('Odd', { entries: [{ ...entry(), external_id: '620/../x' }] });
 
     expect(steamLaunchAddress(odd)).toBeNull();
   });

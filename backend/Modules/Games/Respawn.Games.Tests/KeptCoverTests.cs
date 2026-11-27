@@ -1,14 +1,13 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -18,13 +17,9 @@ namespace Respawn.Games.Tests;
 /// not answer or no longer has it. Steam answers from memory; each test has a directory of its own.</summary>
 public sealed class KeptCoverTests : IDisposable
 {
-    private const string SteamId = "76561190000000001";
-
     private const string KeptAWeek = "max-age=604800, private";
 
     private const string KeptAnHour = "max-age=3600, private";
-
-    private static readonly byte[] Jpeg = FakeSteam.RecordedBytes("cover.jpg");
 
     /// <summary>Another image at the same address: a cover Steam changed.</summary>
     private static readonly byte[] Changed = [.. Jpeg, 1];
@@ -100,7 +95,7 @@ public sealed class KeptCoverTests : IDisposable
         await LinkAsync(app, browser);
 
         // The sync listed the games; the store was not asked yet where their covers are.
-        await Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+        await TurnAsync<SyncScheduler>(app);
         var portal2 = (await GamesAsync(browser))["Portal 2"];
         var early = await CoverAsync(browser, portal2);
         Assert.Equal(Jpeg, early.Bytes);
@@ -235,9 +230,6 @@ public sealed class KeptCoverTests : IDisposable
         ];
     }
 
-    /// <summary>The start of an image's SHA-256, as a kept file's name holds it.</summary>
-    private static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes))[..16];
-
     private sealed record Answer(byte[] Bytes, string? ContentType, string? CacheControl, EntityTagHeaderValue? Tag);
 
     private static async Task<Answer> CoverAsync(HttpClient browser, Guid game)
@@ -268,20 +260,13 @@ public sealed class KeptCoverTests : IDisposable
     private static async Task<Guid> LinkAndListAsync(TestApp app, HttpClient browser)
     {
         await LinkAsync(app, browser);
-        await Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+        await TurnAsync<SyncScheduler>(app);
         await CoversAsync(app);
         return (await GamesAsync(browser))["Portal 2"];
     }
 
-    private static async Task LinkAsync(TestApp app, HttpClient browser)
-    {
-        var owner = (await browser.RegisterAsync("first@example.org").JsonAsync()).GetProperty("id").GetGuid();
-        await using var scope = app.Services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, "steam", SteamId, null, default);
-    }
-
     private static Task<int> CoversAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<CoverScheduler>()).RunDueAsync(default);
+        TurnAsync<CoverScheduler>(app);
 
     private static async Task<Dictionary<string, Guid>> GamesAsync(HttpClient browser) =>
         (await browser.GetAsync("/api/v1/library?limit=500").JsonAsync()).GetProperty("games").EnumerateArray()

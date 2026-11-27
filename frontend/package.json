@@ -6,7 +6,6 @@
     "ng": "ng",
     "start": "ng serve app",
     "build": "ng build app",
-    "watch": "ng build app --watch --configuration development",
     "test": "ng test tests --no-watch",
     "gen:api": "openapi-typescript openapi.json -o packages/data/src/lib/models/api-types.ts",
     "lint": "eslint .",

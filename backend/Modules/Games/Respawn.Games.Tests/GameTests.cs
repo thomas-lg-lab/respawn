@@ -2,12 +2,12 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -17,8 +17,6 @@ namespace Respawn.Games.Tests;
 /// would, and the clock is the test's.</summary>
 public sealed class GameTests
 {
-    private const string SteamId = "76561190000000001";
-
     /// <summary>A moment of 2026: the reviews asked for are those of 2022 to 2025, all settled.</summary>
     private static readonly DateTimeOffset Now = new(2026, 11, 28, 6, 0, 0, TimeSpan.Zero);
 
@@ -103,7 +101,7 @@ public sealed class GameTests
         Assert.Equal([("2024-03-01", 900L, "review")], await MonthsAsync(browser, games["70"]));
 
         // Another account is answered the catalogue's record, and nothing of the first one's.
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+        TestDatabase.OpenRegistration();
         using var other = app.Browser();
         await other.RegisterAsync("second@example.org");
         var seen = await GameAsync(other, games["620"]);
@@ -179,7 +177,7 @@ public sealed class GameTests
         }
 
         // Another account sees nothing of it.
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+        TestDatabase.OpenRegistration();
         using var other = app.Browser();
         await other.RegisterAsync("second@example.org");
         await MonthIsAsync(other, "2024-01", (null, null, null));
@@ -259,20 +257,12 @@ public sealed class GameTests
     /// <summary>A Steam account linked to a new owner, its first sync ended: Steam shows its library.</summary>
     private static async Task<Guid> LinkAsync(TestApp app, HttpClient browser)
     {
-        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        var account = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
+        var account = await Fixtures.LinkAsync(app, browser);
         await using var scope = app.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<ISyncRunStore>().AddAsync(
             new SyncRun(Guid.CreateVersion7(), account, SyncTrigger.Scheduled, Now, Now, SyncOutcome.Succeeded),
             default);
         return account;
-    }
-
-    private static async Task<Guid> OwnerAsync(TestApp app, Guid linkedAccount)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-        return (await db.LinkedAccounts.AsNoTracking().SingleAsync(a => a.Id == linkedAccount)).OwnerId;
     }
 
     private static Task<Guid> RecordAsync(
@@ -293,15 +283,9 @@ public sealed class GameTests
         return UseAsync(app, library => library.RecordLibraryAsync(account, reading, default));
     }
 
-    private static async Task<T> UseAsync<T>(TestApp app, Func<ILibraryService, Task<T>> use)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        return await use(scope.ServiceProvider.GetRequiredService<ILibraryService>());
-    }
-
     /// <summary>One turn of the import of the reviews, as the app's timer runs it.</summary>
     private static Task<int> TurnAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<YearReviewScheduler>()).RunDueAsync(default);
+        TurnAsync<YearReviewScheduler>(app);
 
     /// <summary>The games of the catalogue, by the id their store entry has in the store.</summary>
     private static async Task<Dictionary<string, Guid>> GamesAsync(TestApp app)

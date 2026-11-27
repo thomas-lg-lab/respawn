@@ -1,9 +1,8 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
-import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query';
+import type { HttpTestingController } from '@angular/common/http/testing';
+import { type QueryClient } from '@tanstack/angular-query';
 import type { LibraryGame } from '../models/models';
 import { TEST_LIBRARY_HISTORY, TEST_LIBRARY_STATS, TEST_LIBRARY_YEARS } from '../testing/fixtures';
+import { type QueriesSetUp, setUpQueries } from '../testing/queries';
 import { LibraryQueries, libraryKeys } from './library.queries';
 
 function game(index: number): LibraryGame {
@@ -22,24 +21,13 @@ describe('LibraryQueries', () => {
   let queries: LibraryQueries;
   let client: QueryClient;
   let http: HttpTestingController;
+  let request: QueriesSetUp<LibraryQueries>['request'];
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideTanStackQuery(() => new QueryClient()),
-      ],
-    });
-    queries = TestBed.inject(LibraryQueries);
-    client = TestBed.inject(QueryClient);
-    http = TestBed.inject(HttpTestingController);
+    ({ queries, client, http, request } = setUpQueries(LibraryQueries));
   });
 
   afterEach(() => http.verify());
-
-  /** The request once it left: a query starts on a later tick. */
-  const request = (url: string) => vi.waitFor(() => http.expectOne(url));
 
   it('reads the whole library, page after page', async () => {
     const first = Array.from({ length: 500 }, (_, index) => game(index));

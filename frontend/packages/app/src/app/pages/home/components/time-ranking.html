@@ -1,4 +1,4 @@
-<rs-card class="flex flex-col gap-3.5" data-ranking *transloco="let t; prefix: 'home'">
+<rs-card class="flex flex-col gap-3.5" data-ranking *transloco="let t">
   <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
     <!-- The whole ranking is the library's launched games, the most played first. -->
     <h2 class="type-card-title">
@@ -7,12 +7,12 @@
         routerLink="/library"
         data-ranking-link
         [queryParams]="libraryWords"
-        >{{ t('ranking.title') }}
+        >{{ t('home.ranking.title') }}
         <svg lucideChevronRight class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg
       ></a>
     </h2>
     <span class="type-caption text-muted tabular-nums" data-ranking-total>{{
-      t('ranking.total', { time: t('time.' + total().key, { count: total().count }) })
+      t('home.ranking.total', { time: t(total().key, { count: total().count }) })
     }}</span>
   </div>
   <ol class="flex flex-col">
@@ -27,11 +27,11 @@
           data-name
           [routerLink]="gamePage(row.id)"
           [state]="from"
-          >{{ row.name ?? t('unnamed') }}</a
+          >{{ row.name ?? t('game.unnamed') }}</a
         >
         <rs-segmented-bar class="hidden wide:flex" [value]="row.seconds" [max]="scale()" />
         <span class="text-right font-semibold whitespace-nowrap tabular-nums" data-playtime>{{
-          t('time.' + row.time.key, { count: row.time.count })
+          t(row.time.key, { count: row.time.count })
         }}</span>
       </li>
     }
@@ -43,9 +43,9 @@
       data-ranking-others
       [queryParams]="libraryWords"
       >{{
-        t(rest.one ? 'ranking.othersOne' : 'ranking.othersMany', {
+        t(rest.one ? 'home.ranking.othersOne' : 'home.ranking.othersMany', {
           count: rest.count,
-          time: t('time.' + rest.time.key, { count: rest.time.count }),
+          time: t(rest.time.key, { count: rest.time.count }),
         })
       }}
       <svg lucideChevronRight class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg

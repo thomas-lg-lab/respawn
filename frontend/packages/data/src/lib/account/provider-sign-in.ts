@@ -1,4 +1,5 @@
 import { API_BASE } from '../api/api';
+import { outcomeAmong } from '../api/navigation-outcome';
 
 /**
  * Signing in through a provider is not a call but a navigation: the browser goes to the API,
@@ -33,12 +34,7 @@ export function providerSignInAddress(provider: string, returnTo: string, link =
   return `${route}?return_to=${encodeURIComponent(returnTo)}`;
 }
 
-/**
- * The outcome an address carries, if any. A word the front does not know (a later version of
- * the API, or one written by hand) reads as a failure: something was said, and it was not a
- * success.
- */
+/** The outcome an address carries, if any; a word the front does not know reads as a failure. */
 export function providerOutcome(value: string | null | undefined): ProviderOutcome | null {
-  if (!value) return null;
-  return PROVIDER_OUTCOMES.find((known) => known === value) ?? 'failed';
+  return outcomeAmong(PROVIDER_OUTCOMES, value);
 }

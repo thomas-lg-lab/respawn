@@ -2,13 +2,13 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Steam;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -17,8 +17,6 @@ namespace Respawn.Games.Tests;
 /// timer would.</summary>
 public sealed class YearReviewTests
 {
-    private const string SteamId = "76561190000000001";
-
     /// <summary>A moment of 2026: the reviews asked for are those of 2022 to 2025.</summary>
     private static readonly DateTimeOffset Now = new(2026, 11, 28, 6, 0, 0, TimeSpan.Zero);
 
@@ -198,8 +196,7 @@ public sealed class YearReviewTests
         };
         await using var app = await StartAsync(steam, clock);
         using var browser = app.Browser();
-        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        var account = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
+        var account = await Fixtures.LinkAsync(app, browser);
 
         // The first year fails: the next ones are not asked, and nothing is kept.
         YearImport? import;
@@ -270,7 +267,7 @@ public sealed class YearReviewTests
             await YearsAsync(browser));
 
         // Another owner sees nothing of it.
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+        TestDatabase.OpenRegistration();
         using var other = app.Browser();
         await other.RegisterAsync("second@example.org");
         Assert.Empty(await YearsAsync(other));
@@ -284,8 +281,7 @@ public sealed class YearReviewTests
         var steam = new FakeSteam { BodyFor = address => ReviewFor(address, reviews) };
         await using var app = await StartAsync(steam, clock);
         using var browser = app.Browser();
-        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        var account = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
+        var account = await Fixtures.LinkAsync(app, browser);
 
         // Never synced: nothing says yet whether Steam shows this account.
         Assert.Empty(await DueAsync(app));
@@ -471,8 +467,7 @@ public sealed class YearReviewTests
     /// <summary>A Steam account linked to a new owner, its first sync ended: Steam shows its library.</summary>
     private static async Task<Guid> LinkAsync(TestApp app, HttpClient browser)
     {
-        var owner = (await browser.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        var account = (await UseAsync(app, library => library.LinkAccountAsync(owner, "steam", SteamId, null, default))).Id;
+        var account = await Fixtures.LinkAsync(app, browser);
         await SyncedAsync(app, account, SyncOutcome.Succeeded);
         return account;
     }
@@ -494,13 +489,6 @@ public sealed class YearReviewTests
         return await db.YearReviews.AsNoTracking().Select(review => review.Year).OrderBy(year => year).ToArrayAsync();
     }
 
-    private static async Task<Guid> OwnerAsync(TestApp app, Guid linkedAccount)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-        return (await db.LinkedAccounts.AsNoTracking().SingleAsync(a => a.Id == linkedAccount)).OwnerId;
-    }
-
     /// <summary>A reading of the library, as a sync would record it: Portal 2 and its total in minutes.</summary>
     private static Task<Guid> RecordAsync(TestApp app, Guid account, DateTimeOffset takenAt, int minutes) =>
         UseAsync(app, library => library.RecordLibraryAsync(
@@ -508,18 +496,12 @@ public sealed class YearReviewTests
             new LibraryReading("owned-games", takenAt, "{}", [new OwnedItem("620", "Portal 2", TimeSpan.FromMinutes(minutes), null)]),
             default));
 
-    private static async Task<T> UseAsync<T>(TestApp app, Func<ILibraryService, Task<T>> use)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        return await use(scope.ServiceProvider.GetRequiredService<ILibraryService>());
-    }
-
     /// <summary>One turn of the import, as the app's timer runs it. Returns how many imports ended.</summary>
     private static Task<int> TurnAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<YearReviewScheduler>()).RunDueAsync(default);
+        TurnAsync<YearReviewScheduler>(app);
 
     private static Task<int> SyncTurnAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+        TurnAsync<SyncScheduler>(app);
 
     private static async Task<IReadOnlyList<Guid>> DueAsync(TestApp app)
     {

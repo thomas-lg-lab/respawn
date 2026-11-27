@@ -2,7 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Button, Label, SegmentedBar } from '@respawn/ui';
-import { formatCount, isOne, ordinalForm, saidPlaytime } from '@app/format/format';
+import { formatCount, formatShare, isOne, ordinalForm, saidPlaytime } from '@app/format/format';
 import { gamePage } from '@app/games/game-page';
 import type { MonthDetail as Detail, MonthKey } from '../game-view';
 import { monthName } from './month-calendar';
@@ -52,9 +52,7 @@ export class MonthDetail {
       rank: formatCount(detail.rank, language),
       form: ordinalForm(detail.rank, language),
       count: formatCount(detail.count, language),
-      share: new Intl.NumberFormat(language, { style: 'percent', maximumFractionDigits: 0 }).format(
-        detail.seconds / detail.total,
-      ),
+      share: formatShare(detail.seconds / detail.total, language),
       total: saidPlaytime(detail.total, language),
     };
   });

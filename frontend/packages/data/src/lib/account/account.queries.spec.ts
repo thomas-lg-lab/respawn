@@ -1,10 +1,9 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
-import { MutationObserver, QueryClient, provideTanStackQuery } from '@tanstack/angular-query';
+import type { HttpTestingController } from '@angular/common/http/testing';
+import { MutationObserver, type QueryClient } from '@tanstack/angular-query';
 import { ApiFailure, NETWORK_ERROR } from '../api/api';
 import type { SignInOptions } from '../models/models';
 import { TEST_ACCOUNT as ACCOUNT } from '../testing/fixtures';
+import { type QueriesSetUp, setUpQueries } from '../testing/queries';
 import { AccountQueries, accountKeys } from './account.queries';
 
 const OPTIONS: SignInOptions = {
@@ -19,24 +18,13 @@ describe('AccountQueries', () => {
   let queries: AccountQueries;
   let client: QueryClient;
   let http: HttpTestingController;
+  let request: QueriesSetUp<AccountQueries>['request'];
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideTanStackQuery(() => new QueryClient()),
-      ],
-    });
-    queries = TestBed.inject(AccountQueries);
-    client = TestBed.inject(QueryClient);
-    http = TestBed.inject(HttpTestingController);
+    ({ queries, client, http, request } = setUpQueries(AccountQueries));
   });
 
   afterEach(() => http.verify());
-
-  /** The request once it left: a query starts on a later tick. */
-  const request = (url: string) => vi.waitFor(() => http.expectOne(url));
 
   const refuse = (code: string, status: number) =>
     [{ error: { code, message: 'In English, for the log.' } }, { status, statusText: '' }] as const;
@@ -197,6 +185,21 @@ describe('AccountQueries', () => {
 
     expect(await done).toMatchObject({ code: 'database_unavailable' });
     expect(client.getQueryData(accountKeys.me)).toEqual(ACCOUNT);
+  });
+
+  it('opens registration: what the sign-in page may offer says so at once', async () => {
+    const closed = { registration_open: false } as SignInOptions;
+    client.setQueryData(accountKeys.signInOptions, closed);
+    const set = new MutationObserver(client, queries.setRegistration());
+
+    const done = set.mutate(true);
+    const sent = await request('/api/v1/instance/registration');
+    expect(sent.request.method).toBe('PUT');
+    expect(sent.request.body).toEqual({ open: true });
+    sent.flush(null, { status: 204, statusText: '' });
+    await done;
+
+    expect(client.getQueryData(accountKeys.signInOptions)).toEqual({ registration_open: true });
   });
 
   it('keeps the three settings on the account, and the account as it answered', async () => {

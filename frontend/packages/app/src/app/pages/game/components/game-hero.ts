@@ -1,11 +1,11 @@
-import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
-import { DomSanitizer } from '@angular/platform-browser';
+import { Component, computed, input, linkedSignal, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideArrowUpRight, LucidePlay } from '@lucide/angular';
 import { type Game, coverAddress } from '@respawn/data';
 import { Button, Cover } from '@respawn/ui';
 import { formatAgo, formatMoment } from '@app/format/format';
-import { coverHue, isMissing, steamLaunchAddress, steamStoreAddress } from '@app/games/game-list';
+import { coverHue, isMissing, steamStoreAddress, titleInitial } from '@app/games/game-list';
+import { steamLaunchLink } from '@app/games/steam-launch';
 import { type Recency, recency } from '@app/games/time-map';
 import { CoverChoice } from './cover-choice';
 
@@ -42,8 +42,6 @@ export class GameHero {
   /** The covers were opened, to choose again. */
   readonly coverOpened = output<void>();
 
-  private readonly sanitizer = inject(DomSanitizer);
-
   protected readonly hue = computed(() => coverHue(this.game().game_id));
   protected readonly cover = computed(() =>
     coverAddress(this.game().game_id, this.game().covers.chosen),
@@ -53,9 +51,9 @@ export class GameHero {
   /** The cover could not be shown: the game has none, or its source did not answer. */
   protected readonly noCover = linkedSignal({ source: this.cover, computation: () => false });
 
-  /** The first character of the title, whole: an emoji is one, though it is two in a string. */
-  protected readonly initial = computed(() =>
-    ([...(this.game().name ?? '').trim()][0] ?? '?').toLocaleUpperCase(this.language()),
+  /** A game no source has named shows a question mark. */
+  protected readonly initial = computed(
+    () => titleInitial(this.game().name, this.language()) || '?',
   );
 
   protected readonly status = computed((): Status => {
@@ -80,15 +78,8 @@ export class GameHero {
     return this.status().kind === 'last' ? recency(game.last_played_at, this.now()) : null;
   });
 
-  /**
-   * The link that launches the game in the Steam client. Angular takes any address that is
-   * not the web's for a dangerous one and would write it off; this one is trusted because
-   * `steamLaunchAddress` only ever gives `steam://run/` followed by digits.
-   */
-  protected readonly launch = computed(() => {
-    const address = steamLaunchAddress(this.game());
-    return address === null ? null : this.sanitizer.bypassSecurityTrustUrl(address);
-  });
+  /** The link that launches the game in the Steam client, where a copy of it is listed. */
+  protected readonly launch = steamLaunchLink(this.game);
 
   protected readonly store = computed(() => steamStoreAddress(this.game().stores));
 

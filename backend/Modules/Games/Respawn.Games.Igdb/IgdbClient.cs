@@ -110,7 +110,7 @@ internal sealed class IgdbClient(IHttpClientFactory http, Func<IgdbOptions> opti
             var answer = await SendAsync(
                 TokenClientName,
                 "token",
-                () => new FormUrlEncodedContent(
+                new FormUrlEncodedContent(
                 [
                     new("client_id", access.ClientId),
                     new("client_secret", access.ClientSecret),
@@ -168,7 +168,7 @@ internal sealed class IgdbClient(IHttpClientFactory http, Func<IgdbOptions> opti
             return await SendAsync(
                 HttpClientName,
                 endpoint,
-                () => new StringContent(query, Utf8, "text/plain"),
+                new StringContent(query, Utf8, "text/plain"),
                 request =>
                 {
                     request.Headers.Add("Client-ID", clientId);
@@ -223,9 +223,9 @@ internal sealed class IgdbClient(IHttpClientFactory http, Func<IgdbOptions> opti
 
     /// <summary>One POST, and the answer's bytes when it is a 200 of an accepted size.</summary>
     private async Task<Answer> SendAsync(
-        string clientName, string address, Func<HttpContent> content, Action<HttpRequestMessage>? headers, CancellationToken ct)
+        string clientName, string address, HttpContent content, Action<HttpRequestMessage>? headers, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, address) { Content = content() };
+        using var request = new HttpRequestMessage(HttpMethod.Post, address) { Content = content };
         request.Headers.Accept.ParseAdd("application/json");
         headers?.Invoke(request);
 

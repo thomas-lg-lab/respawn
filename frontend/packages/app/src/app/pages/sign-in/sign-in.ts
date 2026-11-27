@@ -13,7 +13,7 @@ import {
 import { Banner, Button, Label, Pill, PillGroup } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
-import { LANGUAGES, LanguageSetting } from '@app/i18n/language';
+import { LANGUAGES, type Language, LanguageSetting } from '@app/i18n/language';
 import { RETURN_TO, returnAddress, signInFrom } from '@app/session/return-address';
 import { saidOnce } from '@app/session/said-once';
 import { AccountForm } from './components/account-form';
@@ -74,6 +74,9 @@ export class SignIn {
   protected readonly account = injectQuery(() => ({ ...this.queries.me(), enabled: false }));
   protected readonly signingIn = injectMutation(() => this.queries.signIn());
   protected readonly registering = injectMutation(() => this.queries.register());
+
+  /** The language last picked could not be loaded. */
+  protected readonly languageUnavailable = signal(false);
 
   /** The visitor asked for the account form, where registration is open. */
   private readonly wantsAccount = signal(false);
@@ -140,6 +143,15 @@ export class SignIn {
   protected async retry(): Promise<void> {
     if (this.options.isError()) void this.options.refetch();
     if (this.account.isError() && (await this.account.refetch()).data) this.enter();
+  }
+
+  /**
+   * Another language, shown once its translations are there. One that cannot be loaded
+   * (offline, or a tab older than the version now served) is said, until a pick works.
+   */
+  protected async pickLanguage(language: Language): Promise<void> {
+    const outcome = await this.language.use(language);
+    if (outcome !== 'superseded') this.languageUnavailable.set(outcome === 'unavailable');
   }
 
   /** From one form to the other: a refusal of the first says nothing of the second. */

@@ -251,8 +251,8 @@ public sealed record GameResponse(
             [.. (view.Owned?.Entries ?? []).Select(LibraryEntryResponse.From)],
             view.Rank is { } rank ? new GameRankResponse(rank.Position, rank.Launched) : null,
             view.Removed is { } removed ? RemovedGameResponse.From(removed) : null,
-            view.Game.GameData is { } page ? new GameDataPageResponse(page.Source, page.Url) : null,
-            GameCoversResponse.From(view.Covers ?? new GameCovers([], null)));
+            view.GameData is { } page ? new GameDataPageResponse(page.Source, page.Url) : null,
+            GameCoversResponse.From(view.Covers));
 }
 
 /// <param name="Source">The game database: igdb.</param>

@@ -120,6 +120,11 @@ internal static class TestDatabase
         }
     }
 
+    /// <summary>Lets anyone register, as an administrator would: a test that needs a second account
+    /// says so here, and no other test project names the table that is kept in.</summary>
+    public static void OpenRegistration() =>
+        Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+
     /// <summary>Runs a statement on the tests' database: what an administrator's route will do later.</summary>
     public static void Run(string statement)
     {

@@ -1,6 +1,8 @@
 import { browserLanguage } from './language';
 import en from './en.json';
 import fr from './fr.json';
+import foundationsEn from '../pages/foundations/i18n/en.json';
+import foundationsFr from '../pages/foundations/i18n/fr.json';
 
 /** Every key of a translation file, as dotted paths. */
 function keys(node: unknown, prefix = ''): string[] {
@@ -31,10 +33,11 @@ describe('browserLanguage', () => {
 describe('translations', () => {
   it('have the same keys in both languages', () => {
     expect(keys(fr).sort()).toEqual(keys(en).sort());
+    expect(keys(foundationsFr).sort()).toEqual(keys(foundationsEn).sort());
   });
 
   it('leave no key empty', () => {
-    for (const file of [fr, en]) {
+    for (const file of [fr, en, foundationsFr, foundationsEn]) {
       const empty = keys(file).filter((path) => {
         const value = path.split('.').reduce<unknown>((node, name) => {
           return (node as Record<string, unknown>)[name];

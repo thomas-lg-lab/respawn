@@ -23,7 +23,7 @@
     </ol>
   }
   <button rsButton variant="primary" type="button" data-sync-retry (click)="retry.emit()">
-    {{ t(prefix + 'retry') }}
+    {{ t(kind() === 'failed' ? 'app.retry' : 'home.nothingVisible.retry') }}
   </button>
   <p class="max-w-[36em] type-caption text-muted">{{ t(prefix + 'note') }}</p>
 </section>

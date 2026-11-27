@@ -1,4 +1,5 @@
-import { type LinkedAccount, type SyncRun, awaitsSync } from '@respawn/data';
+import { ApiFailure, type LinkedAccount, type SyncRun, awaitsSync } from '@respawn/data';
+import { failureKey } from '@app/errors/failure-message';
 
 /**
  * What the home shows, from the linked accounts and their syncs:
@@ -87,4 +88,14 @@ export function syncErrorKey(run: SyncRun | null | undefined): string {
   const error = run?.error ?? '';
   if (error === 'refused' && run?.own_key) return 'sync.errors.refused_own_key';
   return `sync.errors.${SYNC_ERRORS.includes(error) ? error : 'unknown'}`;
+}
+
+/**
+ * Why a "sync now" was refused, as a translation key. Too soon after the last one has a
+ * sentence of its own: the API takes one a minute, which is not "too many attempts".
+ */
+export function syncRefusalKey(failure: unknown): string {
+  return failure instanceof ApiFailure && failure.code === 'too_many_requests'
+    ? 'sync.tooSoon'
+    : failureKey(failure);
 }

@@ -1,24 +1,21 @@
-<div
-  class="overflow-x-auto rounded-card border border-line bg-surface"
-  *transloco="let t; prefix: 'library'"
->
+<div class="overflow-x-auto rounded-card border border-line bg-surface" *transloco="let t">
   <table class="w-full border-collapse type-control">
     <caption class="sr-only">
       {{
-        t('title')
+        t('library.title')
       }}
     </caption>
     <thead>
       <tr class="text-left type-caption whitespace-nowrap text-muted">
-        <th scope="col" class="px-3 py-3 font-medium wide:px-4">{{ t('columns.game') }}</th>
+        <th scope="col" class="px-3 py-3 font-medium wide:px-4">{{ t('library.columns.game') }}</th>
         <th scope="col" class="px-3 py-3 text-right font-medium wide:px-4">
-          {{ t('columns.playtime') }}
+          {{ t('library.columns.playtime') }}
         </th>
         <th scope="col" class="hidden px-4 py-3 text-right font-medium wide:table-cell">
-          {{ t('columns.recent') }}
+          {{ t('library.columns.recent') }}
         </th>
         <th scope="col" class="hidden px-4 py-3 font-medium wide:table-cell">
-          {{ t('columns.lastPlayed') }}
+          {{ t('library.columns.lastPlayed') }}
         </th>
       </tr>
     </thead>
@@ -54,15 +51,17 @@
                     data-name
                     [routerLink]="gamePage(row.id)"
                     [state]="from"
-                    >{{ t('unnamed') }}</a
+                    >{{ t('game.unnamed') }}</a
                   >
                 }
                 @if (row.missing) {
-                  <span class="type-caption text-muted" data-missing>{{ t('missing') }}</span>
+                  <span class="type-caption text-muted" data-missing>{{
+                    t('library.missing')
+                  }}</span>
                 }
                 <!-- On a phone the last session stands under the title: a column of its own
                      would leave the title a third of the row. -->
-                @if (row.last.key !== 'unknown') {
+                @if (row.last.key !== 'app.unknown') {
                   <span
                     class="type-caption font-normal text-muted wide:hidden"
                     data-last-played-under
@@ -86,7 +85,7 @@
                 }}</span>
               </span>
             } @else {
-              <span class="text-muted">{{ t('unknown') }}</span>
+              <span class="text-muted">{{ t('app.unknown') }}</span>
             }
           </td>
           <td
@@ -94,7 +93,7 @@
             data-recent
           >
             @if (row.recent === null) {
-              {{ t('unknown') }}
+              {{ t('app.unknown') }}
             } @else if (row.recent !== 'none') {
               {{ t(row.recent.key, { count: row.recent.count }) }}
             }

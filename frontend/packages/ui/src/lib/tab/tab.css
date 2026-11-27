@@ -28,9 +28,11 @@
     transition-duration: var(--rs-duration-hover);
   }
 
-  :host(:hover) {
-    --cursor: var(--rs-control-line);
-    color: var(--rs-text);
+  @media (hover: hover) {
+    :host(:hover) {
+      --cursor: var(--rs-control-line);
+      color: var(--rs-text);
+    }
   }
 
   /* The current screen: the cursor lit, under the pointer too. It does not blink: the header

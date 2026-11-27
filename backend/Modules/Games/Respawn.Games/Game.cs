@@ -7,8 +7,8 @@ namespace Respawn.Games;
 /// <param name="Id">The canonical record.</param>
 /// <param name="Name">Null while no source has named the game.</param>
 /// <param name="Stores">Its store entries, in no order; none for a record no store knows yet.</param>
-/// <param name="GameData">Its page in the game database, when the database knows it and gave one.</param>
-public sealed record CatalogueGame(Guid Id, string? Name, IReadOnlyList<GameStore> Stores, GameDataPage? GameData = null);
+/// <param name="GameDataUrl">Its page in the game database, when the database knows it and gave one.</param>
+public sealed record CatalogueGame(Guid Id, string? Name, IReadOnlyList<GameStore> Stores, string? GameDataUrl = null);
 
 /// <summary>A game as one store knows it.</summary>
 public sealed record GameStore(Guid StoreEntryId, string Source, string ExternalId);
@@ -26,7 +26,10 @@ public sealed record GameRank(int Position, int Launched);
 /// <param name="Rank">Null when the owner never launched it.</param>
 /// <param name="Removed">What the owner took out of their library of it; null when nothing was.</param>
 /// <param name="Covers">The covers the game has, and the one its owner chose.</param>
-public sealed record GameView(CatalogueGame Game, OwnedGame? Owned, GameRank? Rank, RemovedGame? Removed = null, GameCovers? Covers = null);
+/// <param name="GameData">Its page in the game database, under the database's name; null when the
+/// catalogue has none.</param>
+public sealed record GameView(
+    CatalogueGame Game, OwnedGame? Owned, GameRank? Rank, RemovedGame? Removed, GameCovers Covers, GameDataPage? GameData);
 
 /// <summary>The sources a game has a cover from, and the one an owner chose among them.</summary>
 /// <param name="Sources">The stores that said where their cover is, by name, then the game database

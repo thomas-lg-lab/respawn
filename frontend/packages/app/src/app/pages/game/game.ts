@@ -9,7 +9,13 @@ import { ApiFailure, GameQueries, LibraryQueries } from '@respawn/data';
 import { Banner, Button, Skeleton, StatTile } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
-import { formatCount, formatDate, ordinalForm, saidPlaytime } from '@app/format/format';
+import {
+  formatCount,
+  formatDate,
+  formatShare,
+  ordinalForm,
+  saidPlaytime,
+} from '@app/format/format';
 import { ORIGINS, type Origin, originIn } from '@app/games/game-page';
 import { LanguageSetting } from '@app/i18n/language';
 import { GameHero } from './components/game-hero';
@@ -149,11 +155,7 @@ export class Game {
     const time = (seconds: number | null) =>
       seconds === null ? null : saidPlaytime(seconds, language);
     const share = (part: number, whole: number | null | undefined) =>
-      whole
-        ? new Intl.NumberFormat(language, { style: 'percent', maximumFractionDigits: 0 }).format(
-            part / whole,
-          )
-        : null;
+      whole ? formatShare(part / whole, language) : null;
 
     const year = new Date(this.now()).getUTCFullYear();
     const months = this.months.data()?.months;

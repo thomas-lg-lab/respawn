@@ -1,0 +1,24 @@
+<rs-card class="flex flex-col gap-4" data-registration *transloco="let t">
+  <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+    <div class="flex min-w-0 flex-col gap-0.5">
+      <h3 class="type-card-title" data-registration-state>
+        {{ t(open() ? 'account.registration.open' : 'account.registration.closed') }}
+      </h3>
+      <p class="max-w-[44em] text-muted">
+        {{ t(open() ? 'account.registration.openText' : 'account.registration.closedText') }}
+      </p>
+    </div>
+    <button
+      rsButton
+      type="button"
+      data-registration-change
+      [disabled]="busy()"
+      (click)="changed.emit(!open())"
+    >
+      {{ t(open() ? 'account.registration.close' : 'account.registration.openIt') }}
+    </button>
+  </div>
+  @if (failure(); as key) {
+    <rs-banner tone="warn" role="alert" data-registration-failure>{{ t(key) }}</rs-banner>
+  }
+</rs-card>

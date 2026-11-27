@@ -1,18 +1,10 @@
 import type { LibraryGame, LibraryHistory, LibraryYear, LibraryYears } from '@respawn/data';
+import { game as made } from '@app/testing/games';
 import { activity, playedYears } from './history-blocks';
 
-function game(name: string, values: Partial<LibraryGame> = {}): LibraryGame {
-  return {
-    game_id: `id-${name}`,
-    name,
-    playtime_seconds: 0,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    entries: [],
-    cover_source: null,
-    ...values,
-  };
-}
+/** A game whose id says its name: the days of a history name their games by id. */
+const game = (name: string, values: Partial<LibraryGame> = {}) =>
+  made(name, { game_id: `id-${name}`, ...values });
 
 const day = (date: string, ...played: [string, number][]) => ({
   date,

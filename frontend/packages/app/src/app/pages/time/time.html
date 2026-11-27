@@ -5,7 +5,7 @@
         <h1 class="type-page-title max-w-[18em] text-balance" data-heading>
           {{
             t('time.heading', {
-              time: t('time.playtime.' + said.time.key, { count: said.time.count }),
+              time: t(said.time.key, { count: said.time.count }),
               count: said.count,
             })
           }}
@@ -52,21 +52,21 @@
         >
           <h2 class="type-card-title">
             @if (said.others; as others) {
-              {{ t(others.one ? 'time.othersOne' : 'time.othersMany', { count: others.count }) }}
+              {{ t(others.one ? 'game.othersOne' : 'game.othersMany', { count: others.count }) }}
             } @else if (said.tile.kind === 'game') {
               <a
                 class="hover:underline"
                 data-game-link
                 [routerLink]="gamePage(said.tile.id)"
                 [state]="from"
-                >{{ said.tile.game.name || t('time.unnamed') }}</a
+                >{{ said.tile.game.name || t('game.unnamed') }}</a
               >
             }
           </h2>
           <p class="tabular-nums" data-share>
             {{
               t('time.share', {
-                time: t('time.playtime.' + said.time.key, { count: said.time.count }),
+                time: t(said.time.key, { count: said.time.count }),
                 share: said.share,
               })
             }}
@@ -75,9 +75,12 @@
             }
           </p>
           @if (said.others) {
-            <a class="self-start font-medium text-accent-text underline" routerLink="/library">{{
-              t('time.othersLink')
-            }}</a>
+            <a
+              class="self-start font-medium text-accent-text underline"
+              routerLink="/library"
+              [queryParams]="othersWords"
+              >{{ t('time.othersLink') }}</a
+            >
           }
         </section>
       }
@@ -91,7 +94,7 @@
     <h1 class="type-page-title">{{ t('time.title') }}</h1>
     <rs-banner tone="warn" role="alert">{{ t(failureKey(games.error())) }}</rs-banner>
     <button rsButton type="button" class="self-start" data-retry (click)="games.refetch()">
-      {{ t('time.retry') }}
+      {{ t('app.retry') }}
     </button>
   } @else {
     <h1 class="type-page-title">{{ t('time.title') }}</h1>

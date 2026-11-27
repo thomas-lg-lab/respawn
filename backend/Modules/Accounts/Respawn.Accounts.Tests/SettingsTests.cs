@@ -104,7 +104,7 @@ public sealed class SettingsTests
         using var first = app.Browser();
         await first.RegisterAsync();
         // A member that owns nothing: the first account owns the default group, which keeps its owner.
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
         using var browser = app.Browser();
         var id = (await browser.RegisterAsync("second@example.org", "Second").JsonAsync()).GetProperty("id").GetGuid();
 
@@ -153,6 +153,8 @@ public sealed class SettingsTests
             await db.Database.ExecuteSqlAsync($"DELETE FROM accounts.users WHERE id = {accountId}", ct);
             return await inner.SaveSettingsAsync(accountId, settings, ct);
         }
+
+        public Task SetRegistrationOpenAsync(bool open, CancellationToken ct) => inner.SetRegistrationOpenAsync(open, ct);
 
         public Task LogoutAsync(string? sessionToken, CancellationToken ct) => inner.LogoutAsync(sessionToken, ct);
     }

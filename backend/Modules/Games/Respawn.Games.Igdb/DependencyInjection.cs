@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Games.Ports;
 
@@ -52,5 +53,5 @@ public static class DependencyInjection
     /// <summary>How IGDB and Twitch are reached. An answer that sends elsewhere is not followed: the
     /// secret and the token go to the host asked, never to another.</summary>
     internal static SocketsHttpHandler Transport() =>
-        new() { AllowAutoRedirect = false, MaxConnectionsPerServer = IgdbClient.MaxOpen };
+        new() { AllowAutoRedirect = false, MaxConnectionsPerServer = IgdbClient.MaxOpen, AutomaticDecompression = DecompressionMethods.All };
 }

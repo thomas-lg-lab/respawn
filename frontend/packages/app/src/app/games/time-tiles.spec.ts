@@ -1,20 +1,10 @@
 import type { LibraryGame } from '@respawn/data';
+import { game as made } from '@app/testing/games';
 import { timeTiles } from './time-tiles';
 
-let made = 0;
-
-function game(name: string, playtime: number, values: Partial<LibraryGame> = {}): LibraryGame {
-  return {
-    game_id: `00000000-0000-4000-8000-${String(++made).padStart(12, '0')}`,
-    name,
-    playtime_seconds: playtime,
-    recent_playtime_seconds: 0,
-    last_played_at: null,
-    entries: [],
-    cover_source: null,
-    ...values,
-  };
-}
+/** A game that was played that long, in seconds. */
+const game = (name: string, playtime: number, values: Partial<LibraryGame> = {}) =>
+  made(name, { playtime_seconds: playtime, ...values });
 
 const NOW = Date.parse('2026-11-24T12:00:00Z');
 

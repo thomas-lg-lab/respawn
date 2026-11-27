@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Games.Ports;
 
@@ -42,8 +43,9 @@ public static class DependencyInjection
     }
 
     /// <summary>How Steam is reached. The key travels in a header: an answer that sends elsewhere is
-    /// not followed with it, and an image is taken from the host asked, never from another.</summary>
+    /// not followed with it, and an image is taken from the host asked, never from another. A library
+    /// is a long answer: it is asked compressed.</summary>
     /// <param name="connections">The most connections kept to one host at once.</param>
     internal static SocketsHttpHandler Transport(int connections = int.MaxValue) =>
-        new() { AllowAutoRedirect = false, MaxConnectionsPerServer = connections };
+        new() { AllowAutoRedirect = false, MaxConnectionsPerServer = connections, AutomaticDecompression = DecompressionMethods.All };
 }

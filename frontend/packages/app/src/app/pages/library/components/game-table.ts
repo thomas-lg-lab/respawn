@@ -3,15 +3,9 @@ import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { type LibraryGame, coverAddress } from '@respawn/data';
 import { Cover, SegmentedBar } from '@respawn/ui';
-import { formatAgo, formatCount, formatMoment, playtime } from '@app/format/format';
+import { type SaidPlaytime, formatAgo, formatMoment, saidPlaytime } from '@app/format/format';
 import { cameFrom, gamePage } from '@app/games/game-page';
 import { coverHue, isMissing } from '@app/games/game-list';
-
-/** A duration as a cell shows it: a translation key and the count that goes in it. */
-interface Said {
-  readonly key: 'hours' | 'minutes';
-  readonly count: string;
-}
 
 /** A game as its row shows it. */
 interface Row {
@@ -24,16 +18,20 @@ interface Row {
   readonly missing: boolean;
   /** The total, for the bar; `null` when no store said it. */
   readonly seconds: number | null;
-  readonly total: Said | null;
+  readonly total: SaidPlaytime | null;
   /** The last two weeks: `null` when the store did not say, `'none'` for no time at all. */
-  readonly recent: Said | 'none' | null;
+  readonly recent: SaidPlaytime | 'none' | null;
   /**
    * The last session: how long ago and the moment itself, or the key of why there is none to
    * tell, `never` for a game never launched, `unknown` when the store did not say.
    */
   readonly last:
     | { readonly key: null; readonly ago: string; readonly moment: string }
-    | { readonly key: 'never' | 'unknown'; readonly ago: null; readonly moment: null };
+    | {
+        readonly key: 'library.never' | 'app.unknown';
+        readonly ago: null;
+        readonly moment: null;
+      };
 }
 
 /**
@@ -73,21 +71,17 @@ export class GameTable {
         cover: coverAddress(game.game_id, game.cover_source),
         missing: isMissing(game),
         seconds: total,
-        total: total === null ? null : this.duration(total),
-        recent: recent === null ? null : recent > 0 ? this.duration(recent) : 'none',
+        total: total === null ? null : saidPlaytime(total, this.language()),
+        recent:
+          recent === null ? null : recent > 0 ? saidPlaytime(recent, this.language()) : 'none',
         last: last
           ? {
               key: null,
               ago: formatAgo(last, this.now(), this.language()),
               moment: formatMoment(last, this.language()),
             }
-          : { key: total === 0 ? 'never' : 'unknown', ago: null, moment: null },
+          : { key: total === 0 ? 'library.never' : 'app.unknown', ago: null, moment: null },
       };
     }),
   );
-
-  private duration(seconds: number): Said {
-    const { unit, count } = playtime(seconds);
-    return { key: unit, count: formatCount(count, this.language()) };
-  }
 }

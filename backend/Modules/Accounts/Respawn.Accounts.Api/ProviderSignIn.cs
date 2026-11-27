@@ -181,7 +181,7 @@ internal static class ProviderSignIn
         {
             // The account that started the link is the one that comes back: the state names it, and
             // the session must still be that account's.
-            var signedIn = await accounts.FindSignedInAsync(http.Request.Cookies[SessionCookie.Name], http.RequestAborted);
+            var signedIn = await accounts.FindSignedInAsync(SessionCookie.Carried(http), http.RequestAborted);
             if (!Guid.TryParse(asked, out var owner) || signedIn?.Id != owner)
             {
                 Log(http).LogInformation("a link through {Scheme} came back to another session than the one that asked", context.Scheme.Name);

@@ -36,7 +36,7 @@ public sealed class GroupsTests
         await using var app = await TestApp.StartAsync();
         using var first = app.Browser();
         var owner = (await first.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
 
         using var second = app.Browser();
         var member = (await second.RegisterAsync("second@example.org", "Second").JsonAsync()).GetProperty("id").GetGuid();
@@ -109,7 +109,7 @@ public sealed class GroupsTests
         await using var app = await TestApp.StartAsync();
         using var first = app.Browser();
         var administrator = (await first.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
         using var second = app.Browser();
         var member = (await second.RegisterAsync("second@example.org", "Second").JsonAsync()).GetProperty("id").GetGuid();
 
@@ -131,7 +131,7 @@ public sealed class GroupsTests
         await using var app = await TestApp.StartAsync();
         using var first = app.Browser();
         await first.RegisterAsync();
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
         string[] emails = ["first@example.org", .. Enumerable.Range(2, 5).Select(number => $"player{number}@example.org")];
         foreach (var email in emails.Skip(1))
         {
@@ -199,7 +199,7 @@ public sealed class GroupsTests
         await using var app = await TestApp.StartAsync();
         using var first = app.Browser();
         var owner = (await first.RegisterAsync().JsonAsync()).GetProperty("id").GetGuid();
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
         using var second = app.Browser();
         var member = (await second.RegisterAsync("second@example.org", "Second").JsonAsync()).GetProperty("id").GetGuid();
         var group = Assert.Single(await GroupsAsync(app));

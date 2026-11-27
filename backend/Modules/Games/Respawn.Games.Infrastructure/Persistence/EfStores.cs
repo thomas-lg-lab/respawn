@@ -294,11 +294,8 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             gameId,
             game.Name,
             [.. entries.Select(e => new GameStore(e.Id, e.Source, e.ExternalId))],
-            First(entries, e => e.Url) is { } url ? new GameDataPage(IgdbSource, url) : null);
+            First(entries, e => e.Url));
     }
-
-    /// <summary>How the game database names itself in the catalogue.</summary>
-    private const string IgdbSource = "igdb";
 
     public async Task<GameDataCover> FindGameDataCoverAsync(Guid gameId, CancellationToken ct)
     {
@@ -548,9 +545,16 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
 
 internal sealed class EfYearReviewStore(GamesDbContext db) : IYearReviewStore
 {
-    public async Task<IReadOnlySet<int>> ListYearsAsync(Guid linkedAccountId, CancellationToken ct) =>
-        (await db.YearReviews.AsNoTracking().Where(r => r.LinkedAccountId == linkedAccountId).Select(r => r.Year).ToListAsync(ct))
-            .ToHashSet();
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<int>>> ListYearsAsync(IReadOnlyCollection<Guid> linkedAccountIds, CancellationToken ct)
+    {
+        Guid[] ids = [.. linkedAccountIds];
+        var rows = await db.YearReviews.AsNoTracking()
+            .Where(r => ids.Contains(r.LinkedAccountId))
+            .Select(r => new { r.LinkedAccountId, r.Year })
+            .ToListAsync(ct);
+        return rows.GroupBy(row => row.LinkedAccountId)
+            .ToDictionary(account => account.Key, IReadOnlySet<int> (account) => account.Select(row => row.Year).ToHashSet());
+    }
 
     public async Task RecordAsync(Guid linkedAccountId, int year, Guid snapshotId, IReadOnlyCollection<MonthPlayed> months, CancellationToken ct)
     {
@@ -594,7 +598,7 @@ internal sealed class EfYearReviewStore(GamesDbContext db) : IYearReviewStore
             join account in db.LinkedAccounts on row.LinkedAccountId equals account.Id
             where account.OwnerId == ownerId
             join entry in db.StoreEntries on row.StoreEntryId equals entry.Id
-            select new { row.LinkedAccountId, row.Month, entry.GameId, row.PlaytimeSeconds, row.Sessions };
+            select new { row.Month, entry.GameId, row.PlaytimeSeconds };
         if (gameId is { } game)
         {
             played = played.Where(row => row.GameId == game);
@@ -605,8 +609,11 @@ internal sealed class EfYearReviewStore(GamesDbContext db) : IYearReviewStore
             played = played.Where(row => row.Month == asked);
         }
 
-        var rows = await played.ToListAsync(ct);
-        return [.. rows.Select(row => new PlayedMonth(row.LinkedAccountId, row.Month, row.GameId, TimeSpan.FromSeconds(row.PlaytimeSeconds), row.Sessions))];
+        var rows = await played
+            .GroupBy(row => new { row.Month, row.GameId })
+            .Select(group => new { group.Key.Month, group.Key.GameId, PlaytimeSeconds = group.Sum(row => row.PlaytimeSeconds) })
+            .ToListAsync(ct);
+        return [.. rows.Select(row => new PlayedMonth(row.Month, row.GameId, TimeSpan.FromSeconds(row.PlaytimeSeconds)))];
     }
 }
 
@@ -841,6 +848,11 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         // that listed the game: one bought in the days asked is looked up nowhere. That lookup is made
         // for these first readings only, one per game, which the query says by keeping them apart.
         //
+        // A gain is of the day its game was last played, when the reading says that moment and it
+        // lies after the reading before; otherwise of the day of its reading. So the readings asked
+        // are those of the days asked and the first one after them, which may hold the last evening
+        // of those days, and the days asked are kept at the end.
+        //
         // For one game, the readings start from its store entries: their rows come from the index on
         // the store entry, a row or two a day, and the rest of the library is not read. The game is
         // then a condition written in the query, not a value that switches it off: the plan is made
@@ -884,7 +896,8 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
     private const string JitOff = "SET LOCAL jit = off";
 
     /// <summary>The readings of every game over the days asked, each with the total before it: {0} is
-    /// the owner, {1} and {2} the first instant asked and the first one after the last.
+    /// the owner, {1} and {2} the first instant asked and the first one after the last. The first
+    /// reading at or after {2} is read too: what it found may have been played before.
     ///
     /// The observations are asked snapshot by snapshot, and OFFSET 0 is what keeps it so: PostgreSQL
     /// does not merge a subquery that has one into the rest, and would otherwise read the whole table
@@ -895,20 +908,27 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             SELECT s.linked_account_id,
                    o.store_entry_id,
                    s.taken_at,
+                   o.last_played_at,
                    o.known,
-                   LAG(o.known) OVER (
-                       PARTITION BY s.linked_account_id, o.store_entry_id
-                       ORDER BY s.taken_at, s.id) AS before
+                   LAG(o.known) OVER reading AS before,
+                   LAG(s.taken_at) OVER reading AS before_at
             FROM games.linked_accounts a
             JOIN games.raw_snapshots s ON s.linked_account_id = a.id
             CROSS JOIN LATERAL (
-                SELECT n.store_entry_id, n.known_playtime_seconds AS known
+                SELECT n.store_entry_id, n.known_playtime_seconds AS known, n.last_played_at
                 FROM games.observations n
                 WHERE n.snapshot_id = s.id
                   AND n.known_playtime_seconds IS NOT NULL
                 OFFSET 0) o
             WHERE a.owner_id = {0}
-              AND s.taken_at >= {1} AND s.taken_at < {2}
+              AND s.taken_at >= {1} AND s.taken_at <= COALESCE((
+                  SELECT x.taken_at
+                  FROM games.raw_snapshots x
+                  WHERE x.linked_account_id = a.id AND x.taken_at >= {2}
+                    AND EXISTS (SELECT 1 FROM games.observations n WHERE n.snapshot_id = x.id)
+                  ORDER BY x.taken_at
+                  LIMIT 1), {2})
+            WINDOW reading AS (PARTITION BY s.linked_account_id, o.store_entry_id ORDER BY s.taken_at, s.id)
         ),
 
         """;
@@ -920,25 +940,32 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
             SELECT s.linked_account_id,
                    o.store_entry_id,
                    s.taken_at,
+                   o.last_played_at,
                    o.known_playtime_seconds AS known,
-                   LAG(o.known_playtime_seconds) OVER (
-                       PARTITION BY s.linked_account_id, o.store_entry_id
-                       ORDER BY s.taken_at, s.id) AS before
+                   LAG(o.known_playtime_seconds) OVER reading AS before,
+                   LAG(s.taken_at) OVER reading AS before_at
             FROM games.linked_accounts a
             JOIN games.raw_snapshots s ON s.linked_account_id = a.id
             JOIN games.observations o ON o.snapshot_id = s.id
             JOIN games.store_entries e ON e.id = o.store_entry_id
             WHERE a.owner_id = {0}
-              AND s.taken_at >= {1} AND s.taken_at < {2}
+              AND s.taken_at >= {1} AND s.taken_at <= COALESCE((
+                  SELECT x.taken_at
+                  FROM games.raw_snapshots x
+                  WHERE x.linked_account_id = a.id AND x.taken_at >= {2}
+                    AND EXISTS (SELECT 1 FROM games.observations n WHERE n.snapshot_id = x.id)
+                  ORDER BY x.taken_at
+                  LIMIT 1), {2})
               AND o.known_playtime_seconds IS NOT NULL
               AND e.game_id = {3}
+            WINDOW reading AS (PARTITION BY s.linked_account_id, o.store_entry_id ORDER BY s.taken_at, s.id)
         ),
 
         """;
 
     /// <summary>The rest of it: the readings that add to the one before, of the games still listed,
-    /// then what each adds, per day and per game. A first reading with nothing before the days asked
-    /// adds nothing.</summary>
+    /// then what each adds, dated, per day and per game, for the days asked. A first reading with
+    /// nothing before the days asked adds nothing.</summary>
     private const string PlayedGains =
         """
         changes AS (
@@ -946,9 +973,11 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                    r.store_entry_id,
                    e.game_id,
                    w.first_seen_at,
-                   (r.taken_at AT TIME ZONE 'UTC')::date AS day,
+                   r.taken_at,
+                   r.last_played_at,
                    r.known,
-                   r.before
+                   r.before,
+                   r.before_at
             FROM readings r
             JOIN games.ownerships w ON w.linked_account_id = r.linked_account_id AND w.store_entry_id = r.store_entry_id
             JOIN games.store_entries e ON e.id = r.store_entry_id
@@ -956,14 +985,14 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
               AND w.unlisted_since IS NULL
         ),
         gains AS (
-            SELECT c.day, c.game_id, c.known - c.before AS gained
+            SELECT c.taken_at, c.last_played_at, c.before_at, c.game_id, c.known - c.before AS gained
             FROM changes c
             WHERE c.before IS NOT NULL
             UNION ALL
-            SELECT c.day, c.game_id, c.known - earlier.known
+            SELECT c.taken_at, c.last_played_at, earlier.taken_at, c.game_id, c.known - earlier.known
             FROM changes c
             CROSS JOIN LATERAL (
-                SELECT p.known_playtime_seconds AS known
+                SELECT p.known_playtime_seconds AS known, ps.taken_at
                 FROM games.raw_snapshots ps
                 JOIN games.observations p ON p.snapshot_id = ps.id
                 WHERE ps.linked_account_id = c.linked_account_id
@@ -974,10 +1003,20 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
                 LIMIT 1) earlier
             WHERE c.before IS NULL
               AND c.known > earlier.known
+        ),
+        dated AS (
+            SELECT (CASE WHEN g.last_played_at > g.before_at AND g.last_played_at <= g.taken_at
+                         THEN g.last_played_at
+                         ELSE g.taken_at
+                    END AT TIME ZONE 'UTC')::date AS day,
+                   g.game_id,
+                   g.gained
+            FROM gains g
         )
-        SELECT g.day AS day, g.game_id AS game_id, SUM(g.gained)::bigint AS seconds
-        FROM gains g
-        GROUP BY g.day, g.game_id
+        SELECT d.day AS day, d.game_id AS game_id, SUM(d.gained)::bigint AS seconds
+        FROM dated d
+        WHERE d.day >= ({1} AT TIME ZONE 'UTC')::date AND d.day < ({2} AT TIME ZONE 'UTC')::date
+        GROUP BY d.day, d.game_id
         """;
 
     private const string PlayedOfEveryGame = ReadingsOfEveryGame + PlayedGains;

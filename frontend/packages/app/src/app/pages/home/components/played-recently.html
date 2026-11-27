@@ -1,5 +1,5 @@
-<section class="flex flex-col gap-3" data-recently *transloco="let t; prefix: 'home'">
-  <h2 rsLabel>{{ t('recently.title') }}</h2>
+<section class="flex flex-col gap-3" data-recently *transloco="let t">
+  <h2 rsLabel>{{ t('home.recently.title') }}</h2>
   <ul class="grid grid-cols-1 gap-3 wide:grid-cols-2">
     @for (game of games(); track game.id) {
       <li
@@ -14,20 +14,19 @@
             data-name
             [routerLink]="gamePage(game.id)"
             [state]="from"
-            >{{ game.name ?? t('unnamed') }}</a
+            >{{ game.name ?? t('game.unnamed') }}</a
           >
-          @let recent =
-            game.recent ? t('time.' + game.recent.key, { count: game.recent.count }) : null;
-          @let total = game.total ? t('time.' + game.total.key, { count: game.total.count }) : null;
+          @let recent = game.recent ? t(game.recent.key, { count: game.recent.count }) : null;
+          @let total = game.total ? t(game.total.key, { count: game.total.count }) : null;
           <span class="type-caption text-muted tabular-nums" data-played>
             @if (recent) {
               {{
                 total
-                  ? t('recently.recentAndTotal', { recent, total })
-                  : t('recently.recent', { recent })
+                  ? t('home.recently.recentAndTotal', { recent, total })
+                  : t('home.recently.recent', { recent })
               }}
             } @else {
-              {{ total ? t('recently.agoAndTotal', { ago: game.ago, total }) : game.ago }}
+              {{ total ? t('home.recently.agoAndTotal', { ago: game.ago, total }) : game.ago }}
             }
           </span>
         </span>

@@ -45,9 +45,31 @@ public static class Navigation
         && asked[0] == '/'
         && (asked.Length == 1 || asked[1] is not ('/' or '\\'))
         && asked.All(c => c is > ' ' and <= '~' and not '\\')
+        && Plain(asked.AsSpan(0, asked.AsSpan().IndexOfAny('?', '#') is >= 0 and var end ? end : asked.Length))
         && !asked.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
             ? asked
             : "/";
+
+    /// <summary>Whether a path is read as it is written: a browser resolves "." and ".." and decodes
+    /// "%61", so "/./api/..." or "/%61pi/..." would lead to the API past the check that refuses it.
+    /// No screen of the app has such an address.</summary>
+    private static bool Plain(ReadOnlySpan<char> path)
+    {
+        if (path.Contains('%'))
+        {
+            return false;
+        }
+
+        foreach (var segment in path.Split('/'))
+        {
+            if (path[segment] is "." or "..")
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /// <summary>The address with the outcome on it, once: an outcome the address already carried under
     /// that parameter is dropped, so nobody writes one in advance.</summary>

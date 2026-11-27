@@ -127,7 +127,7 @@ public sealed class GameDataService(
                     $"{stuck.Length} games set aside after {unreadable} unreadable answers in a row, asked about again in {GameDataSchedule.UnknownAskAgainAfter.TotalDays} days; {detail}");
             }
 
-            return new GameDataRead(matched, unknown, ex.Error, detail is { Length: > Limits.SyncDetail } ? detail[..Limits.SyncDetail] : detail);
+            return new GameDataRead(matched, unknown, ex.Error, Details.Cut(detail));
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
