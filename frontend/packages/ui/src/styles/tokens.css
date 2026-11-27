@@ -120,8 +120,6 @@
   /* How it arrives: from a little higher and smaller, once. */
   --rs-duration-overlay: 140ms;
   --rs-duration-pulse: 1.4s;
-  --rs-duration-blink: 1s;
-  --rs-blink-count: 5;
 }
 
 /* A chosen theme, on the root or on any subtree. */
@@ -139,13 +137,13 @@
   --rs-label-size: 0.875rem; /* 14px */
   --rs-label-weight: 500;
   --rs-label-tracking: 0.04em;
-  /* The prompt that blinks before the main label of a screen. */
-  --rs-label-prompt: '>';
+  /* The prompt of the search field, a terminal's line. */
+  --rs-prompt: '>';
 }
 [data-character='plain'] {
   --rs-font-label: var(--rs-font-body);
   --rs-label-size: 0.75rem; /* 12px */
   --rs-label-weight: 600;
   --rs-label-tracking: 0.08em;
-  --rs-label-prompt: none;
+  --rs-prompt: none;
 }
