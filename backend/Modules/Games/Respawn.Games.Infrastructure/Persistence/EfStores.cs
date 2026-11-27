@@ -284,16 +284,60 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
     public async Task<CatalogueGame?> FindGameAsync(Guid gameId, CancellationToken ct)
     {
         var game = await db.Games.AsNoTracking().Where(g => g.Id == gameId).Select(g => new { g.Name }).FirstOrDefaultAsync(ct);
-        return game is null
-            ? null
-            : new CatalogueGame(
-                gameId,
-                game.Name,
-                await db.StoreEntries.AsNoTracking()
-                    .Where(e => e.GameId == gameId)
-                    .Select(e => new GameStore(e.Id, e.Source, e.ExternalId))
-                    .ToListAsync(ct));
+        if (game is null)
+        {
+            return null;
+        }
+
+        var entries = await GameDataEntries(gameId).ToListAsync(ct);
+        return new CatalogueGame(
+            gameId,
+            game.Name,
+            [.. entries.Select(e => new GameStore(e.Id, e.Source, e.ExternalId))],
+            First(entries, e => e.Url) is { } url ? new GameDataPage(IgdbSource, url) : null);
     }
+
+    /// <summary>How the game database names itself in the catalogue.</summary>
+    private const string IgdbSource = "igdb";
+
+    public async Task<GameDataCover> FindGameDataCoverAsync(Guid gameId, CancellationToken ct)
+    {
+        var entries = await GameDataEntries(gameId).ToListAsync(ct);
+        return new GameDataCover(
+            First(entries, e => e.CoverImageId),
+            entries.All(e => e.IgdbAskedAt != null),
+            entries.SelectMany(e => new[] { e.IgdbAskedAt, e.ReadAt }).Max());
+    }
+
+    public Task<bool> HasGameDataAsync(CancellationToken ct) => db.IgdbGames.AnyAsync(ct);
+
+    /// <summary>A game's store entries, each with what the game database said of its game.</summary>
+    private IQueryable<GameDataEntryRow> GameDataEntries(Guid gameId) =>
+        from e in db.StoreEntries.AsNoTracking().Where(e => e.GameId == gameId)
+        join g in db.IgdbGames.AsNoTracking() on e.IgdbId equals (long?)g.IgdbId into said
+        from g in said.DefaultIfEmpty()
+        select new GameDataEntryRow(
+            e.Id,
+            e.Source,
+            e.ExternalId,
+            e.IgdbAskedAt,
+            g == null ? null : g.Url,
+            g == null ? null : g.CoverImageId,
+            g == null ? null : (DateTimeOffset?)g.ReadAt);
+
+    /// <summary>The first value of the entries, in the order the covers are looked for: by store, then
+    /// by entry, the same every time.</summary>
+    private static string? First(List<GameDataEntryRow> entries, Func<GameDataEntryRow, string?> value) =>
+        entries.OrderBy(e => e.Source, StringComparer.Ordinal).ThenBy(e => e.Id).Select(value).FirstOrDefault(found => found is not null);
+
+    private sealed record GameDataEntryRow(
+        Guid Id,
+        string Source,
+        string ExternalId,
+        DateTimeOffset? IgdbAskedAt,
+        string? Url,
+        string? CoverImageId,
+        DateTimeOffset? ReadAt);
 
     public async Task<IReadOnlyDictionary<Guid, string?>> FindNamesAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct)
     {

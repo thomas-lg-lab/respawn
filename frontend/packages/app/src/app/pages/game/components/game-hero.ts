@@ -78,4 +78,10 @@ export class GameHero {
   });
 
   protected readonly store = computed(() => steamStoreAddress(this.game().stores));
+
+  /** The game's page on IGDB, when IGDB knows the game: only an address on IGDB's own site. */
+  protected readonly gameData = computed(() => {
+    const url = this.game().game_data?.url;
+    return url?.startsWith('https://www.igdb.com/games/') ? url : null;
+  });
 }

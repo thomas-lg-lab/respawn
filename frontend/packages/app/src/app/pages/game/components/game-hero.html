@@ -38,51 +38,84 @@
   </h1>
   @let said = status();
   <p
-    class="col-start-2 flex items-center gap-2 self-start type-caption text-muted wide:self-center"
-    data-status
+    class="col-start-2 flex flex-wrap items-center gap-2 self-start type-caption text-muted wide:self-center"
+    data-status-line
   >
-    <span
-      class="size-2.5 shrink-0 border"
-      [class.border-dashed]="said.kind === 'never'"
-      [class.border-muted]="said.kind === 'never'"
-      [class.border-transparent]="said.kind !== 'never'"
-      [class.bg-warn]="said.kind === 'missing' || said.kind === 'removed'"
-      [class.bg-recency-1]="recency() === 1"
-      [class.bg-recency-2]="recency() === 2"
-      [class.bg-recency-3]="recency() === 3"
-      [class.bg-recency-4]="recency() === 4 || said.kind === 'unknown' || said.kind === 'notOwned'"
-      aria-hidden="true"
-      [attr.data-recency]="recency()"
-    ></span>
-    @if (said.kind === 'last') {
-      <span [attr.title]="said.moment">{{ t('status.last', { ago: said.ago }) }}</span>
-    } @else {
-      {{ t('status.' + said.kind) }}
+    <span class="flex items-center gap-2" data-status>
+      <span
+        class="size-2.5 shrink-0 border"
+        [class.border-dashed]="said.kind === 'never'"
+        [class.border-muted]="said.kind === 'never'"
+        [class.border-transparent]="said.kind !== 'never'"
+        [class.bg-warn]="said.kind === 'missing' || said.kind === 'removed'"
+        [class.bg-recency-1]="recency() === 1"
+        [class.bg-recency-2]="recency() === 2"
+        [class.bg-recency-3]="recency() === 3"
+        [class.bg-recency-4]="
+          recency() === 4 || said.kind === 'unknown' || said.kind === 'notOwned'
+        "
+        aria-hidden="true"
+        [attr.data-recency]="recency()"
+      ></span>
+      @if (said.kind === 'last') {
+        <span [attr.title]="said.moment">{{ t('status.last', { ago: said.ago }) }}</span>
+      } @else {
+        {{ t('status.' + said.kind) }}
+      }
+    </span>
+    <!-- The game's pages elsewhere, after the status and as quiet as it: Steam's, then IGDB's,
+         the credit IGDB asks for. Not actions of the page. Beside the status on a wide screen;
+         a row of their own on a phone, with a finger's height each where the only pointer is
+         one. -->
+    @if (store() || gameData()) {
+      <span
+        class="flex basis-full items-center gap-x-3 wide:basis-auto wide:gap-x-2"
+        data-elsewhere
+      >
+        <span class="hidden wide:inline" aria-hidden="true">·</span>
+        @if (store(); as address) {
+          <a
+            class="inline-flex items-center gap-0.5 hover:text-text hover:underline touch-only:min-h-touch"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-store
+            [href]="address"
+            [attr.aria-label]="t('storePage')"
+          >
+            {{ t('storeLink') }}
+            <svg lucideArrowUpRight class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg>
+          </a>
+        }
+        @if (store() && gameData()) {
+          <span aria-hidden="true">·</span>
+        }
+        @if (gameData(); as address) {
+          <a
+            class="inline-flex items-center gap-0.5 hover:text-text hover:underline touch-only:min-h-touch"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-game-data
+            [href]="address"
+            [attr.aria-label]="t('gameDataPage')"
+          >
+            {{ t('gameDataLink') }}
+            <svg lucideArrowUpRight class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg>
+          </a>
+        }
+      </span>
     }
   </p>
 
-  @if (store() || launch()) {
+  <!-- The one action, which only a computer can do: on a touch device there is none, and no row
+       is left for it, which would add its own space under the hero. -->
+  @if (launch(); as address) {
     <div
-      class="col-span-2 mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-2 wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-center"
+      class="col-span-2 mt-1.5 flex items-center touch-only:hidden wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-center"
     >
-      @if (store(); as address) {
-        <a
-          class="inline-flex min-h-touch items-center gap-2 font-semibold hover:underline"
-          target="_blank"
-          rel="noopener noreferrer"
-          data-store
-          [href]="address"
-        >
-          {{ t('storePage') }}
-          <svg lucideArrowUpRight class="size-4" [strokeWidth]="2" aria-hidden="true"></svg>
-        </a>
-      }
-      @if (launch(); as address) {
-        <a rsButton variant="primary" class="touch-only:hidden" data-launch [href]="address">
-          <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
-          {{ t('launch') }}
-        </a>
-      }
+      <a rsButton variant="primary" data-launch [href]="address">
+        <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+        {{ t('launch') }}
+      </a>
     </div>
   }
 </section>

@@ -31,6 +31,18 @@ public sealed class GamesController(ICoverService covers, IGameService games, IP
     public async Task<GameResponse> Get([Description("The game, by its id in the catalogue.")] Guid id, CancellationToken ct) =>
         GameResponse.From(await games.GetGameAsync(Caller.Id(User), id, ct));
 
+    [HttpGet("credits")]
+    [Authorize]
+    [Produces("application/json")]
+    [EndpointSummary("The sources the instance credits")]
+    [EndpointDescription(
+        "The sources whose data the instance shows and whose terms ask for a credit, each with the page it "
+        + "leads to: IGDB once the instance has access to it, or holds anything it said. Empty otherwise.")]
+    [ProducesResponseType<CreditsResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    public async Task<CreditsResponse> Credits(CancellationToken ct) =>
+        CreditsResponse.From(await games.GetCreditsAsync(ct));
+
     [HttpGet("games/{id:guid}/months")]
     [Authorize]
     [Produces("application/json")]

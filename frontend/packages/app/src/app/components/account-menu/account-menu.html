@@ -52,6 +52,18 @@
         (characterPicked)="characterPicked.emit($event)"
       />
       <p class="type-caption text-muted">{{ t('settingsKept') }}</p>
+      @for (credit of credits(); track credit.source) {
+        <p class="type-caption text-muted" [attr.data-credit]="credit.source">
+          {{ t('gameDataFrom') }}
+          <a
+            class="font-semibold text-text hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+            [href]="credit.url"
+            >{{ credit.label }}</a
+          >
+        </p>
+      }
     </div>
 
     @if (providers().length) {

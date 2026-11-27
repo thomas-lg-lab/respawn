@@ -91,6 +91,7 @@
     "menu": "Compte et réglages",
     "administrator": "Administrateur",
     "settingsKept": "Ces réglages sont gardés sur votre compte.",
+    "gameDataFrom": "Données de jeu :",
     "settingsNotKept": "Votre compte n’a pas pu garder ce réglage : il ne vaut que dans ce navigateur pour l’instant.",
     "signOut": "Se déconnecter",
     "providers": "Fournisseurs de connexion",
@@ -378,6 +379,9 @@
       "unknown": "Dernière session inconnue"
     },
     "storePage": "Page Steam",
+    "gameDataPage": "Page IGDB",
+    "gameDataLink": "IGDB",
+    "storeLink": "Steam",
     "launch": "Lancer dans Steam",
     "hours": "{{ count }} h",
     "minutes": "{{ count }} min",

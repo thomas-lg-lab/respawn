@@ -45,6 +45,7 @@ function eldenRing(values: Partial<Game> = {}): Game {
     entries: [entry()],
     rank: { position: 3, launched: 457 },
     removed: null,
+    game_data: { source: 'igdb', url: 'https://www.igdb.com/games/elden-ring' },
     ...values,
   };
 }
@@ -144,12 +145,35 @@ describe('Game', () => {
     expect(screen.querySelector('[data-store]')?.getAttribute('href')).toBe(
       'https://store.steampowered.com/app/1245620/',
     );
+    expect(text(screen, '[data-store]')).toBe('Steam');
+    expect(screen.querySelector('[data-store]')?.getAttribute('aria-label')).toBe('Page Steam');
+    expect(screen.querySelector('[data-status-line] [data-store]')).not.toBeNull();
+    expect(text(screen, '[data-game-data]')).toBe('IGDB');
+    expect(screen.querySelector('[data-game-data]')?.getAttribute('aria-label')).toBe('Page IGDB');
+    // Both quiet, on the status line: not among the page's actions.
+    expect(screen.querySelector('[data-status-line] [data-game-data]')).not.toBeNull();
+    expect(screen.querySelector('[data-game-data]')?.getAttribute('href')).toBe(
+      'https://www.igdb.com/games/elden-ring',
+    );
     expect(screen.querySelector('[data-cover] img')?.getAttribute('src')).toBe(
       `/api/v1/games/${ID}/cover`,
     );
     // Opened from its address: it leads back to the library.
     expect(text(screen, '[data-back]')).toBe('Bibliothèque');
     expect(screen.querySelector('[data-back]')?.getAttribute('href')).toBe('/library');
+  });
+
+  it('leads to IGDB only where IGDB knows the game, on its own site', async () => {
+    const unknown = await open(eldenRing({ game_data: null }));
+    expect(unknown.screen.querySelector('[data-game-data]')).toBeNull();
+    expect(unknown.screen.querySelector('[data-store]')).not.toBeNull();
+  });
+
+  it('never leads elsewhere for IGDB', async () => {
+    const { screen } = await open(
+      eldenRing({ game_data: { source: 'igdb', url: 'https://elsewhere.example.org/games/x' } }),
+    );
+    expect(screen.querySelector('[data-game-data]')).toBeNull();
   });
 
   it('gives its four figures, each with what it is measured against', async () => {

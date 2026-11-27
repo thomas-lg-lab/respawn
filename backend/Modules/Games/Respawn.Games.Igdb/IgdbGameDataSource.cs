@@ -17,7 +17,7 @@ namespace Respawn.Games.Igdb;
 /// The answers are handed over untouched, beside what was read from them. IGDB gives 500 rows at most an
 /// answer: a list that may hold more is read page after page.
 /// </summary>
-internal sealed class IgdbGameDataSource(IgdbClient igdb, TimeProvider clock) : IGameDataSource
+internal sealed class IgdbGameDataSource(IgdbClient igdb, IgdbImages images, TimeProvider clock) : IGameDataSource
 {
     /// <summary>Which of IGDB's answers a reading is: the name its snapshots are kept under.</summary>
     public const string Kind = "external-games";
@@ -46,6 +46,12 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, TimeProvider clock) : 
     public IReadOnlyCollection<string> Stores => StoreNumbers.Keys;
 
     public bool HasAccess => igdb.HasAccess;
+
+    public string Label => "IGDB";
+
+    public Uri Home { get; } = new("https://www.igdb.com/");
+
+    public Task<Cover?> ReadCoverAsync(string imageId, CancellationToken ct) => images.ReadCoverAsync(imageId, ct);
 
     public int MatchesPerRequest => 500;
 

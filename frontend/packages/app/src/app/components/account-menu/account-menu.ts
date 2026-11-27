@@ -8,7 +8,7 @@ import {
   LucideLogOut,
   LucideSettings,
 } from '@lucide/angular';
-import type { Account } from '@respawn/data';
+import type { Account, Credit } from '@respawn/data';
 import { Avatar, Button, Disclosure, DisclosurePanel, DisclosureTrigger } from '@respawn/ui';
 import type { Character, Theme } from '@respawn/util';
 import { SettingsChoices } from '@app/components/settings-choices/settings-choices';
@@ -63,6 +63,8 @@ export class AccountMenu {
    * account (a navigation, not a call).
    */
   readonly providers = input<readonly LinkableProvider[]>([]);
+  /** The sources whose data the instance shows, credited under the settings. */
+  readonly credits = input<readonly Credit[]>([]);
   /** While the sign-out is on its way: its button waits. */
   readonly signingOut = input(false);
 

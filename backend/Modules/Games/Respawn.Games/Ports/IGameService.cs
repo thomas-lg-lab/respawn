@@ -11,4 +11,8 @@ public interface IGameService
     /// <exception cref="GamesException"><see cref="GamesError.UnknownGame"/>: the catalogue has no such
     /// game.</exception>
     Task<GameView> GetGameAsync(Guid ownerId, Guid gameId, CancellationToken ct);
+
+    /// <summary>The sources whose data the instance shows and credits: the game database, once the
+    /// instance has access to it or holds anything it said. Empty otherwise.</summary>
+    Task<IReadOnlyList<Credit>> GetCreditsAsync(CancellationToken ct);
 }

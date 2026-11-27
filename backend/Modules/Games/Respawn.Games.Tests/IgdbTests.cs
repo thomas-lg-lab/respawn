@@ -21,6 +21,35 @@ public sealed class IgdbTests : IDisposable
     public void Dispose() => Directory.Delete(_secrets, recursive: true);
 
     [Fact]
+    public async Task A_cover_is_asked_of_the_image_host_only_by_an_id_of_igdbs_shape_and_only_an_image_is_one()
+    {
+        var igdb = new FakeIgdb();
+        igdb.Images["t_cover_big_2x/co0fake72.jpg"] = new(FakeSteam.RecordedBytes("cover.jpg"));
+        igdb.Images["t_cover_big_2x/co0notimage.jpg"] = new("<html>not an image</html>"u8.ToArray());
+        await using var app = await igdb.StartAppAsync();
+
+        Assert.Equal("image/jpeg", (await Source(app).ReadCoverAsync("co0fake72", default))?.ContentType);
+        Assert.Null(await Source(app).ReadCoverAsync("co0notimage", default));
+        Assert.Null(await Source(app).ReadCoverAsync("co0missing", default));
+        Assert.Null(await Source(app).ReadCoverAsync("../../other", default));
+        Assert.Null(await Source(app).ReadCoverAsync("", default));
+
+        Assert.Equal(
+            ["t_cover_big_2x/co0fake72.jpg", "t_cover_big_2x/co0notimage.jpg", "t_cover_big_2x/co0missing.jpg"],
+            igdb.ImageRequests.Select(request => request.Path));
+        // Public images: neither the token nor Twitch is ever asked for.
+        Assert.Empty(igdb.TokenRequests);
+    }
+
+    [Fact]
+    public void The_image_host_follows_no_redirect()
+    {
+        using var transport = Igdb.DependencyInjection.ImagesTransport();
+
+        Assert.False(transport.AllowAutoRedirect);
+    }
+
+    [Fact]
     public async Task A_recorded_answer_is_read_as_igdb_says_it()
     {
         var igdb = new FakeIgdb();

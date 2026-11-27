@@ -383,6 +383,37 @@
         }
       }
     },
+    "/api/v1/credits": {
+      "get": {
+        "tags": [
+          "Games"
+        ],
+        "summary": "The sources the instance credits",
+        "description": "The sources whose data the instance shows and whose terms ask for a credit, each with the page it leads to: IGDB once the instance has access to it, or holds anything it said. Empty otherwise.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/games/{id}/months": {
       "get": {
         "tags": [
@@ -1425,6 +1456,39 @@
           }
         }
       },
+      "CreditResponse": {
+        "required": [
+          "source",
+          "label",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "CreditsResponse": {
+        "required": [
+          "credits"
+        ],
+        "type": "object",
+        "properties": {
+          "credits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreditResponse"
+            }
+          }
+        }
+      },
       "ErrorBody": {
         "required": [
           "code",
@@ -1445,6 +1509,21 @@
         "properties": {
           "error": {
             "$ref": "#/components/schemas/ErrorBody"
+          }
+        }
+      },
+      "GameDataPageResponse": {
+        "required": [
+          "source",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
           }
         }
       },
@@ -1510,7 +1589,8 @@
           "last_played_at",
           "entries",
           "rank",
-          "removed"
+          "removed",
+          "game_data"
         ],
         "type": "object",
         "properties": {
@@ -1574,6 +1654,16 @@
               },
               {
                 "$ref": "#/components/schemas/RemovedGameResponse"
+              }
+            ]
+          },
+          "game_data": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GameDataPageResponse"
               }
             ]
           }
