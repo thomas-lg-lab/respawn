@@ -56,9 +56,11 @@ and where your time went.
   reading come from Steam's Year in Review, from 2022 on.
 - **The home**: the game to resume, with "Launch in Steam", the ones played lately, your playtime, the last
   two weeks and the games never launched, the time played per year, the most played and their time map,
-  three never launched drawn at random, and the latest days played.
+  three never launched drawn at random, and the latest days played; each figure and the ranking open the
+  library on the games they count.
 - **The library** as covers or as a list, each browser keeping its own choice, searched, filtered (launched,
-  recent, never launched) and sorted; **the Time tab**, the time map in full.
+  recent, never launched) and sorted, the filter and the order kept on its address; **the Time tab**, the time
+  map in full.
 - **Steam's covers** wherever a game is shown, asked of Steam once and kept by the instance when it has a
   data directory; a cover is asked for only as it comes near the screen.
 - **The page of a game**, reached from wherever a game is shown and from the search: its time, its rank, this
