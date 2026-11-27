@@ -262,7 +262,7 @@ public sealed record GameDataPageResponse(string Source, string Url);
 /// <summary>A game's covers, as the signed-in account sees them.</summary>
 /// <param name="Sources">The sources the game has a cover from (steam, igdb): the stores that said where
 /// theirs is, then IGDB when it has one. The first is the game's own cover, shown to whoever chose
-/// none. Empty when none has.</param>
+/// none: once the instance keeps it, the source of the one it shows. Empty when none has.</param>
 /// <param name="Chosen">The source the account chose, one of the others; null while it chose none,
 /// or what it chose is gone.</param>
 public sealed record GameCoversResponse(IReadOnlyList<string> Sources, string? Chosen)

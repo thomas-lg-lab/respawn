@@ -15,7 +15,7 @@ public interface ICoverService
     /// With a source, the cover of that source alone, a store or the game database, kept in a slot of
     /// its own (<see cref="ImageSlots"/>) and looked for again the same way. A source that has no cover
     /// for the game, that the instance does not read, or that does not answer with nothing of it kept,
-    /// gives the game's own cover instead.</summary>
+    /// gives the game's own cover instead, never settled: the source's may come.</summary>
     /// <exception cref="GamesException"><see cref="GamesError.UnknownGame"/>: the catalogue has no such
     /// game.</exception>
     /// <exception cref="SourceException">No source gave a cover, and one of them could not be read: the

@@ -113,23 +113,52 @@ public sealed class CoverGate
 public sealed record GameDataCover(string? ImageId, bool Asked, DateTimeOffset? SaidAt = null);
 
 /// <summary>What a game has a cover from, as far as the catalogue knows: the stores that said where
-/// theirs is, and whether the game database gives one.</summary>
-/// <param name="Stores">The stores, by name, in no order.</param>
+/// theirs is, whether the game database gives one, and, where images are kept, whose cover the game
+/// shows as its own.</summary>
+/// <param name="Stores">The stores that said where their cover is, in no order.</param>
 /// <param name="GameData">Whether the game database gives the game a cover.</param>
-public sealed record CoverOrigins(IReadOnlyCollection<string> Stores, bool GameData)
+/// <param name="Shown">The game's own cover as it is kept; null while none is, or on an instance that
+/// keeps no image.</param>
+public sealed record CoverOrigins(IReadOnlyCollection<StoreCoverSaid> Stores, bool GameData, ShownCover? Shown = null)
 {
     public static readonly CoverOrigins None = new([], false);
 
-    /// <summary>The sources, in the order the game's own cover is looked for: the stores by name, then
-    /// the game database. The first is the game's own cover.</summary>
-    public IReadOnlyList<string> Sources(string gameDataSource) =>
-    [
-        .. Stores.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal),
-        .. GameData ? [gameDataSource] : Array.Empty<string>(),
-    ];
+    /// <summary>The sources, the game's own cover's first, then in the order its own cover is looked
+    /// for: the stores by name, then the game database.
+    ///
+    /// The kept cover is what the game shows, so it says which is first. A store's comes first whether
+    /// that store said where its cover is or not: Steam's image host has art for a game whose store names
+    /// no place. The game database's is kept only once the stores had none: a store counts again once
+    /// it said where its cover is after that, the next look asking it first.</summary>
+    public IReadOnlyList<string> Sources(string gameDataSource)
+    {
+        var shownStore = Shown is { } shown && shown.Source != gameDataSource ? shown.Source : null;
+        var stores = Stores
+            .Where(store => Shown is not { } own || own.Source != gameDataSource || store.SaidAt > own.CheckedAt)
+            .Select(store => store.Source)
+            .Where(store => store != shownStore)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal);
+        return
+        [
+            .. shownStore is null ? Array.Empty<string>() : [shownStore],
+            .. stores,
+            .. GameData || Shown?.Source == gameDataSource ? [gameDataSource] : Array.Empty<string>(),
+        ];
+    }
 
     /// <summary>An owner's choice while it still is one: a source the game has a cover from, other than
     /// its own cover's; null otherwise, the game showing its own.</summary>
     public static string? Chosen(IReadOnlyList<string> sources, string? choice) =>
         choice is not null && sources.Skip(1).Contains(choice, StringComparer.Ordinal) ? choice : null;
 }
+
+/// <summary>A store that said where a game's cover is.</summary>
+/// <param name="Source">The store, by name.</param>
+/// <param name="SaidAt">When it last said.</param>
+public sealed record StoreCoverSaid(string Source, DateTimeOffset? SaidAt);
+
+/// <summary>The cover a game shows as its own, as it is kept.</summary>
+/// <param name="Source">Who gave it: a store, or the game database.</param>
+/// <param name="CheckedAt">When its source was last asked for it.</param>
+public sealed record ShownCover(string Source, DateTimeOffset CheckedAt);

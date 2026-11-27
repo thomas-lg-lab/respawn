@@ -316,13 +316,18 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             from e in db.StoreEntries.AsNoTracking().Where(e => ids.Contains(e.GameId))
             join g in db.IgdbGames.AsNoTracking() on e.IgdbId equals (long?)g.IgdbId into said
             from g in said.DefaultIfEmpty()
-            select new { e.GameId, e.Source, HasPath = e.CoverPath != null, HasData = g != null && g.CoverImageId != null })
+            select new { e.GameId, e.Source, HasPath = e.CoverPath != null, e.CoverAskedAt, HasData = g != null && g.CoverImageId != null })
             .ToListAsync(ct);
+        var shown = await db.Images.AsNoTracking()
+            .Where(i => ids.Contains(i.GameId) && i.Kind == ImageKinds.Cover && i.Slot == ImageSlots.Own)
+            .Select(i => new { i.GameId, Shown = new ShownCover(i.Source, i.CheckedAt) })
+            .ToDictionaryAsync(i => i.GameId, i => i.Shown, ct);
         return rows.GroupBy(row => row.GameId).ToDictionary(
             game => game.Key,
             game => new CoverOrigins(
-                [.. game.Where(row => row.HasPath).Select(row => row.Source).Distinct(StringComparer.Ordinal)],
-                game.Any(row => row.HasData)));
+                [.. game.Where(row => row.HasPath).Select(row => new StoreCoverSaid(row.Source, row.CoverAskedAt))],
+                game.Any(row => row.HasData),
+                shown.GetValueOrDefault(game.Key)));
     }
 
     public Task<bool> HasGameDataAsync(CancellationToken ct) => db.IgdbGames.AnyAsync(ct);

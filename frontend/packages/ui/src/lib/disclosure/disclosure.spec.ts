@@ -70,6 +70,18 @@ describe('Disclosure', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('opens nothing while its button is marked disabled, and the button keeps the focus', async () => {
+    const { fixture, trigger, panel } = await create();
+    trigger.setAttribute('aria-disabled', 'true');
+    trigger.focus();
+
+    trigger.click();
+    await fixture.whenStable();
+
+    expect(panel.hidden).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('closes on a click outside, not on one inside', async () => {
     const { fixture, panel, inside, outside } = await opened();
 

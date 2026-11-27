@@ -31,7 +31,8 @@ public sealed record GameView(CatalogueGame Game, OwnedGame? Owned, GameRank? Ra
 /// <summary>The sources a game has a cover from, and the one an owner chose among them.</summary>
 /// <param name="Sources">The stores that said where their cover is, by name, then the game database
 /// when it gives one: the order a game's own cover is looked for in, its first being the cover shown
-/// without a choice. Empty when none has.</param>
+/// without a choice, the kept one's source once one is kept (<see cref="CoverOrigins.Sources"/>).
+/// Empty when none has.</param>
 /// <param name="Chosen">The source the owner chose, one of <paramref name="Sources"/>; null while they
 /// chose none, or their choice is gone from them.</param>
 public sealed record GameCovers(IReadOnlyList<string> Sources, string? Chosen);

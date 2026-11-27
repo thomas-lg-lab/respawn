@@ -111,6 +111,34 @@ public sealed class CoverChoiceTests : IDisposable
     }
 
     [Fact]
+    public async Task The_cover_a_game_shows_is_its_first_source_once_kept()
+    {
+        var (steam, igdb) = (new FakeSteam(), new FakeIgdb());
+        steam.Images["400/library_600x900.jpg"] = new(Jpeg);
+        igdb.Images["t_cover_big_2x/co0fake71.jpg"] = new(IgdbJpeg);
+        igdb.Images[Portal2Igdb] = new(IgdbJpeg);
+        await using var app = await StartAsync(steam, igdb, keeps: true);
+        using var browser = app.Browser();
+        var games = await ReadAllAsync(app, browser);
+
+        // Before a cover is shown, the stores' word: Portal's names no place, Portal 2's does.
+        Assert.Equal(("igdb", null), Covers(await GameAsync(browser, games["Portal"])));
+        Assert.Equal(("steam,igdb", null), Covers(await GameAsync(browser, games["Portal 2"])));
+
+        // Portal's art is where every game's was, its store naming no place: Steam's is shown, and IGDB's
+        // may be chosen. Portal 2's place has nothing: IGDB's is shown, and there is nothing to choose.
+        foreach (var name in new[] { "Portal", "Portal 2" })
+        {
+            using var shown = await browser.GetAsync($"/api/v1/games/{games[name]}/cover");
+            Assert.Equal(HttpStatusCode.OK, shown.StatusCode);
+        }
+
+        Assert.Equal(("steam,igdb", null), Covers(await GameAsync(browser, games["Portal"])));
+        Assert.Equal(("steam,igdb", "igdb"), Covers(await browser.PutAsJsonAsync($"/api/v1/games/{games["Portal"]}/cover-choice", new { source = "igdb" }).JsonAsync()));
+        Assert.Equal(("igdb", null), Covers(await GameAsync(browser, games["Portal 2"])));
+    }
+
+    [Fact]
     public async Task A_source_with_no_cover_for_the_game_gives_the_games_own()
     {
         var (steam, igdb) = (new FakeSteam(), new FakeIgdb());
@@ -119,12 +147,14 @@ public sealed class CoverChoiceTests : IDisposable
         using var browser = app.Browser();
         var portal2 = (await ReadAllAsync(app, browser))["Portal 2"];
 
-        // IGDB's image host has nothing at the cover's place, and an unknown source is no source.
-        foreach (var source in new[] { "igdb", "elsewhere" })
+        // IGDB's image host has nothing at the cover's place, and an unknown source is no source: the
+        // first may have one later, and its stand-in is kept an hour; the second never will.
+        foreach (var (source, kept) in new[] { ("igdb", TimeSpan.FromHours(1)), ("elsewhere", TimeSpan.FromDays(7)) })
         {
             using var cover = await browser.GetAsync($"/api/v1/games/{portal2}/cover?source={source}");
             Assert.Equal(Jpeg, await cover.Content.ReadAsByteArrayAsync());
             Assert.Equal($"\"steam-620-{Hash(Jpeg)}\"", cover.Headers.ETag?.Tag);
+            Assert.Equal(kept, cover.Headers.CacheControl?.MaxAge);
         }
     }
 
@@ -138,9 +168,11 @@ public sealed class CoverChoiceTests : IDisposable
         using var browser = app.Browser();
         var portal2 = (await ReadAllAsync(app, browser))["Portal 2"];
 
+        // Steam's in IGDB's place, kept by the browser for an hour, not for the week IGDB's would be.
         using var cover = await browser.GetAsync($"/api/v1/games/{portal2}/cover?source=igdb");
         Assert.Equal(HttpStatusCode.OK, cover.StatusCode);
         Assert.Equal(Jpeg, await cover.Content.ReadAsByteArrayAsync());
+        Assert.Equal(TimeSpan.FromHours(1), cover.Headers.CacheControl?.MaxAge);
         Assert.DoesNotContain(Files(), file => file.StartsWith("cover/igdb/", StringComparison.Ordinal));
     }
 

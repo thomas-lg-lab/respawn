@@ -22,12 +22,13 @@ public sealed class CoverService(
             ?? throw new GamesException(GamesError.UnknownGame);
 
         // A source's own cover, for who chose it; none from it, or a source that does not answer with
-        // nothing of it kept, and the game's own is the answer.
-        if (source is not null
-            && (source == gameData.Source || sources.Any(store => store.Source == source))
-            && await ChosenCoverAsync(gameId, ImageSlots.Of(source), entries, ct) is { Cover: not null } chosen)
+        // nothing of it kept, and the game's own is the answer. That one is never settled: it is in
+        // the place of the source's, which a browser is to ask for again once the source has it.
+        if (source is not null && (source == gameData.Source || sources.Any(store => store.Source == source)))
         {
-            return chosen;
+            return await ChosenCoverAsync(gameId, ImageSlots.Of(source), entries, ct) is { Cover: not null } chosen
+                ? chosen
+                : (await GetCoverAsync(gameId, ImageSlots.Own, entries, ct)) with { Settled = false };
         }
 
         return await GetCoverAsync(gameId, ImageSlots.Own, entries, ct);

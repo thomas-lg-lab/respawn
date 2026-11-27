@@ -214,8 +214,13 @@ describe('Game', () => {
     const chosen = await server.request(`/games/${ID}/cover-choice`);
     expect(chosen.request.method).toBe('PUT');
     expect(chosen.request.body).toEqual({ source: 'igdb' });
+    // On its way, the cover waits, and keeps the focus the closed panel gave back to it. (The
+    // request unanswered keeps the app busy: it is not waited for until it is answered.)
+    await vi.waitFor(() => expect(cover.getAttribute('aria-disabled')).toBe('true'));
+    expect(document.activeElement).toBe(cover);
     chosen.flush({ sources: ['steam', 'igdb'], chosen: 'igdb' });
     await harness.fixture.whenStable();
+    expect(cover.hasAttribute('aria-disabled')).toBe(false);
 
     expect(cover.querySelector('img')?.getAttribute('src')).toBe(
       `/api/v1/games/${ID}/cover?source=igdb`,

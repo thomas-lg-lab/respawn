@@ -69,18 +69,27 @@ export class Disclosure {
   }
 }
 
-/** The button of a disclosure: it says whether the panel is shown, and which one it is. */
+/**
+ * The button of a disclosure: it says whether the panel is shown, and which one it is. Marked
+ * `aria-disabled="true"`, it opens nothing and keeps the focus, where a `disabled` button would
+ * drop it: the focus that came back to it from the panel stays.
+ */
 @Directive({
   selector: 'button[rsDisclosureTrigger]',
   host: {
     type: 'button',
     '[attr.aria-expanded]': 'disclosure.open()',
     '[attr.aria-controls]': 'disclosure.panelId',
-    '(click)': 'disclosure.toggle()',
+    '(click)': 'onClick()',
   },
 })
 export class DisclosureTrigger {
   protected readonly disclosure = inject(Disclosure);
+  private readonly host = inject<ElementRef<HTMLButtonElement>>(ElementRef).nativeElement;
+
+  protected onClick(): void {
+    if (this.host.getAttribute('aria-disabled') !== 'true') this.disclosure.toggle();
+  }
 }
 
 /** The panel of a disclosure. It stays in the document while closed, hidden from everyone. */

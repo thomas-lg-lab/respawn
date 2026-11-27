@@ -118,7 +118,8 @@ public sealed class GamesController(ICoverService covers, IGameService games, IP
         + "503 cover_unavailable, which is not kept. Until the game's store has said where its cover is, a "
         + "few minutes after a sync, a cover is kept for an hour and no_cover is not kept. With source, the "
         + "cover of that source alone (one of the game's covers' sources, as an account's choice names it), "
-        + "kept apart; the game's own cover when that source has none. Any signed-in account may ask for the "
+        + "kept apart; the game's own cover when that source has none or does not answer, kept for an hour "
+        + "at most, the source's coming once it has one. Any signed-in account may ask for the "
         + "cover of any game; a client that asks for too many at once is answered 429.")]
     [ProducesResponseType<Stream>(StatusCodes.Status200OK, "image/jpeg", "image/png", "image/webp")]
     [ProducesResponseType(StatusCodes.Status304NotModified)]
