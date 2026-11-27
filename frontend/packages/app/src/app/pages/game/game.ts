@@ -217,14 +217,8 @@ export class Game {
   /** The games of the library the game database lists as close to this one. */
   protected readonly similar = computed(() => this.game.data()?.game_data?.similar ?? []);
 
-  /**
-   * Where "About" and the close games stand on a wide screen, so that the two columns end close
-   * together: beside how long it takes, the right column holds whichever the calendar leaves no
-   * room for on the left. Read from the game alone, so nothing moves once the history comes.
-   */
-  private readonly split = computed(() => !!this.game.data()?.game_data?.time_to_beat);
-  protected readonly aboutRight = computed(() => this.split() && !this.neverLaunched());
-  protected readonly similarRight = computed(() => this.split() && this.neverLaunched());
+  /** On a wide screen the close games stand under how long it takes, when there is a column for it. */
+  protected readonly similarRight = computed(() => !!this.game.data()?.game_data?.time_to_beat);
 
   /** A game never launched has no time to show: the page says so in their place. */
   protected readonly neverLaunched = computed(() => this.game.data()?.playtime_seconds === 0);

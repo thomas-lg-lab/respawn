@@ -102,11 +102,9 @@
       }
     }
 
-    <!-- Two columns on a wide screen, filled by what the page has, so that neither ends long
-         before the other: a game played has its calendar on the left, so "About" joins how long
-         it takes on the right and the close games go under the calendar; a game never launched
-         has none, so "About" takes the left and the close games the right. On a phone, one
-         column in a fixed order: the time, how long it takes, "About", the close games. -->
+    <!-- Two columns on a wide screen: the time and what the game is on the left, how long it
+         takes and the games close to it on the right. On a phone, one column in a fixed order:
+         the time, how long it takes, "About", the close games. -->
     <div
       class="grid items-start gap-5 wide:data-split:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
       [attr.data-split]="known.game_data?.time_to_beat ? '' : null"
@@ -165,8 +163,16 @@
             }
           }
         </div>
-        @if (!aboutRight()) {
-          <ng-container [ngTemplateOutlet]="about" />
+        @if (known.game_data; as said) {
+          @if (said.summary || tags().length || said.released_on) {
+            <rs-game-about
+              class="order-2 min-w-0 wide:order-none"
+              [summary]="said.summary"
+              [tags]="tags()"
+              [url]="igdbPage(said.url)"
+              [released]="released()"
+            />
+          }
         }
         @if (!similarRight()) {
           <ng-container [ngTemplateOutlet]="close" />
@@ -181,26 +187,10 @@
             [language]="currentLanguage()"
           />
         }
-        @if (aboutRight()) {
-          <ng-container [ngTemplateOutlet]="about" />
-        }
         @if (similarRight()) {
           <ng-container [ngTemplateOutlet]="close" />
         }
       </div>
-      <ng-template #about>
-        @if (known.game_data; as said) {
-          @if (said.summary || tags().length || said.released_on) {
-            <rs-game-about
-              class="order-2 min-w-0 wide:order-none"
-              [summary]="said.summary"
-              [tags]="tags()"
-              [url]="igdbPage(said.url)"
-              [released]="released()"
-            />
-          }
-        }
-      </ng-template>
       <ng-template #close>
         @if (similar().length) {
           <rs-game-similar
