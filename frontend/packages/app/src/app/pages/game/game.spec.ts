@@ -145,7 +145,13 @@ describe('Game', () => {
     expect(screen.querySelector('[data-store]')?.getAttribute('href')).toBe(
       'https://store.steampowered.com/app/1245620/',
     );
-    expect(text(screen, '[data-game-data]')).toBe('Page IGDB');
+    expect(text(screen, '[data-store]')).toBe('Steam');
+    expect(screen.querySelector('[data-store]')?.getAttribute('aria-label')).toBe('Page Steam');
+    expect(screen.querySelector('[data-status-line] [data-store]')).not.toBeNull();
+    expect(text(screen, '[data-game-data]')).toBe('IGDB');
+    expect(screen.querySelector('[data-game-data]')?.getAttribute('aria-label')).toBe('Page IGDB');
+    // Both quiet, on the status line: not among the page's actions.
+    expect(screen.querySelector('[data-status-line] [data-game-data]')).not.toBeNull();
     expect(screen.querySelector('[data-game-data]')?.getAttribute('href')).toBe(
       'https://www.igdb.com/games/elden-ring',
     );

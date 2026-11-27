@@ -380,6 +380,8 @@
     },
     "storePage": "Page Steam",
     "gameDataPage": "Page IGDB",
+    "gameDataLink": "IGDB",
+    "storeLink": "Steam",
     "launch": "Lancer dans Steam",
     "hours": "{{ count }} h",
     "minutes": "{{ count }} min",
