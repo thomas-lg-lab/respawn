@@ -30,6 +30,9 @@ public enum GamesError
     /// (<see cref="CoverAnswer"/>), named here for the refusal it becomes.</summary>
     NoCover,
 
+    /// <summary>The game has no cover from the source a choice names.</summary>
+    NoSuchCover,
+
     /// <summary>The owner's library does not have the game.</summary>
     NotInLibrary,
 

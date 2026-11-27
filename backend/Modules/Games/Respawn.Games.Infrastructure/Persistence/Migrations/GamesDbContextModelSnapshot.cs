@@ -17,7 +17,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261127091615_IgdbGameData";
+    public override string LastMigrationId => "20261127120440_CoverChoices";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -28,6 +28,35 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.CoverChoiceRow", b =>
+            {
+                b.Property<Guid>("OwnerId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("owner_id");
+
+                b.Property<Guid>("GameId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("game_id");
+
+                b.Property<DateTimeOffset>("ChosenAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("chosen_at");
+
+                b.Property<string>("Source")
+                    .IsRequired()
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("source");
+
+                b.HasKey("OwnerId", "GameId")
+                    .HasName("pk_cover_choices");
+
+                b.HasIndex("GameId")
+                    .HasDatabaseName("ix_cover_choices_game_id");
+
+                b.ToTable("cover_choices", "games");
+            });
 
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.GameRow", b =>
             {
@@ -144,6 +173,11 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("character varying(16)")
                     .HasColumnName("kind");
 
+                b.Property<string>("Slot")
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("slot");
+
                 b.Property<DateTimeOffset>("CheckedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("checked_at");
@@ -166,7 +200,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("character varying(32)")
                     .HasColumnName("source");
 
-                b.HasKey("GameId", "Kind")
+                b.HasKey("GameId", "Kind", "Slot")
                     .HasName("pk_images");
 
                 b.HasIndex("Kind", "Source", "Key")
@@ -586,6 +620,16 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_year_reviews_snapshot_id");
 
                 b.ToTable("year_reviews", "games");
+            });
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.CoverChoiceRow", b =>
+            {
+                b.HasOne("Respawn.Games.Infrastructure.Persistence.GameRow", null)
+                    .WithMany()
+                    .HasForeignKey("GameId")
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired()
+                    .HasConstraintName("fk_cover_choices_games_game_id");
             });
 
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.ImageRow", b =>

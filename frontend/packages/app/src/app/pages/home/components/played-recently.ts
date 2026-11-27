@@ -51,7 +51,7 @@ export class PlayedRecently {
         id: game.game_id,
         name: game.name,
         hue: coverHue(game.game_id),
-        cover: coverAddress(game.game_id),
+        cover: coverAddress(game.game_id, game.cover_source),
         recent: recent === null ? null : saidPlaytime(recent, language),
         ago: last === null ? null : formatAgo(last, this.now(), language),
         total: total === null ? null : saidPlaytime(total, language),

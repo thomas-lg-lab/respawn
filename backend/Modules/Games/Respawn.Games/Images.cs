@@ -15,6 +15,17 @@ public static class ImageKinds
     public const string Cover = "cover";
 }
 
+/// <summary>Where a game keeps an image of a kind: its own, the one it shows when nobody chose, and one
+/// per source asked for by name, for the owners who chose that source's. Two slots may show one file.</summary>
+public static class ImageSlots
+{
+    /// <summary>The game's own image: the first source's that has one, in the order they are looked for.</summary>
+    public const string Own = "";
+
+    /// <summary>The slot of the image of one source, asked for by name.</summary>
+    public static string Of(string source) => source;
+}
+
 /// <summary>Where a kept image is: its kind, its source, and its key in that source, with its media
 /// type. Two images that differ have different names; a refreshed image that changed gets a new
 /// one.</summary>

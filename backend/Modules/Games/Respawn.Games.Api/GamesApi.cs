@@ -53,6 +53,7 @@ public static class GamesApi
         GamesError.CredentialsUnavailable => Error(503, "keys_unavailable", "This instance cannot keep a key: it has no encryption key."),
         GamesError.UnknownGame => Error(404, "unknown_game", "No such game."),
         GamesError.NoCover => Error(404, "no_cover", "This game has no cover."),
+        GamesError.NoSuchCover => Error(409, "no_such_cover", "This game has no cover from that source."),
         GamesError.NotInLibrary => Error(404, "not_in_library", "This game is not in the library."),
         GamesError.StillListed => Error(409, "still_listed", "This game is still listed by its store."),
         GamesError.NotRemoved => Error(404, "not_removed", "This game was not taken out of the library."),

@@ -2,7 +2,7 @@ import { Service, inject } from '@angular/core';
 import { QueryClient, mutationOptions, queryOptions } from '@tanstack/angular-query';
 import { Api } from '../api/api';
 import { libraryKeys } from '../library/library.queries';
-import type { Credits, Game, GameMonths, LibraryMonth } from '../models/models';
+import type { Credits, Game, GameCovers, GameMonths, LibraryMonth } from '../models/models';
 
 /**
  * The keys of what the cache holds about one game and one month. They are under the
@@ -82,6 +82,26 @@ export class GameQueries {
       mutationFn: (id: string) =>
         this.api.put<void>(`/library/games/${encodeURIComponent(id)}`, null),
       onSuccess: () => this.libraryChanged(),
+    });
+  }
+
+  /**
+   * Chooses the cover the account sees for a game, by its source; null goes back to the game's
+   * own. The game takes the answer at once; the library, whose games name their chosen cover,
+   * is asked again.
+   */
+  chooseCover() {
+    return mutationOptions({
+      mutationFn: ({ id, source }: { id: string; source: string | null }) => {
+        const path = `/games/${encodeURIComponent(id)}/cover-choice`;
+        return source === null
+          ? this.api.delete<GameCovers>(path)
+          : this.api.put<GameCovers>(path, { source });
+      },
+      onSuccess: (covers, { id }) => {
+        this.client.setQueryData<Game>(gameKeys.one(id), (game) => game && { ...game, covers });
+        return this.client.invalidateQueries({ queryKey: libraryKeys.games });
+      },
     });
   }
 

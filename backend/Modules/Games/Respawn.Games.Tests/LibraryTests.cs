@@ -49,7 +49,7 @@ public sealed class LibraryTests
         string[] Fields(string schema) =>
             [.. schemas.GetProperty(schema).GetProperty("properties").EnumerateObject().Select(field => field.Name.Replace("_", "", StringComparison.Ordinal).ToLowerInvariant())];
         Assert.Equal(["total", "offset", "limit", "games"], Fields("LibraryResponse"));
-        Assert.Equal(["gameid", "name", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "entries"], Fields("LibraryGameResponse"));
+        Assert.Equal(["gameid", "name", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "entries", "coversource"], Fields("LibraryGameResponse"));
         Assert.Equal(
             ["storeentryid", "linkedaccountid", "source", "externalid", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "firstseenat", "asof", "missingsince"],
             Fields("LibraryEntryResponse"));
@@ -966,6 +966,12 @@ public sealed class LibraryTests
 
         public Task<IReadOnlyList<AccountOwnership>> FindGameOwnershipsAsync(Guid ownerId, Guid gameId, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<AccountOwnership>>([]);
+
+        public Task<string?> FindCoverChoiceAsync(Guid ownerId, Guid gameId, CancellationToken ct) =>
+            Task.FromResult<string?>(null);
+
+        public Task SetCoverChoiceAsync(Guid ownerId, Guid gameId, string? source, DateTimeOffset at, CancellationToken ct) =>
+            throw new InvalidOperationException("the library cannot be written");
 
         public Task SaveAsync(IReadOnlyCollection<AccountOwnership> owned, CancellationToken ct) =>
             throw new InvalidOperationException("the library cannot be written");

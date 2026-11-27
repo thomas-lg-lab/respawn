@@ -71,6 +71,12 @@ export type Game = Schemas['GameResponse'];
 /** A game's page in the game database (IGDB), when it knows the game. */
 export type GameDataPage = Schemas['GameDataPageResponse'];
 
+/**
+ * A game's covers: the sources it has one from, the game's own first, and the one the account
+ * chose among the others (null while it chose none).
+ */
+export type GameCovers = Schemas['GameCoversResponse'];
+
 /** The sources the instance credits (`GET /api/v1/credits`). */
 export type Credits = Schemas['CreditsResponse'];
 

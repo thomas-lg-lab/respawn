@@ -369,6 +369,18 @@
   "game": {
     "unnamed": "Unnamed game",
     "noCover": "No cover",
+    "cover": {
+      "change": "Change cover",
+      "title": "Cover",
+      "own": "{{ source }}’s by default. Only for you.",
+      "chosen": "Only for you.",
+      "backTo": "Back to {{ source }}’s",
+      "failed": "The cover could not be changed. Try again.",
+      "sources": {
+        "steam": "Steam",
+        "igdb": "IGDB"
+      }
+    },
     "status": {
       "last": "Last session {{ ago }}",
       "never": "Never launched",

@@ -16,20 +16,52 @@ public sealed class CoverService(
     ImageGate imageGate,
     TimeProvider clock) : ICoverService
 {
-    public async Task<CoverAnswer> GetCoverAsync(Guid gameId, CancellationToken ct)
+    public async Task<CoverAnswer> GetCoverAsync(Guid gameId, string? source, CancellationToken ct)
     {
         var entries = await catalogue.FindCoverEntriesAsync(gameId, ct)
             ?? throw new GamesException(GamesError.UnknownGame);
+
+        // A source's own cover, for who chose it; none from it, or a source that does not answer with
+        // nothing of it kept, and the game's own is the answer. That one is never settled: it is in
+        // the place of the source's, which a browser is to ask for again once the source has it.
+        if (source is not null && (source == gameData.Source || sources.Any(store => store.Source == source)))
+        {
+            return await ChosenCoverAsync(gameId, ImageSlots.Of(source), entries, ct) is { Cover: not null } chosen
+                ? chosen
+                : (await GetCoverAsync(gameId, ImageSlots.Own, entries, ct)) with { Settled = false };
+        }
+
+        return await GetCoverAsync(gameId, ImageSlots.Own, entries, ct);
+    }
+
+    /// <summary>The cover of one source's slot; null when that source could not be read and nothing of
+    /// it is kept.</summary>
+    private async Task<CoverAnswer?> ChosenCoverAsync(Guid gameId, string slot, IReadOnlyList<CoverEntry> entries, CancellationToken ct)
+    {
+        try
+        {
+            return await GetCoverAsync(gameId, slot, entries, ct);
+        }
+        catch (SourceException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The cover of a slot: the game's own, or one source's.</summary>
+    private async Task<CoverAnswer> GetCoverAsync(Guid gameId, string slot, IReadOnlyList<CoverEntry> entries, CancellationToken ct)
+    {
         if (!images.Keeps)
         {
-            var passed = await FetchAsync(entries, await catalogue.FindGameDataCoverAsync(gameId, ct), ct);
+            var (fetchedFrom, said) = Asked(slot, entries, await catalogue.FindGameDataCoverAsync(gameId, ct), keptFromStore: false);
+            var passed = await FetchAsync(fetchedFrom, said, ct);
             return new CoverAnswer(passed.Cover is { } cover ? Passed(cover, null) : null, passed.Settled);
         }
 
         // One fetch per game at a time: who waited finds the image the first one kept.
         await using var turn = await imageGate.EnterAsync(gameId, ct);
         var now = clock.GetUtcNow();
-        var kept = await catalogue.FindImageAsync(gameId, ImageKinds.Cover, ct);
+        var kept = await catalogue.FindImageAsync(gameId, ImageKinds.Cover, slot, ct);
         var keptFromStore = kept is not null && kept.Name.Source != gameData.Source;
 
         // A store's kept image stands on the stores' word alone: what the game database says is asked
@@ -39,8 +71,12 @@ public sealed class CoverService(
             return new CoverAnswer(fromStore, true);
         }
 
+        // The game database's own slot does not wait for the stores: their covers are not its.
         var data = await catalogue.FindGameDataCoverAsync(gameId, ct);
-        if (kept is not null && !keptFromStore && IsGameDataImageCurrent(kept, entries, data, now) && await OpenAsync(kept, ct) is { } current)
+        if (kept is not null
+            && !keptFromStore
+            && IsGameDataImageCurrent(kept, slot == ImageSlots.Own ? entries : [], data, now)
+            && await OpenAsync(kept, ct) is { } current)
         {
             return new CoverAnswer(current, true);
         }
@@ -48,9 +84,8 @@ public sealed class CoverService(
         Fetched fetched;
         try
         {
-            // A store's image the store no longer has stays the game's: it is the art made for a
-            // library, which the game database's never replaces.
-            fetched = await FetchAsync(entries, keptFromStore ? data with { ImageId = null } : data, ct);
+            var (from, said) = Asked(slot, entries, data, keptFromStore);
+            fetched = await FetchAsync(from, said, ct);
         }
         catch (SourceException) when (kept is not null)
         {
@@ -71,7 +106,7 @@ public sealed class CoverService(
             // the image the game will show.
             if (fetched.Keep
                 && ImageName.Of(ImageKinds.Cover, fetched.Source!, fetched.Key!, found) is { } name
-                && await KeepAsync(gameId, new KeptImage(name, now), found, ct))
+                && await KeepAsync(gameId, slot, new KeptImage(name, now), found, ct))
             {
                 return new CoverAnswer(Passed(found, name.Tag), true);
             }
@@ -85,7 +120,7 @@ public sealed class CoverService(
         {
             if (fetched.Settled)
             {
-                await catalogue.CheckedImageAsync(gameId, ImageKinds.Cover, now, ct);
+                await catalogue.CheckedImageAsync(gameId, ImageKinds.Cover, slot, now, ct);
             }
 
             return new CoverAnswer(only, fetched.Settled);
@@ -93,6 +128,16 @@ public sealed class CoverService(
 
         return new CoverAnswer(null, fetched.Settled);
     }
+
+    /// <summary>What a slot's cover is asked of: for the game's own, every store then the game database,
+    /// except that a store's image the store no longer has stays the game's (it is the art made for a
+    /// library, which the game database's never replaces); for a store's, that store's entries alone;
+    /// for the game database's, it alone.</summary>
+    private (IReadOnlyList<CoverEntry> Entries, GameDataCover Data) Asked(
+        string slot, IReadOnlyList<CoverEntry> entries, GameDataCover data, bool keptFromStore) =>
+        slot == ImageSlots.Own ? (entries, keptFromStore ? data with { ImageId = null } : data)
+        : slot == ImageSlots.Of(gameData.Source) ? ([], data)
+        : ([.. entries.Where(entry => ImageSlots.Of(entry.Source) == slot)], new GameDataCover(null, Asked: true));
 
     /// <summary>Whether a store's kept image still stands: it was asked for less than
     /// <see cref="CoverSchedule.AskAgainAfter"/> ago, after its store last said where the cover is, a
@@ -124,7 +169,7 @@ public sealed class CoverService(
     /// <summary>Writes the image and makes it the one the game shows, in its file's turn, then removes the
     /// file it showed before once no game shows it, in that file's turn: a file another game is being
     /// given is never removed under it. False when the image could not be written.</summary>
-    private async Task<bool> KeepAsync(Guid gameId, KeptImage image, Cover cover, CancellationToken ct)
+    private async Task<bool> KeepAsync(Guid gameId, string slot, KeptImage image, Cover cover, CancellationToken ct)
     {
         ImageName? replaced;
         await using (await imageGate.EnterAsync(image.Name, ct))
@@ -136,7 +181,7 @@ public sealed class CoverService(
 
             try
             {
-                replaced = await catalogue.KeepImageAsync(gameId, image, ct);
+                replaced = await catalogue.KeepImageAsync(gameId, slot, image, ct);
             }
             catch
             {

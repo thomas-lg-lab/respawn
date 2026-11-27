@@ -35,6 +35,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<IgdbGameRow> IgdbGames => Set<IgdbGameRow>();
 
+    public DbSet<CoverChoiceRow> CoverChoices => Set<CoverChoiceRow>();
+
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
     /// migration at first connection and the design-time tools.</summary>
     public static void Configure(DbContextOptionsBuilder options, DbDataSource dataSource) =>
@@ -175,10 +177,11 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
         modelBuilder.Entity<ImageRow>(image =>
         {
             image.ToTable("images");
-            // One image per game and kind; a file is found again by its name, to know whether another
-            // game still shows it before it is removed.
-            image.HasKey(i => new { i.GameId, i.Kind });
+            // One image per game, kind and slot; a file is found again by its name, to know whether
+            // another game or slot still shows it before it is removed.
+            image.HasKey(i => new { i.GameId, i.Kind, i.Slot });
             image.Property(i => i.Kind).HasMaxLength(Limits.ImageKind);
+            image.Property(i => i.Slot).HasMaxLength(Limits.Source);
             image.Property(i => i.Source).HasMaxLength(Limits.Source);
             image.Property(i => i.Key).HasMaxLength(Limits.ImageKey);
             image.Property(i => i.ContentType).HasMaxLength(Limits.ContentType);
@@ -198,6 +201,16 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             game.Property(g => g.Url).HasMaxLength(Limits.GameDataUrl);
             game.Property(g => g.CoverImageId).HasMaxLength(Limits.GameDataWord);
             game.Property(g => g.Summary).HasMaxLength(Limits.GameDataSummary);
+        });
+
+        modelBuilder.Entity<CoverChoiceRow>(choice =>
+        {
+            choice.ToTable("cover_choices");
+            // An owner's choice for a game, one at most: the library reads them all by owner.
+            choice.HasKey(c => new { c.OwnerId, c.GameId });
+            choice.Property(c => c.Source).HasMaxLength(Limits.Source);
+            choice.HasIndex(c => c.GameId);
+            choice.HasOne<GameRow>().WithMany().HasForeignKey(c => c.GameId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

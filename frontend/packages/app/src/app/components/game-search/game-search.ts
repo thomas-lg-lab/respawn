@@ -103,7 +103,7 @@ export class GameSearch {
         title,
         cut: foundIn(title, this.asked()) ?? { before: title, found: '', after: '' },
         hue: coverHue(game.game_id),
-        cover: coverAddress(game.game_id),
+        cover: coverAddress(game.game_id, game.cover_source),
         time:
           game.playtime_seconds === null
             ? 'unknown'

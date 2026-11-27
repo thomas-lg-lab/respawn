@@ -11,6 +11,7 @@ export function game(name: string | null, values: Partial<LibraryGame> = {}): Li
     recent_playtime_seconds: 0,
     last_played_at: null,
     entries: [],
+    cover_source: null,
     ...values,
   };
 }

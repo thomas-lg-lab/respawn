@@ -11,6 +11,7 @@ public sealed class LibraryService(
     ICatalogue catalogue,
     ILibraryStore library,
     IEnumerable<ILibrarySource> sources,
+    IGameDataSource gameData,
     TimeProvider clock) : ILibraryService
 {
     /// <summary>How far ahead of this clock a source's may be. A reading dated later than that is a
@@ -293,9 +294,30 @@ public sealed class LibraryService(
         return removed.Count > 0 ? removed : throw new GamesException(GamesError.NotRemoved);
     }
 
-    /// <summary>An owner's library, a game once however many entries it is owned through.</summary>
-    private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct) =>
-        OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow());
+    /// <summary>An owner's library, a game once however many entries it is owned through, each with
+    /// the cover its owner chose while it still is one, as the game's page says it.</summary>
+    private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct)
+    {
+        var games = OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow());
+        Guid[] chosen = [.. games.Where(game => game.CoverSource is not null).Select(game => game.GameId)];
+        if (chosen.Length == 0)
+        {
+            return games;
+        }
+
+        var origins = await catalogue.FindCoverOriginsAsync(chosen, ct);
+        return
+        [
+            .. games.Select(game => game.CoverSource is null
+                ? game
+                : game with
+                {
+                    CoverSource = CoverOrigins.Chosen(
+                        (origins.GetValueOrDefault(game.GameId) ?? CoverOrigins.None).Sources(gameData.Source),
+                        game.CoverSource),
+                }),
+        ];
+    }
 
     /// <summary>The order of a library. What cannot be placed comes last, and two games the order does
     /// not tell apart come by name, then by id: a page never depends on chance.</summary>

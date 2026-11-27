@@ -6,8 +6,22 @@
   data-hero
   *transloco="let t; prefix: 'game'"
 >
-  <!-- Decoration: the title is written beside it. -->
-  @if (noCover()) {
+  <!-- Decoration: the title is written beside it. With more than one source of a cover, the cover
+       is the way to choose among them, and stays one when it could not be shown. -->
+  @if (choosable()) {
+    <rs-cover-choice
+      class="row-span-2 w-22 shrink-0 wide:w-37"
+      [gameId]="game().game_id"
+      [hue]="hue()"
+      [covers]="game().covers"
+      [pending]="choosing()"
+      [broken]="noCover()"
+      [initial]="initial()"
+      (picked)="coverPicked.emit($event)"
+      (failed)="noCover.set(true)"
+      (opened)="coverOpened.emit()"
+    />
+  } @else if (noCover()) {
     <div
       class="row-span-2 flex aspect-[2/3] w-22 shrink-0 flex-col items-center justify-center gap-1 rounded-field border-2 border-dashed border-control-line p-2 text-center text-muted wide:w-37"
       aria-hidden="true"

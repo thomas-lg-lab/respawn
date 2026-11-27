@@ -11,6 +11,7 @@ function game(name: string, playtime: number, values: Partial<LibraryGame> = {})
     recent_playtime_seconds: 0,
     last_played_at: null,
     entries: [],
+    cover_source: null,
     ...values,
   };
 }

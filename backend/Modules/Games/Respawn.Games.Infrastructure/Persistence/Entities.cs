@@ -270,14 +270,18 @@ public sealed class SyncRunRow
     public bool OwnCredential { get; set; }
 }
 
-/// <summary>The image a game shows for a kind, kept as a file of the data directory, named by its kind,
-/// its source and its key (<see cref="ImageName"/>), never by the game. Only on an instance that keeps
-/// images.</summary>
+/// <summary>The image a game shows for a kind in a slot, kept as a file of the data directory, named by
+/// its kind, its source and its key (<see cref="ImageName"/>), never by the game. Only on an instance
+/// that keeps images.</summary>
 public sealed class ImageRow
 {
     public Guid GameId { get; set; }
 
     public string Kind { get; set; } = "";
+
+    /// <summary>Empty for the game's own image; a source's name for that source's, asked for by name
+    /// (<see cref="ImageSlots"/>).</summary>
+    public string Slot { get; set; } = "";
 
     public string Source { get; set; } = "";
 
@@ -287,4 +291,17 @@ public sealed class ImageRow
 
     /// <summary>When its source was last asked for it.</summary>
     public DateTimeOffset CheckedAt { get; set; }
+}
+
+/// <summary>The cover an owner chose for a game, by its source: theirs alone, every other account
+/// seeing the game's own.</summary>
+public sealed class CoverChoiceRow
+{
+    public Guid OwnerId { get; set; }
+
+    public Guid GameId { get; set; }
+
+    public string Source { get; set; } = "";
+
+    public DateTimeOffset ChosenAt { get; set; }
 }

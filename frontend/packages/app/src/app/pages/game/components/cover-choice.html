@@ -1,0 +1,107 @@
+<div
+  class="relative"
+  rsDisclosure
+  #choice="rsDisclosure"
+  (openChange)="toggled($event)"
+  *transloco="let t; prefix: 'game'"
+>
+  <!-- The cover is the button. Its name is what it does; the image is decoration. -->
+  <button
+    rsDisclosureTrigger
+    class="group relative block w-full rounded-field focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-focus"
+    data-cover-button
+    [attr.aria-label]="t('cover.change')"
+    [attr.aria-disabled]="pending() || null"
+  >
+    @if (broken()) {
+      <span
+        class="flex aspect-[2/3] w-full flex-col items-center justify-center gap-1 rounded-field border-2 border-dashed border-control-line p-2 text-center text-muted"
+        aria-hidden="true"
+        data-no-cover
+      >
+        <span class="type-page-title">{{ initial() }}</span>
+        <span class="type-caption">{{ t('noCover') }}</span>
+      </span>
+    } @else {
+      <rs-cover
+        class="w-full shadow-raised"
+        aria-hidden="true"
+        data-cover
+        eager
+        [hue]="hue()"
+        [src]="src()"
+        (failed)="failed.emit()"
+      />
+    }
+    <!-- Shown when pointed at, reached with the keyboard, or open; pressed, on a touch device. -->
+    <span
+      class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-field bg-scrim p-2 text-center type-caption font-semibold text-on-scrim opacity-0 transition-opacity duration-hover group-hover:opacity-100 group-focus-visible:opacity-100 group-aria-expanded:opacity-100 touch-only:group-hover:opacity-0 touch-only:group-active:opacity-100"
+      aria-hidden="true"
+      data-cover-backdrop
+    >
+      <svg lucideImage class="size-5.5" [strokeWidth]="2" aria-hidden="true"></svg>
+      <span class="hidden wide:inline">{{ t('cover.change') }}</span>
+    </span>
+    <!-- Where nothing is pointed at, the mark that says the cover can be changed. -->
+    <span
+      class="absolute end-1 bottom-1 hidden size-6.5 place-items-center rounded-pill border border-on-scrim/20 bg-scrim text-on-scrim touch-only:grid"
+      aria-hidden="true"
+      data-cover-mark
+    >
+      <svg lucideImage class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg>
+    </span>
+  </button>
+
+  <section
+    rsDisclosurePanel
+    class="absolute top-full left-0 z-10 mt-2 w-65 max-w-[calc(100cqw-2rem)] origin-top-left animate-overlay-in rounded-card border border-line bg-surface-2 p-3.5 shadow-overlay"
+    [attr.aria-label]="t('cover.title')"
+    data-cover-panel
+  >
+    <p class="mb-2.5 type-caption text-muted">{{ t('cover.title') }}</p>
+    <!-- Buttons, each in the tab order: the one shown is pressed. -->
+    <div class="grid grid-cols-2 gap-2.5" role="group" [attr.aria-label]="t('cover.title')">
+      @for (source of covers().sources; track source) {
+        <button
+          type="button"
+          class="group flex flex-col items-center gap-1.5 rounded-thumb type-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          [attr.aria-pressed]="source === shown()"
+          [attr.data-cover-source]="source"
+          (click)="pick(source, choice)"
+        >
+          <rs-cover
+            class="w-full border-2 border-transparent group-aria-pressed:border-accent"
+            aria-hidden="true"
+            [hue]="hue()"
+            [src]="address(source)"
+          />
+          <span
+            class="inline-flex items-center gap-1 group-aria-pressed:font-semibold group-aria-pressed:text-accent-text"
+          >
+            @if (source === shown()) {
+              <svg lucideCheck class="size-3.5" [strokeWidth]="2.5" aria-hidden="true"></svg>
+            }
+            {{ t('cover.sources.' + source) }}
+          </span>
+        </button>
+      }
+    </div>
+    @if (own(); as ownSource) {
+      <p class="mt-2.5 type-caption text-muted" data-cover-hint>
+        @if (covers().chosen) {
+          {{ t('cover.chosen') }}
+          <button
+            type="button"
+            class="font-semibold text-text underline"
+            data-cover-reset
+            (click)="pick(ownSource, choice)"
+          >
+            {{ t('cover.backTo', { source: t('cover.sources.' + ownSource) }) }}
+          </button>
+        } @else {
+          {{ t('cover.own', { source: t('cover.sources.' + ownSource) }) }}
+        }
+      </p>
+    }
+  </section>
+</div>

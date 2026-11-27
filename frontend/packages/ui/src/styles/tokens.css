@@ -41,6 +41,10 @@
   --rs-inverse: var(--rs-text);
   --rs-on-inverse: var(--rs-bg);
 
+  /* Colour: what dims an image to write on it. Dark in both themes: an image is its own light. */
+  --rs-scrim: rgb(8 10 15 / 0.62);
+  --rs-on-scrim: #f2f4f8;
+
   /* Colour: data. The same in both themes; a tile carries its own text colour. */
   --rs-recency-1: #ff8a3d;
   --rs-on-recency-1: #1a0e04;

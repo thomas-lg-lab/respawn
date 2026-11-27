@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, linkedSignal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideArrowUpRight, LucidePlay } from '@lucide/angular';
@@ -7,6 +7,7 @@ import { Button, Cover } from '@respawn/ui';
 import { formatAgo, formatMoment } from '@app/format/format';
 import { coverHue, isMissing, steamLaunchAddress, steamStoreAddress } from '@app/games/game-list';
 import { type Recency, recency } from '@app/games/time-map';
+import { CoverChoice } from './cover-choice';
 
 /**
  * Where the game stands for its owner, in one fact under its title: its last session, never
@@ -17,14 +18,15 @@ type Status =
   | { readonly kind: 'never' | 'missing' | 'removed' | 'notOwned' | 'unknown' };
 
 /**
- * The head of a game's page: its cover, its title and where it stands, the way to its page on
- * the store and, on a computer, to launch it in Steam. A press of "launch" asks the Steam
+ * The head of a game's page: its cover, which chooses among the game's covers when it has more
+ * than one, its title and where it stands, the way to its page on the store and, on a
+ * computer, to launch it in Steam. A press of "launch" asks the Steam
  * client of the machine it is pressed on, so a device whose only pointer is a finger does
  * not offer it, whatever its width.
  */
 @Component({
   selector: 'rs-game-hero',
-  imports: [TranslocoDirective, LucideArrowUpRight, LucidePlay, Button, Cover],
+  imports: [TranslocoDirective, LucideArrowUpRight, LucidePlay, Button, Cover, CoverChoice],
   templateUrl: './game-hero.html',
 })
 export class GameHero {
@@ -32,11 +34,22 @@ export class GameHero {
   readonly language = input.required<string>();
   /** The moment "ago" is counted from. */
   readonly now = input.required<number>();
+  /** While a choice of cover is on its way. */
+  readonly choosing = input(false);
+
+  /** A cover was chosen, by its source; null for the game's own. */
+  readonly coverPicked = output<string | null>();
+  /** The covers were opened, to choose again. */
+  readonly coverOpened = output<void>();
 
   private readonly sanitizer = inject(DomSanitizer);
 
   protected readonly hue = computed(() => coverHue(this.game().game_id));
-  protected readonly cover = computed(() => coverAddress(this.game().game_id));
+  protected readonly cover = computed(() =>
+    coverAddress(this.game().game_id, this.game().covers.chosen),
+  );
+  /** More than one source has a cover for the game: the account may choose. */
+  protected readonly choosable = computed(() => this.game().covers.sources.length > 1);
   /** The cover could not be shown: the game has none, or its source did not answer. */
   protected readonly noCover = linkedSignal({ source: this.cover, computation: () => false });
 
