@@ -345,7 +345,9 @@
     "noMatch": "No game matches.",
     "shownOne": "{{ shown }} game shown out of {{ total }}",
     "shownMany": "{{ shown }} games shown out of {{ total }}",
-    "more": "Show more"
+    "more": "Show more",
+    "genre": "Genre or theme: “{{ genre }}”",
+    "clearGenre": "All genres and themes"
   },
   "time": {
     "title": "Time",
@@ -461,6 +463,29 @@
         "putBack": "Put it back in my library",
         "dismiss": "Leave it out"
       }
+    },
+    "tags": {
+      "label": "Genres and themes",
+      "more": "+ {{ count }}",
+      "moreLabel": "See all genres and themes, {{ count }} more"
+    },
+    "durations": {
+      "title": "How long it takes",
+      "you": "You · {{ time }}",
+      "hastily": "Rushing",
+      "normally": "Normally",
+      "completely": "At 100%",
+      "left": "{{ time }} left",
+      "reached": "reached",
+      "beyond": "reached, + {{ time }}",
+      "sourceOne": "From 1 player, on IGDB",
+      "sourceMany": "From {{ count }} players, on IGDB",
+      "source": "On IGDB"
+    },
+    "about": {
+      "title": "About",
+      "tags": "All its genres and themes",
+      "source": "Game data: IGDB"
     }
   },
   "notFound": {

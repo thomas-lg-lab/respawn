@@ -217,7 +217,8 @@ public sealed class GameTests
         Assert.Equal(
             ["game_id", "name", "stores", "playtime_seconds", "recent_playtime_seconds", "last_played_at", "entries", "rank", "removed", "game_data", "covers"],
             Fields("GameResponse"));
-        Assert.Equal(["source", "url"], Fields("GameDataPageResponse"));
+        Assert.Equal(["source", "url", "genres", "themes", "summary", "time_to_beat"], Fields("GameDataResponse"));
+        Assert.Equal(["hastily_seconds", "normally_seconds", "completely_seconds", "count"], Fields("TimeToBeatResponse"));
         Assert.Equal(["sources", "chosen"], Fields("GameCoversResponse"));
         Assert.Equal(["source"], Fields("CoverChoiceRequest"));
         Assert.Equal(["200", "401", "403", "404", "409", "422"], StatusesOf("/api/v1/games/{id}/cover-choice", "put"));

@@ -7,8 +7,7 @@ namespace Respawn.Games;
 /// <param name="Id">The canonical record.</param>
 /// <param name="Name">Null while no source has named the game.</param>
 /// <param name="Stores">Its store entries, in no order; none for a record no store knows yet.</param>
-/// <param name="GameDataUrl">Its page in the game database, when the database knows it and gave one.</param>
-public sealed record CatalogueGame(Guid Id, string? Name, IReadOnlyList<GameStore> Stores, string? GameDataUrl = null);
+public sealed record CatalogueGame(Guid Id, string? Name, IReadOnlyList<GameStore> Stores);
 
 /// <summary>A game as one store knows it.</summary>
 public sealed record GameStore(Guid StoreEntryId, string Source, string ExternalId);
@@ -26,10 +25,10 @@ public sealed record GameRank(int Position, int Launched);
 /// <param name="Rank">Null when the owner never launched it.</param>
 /// <param name="Removed">What the owner took out of their library of it; null when nothing was.</param>
 /// <param name="Covers">The covers the game has, and the one its owner chose.</param>
-/// <param name="GameData">Its page in the game database, under the database's name; null when the
-/// catalogue has none.</param>
+/// <param name="GameData">What the game database says of it, under the database's name; null when the
+/// catalogue has nothing from it.</param>
 public sealed record GameView(
-    CatalogueGame Game, OwnedGame? Owned, GameRank? Rank, RemovedGame? Removed, GameCovers Covers, GameDataPage? GameData);
+    CatalogueGame Game, OwnedGame? Owned, GameRank? Rank, RemovedGame? Removed, GameCovers Covers, GameDataSaid? GameData);
 
 /// <summary>The sources a game has a cover from, and the one an owner chose among them.</summary>
 /// <param name="Sources">The stores that said where their cover is, by name, then the game database
@@ -40,10 +39,20 @@ public sealed record GameView(
 /// chose none, or their choice is gone from them.</param>
 public sealed record GameCovers(IReadOnlyList<string> Sources, string? Chosen);
 
-/// <summary>A game's page in the game database, for a person to follow.</summary>
+/// <summary>What the game database says of a game, as its page shows it.</summary>
 /// <param name="Source">The database, as the catalogue names it.</param>
-/// <param name="Url">The page.</param>
-public sealed record GameDataPage(string Source, string Url);
+/// <param name="Url">The game's page there, for a person to follow; null when the database gave none.</param>
+/// <param name="Genres">Its genres, in the database's words and order; empty when it gave none.</param>
+/// <param name="Themes">Its themes, likewise.</param>
+/// <param name="Summary">What it is about, in the database's words (IGDB: English); null when none.</param>
+/// <param name="TimeToBeat">How long players say it takes; null when none said.</param>
+public sealed record GameDataSaid(
+    string Source,
+    string? Url,
+    IReadOnlyList<string> Genres,
+    IReadOnlyList<string> Themes,
+    string? Summary,
+    TimeToBeat? TimeToBeat);
 
 /// <summary>A source whose data the instance shows, to be credited where its users can see it.</summary>
 /// <param name="Source">The source, as the catalogue names it.</param>

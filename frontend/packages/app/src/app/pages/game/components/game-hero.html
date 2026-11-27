@@ -2,15 +2,16 @@
      right, on the state's line and centred with it, so the title never runs beside them; on a
      phone they go under the whole. -->
 <section
-  class="grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end gap-x-7 gap-y-2 rounded-hero border border-line bg-surface p-4 wide:grid-cols-[auto_minmax(0,1fr)_auto] wide:px-7 wide:py-6"
+  class="group/hero grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end wide:data-tagged:grid-rows-[1fr_auto_auto] gap-x-7 gap-y-2 rounded-hero border border-line bg-surface p-4 wide:grid-cols-[auto_minmax(0,1fr)_auto] wide:px-7 wide:py-6"
   data-hero
+  [attr.data-tagged]="tags().length ? '' : null"
   *transloco="let t; prefix: 'game'"
 >
   <!-- Decoration: the title is written beside it. With more than one source of a cover, the cover
        is the way to choose among them, and stays one when it could not be shown. -->
   @if (choosable()) {
     <rs-cover-choice
-      class="row-span-2 w-22 shrink-0 wide:w-37"
+      class="row-span-2 w-22 shrink-0 wide:w-37 wide:group-data-tagged/hero:row-span-3"
       [gameId]="game().game_id"
       [hue]="hue()"
       [covers]="game().covers"
@@ -23,7 +24,7 @@
     />
   } @else if (noCover()) {
     <div
-      class="row-span-2 flex aspect-[2/3] w-22 shrink-0 flex-col items-center justify-center gap-1 rounded-field border-2 border-dashed border-control-line p-2 text-center text-muted wide:w-37"
+      class="row-span-2 flex aspect-[2/3] w-22 wide:group-data-tagged/hero:row-span-3 shrink-0 flex-col items-center justify-center gap-1 rounded-field border-2 border-dashed border-control-line p-2 text-center text-muted wide:w-37"
       aria-hidden="true"
       data-no-cover
     >
@@ -32,7 +33,7 @@
     </div>
   } @else {
     <rs-cover
-      class="row-span-2 w-22 shrink-0 shadow-raised wide:w-37"
+      class="row-span-2 w-22 shrink-0 shadow-raised wide:w-37 wide:group-data-tagged/hero:row-span-3"
       aria-hidden="true"
       data-cover
       eager
@@ -119,6 +120,31 @@
       </span>
     }
   </p>
+
+  <!-- The first genres and themes, each leading to the library narrowed to it; the rest are in
+       the page's "About", which the last pill leads to. Under the title on a wide screen,
+       across the whole hero on a phone. -->
+  @if (tags().length) {
+    <rs-game-tags
+      class="col-span-2 mt-1 wide:col-span-1 wide:col-start-2"
+      [tags]="shownTags()"
+      [label]="t('tags.label')"
+    >
+      @if (moreTags(); as more) {
+        <li>
+          <button
+            type="button"
+            class="inline-flex min-h-8 items-center rounded-pill border border-control-line px-3 type-caption font-medium text-muted transition-colors duration-hover hover:text-text touch-only:min-h-touch"
+            data-more-tags
+            [attr.aria-label]="t('tags.moreLabel', { count: more })"
+            (click)="moreTagsAsked.emit()"
+          >
+            {{ t('tags.more', { count: more }) }}
+          </button>
+        </li>
+      }
+    </rs-game-tags>
+  }
 
   <!-- The one action, which only a computer can do: on a touch device there is none, and no row
        is left for it, which would add its own space under the hero. -->

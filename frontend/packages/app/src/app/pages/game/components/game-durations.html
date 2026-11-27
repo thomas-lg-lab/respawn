@@ -1,0 +1,70 @@
+<section
+  class="flex flex-col gap-3.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
+  data-durations
+  *transloco="let t"
+>
+  <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+    <h2 class="type-card-title">{{ t('game.durations.title') }}</h2>
+    @if (you(); as time) {
+      <span class="font-semibold text-accent-text tabular-nums" data-you>{{
+        t('game.durations.you', { time: t(time.key, { count: time.count }) })
+      }}</span>
+    }
+  </div>
+  <ul class="flex flex-col gap-3">
+    @for (row of rows(); track row.pace) {
+      <li
+        class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1.5 tabular-nums"
+        [attr.data-pace]="row.pace"
+        [attr.data-state]="row.state.kind"
+      >
+        @if (row.state.kind === 'reached' || row.state.kind === 'beyond') {
+          <span
+            class="flex size-4.5 items-center justify-center rounded-sm bg-accent-text text-surface"
+            aria-hidden="true"
+          >
+            <svg lucideCheck class="size-3.5" [strokeWidth]="3"></svg>
+          </span>
+        } @else {
+          <span class="size-4.5 rounded-sm border border-control-line" aria-hidden="true"></span>
+        }
+        <span class="min-w-0" data-pace-words>
+          <span class="font-semibold">{{ t('game.durations.' + row.pace) }}</span>
+          @if (row.state.kind !== 'none') {
+            <span class="type-caption text-muted">
+              ·
+              {{
+                t('game.durations.' + row.state.kind, {
+                  time: row.state.time
+                    ? t(row.state.time.key, { count: row.state.time.count })
+                    : '',
+                })
+              }}</span
+            >
+          }
+        </span>
+        <span class="font-semibold" data-pace-time>{{
+          t(row.time.key, { count: row.time.count })
+        }}</span>
+        @if (you()) {
+          <rs-segmented-bar
+            class="col-span-2 col-start-2"
+            [value]="played() ?? 0"
+            [max]="row.seconds"
+          />
+        }
+      </li>
+    }
+  </ul>
+  <p class="type-caption text-muted" data-durations-source>
+    @if (players(); as said) {
+      {{
+        t(said.one ? 'game.durations.sourceOne' : 'game.durations.sourceMany', {
+          count: said.count,
+        })
+      }}
+    } @else {
+      {{ t('game.durations.source') }}
+    }
+  </p>
+</section>

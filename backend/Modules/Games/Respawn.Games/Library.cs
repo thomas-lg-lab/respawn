@@ -179,6 +179,9 @@ public sealed record OwnedEntry(
 /// <param name="LastPlayedAt">The latest over its entries.</param>
 /// <param name="Entries">The ways it is owned, at least one.</param>
 /// <param name="CoverSource">The source of the cover the owner chose for it; null while they chose none.</param>
+/// <param name="Genres">Its genres, as the game database says them (<see cref="GameDataSaid.Genres"/>);
+/// null where they were not read, empty when the database gave none.</param>
+/// <param name="Themes">Its themes, likewise.</param>
 public sealed record OwnedGame(
     Guid GameId,
     string? Name,
@@ -186,7 +189,9 @@ public sealed record OwnedGame(
     TimeSpan? RecentPlaytime,
     DateTimeOffset? LastPlayedAt,
     IReadOnlyList<OwnedEntry> Entries,
-    string? CoverSource = null);
+    string? CoverSource = null,
+    IReadOnlyList<string>? Genres = null,
+    IReadOnlyList<string>? Themes = null);
 
 /// <summary>The orders a library is read in. Whatever the order, the games it cannot place (no name,
 /// no playtime said, never launched) come last.</summary>

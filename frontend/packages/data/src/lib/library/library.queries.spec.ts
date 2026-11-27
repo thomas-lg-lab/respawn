@@ -14,6 +14,8 @@ function game(index: number): LibraryGame {
     last_played_at: null,
     entries: [],
     cover_source: null,
+    genres: [],
+    themes: [],
   };
 }
 

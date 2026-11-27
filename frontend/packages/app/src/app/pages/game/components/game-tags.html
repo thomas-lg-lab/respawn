@@ -1,0 +1,15 @@
+<ul class="flex flex-wrap gap-2" [attr.aria-label]="label()" data-tags>
+  @for (tag of tags(); track tag) {
+    <li>
+      <a
+        class="inline-flex min-h-8 items-center rounded-pill bg-surface-2 px-3 type-caption font-medium text-text transition-colors duration-hover hover:text-accent-text touch-only:min-h-touch"
+        lang="en"
+        routerLink="/library"
+        [queryParams]="words(tag)"
+        [attr.data-tag]="tag"
+        >{{ tag }}</a
+      >
+    </li>
+  }
+  <ng-content />
+</ul>

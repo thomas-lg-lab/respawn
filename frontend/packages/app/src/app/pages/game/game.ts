@@ -1,4 +1,4 @@
-import { Location } from '@angular/common';
+import { DOCUMENT, Location } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
@@ -16,8 +16,11 @@ import {
   ordinalForm,
   saidPlaytime,
 } from '@app/format/format';
+import { gameTags, igdbPage } from '@app/games/game-list';
 import { ORIGINS, type Origin, originIn } from '@app/games/game-page';
 import { LanguageSetting } from '@app/i18n/language';
+import { GameAbout } from './components/game-about';
+import { GameDurations } from './components/game-durations';
 import { GameHero } from './components/game-hero';
 import { LibraryNotice } from './components/library-notice';
 import { MonthCalendar, monthName } from './components/month-calendar';
@@ -40,6 +43,8 @@ import { type MonthKey, calendar, monthDetail, secondsIn } from './game-view';
     Button,
     Skeleton,
     StatTile,
+    GameAbout,
+    GameDurations,
     GameHero,
     LibraryNotice,
     MonthCalendar,
@@ -53,8 +58,10 @@ export class Game {
   private readonly location = inject(Location);
   private readonly router = inject(Router);
   private readonly language = inject(LanguageSetting);
+  private readonly document = inject(DOCUMENT);
 
   protected readonly failureKey = failureKey;
+  protected readonly igdbPage = igdbPage;
   protected readonly currentLanguage = this.language.current;
 
   protected readonly id = toSignal(
@@ -194,6 +201,9 @@ export class Game {
     };
   });
 
+  /** Every genre and theme the game database gives the game: the hero shows the first ones. */
+  protected readonly tags = computed(() => gameTags(this.game.data()?.game_data));
+
   /** A game never launched has no time to show: the page says so in their place. */
   protected readonly neverLaunched = computed(() => this.game.data()?.playtime_seconds === 0);
 
@@ -231,6 +241,15 @@ export class Game {
     event.preventDefault();
     if (this.cameFrom() !== null) this.location.back();
     else void this.router.navigateByUrl(ORIGINS[this.origin()]);
+  }
+
+  /** The genres the hero leaves out are in "About": there, and focused for those who hear it. */
+  protected showAbout(): void {
+    const about = this.document.getElementById('about');
+    if (!about) return;
+    about.focus({ preventScroll: true });
+    // Not every environment scrolls: the focus is what matters to those who hear the page.
+    if ('scrollIntoView' in about) about.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   protected retryHistory(): void {

@@ -35,17 +35,10 @@
       [choosing]="choosingCover()"
       (coverPicked)="chooseCover($event)"
       (coverOpened)="choosing.reset()"
+      (moreTagsAsked)="showAbout()"
     />
 
-    @if (neverLaunched()) {
-      <section
-        class="flex flex-col gap-1.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
-        data-never
-      >
-        <p class="font-semibold">{{ t('game.never.title') }}</p>
-        <p class="text-muted">{{ t('game.never.text') }}</p>
-      </section>
-    } @else {
+    @if (!neverLaunched()) {
       @if (figures(); as said) {
         <div class="grid grid-cols-2 gap-2 wide:grid-cols-4 wide:gap-3" data-figures>
           <rs-stat-tile
@@ -107,49 +100,86 @@
           />
         </div>
       }
-
-      @if (calendar(); as drawn) {
-        @if (drawn.rows.length) {
-          <rs-month-calendar
-            [calendar]="drawn"
-            [selected]="selected()"
-            [language]="currentLanguage()"
-            (picked)="pick($event)"
-          >
-            @if (selected(); as key) {
-              <rs-month-detail
-                [month]="key"
-                [detail]="detail()"
-                [failed]="month.isError()"
-                [seconds]="selectedSeconds()"
-                [gameName]="known.name"
-                [language]="currentLanguage()"
-                (retry)="retryMonth()"
-              />
-            }
-          </rs-month-calendar>
-        } @else {
-          <p
-            class="rounded-card border border-line bg-surface px-4 py-4.5 text-muted wide:px-6 wide:py-5"
-            data-no-history
-          >
-            {{ t('game.noHistory') }}
-          </p>
-        }
-      } @else if (historyRefusal(); as refused) {
-        <rs-banner tone="warn" role="alert" data-months-refused>{{
-          t(failureKey(refused))
-        }}</rs-banner>
-        <button rsButton type="button" class="self-start" (click)="retryHistory()">
-          {{ t('app.retry') }}
-        </button>
-      } @else {
-        <div role="status">
-          <rs-skeleton class="h-60" />
-          <span class="sr-only">{{ t('game.loading') }}</span>
-        </div>
-      }
     }
+
+    <!-- On a wide screen, the time and what the game is on the left, how long it takes on the
+         right; on a phone, one column in that order, how long it takes before the long text. -->
+    <div
+      class="grid items-start gap-5 wide:data-split:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+      [attr.data-split]="known.game_data?.time_to_beat ? '' : null"
+    >
+      <div class="flex min-w-0 flex-col gap-5 wide:col-start-1">
+        @if (neverLaunched()) {
+          <section
+            class="flex flex-col gap-1.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
+            data-never
+          >
+            <p class="font-semibold">{{ t('game.never.title') }}</p>
+            <p class="text-muted">{{ t('game.never.text') }}</p>
+          </section>
+        } @else {
+          @if (calendar(); as drawn) {
+            @if (drawn.rows.length) {
+              <rs-month-calendar
+                [calendar]="drawn"
+                [selected]="selected()"
+                [language]="currentLanguage()"
+                (picked)="pick($event)"
+              >
+                @if (selected(); as key) {
+                  <rs-month-detail
+                    [month]="key"
+                    [detail]="detail()"
+                    [failed]="month.isError()"
+                    [seconds]="selectedSeconds()"
+                    [gameName]="known.name"
+                    [language]="currentLanguage()"
+                    (retry)="retryMonth()"
+                  />
+                }
+              </rs-month-calendar>
+            } @else {
+              <p
+                class="rounded-card border border-line bg-surface px-4 py-4.5 text-muted wide:px-6 wide:py-5"
+                data-no-history
+              >
+                {{ t('game.noHistory') }}
+              </p>
+            }
+          } @else if (historyRefusal(); as refused) {
+            <rs-banner tone="warn" role="alert" data-months-refused>{{
+              t(failureKey(refused))
+            }}</rs-banner>
+            <button rsButton type="button" class="self-start" (click)="retryHistory()">
+              {{ t('app.retry') }}
+            </button>
+          } @else {
+            <div role="status">
+              <rs-skeleton class="h-60" />
+              <span class="sr-only">{{ t('game.loading') }}</span>
+            </div>
+          }
+        }
+      </div>
+      @if (known.game_data?.time_to_beat; as time) {
+        <rs-game-durations
+          class="min-w-0 wide:col-start-2 wide:row-span-2 wide:row-start-1"
+          [timeToBeat]="time"
+          [played]="known.playtime_seconds"
+          [language]="currentLanguage()"
+        />
+      }
+      @if (known.game_data; as said) {
+        @if (said.summary || tags().length) {
+          <rs-game-about
+            class="min-w-0 wide:col-start-1"
+            [summary]="said.summary"
+            [tags]="tags()"
+            [url]="igdbPage(said.url)"
+          />
+        }
+      }
+    </div>
   } @else if (unknown()) {
     <h1 class="type-page-title">{{ t('game.notFound.title') }}</h1>
     <p class="text-muted" data-unknown>{{ t('game.notFound.text') }}</p>

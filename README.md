@@ -59,15 +59,17 @@ and where your time went.
   three never launched drawn at random, and the latest days played; each figure and the ranking open the
   library on the games they count.
 - **The library** as covers or as a list, each browser keeping its own choice, searched, filtered (launched,
-  recent, never launched) and sorted, the filter and the order kept on its address; **the Time tab**, the time
+  recent, never launched, or by a genre or a theme from a game's page) and sorted, the filter and the order
+  kept on its address; **the Time tab**, the time
   map in full.
 - **Covers** wherever a game is shown: Steam's, IGDB's where Steam has none, and for each account the one
   it chose on the game's page when a game has both; asked of their source once and kept by the instance when
   it has a data directory, and asked for only as they come near the screen.
 - **The page of a game**, reached from wherever a game is shown and from the search: its time, its rank, this
   year and the last two weeks, its months since 2022 as a calendar, and for a month the other games played
-  then; its pages on Steam and IGDB, "Launch in Steam" on a computer, and taking a game Steam no longer lists
-  out of the library.
+  then; what IGDB says of it (its genres and themes, what it is about, in English) and how long players say
+  it takes, rushing, normally and at 100 %, set against your own time; its pages on Steam and IGDB, "Launch
+  in Steam" on a computer, and taking a game Steam no longer lists out of the library.
 - **Accounts**: local accounts (the first one is the administrator), or sign-in through any OpenID Connect
   provider; the language (French or English), the theme and the character of the labels kept on the
   account; the account screen with its linked Steam accounts, a reading on request, your own key and
@@ -78,8 +80,8 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next**: genres, descriptions and durations through IGDB, and with them the backlog in hours; a first
-   try at searching your own backlog by what you feel like playing.
+1. **Next**: the backlog in hours, from IGDB's durations; a first try at searching your own backlog by what
+   you feel like playing.
 2. **Statuses and ratings** for each game.
 3. **Tokens for the public API.**
 4. **More stores, next-game suggestions, sharing with a group.**
@@ -276,7 +278,7 @@ part of the API.
 | `DELETE /api/v1/linked-accounts/{id}` | Unlinks a store account and forgets everything that was read from it |
 | `PUT /api/v1/linked-accounts/{id}/key` | Gives the user's own key for that store (`{"key": "..."}`): from then on the only key that reads the account, with no fallback to the instance's; stored encrypted, never answered. 400 `invalid_key` when it is not in the shape of the store's keys, 503 `keys_unavailable` when the instance has no encryption key. Rate-limited with `DELETE` in a bucket of their own |
 | `DELETE /api/v1/linked-accounts/{id}/key` | Takes the user's own key away: the instance's key reads the account again |
-| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
+| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists, and the game's `genres` and `themes` as IGDB names them (empty while IGDB says none); `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 | `GET /api/v1/library/stats` | The same library in figures: games, launched and never launched, missing (flagged on every entry), total and recent playtime, games played lately, and `tracking_since`, the earliest reading that listed one of them. What a store said was played lately stops counting once the store's window has passed since that reading (Steam: two weeks), here and in the library |
 | `GET /api/v1/library/history` | What was played day by day since `tracking_since`: for each day, the games played and their `seconds`, the earliest day first. A store gives totals and no history, so a day's time is the growth of those totals between two readings in a row, dated (UTC) by the day the store says the game was last played when that lies between the two, and otherwise by the later reading: a reading of the small hours holds the evening before it, which stays in its own day, month and year. Totals say no more than that: what was played over several days between two readings, or across midnight, is all of the day it ended; the total a game had at its first reading is not split over time, and days and games with nothing played are left out. `from` and `to` (`YYYY-MM-DD`, both included) ask for a part of it |
 | `GET /api/v1/library/years` | What was played year by year (UTC), the earliest first: for each year its `seconds`, its `source`, the days it covers (`first_day`, `last_day`) and `whole`, whether that is all of it. A year is counted from the store's own review (`review`: Steam's Year in Review, every month of it, from 2022 on) when every linked account has one, and otherwise from the daily readings (`readings`, from the first reading on); a year before the first reading, from the reviews of the accounts that have one. A review counts every game played, owned or not; the readings count the games of the library |
@@ -285,7 +287,7 @@ part of the API.
 | `PUT /api/v1/library/games/{id}` | Puts back everything the account took out of that game, whether its store lists it again or not: an entry the store does not list comes back flagged as missing. `404` with `not_removed` |
 | `GET /api/v1/library/removed` | The games the account took out of its library, by name, with the entries taken out (`removed_at`, `listed_again_since`, `notice_dismissed_at`). `back_since` is the notice to show: a store lists the game again since that date, and the notice was not dismissed |
 | `DELETE /api/v1/library/removed/{id}/notice` | Dismisses that notice, for good: the game stays out, and nothing its store says later raises it again; the game can still be put back. `404` with `not_removed`, `409` with `not_back` when no store lists it again |
-| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, in `removed` what the account took out of its library of it, in `game_data` its page on IGDB when IGDB knows it, and in `covers` the `sources` it has a cover from (the game's own first) and the one the account `chosen`. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
+| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, in `removed` what the account took out of its library of it, in `game_data` what IGDB says of it when IGDB knows it (its page, `url`, null when IGDB gave none, `genres`, `themes`, `summary` in English, and in `time_to_beat` how long players took, in seconds, rushing, normally and completely, with how many said it), and in `covers` the `sources` it has a cover from (the game's own first) and the one the account `chosen`. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
 | `PUT /api/v1/games/{id}/cover-choice` | Chooses the cover the account sees for that game, by its `source`, one of `covers.sources`; choosing the first, the game's own, is choosing none. For this account alone: the game's page and the library (`cover_source` of each game) show it. Answers the game's `covers`. `409` with `no_such_cover` when the game has no cover from that source |
 | `DELETE /api/v1/games/{id}/cover-choice` | Goes back to the game's own cover. Answers the game's `covers` |
 | `GET /api/v1/games/{id}/months` | The months that game was played in, the earliest first, each with its `seconds` and its `source`, counted as in `/library/years`: the months of a year add up to the game's part of that year there. A month with nothing played is left out |
@@ -397,8 +399,10 @@ summary (in English) and how long players took to finish it.
   again an hour later; nothing of the batch it failed on is kept, and the sync never waits for it. Games
   whose answer cannot be read three turns in a row are set aside as unknown, for the games after them to
   be asked about.
-- Each answer is kept as it came, like a reading. Today it shows as a game's cover where Steam has none and
-  as its link to IGDB; genres, summaries and durations are kept and not shown yet.
+- Each answer is kept as it came, like a reading. It shows as a game's cover where Steam has none, as its
+  link to IGDB, and on the game's page as its genres and themes, its summary and its durations; the library
+  can be narrowed to a genre or a theme. When two store games of one game are known to IGDB, the page shows
+  what IGDB says of the first, in the order its covers are looked for, never fields of both.
 
 These four schedules (the sync, the yearly reviews, the covers, IGDB) live in the app's process, which is
 one more reason the app runs as one replica.

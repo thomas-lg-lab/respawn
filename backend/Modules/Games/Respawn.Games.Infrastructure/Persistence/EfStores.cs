@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Respawn.Games.Ports;
 
@@ -289,12 +290,48 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             return null;
         }
 
-        var entries = await GameDataEntries(gameId).ToListAsync(ct);
-        return new CatalogueGame(
-            gameId,
+        var entries = await db.StoreEntries.AsNoTracking().Where(e => e.GameId == gameId)
+            .Select(e => new GameStore(e.Id, e.Source, e.ExternalId))
+            .ToListAsync(ct);
+        return new CatalogueGame(gameId, game.Name, entries);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, GameFacts>> FindGameFactsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct)
+    {
+        Guid[] ids = [.. gameIds];
+        var rows = await (
+            from e in db.StoreEntries.AsNoTracking().Where(e => ids.Contains(e.GameId))
+            join g in db.IgdbGames.AsNoTracking() on e.IgdbId equals (long?)g.IgdbId
+            select new { e.GameId, e.Source, EntryId = e.Id, Game = g })
+            .ToListAsync(ct);
+
+        // The first entry the database knows, in the order the covers are looked for: one entry's
+        // answer whole, never fields mixed from two.
+        return rows
+            .GroupBy(row => row.GameId)
+            .ToDictionary(
+                game => game.Key,
+                game => Facts(game.OrderBy(row => row.Source, StringComparer.Ordinal).ThenBy(row => row.EntryId).First().Game));
+    }
+
+    private static GameFacts Facts(IgdbGameRow game)
+    {
+        // A duration of nothing says nothing: kept as it came, never shown as a pace.
+        int? hastily = Said(game.HastilySeconds), normally = Said(game.NormallySeconds), completely = Said(game.CompletelySeconds);
+        return new(
+            game.IgdbId.ToString(CultureInfo.InvariantCulture),
             game.Name,
-            [.. entries.Select(e => new GameStore(e.Id, e.Source, e.ExternalId))],
-            First(entries, e => e.Url));
+            game.Slug,
+            game.Url,
+            game.CoverImageId,
+            game.Genres,
+            game.Themes,
+            game.Summary,
+            hastily is null && normally is null && completely is null
+                ? null
+                : new TimeToBeat(hastily, normally, completely, game.TimeToBeatCount));
+
+        static int? Said(int? seconds) => seconds > 0 ? seconds : null;
     }
 
     public async Task<GameDataCover> FindGameDataCoverAsync(Guid gameId, CancellationToken ct)
@@ -339,7 +376,6 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
             e.Source,
             e.ExternalId,
             e.IgdbAskedAt,
-            g == null ? null : g.Url,
             g == null ? null : g.CoverImageId,
             g == null ? null : (DateTimeOffset?)g.ReadAt);
 
@@ -353,7 +389,6 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         string Source,
         string ExternalId,
         DateTimeOffset? IgdbAskedAt,
-        string? Url,
         string? CoverImageId,
         DateTimeOffset? ReadAt);
 

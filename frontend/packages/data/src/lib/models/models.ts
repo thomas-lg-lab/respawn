@@ -71,6 +71,15 @@ export type Game = Schemas['GameResponse'];
  */
 export type GameCovers = Schemas['GameCoversResponse'];
 
+/**
+ * What the game database (IGDB) says of a game, in its own words (English): its page there, its
+ * genres and themes, what it is about, and how long players say it takes.
+ */
+export type GameData = Schemas['GameDataResponse'];
+
+/** How long players took to finish a game, in seconds, at three paces; each null when nobody said. */
+export type TimeToBeat = Schemas['TimeToBeatResponse'];
+
 /** The sources the instance credits (`GET /api/v1/credits`). */
 export type Credits = Schemas['CreditsResponse'];
 
