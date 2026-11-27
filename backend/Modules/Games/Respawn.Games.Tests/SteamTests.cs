@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -11,8 +12,6 @@ namespace Respawn.Games.Tests;
 /// called: its answers are recorded ones, played back in memory.</summary>
 public sealed class SteamTests
 {
-    private const string SteamId = "76561190000000001";
-
     [Fact]
     public async Task A_recorded_library_is_read_as_steam_says_it()
     {
@@ -358,11 +357,4 @@ public sealed class SteamTests
 
     private static ILibrarySource Source(TestApp app) =>
         Assert.Single(app.Services.GetServices<ILibrarySource>(), source => source.Source == "steam");
-
-    /// <summary>A use case, called as a scheduler will: in a scope of its own.</summary>
-    private static async Task<T> UseAsync<T>(TestApp app, Func<ILibraryService, Task<T>> use)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        return await use(scope.ServiceProvider.GetRequiredService<ILibraryService>());
-    }
 }

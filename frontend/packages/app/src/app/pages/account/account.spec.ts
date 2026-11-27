@@ -1,8 +1,18 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { type LinkedAccount } from '@respawn/data';
+import type { LinkedAccount, SignInOptions } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
-import { ACCOUNT, api, field, start, type } from '@app/testing/app-testing';
+import {
+  ACCOUNT,
+  LIBRARY_FIRST_PAGE,
+  SIGN_IN_OPTIONS,
+  api,
+  field,
+  start,
+  text,
+  type,
+} from '@app/testing/app-testing';
+import { linkedAccount } from '@app/testing/linked-accounts';
 import { game } from '@app/testing/games';
 import '../../layout/shell';
 import './account';
@@ -11,24 +21,19 @@ const LINKED = `/linked-accounts/${TEST_LINKED_ACCOUNT.id}`;
 const KEY = `${LINKED}/key`;
 const SYNC = `${LINKED}/sync`;
 
-/** The linked account read a moment ago, so that nothing is awaited. */
-function linked(values: Partial<LinkedAccount> = {}): LinkedAccount {
-  const at = new Date().toISOString();
-  const last = { ...TEST_SYNC_RUN, started_at: at, finished_at: at };
-  return {
-    ...TEST_LINKED_ACCOUNT,
-    sync: { running: false, last, last_succeeded_at: at },
-    ...values,
-  };
-}
-
 describe('Account', () => {
   /** Opens the account screen, signed in, with these accounts linked. */
-  async function open(accounts: LinkedAccount[], path = '/account') {
+  async function open(
+    accounts: LinkedAccount[],
+    path = '/account',
+    offered: SignInOptions = SIGN_IN_OPTIONS,
+  ) {
     const { harness, server, arrived } = await start(path);
     await server.answer('/me', ACCOUNT);
     await server.home(accounts);
     await arrived;
+    // ACCOUNT is the administrator: its screen also asks what the instance offers.
+    await server.answer('/config', offered);
     await harness.fixture.whenStable();
     const screen = harness.fixture.nativeElement as HTMLElement;
     /** The accounts are asked again after something changed them. */
@@ -39,8 +44,6 @@ describe('Account', () => {
     return { harness, server, screen, told };
   }
 
-  const text = (screen: HTMLElement, selector: string) =>
-    screen.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim();
   const click = (screen: HTMLElement, selector: string) =>
     screen.querySelector<HTMLButtonElement>(selector)!.click();
 
@@ -48,7 +51,7 @@ describe('Account', () => {
   afterEach(() => api().http.verify());
 
   it('says who is signed in and which game accounts are linked', async () => {
-    const { screen } = await open([linked()]);
+    const { screen } = await open([linkedAccount()]);
 
     expect(text(screen, 'h1')).toBe('Mon compte');
     expect(text(screen, '[data-identity] [data-account-name]')).toBe('First');
@@ -70,15 +73,16 @@ describe('Account', () => {
   });
 
   it('says that an account was linked, once, and reads its library at once', async () => {
-    const unread = linked({
-      linked_at: new Date().toISOString(),
-      sync: { running: false, last: null, last_succeeded_at: null },
-    });
+    const unread = linkedAccount(
+      { last: null, last_succeeded_at: null },
+      { linked_at: new Date().toISOString() },
+    );
     // Not `open`: the screen is not at rest while the reading it asked for is on its way.
     const { harness, server, arrived } = await start('/account?steam_link=linked');
     await server.answer('/me', ACCOUNT);
     await server.home([unread]);
     await arrived;
+    await server.answer('/config', SIGN_IN_OPTIONS);
     const screen = harness.fixture.nativeElement as HTMLElement;
 
     const asked = await server.request(SYNC);
@@ -87,7 +91,7 @@ describe('Account', () => {
     expect(text(screen, '[data-sync]')).toContain('Synchronisation en cours…');
 
     asked.flush(TEST_SYNC_RUN);
-    await server.home([linked()]);
+    await server.home([linkedAccount()]);
     await harness.fixture.whenStable();
     expect(text(screen, '[data-last-sync]')).toContain('Dernière synchronisation réussie');
   });
@@ -95,7 +99,7 @@ describe('Account', () => {
   it('says why the last reading failed, and whose key Steam refused', async () => {
     const last = { ...TEST_SYNC_RUN, outcome: 'failed', error: 'refused', own_key: true };
     const { screen } = await open([
-      linked({ has_own_key: true, sync: { running: false, last, last_succeeded_at: null } }),
+      linkedAccount({ last, last_succeeded_at: null }, { has_own_key: true }),
     ]);
 
     expect(text(screen, '[data-sync-reason]')).toBe('Steam a refusé votre clé d’API.');
@@ -104,7 +108,7 @@ describe('Account', () => {
   });
 
   it('reads an account now, and says when it is too soon', async () => {
-    const { screen, server, told } = await open([linked()]);
+    const { screen, server, told } = await open([linkedAccount()]);
 
     click(screen, '[data-sync-now]');
     const asked = await server.request(SYNC);
@@ -113,7 +117,7 @@ describe('Account', () => {
       { error: { code: 'too_many_requests', message: 'In English, for the log.' } },
       { status: 429, statusText: '' },
     );
-    await told([linked()]);
+    await told([linkedAccount()]);
 
     expect(text(screen, '[data-notice]')).toBe(
       'Une synchronisation vient d’être demandée. Réessayez dans une minute.',
@@ -121,7 +125,7 @@ describe('Account', () => {
   });
 
   it('gives a key of the owner’s, and keeps none of it in the page', async () => {
-    const { screen, server, harness, told } = await open([linked()]);
+    const { screen, server, harness, told } = await open([linkedAccount()]);
 
     type(field(screen, 'Votre clé d’API Web Steam'), ' 0123456789ABCDEF0123456789ABCDEF ');
     // Drawn before it is sent, as when a person types then submits.
@@ -131,7 +135,7 @@ describe('Account', () => {
     expect(sent.request.method).toBe('PUT');
     expect(sent.request.body).toEqual({ key: '0123456789ABCDEF0123456789ABCDEF' });
     sent.flush(null, { status: 204, statusText: '' });
-    await told([linked({ has_own_key: true })]);
+    await told([linkedAccount({}, { has_own_key: true })]);
 
     expect(text(screen, '[data-notice]')).toBe(
       'Votre clé est gardée. La prochaine synchronisation dira si Steam l’accepte.',
@@ -141,7 +145,7 @@ describe('Account', () => {
   });
 
   it('waits for a key before it sends one, and marks no error on an empty field', async () => {
-    const { screen, harness } = await open([linked()]);
+    const { screen, harness } = await open([linkedAccount()]);
     const key = field(screen, 'Votre clé d’API Web Steam');
 
     expect(screen.querySelector<HTMLButtonElement>('[data-key-give]')!.disabled).toBe(true);
@@ -158,12 +162,12 @@ describe('Account', () => {
   });
 
   it('says that a key is not one of the store’s', async () => {
-    const { screen, server, told } = await open([linked()]);
+    const { screen, server, told } = await open([linkedAccount()]);
 
     type(field(screen, 'Votre clé d’API Web Steam'), 'not a key');
     screen.querySelector<HTMLFormElement>('[data-own-key]')!.requestSubmit();
     await server.refuse(KEY, 400, 'invalid_key');
-    await told([linked()]);
+    await told([linkedAccount()]);
 
     expect(text(screen, '[data-notice]')).toBe(
       'Ce n’est pas une clé d’API Web Steam : elle n’est faite que de lettres et de chiffres.',
@@ -174,7 +178,7 @@ describe('Account', () => {
   });
 
   it('asks the browser for no saved password in the key’s field', async () => {
-    const { screen } = await open([linked()]);
+    const { screen } = await open([linkedAccount()]);
 
     // `off` is ignored on a password's field: the account's own password would be offered.
     expect(field(screen, 'Votre clé d’API Web Steam').getAttribute('autocomplete')).toBe(
@@ -183,8 +187,11 @@ describe('Account', () => {
   });
 
   it('follows what two accounts wait for at once, and says each outcome on its card', async () => {
-    const other = linked({ id: '0198a000-0000-7000-8000-0000000000ff', external_id: '2' });
-    const { screen, server, told } = await open([linked(), other]);
+    const other = linkedAccount(
+      {},
+      { id: '0198a000-0000-7000-8000-0000000000ff', external_id: '2' },
+    );
+    const { screen, server, told } = await open([linkedAccount(), other]);
     const cards = () => [...screen.querySelectorAll<HTMLElement>('[data-linked-account]')];
     const card = (index: number) => cards()[index]!;
     const syncNow = (card: HTMLElement) =>
@@ -206,7 +213,7 @@ describe('Account', () => {
       { status: 429, statusText: '' },
     );
     // Not `told`: the other reading is still on its way.
-    await server.home([linked(), other]);
+    await server.home([linkedAccount(), other]);
 
     await vi.waitFor(() =>
       expect(text(card(0), '[data-notice]')).toContain('Réessayez dans une minute'),
@@ -214,13 +221,13 @@ describe('Account', () => {
     expect(cards().map((one) => syncNow(one).disabled)).toEqual([false, true]);
 
     second.flush(TEST_SYNC_RUN);
-    await told([linked(), other]);
+    await told([linkedAccount(), other]);
     expect(text(card(0), '[data-notice]')).toContain('Réessayez dans une minute');
     expect(cards().map((one) => syncNow(one).disabled)).toEqual([false, false]);
   });
 
   it('says on the screen that an account is no longer there, once its card is gone', async () => {
-    const { screen, server, told } = await open([linked()]);
+    const { screen, server, told } = await open([linkedAccount()]);
 
     click(screen, '[data-sync-now]');
     await server.refuse(SYNC, 404, 'unknown_linked_account');
@@ -234,7 +241,9 @@ describe('Account', () => {
   });
 
   it('asks nothing more of an account while it is unlinked', async () => {
-    const { screen, server, harness, told } = await open([linked({ has_own_key: true })]);
+    const { screen, server, harness, told } = await open([
+      linkedAccount({}, { has_own_key: true }),
+    ]);
 
     click(screen, '[data-unlink]');
     await harness.fixture.whenStable();
@@ -251,20 +260,20 @@ describe('Account', () => {
   });
 
   it('takes the owner’s key away', async () => {
-    const { screen, server, told } = await open([linked({ has_own_key: true })]);
+    const { screen, server, told } = await open([linkedAccount({}, { has_own_key: true })]);
 
     click(screen, '[data-key-remove]');
     const sent = await server.request(KEY);
     expect(sent.request.method).toBe('DELETE');
     sent.flush(null, { status: 204, statusText: '' });
-    await told([linked()]);
+    await told([linkedAccount()]);
 
     expect(text(screen, '[data-notice]')).toContain('Votre clé est retirée');
     expect(text(screen, '[data-key-state]')).toBe('Lu avec la clé de l’instance');
   });
 
   it('unlinks only once asked twice, and says what is forgotten in between', async () => {
-    const { screen, server, harness, told } = await open([linked()]);
+    const { screen, server, harness, told } = await open([linkedAccount()]);
 
     click(screen, '[data-unlink]');
     await harness.fixture.whenStable();
@@ -284,7 +293,7 @@ describe('Account', () => {
   });
 
   it('keeps the account linked when the visitor thinks again', async () => {
-    const { screen, harness } = await open([linked()]);
+    const { screen, harness } = await open([linkedAccount()]);
 
     click(screen, '[data-unlink]');
     await harness.fixture.whenStable();
@@ -296,8 +305,8 @@ describe('Account', () => {
   });
 
   it('reads the games for the header’s search once its field is used, not before', async () => {
-    const { harness, server, screen } = await open([linked()]);
-    const games = '/library?sort=name&offset=0&limit=500';
+    const { harness, server, screen } = await open([linkedAccount()]);
+    const games = LIBRARY_FIRST_PAGE;
     const search = screen.querySelector<HTMLInputElement>('[data-search] input')!;
 
     // This screen shows no game, and the focus passing on the search's button asks for none.
@@ -324,18 +333,62 @@ describe('Account', () => {
     ).toEqual(['Portal 2']);
   });
 
+  it('lets the administrator open registration, and close it again', async () => {
+    const { harness, server, screen } = await open([linkedAccount()]);
+
+    expect(text(screen, '[data-registration-state]')).toBe('Les inscriptions sont fermées');
+    // Opening is asked twice: the first press only says what it means, and may be taken back.
+    click(screen, '[data-registration-change]');
+    await harness.fixture.whenStable();
+    expect(text(screen, '[data-registration-warning]')).toContain('toute personne');
+    click(screen, '[data-registration-cancel]');
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('[data-registration-warning]')).toBeNull();
+
+    click(screen, '[data-registration-change]');
+    await harness.fixture.whenStable();
+    click(screen, '[data-registration-confirm]');
+    const sent = await server.request('/instance/registration');
+    expect(sent.request.body).toEqual({ open: true });
+    sent.flush(null, { status: 204, statusText: '' });
+    await harness.fixture.whenStable();
+
+    expect(text(screen, '[data-registration-state]')).toBe('Les inscriptions sont ouvertes');
+    expect(text(screen, '[data-registration-change]')).toBe('Fermer les inscriptions');
+
+    // Closing is one press. Refused: said on the card, and nothing changes.
+    click(screen, '[data-registration-change]');
+    await server.refuse('/instance/registration', 403, 'forbidden');
+    await harness.fixture.whenStable();
+    expect(text(screen, '[data-registration-failure]')).toContain('Seul un administrateur');
+    expect(text(screen, '[data-registration-state]')).toBe('Les inscriptions sont ouvertes');
+  });
+
+  it('says nothing of the instance to an account that is not its administrator', async () => {
+    const { harness, server, arrived } = await start('/account');
+    await server.answer('/me', { ...ACCOUNT, is_admin: false });
+    await server.home([]);
+    await arrived;
+    await harness.fixture.whenStable();
+
+    expect(
+      (harness.fixture.nativeElement as HTMLElement).querySelector('[data-instance]'),
+    ).toBeNull();
+  });
+
   it('says that the accounts could not be told, and asks again on request', async () => {
     const { harness, server, arrived } = await start('/account');
     await server.answer('/me', ACCOUNT);
     await server.refuse('/linked-accounts', 503, 'database_unavailable');
     await arrived;
+    await server.answer('/config', SIGN_IN_OPTIONS);
     await harness.fixture.whenStable();
     const screen = harness.fixture.nativeElement as HTMLElement;
 
     expect(text(screen, '[role="alert"]')).toContain('La base de données ne répond pas');
 
     click(screen, '[data-retry]');
-    await server.home([linked()]);
+    await server.home([linkedAccount()]);
     await harness.fixture.whenStable();
     expect(screen.querySelector('[data-linked-account]')).not.toBeNull();
   });

@@ -93,7 +93,6 @@ export class AccountQueries {
       },
       staleTime: Infinity,
       refetchOnWindowFocus: 'always',
-      retry: false,
     });
   }
 
@@ -102,7 +101,6 @@ export class AccountQueries {
     return queryOptions({
       queryKey: accountKeys.signInOptions,
       queryFn: () => this.api.get<SignInOptions>('/config'),
-      retry: false,
     });
   }
 
@@ -115,7 +113,6 @@ export class AccountQueries {
     return queryOptions({
       queryKey: accountKeys.providers,
       queryFn: () => this.api.get<AccountProvider[]>('/me/providers'),
-      retry: false,
     });
   }
 
@@ -155,6 +152,21 @@ export class AccountQueries {
       scope: { id: 'account-save-settings' },
       mutationFn: (body: SettingsRequest) => this.api.put<Account>('/me/settings', body),
       onSuccess: (account) => this.client.setQueryData(accountKeys.me, account),
+    });
+  }
+
+  /**
+   * Opens registration to anyone, or closes it: an administrator's call. What the sign-in
+   * page may offer changed with it, and says so at once.
+   */
+  setRegistration() {
+    return mutationOptions({
+      mutationFn: (open: boolean) => this.api.put<void>('/instance/registration', { open }),
+      onSuccess: (_, open) =>
+        this.client.setQueryData<SignInOptions>(
+          accountKeys.signInOptions,
+          (options) => options && { ...options, registration_open: open },
+        ),
     });
   }
 

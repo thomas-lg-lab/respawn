@@ -2,7 +2,7 @@
   class="flex flex-wrap items-start gap-x-8 gap-y-3 border-t border-line pt-4"
   aria-live="polite"
   data-month-detail
-  *transloco="let t; prefix: 'game.month'"
+  *transloco="let t"
 >
   <div class="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">
     <p rsLabel class="text-accent-text" data-month-name>{{ name() }}</p>
@@ -10,10 +10,10 @@
     @if (place(); as said) {
       <p class="type-caption text-muted tabular-nums" data-month-place>
         @if (said.only) {
-          {{ t('only') }}
+          {{ t('game.month.only') }}
         } @else {
           {{
-            t('place', {
+            t('game.month.place', {
               rank: t('ordinal.' + said.form, { rank: said.rank }),
               count: said.count,
               share: said.share,
@@ -29,7 +29,7 @@
     @if (rows().length > 1 || others()) {
       <ol
         class="flex min-w-0 flex-2 basis-72 flex-col gap-1.5"
-        [attr.aria-label]="t('games', { month: name() })"
+        [attr.aria-label]="t('game.month.games', { month: name() })"
         data-month-games
       >
         @for (row of rows(); track row.id) {
@@ -39,14 +39,14 @@
           >
             @if (row.own) {
               <span class="w-30 shrink-0 truncate font-semibold wide:w-37.5" data-name>{{
-                row.name ?? t('unnamed')
+                row.name ?? t('game.unnamed')
               }}</span>
             } @else {
               <a
                 class="w-30 shrink-0 truncate text-muted after:absolute after:inset-0 hover:text-text hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus wide:w-37.5"
                 data-name
                 [routerLink]="gamePage(row.id)"
-                >{{ row.name ?? t('unnamed') }}</a
+                >{{ row.name ?? t('game.unnamed') }}</a
               >
             }
             <rs-segmented-bar
@@ -56,7 +56,7 @@
               [max]="known.scale"
               [segments]="segments"
             />
-            <span class="w-11 shrink-0 text-right font-semibold" data-time>{{
+            <span class="w-13 shrink-0 text-right font-semibold whitespace-nowrap" data-time>{{
               t(row.time.key, { count: row.time.count })
             }}</span>
           </li>
@@ -64,9 +64,9 @@
         @if (others(); as rest) {
           <li class="flex min-h-6 items-center gap-3 text-muted tabular-nums" data-others>
             <span class="flex-1">{{
-              t(rest.one ? 'othersOne' : 'othersMany', { count: rest.count })
+              t(rest.one ? 'game.othersOne' : 'game.othersMany', { count: rest.count })
             }}</span>
-            <span class="w-11 shrink-0 text-right font-semibold">{{
+            <span class="w-13 shrink-0 text-right font-semibold whitespace-nowrap">{{
               t(rest.time.key, { count: rest.time.count })
             }}</span>
           </li>
@@ -75,12 +75,12 @@
     }
   } @else if (failed()) {
     <div class="flex min-w-0 flex-2 basis-72 flex-col items-start gap-2" role="alert">
-      <p class="text-muted" data-month-failed>{{ t('failed') }}</p>
+      <p class="text-muted" data-month-failed>{{ t('game.month.failed') }}</p>
       <button rsButton type="button" data-month-retry (click)="retry.emit()">
-        {{ t('retry') }}
+        {{ t('app.retry') }}
       </button>
     </div>
   } @else {
-    <p class="min-w-0 flex-2 basis-72 text-muted" role="status">{{ t('loading') }}</p>
+    <p class="min-w-0 flex-2 basis-72 text-muted" role="status">{{ t('game.month.loading') }}</p>
   }
 </div>

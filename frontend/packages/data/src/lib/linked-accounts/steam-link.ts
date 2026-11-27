@@ -1,4 +1,5 @@
 import { API_BASE } from '../api/api';
+import { outcomeAmong } from '../api/navigation-outcome';
 
 /**
  * Linking a Steam account is not a call but a navigation: the browser goes to the API, which
@@ -19,12 +20,7 @@ export function steamLinkAddress(returnTo: string): string {
   return `${API_BASE}/linked-accounts/steam/link?return_to=${encodeURIComponent(returnTo)}`;
 }
 
-/**
- * The outcome an address carries, if any. A word the front does not know (a later version of
- * the API, or one written by hand) reads as a failure: something was said, and it was not a
- * success.
- */
+/** The outcome an address carries, if any; a word the front does not know reads as a failure. */
 export function steamLinkOutcome(value: string | null | undefined): SteamLinkOutcome | null {
-  if (!value) return null;
-  return STEAM_LINK_OUTCOMES.find((known) => known === value) ?? 'failed';
+  return outcomeAmong(STEAM_LINK_OUTCOMES, value);
 }

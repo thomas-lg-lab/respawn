@@ -82,7 +82,7 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
             {
                 // What is there and is no image is no cover: too large, or bytes that are not an
                 // image whatever their headers say.
-                if (bytes is not null && MediaType(bytes) is { } type)
+                if (bytes is not null && Cover.MediaTypeOf(bytes) is { } type)
                 {
                     return new Cover(type, bytes);
                 }
@@ -187,35 +187,14 @@ internal sealed partial class SteamCoverSource(SteamClient steam) : ICoverSource
         }
     }
 
-    /// <summary>Whether this is a Steam app id as Steam writes it: a number of 32 bits in digits alone,
-    /// with no zero before it. Nothing else goes in an address or in a question.</summary>
-    private static bool IsAppId(string externalId) =>
-        uint.TryParse(externalId, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
-        && number.ToString(CultureInfo.InvariantCulture) == externalId;
+    /// <summary>Whether this is a Steam app id as Steam writes it. Nothing else goes in an address or
+    /// in a question.</summary>
+    private static bool IsAppId(string externalId) => StoreIds.IsSteamAppId(externalId);
 
     /// <summary>Whether this can be where a cover is, under an app's folder: an image file's name, in
     /// one folder at most, of letters, digits, dashes and underscores. Nothing else is kept, and
     /// nothing else goes in an address: no dot but the one before the extension, so no way up.</summary>
     private static bool IsPath(string path) => path.Length <= Limits.CoverPath && PathShape.IsMatch(path);
-
-    /// <summary>What kind of image these bytes start as, among those passed on; null for anything
-    /// else.</summary>
-    private static string? MediaType(ReadOnlySpan<byte> bytes)
-    {
-        if (bytes.StartsWith<byte>([0xFF, 0xD8, 0xFF]))
-        {
-            return "image/jpeg";
-        }
-
-        if (bytes.StartsWith<byte>([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
-        {
-            return "image/png";
-        }
-
-        return bytes.Length >= 12 && bytes.StartsWith("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8)
-            ? "image/webp"
-            : null;
-    }
 
     [GeneratedRegex(@"\A(?:[A-Za-z0-9_-]{1,64}/)?[A-Za-z0-9_-]{1,64}\.(?:jpg|jpeg|png|webp)\z", RegexOptions.CultureInvariant)]
     private static partial Regex PathShape { get; }

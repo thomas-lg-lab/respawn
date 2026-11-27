@@ -39,6 +39,7 @@ public sealed class LinkedAccountsController(ILibraryService library, ISyncServi
         + "It cannot be undone; linking the same store account again starts from nothing.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Unlink(Guid id, CancellationToken ct)
     {

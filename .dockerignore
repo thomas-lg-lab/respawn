@@ -10,3 +10,4 @@ docker-compose.yml
 **/node_modules
 frontend/dist
 frontend/.angular
+backend/Respawn.Host/wwwroot

@@ -1,7 +1,5 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
-import { MutationObserver, QueryClient, provideTanStackQuery } from '@tanstack/angular-query';
+import type { HttpTestingController } from '@angular/common/http/testing';
+import { MutationObserver, type QueryClient } from '@tanstack/angular-query';
 import { libraryKeys } from '../library/library.queries';
 import type { LinkedAccount } from '../models/models';
 import {
@@ -9,6 +7,7 @@ import {
   TEST_LIBRARY_STATS,
   TEST_SYNC_RUN,
 } from '../testing/fixtures';
+import { type QueriesSetUp, setUpQueries } from '../testing/queries';
 import {
   AWAITING_SYNC_INTERVAL,
   FIRST_SYNC_WAIT,
@@ -33,24 +32,13 @@ describe('LinkedAccountQueries', () => {
   let queries: LinkedAccountQueries;
   let client: QueryClient;
   let http: HttpTestingController;
+  let request: QueriesSetUp<LinkedAccountQueries>['request'];
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideTanStackQuery(() => new QueryClient()),
-      ],
-    });
-    queries = TestBed.inject(LinkedAccountQueries);
-    client = TestBed.inject(QueryClient);
-    http = TestBed.inject(HttpTestingController);
+    ({ queries, client, http, request } = setUpQueries(LinkedAccountQueries));
   });
 
   afterEach(() => http.verify());
-
-  /** The request once it left: a query starts on a later tick. */
-  const request = (url: string) => vi.waitFor(() => http.expectOne(url));
 
   const stale = (key: readonly string[]) => client.getQueryState(key)?.isInvalidated;
 

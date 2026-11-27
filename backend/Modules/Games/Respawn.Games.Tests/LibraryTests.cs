@@ -5,7 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
+using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -184,7 +186,7 @@ public sealed class LibraryTests
 
         // By its owner alone: another account has no such game in its library.
         await ReadAsync(app, account.Id, Day(2), complete: true, ("620", "Portal 2", 90, null));
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         using var other = app.Browser();
         await other.RegisterAsync("second@example.org");
         Assert.Equal((HttpStatusCode.NotFound, "not_in_library"), await other.DeleteAsync(game).RefusalAsync());
@@ -689,7 +691,7 @@ public sealed class LibraryTests
         await using var app = await StartAsync();
         using var first = app.Browser();
         var one = await LinkAsync(app, await OwnerAsync(first), "76561190000000001");
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
         using var second = app.Browser();
         var other = await LinkAsync(app, await OwnerAsync(second, "second@example.org"), "76561190000000002");
 
@@ -805,7 +807,7 @@ public sealed class LibraryTests
         Assert.Equal((4, 2, 2, 1, 130 * 60L, null, 0, Day(1)), await StatsAsync(browser));
 
         // Someone else's library counts for nothing here.
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         using var other = app.Browser();
         await OwnerAsync(other, "second@example.org");
         Assert.Equal((0, 0, 0, 0, null, null, 0, null), await StatsAsync(other));
@@ -853,9 +855,6 @@ public sealed class LibraryTests
         }
     }
 
-    private static void OpenRegistration() =>
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
-
     private static async Task<(int Games, int Launched, int NeverLaunched, int Missing, long? Playtime, long? Recent, int RecentlyPlayed, DateTimeOffset? Since)> StatsAsync(HttpClient browser)
     {
         var stats = await browser.GetAsync("/api/v1/library/stats").JsonAsync();
@@ -870,12 +869,6 @@ public sealed class LibraryTests
             stats.GetProperty("recently_played").GetInt32(),
             stats.GetProperty("tracking_since") is { ValueKind: JsonValueKind.String } since ? since.GetDateTimeOffset() : null);
     }
-
-    private static async Task<Guid> OwnerAsync(HttpClient browser, string email = "first@example.org") =>
-        (await browser.RegisterAsync(email).JsonAsync()).GetProperty("id").GetGuid();
-
-    private static Task<LinkedAccount> LinkAsync(TestApp app, Guid owner, string externalId, string? displayName = null) =>
-        UseAsync(app, library => library.LinkAccountAsync(owner, Store, externalId, displayName, default));
 
     private static Task<Guid> RecordAsync(
         TestApp app,
@@ -913,13 +906,6 @@ public sealed class LibraryTests
                 item.RecentMinutes is { } recent ? TimeSpan.FromMinutes(recent) : null))],
             complete);
         return UseAsync(app, library => library.RecordLibraryAsync(account, reading, default));
-    }
-
-    /// <summary>A use case, called as a connector or a scheduler will: in a scope of its own.</summary>
-    private static async Task<T> UseAsync<T>(TestApp app, Func<ILibraryService, Task<T>> use)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        return await use(scope.ServiceProvider.GetRequiredService<ILibraryService>());
     }
 
     private static async Task<JsonElement[]> LibraryAsync(HttpClient browser) =>

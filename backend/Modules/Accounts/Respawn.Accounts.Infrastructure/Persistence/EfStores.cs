@@ -74,6 +74,12 @@ internal sealed class EfInstanceSettings(AccountsDbContext db) : IInstanceSettin
         var setting = await db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == key, ct);
         return setting is null ? fallback : setting.Value == "true";
     }
+
+    public Task SetFlagAsync(string key, bool value, CancellationToken ct) =>
+        // One statement: two administrators pressing at once leave one row, the last word.
+        db.Database.ExecuteSqlAsync(
+            $"INSERT INTO accounts.settings (key, value) VALUES ({key}, {(value ? "true" : "false")}) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            ct);
 }
 
 internal sealed class EfSessionStore(AccountsDbContext db, TimeProvider clock) : ISessionStore

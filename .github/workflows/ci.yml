@@ -7,7 +7,7 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main]
-  # release-drafter.yml dispatches this workflow on the tag a published release creates.
+  # A run by hand. A published release needs none: the tag its App pushes starts this workflow (tags, above).
   workflow_dispatch:
 
 permissions: {}

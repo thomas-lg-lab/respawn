@@ -128,7 +128,8 @@ internal static partial class RespawnSettings
                 : throw new FormatException("RESPAWN_PUBLIC_URL must be a scheme and a host, with nothing after: https://respawn.example.org");
     }
 
-    /// <summary>A whole number of at least one: none of these settings means anything at zero.</summary>
+    /// <summary>A whole number of at least one: none of these settings means anything at zero. And of a
+    /// million at most: past any use, and short of what a date cannot hold once added to it as days.</summary>
     private static int Number(IConfiguration configuration, string name, int fallback)
     {
         if (configuration[name] is not { Length: > 0 } value)
@@ -136,9 +137,9 @@ internal static partial class RespawnSettings
             return fallback;
         }
 
-        return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number >= 1
+        return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number is >= 1 and <= 1_000_000
             ? number
-            : throw new FormatException($"{name} must be a whole number, 1 or more");
+            : throw new FormatException($"{name} must be a whole number, from 1 to 1000000");
     }
 
     /// <summary>On or off, said plainly. Anything else is refused: a mistyped "true" must not quietly

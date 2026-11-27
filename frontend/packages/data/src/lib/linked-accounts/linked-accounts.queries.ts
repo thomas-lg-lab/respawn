@@ -70,7 +70,6 @@ export class LinkedAccountQueries {
         state.data?.some((account) => awaitsSync(account, state.dataUpdatedAt))
           ? AWAITING_SYNC_INTERVAL
           : false,
-      retry: false,
     });
   }
 

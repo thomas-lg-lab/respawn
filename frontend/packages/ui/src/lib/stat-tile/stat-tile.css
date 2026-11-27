@@ -10,6 +10,8 @@
     border: 1px solid var(--rs-line);
     border-radius: var(--rs-radius-card);
     background-color: var(--rs-surface);
+    /* The corner's mark stands on it. */
+    position: relative;
   }
 
   /* A fill, never a movement, as an interactive card: only for a pointer that can hover. */
@@ -24,9 +26,6 @@
   }
 
   /* In the corner, level with what the tile counts, which keeps its whole width. */
-  :host {
-    position: relative;
-  }
   .caption {
     padding-right: 1.25rem;
   }

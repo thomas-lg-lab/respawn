@@ -60,7 +60,7 @@
   } @else if (games.isError()) {
     <rs-banner tone="warn" role="alert">{{ t(failureKey(games.error())) }}</rs-banner>
     <button rsButton type="button" class="self-start" data-retry (click)="games.refetch()">
-      {{ t('library.retry') }}
+      {{ t('app.retry') }}
     </button>
   } @else {
     <div role="status">

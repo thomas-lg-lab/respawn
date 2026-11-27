@@ -31,5 +31,10 @@ public interface IAccountService
     /// when the account no longer exists.</summary>
     Task<Account?> SaveSettingsAsync(Guid accountId, InterfaceSettings settings, CancellationToken ct);
 
+    /// <summary>Opens registration to anyone, or closes it, as <paramref name="actor"/>, the signed-in
+    /// account. Closed, the providers that create accounts still do.</summary>
+    /// <exception cref="AccountException"><see cref="AccountError.Forbidden"/>: not an administrator.</exception>
+    Task SetRegistrationOpenAsync(Account actor, bool open, CancellationToken ct);
+
     Task LogoutAsync(string? sessionToken, CancellationToken ct);
 }

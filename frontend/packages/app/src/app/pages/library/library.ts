@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { Component, type Signal, computed, inject, linkedSignal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, type ParamMap, Router, RouterLink } from '@angular/router';
@@ -38,6 +39,15 @@ const STEP = 100;
 /** Where this browser keeps how the library is shown. */
 const VIEW_KEY = 'respawn.library-view';
 
+/** Under this name, the entry of the browser's history keeps how many steps its list showed. */
+const STEPS_KEPT = 'librarySteps';
+
+/** The steps an entry of the history kept, one for an entry that kept none. */
+function keptSteps(state: unknown): number {
+  const steps = (state as Record<string, unknown> | null)?.[STEPS_KEPT];
+  return typeof steps === 'number' && Number.isInteger(steps) && steps > 1 ? steps : 1;
+}
+
 /** The title an address asks for, or none when it is made of nothing the search reads. */
 function searched(asked: string | null): string {
   return asked !== null && letters(asked) > 0 ? asked.trim() : '';
@@ -68,6 +78,7 @@ export class Library {
   private readonly queries = inject(LibraryQueries);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly language = inject(LanguageSetting);
 
   protected readonly failureKey = failureKey;
@@ -103,10 +114,14 @@ export class Library {
     ),
     { initialValue: 0 },
   );
-  /** How many steps of the list are shown: back to one whenever the list is asked for anew. */
+  /**
+   * How many steps of the list are shown: what the entry of the history says, read again at
+   * each arrival. A list asked for anew is an entry that says nothing, so one step; the way
+   * back from a game is the entry that was left, with the steps it had.
+   */
   private readonly steps = linkedSignal({
     source: () => [this.search(), this.filter(), this.sort(), this.arrivals()].join('\n'),
-    computation: () => 1,
+    computation: () => keptSteps(this.location.getState()),
   });
 
   /** How many games the library holds, in the reader's language, and whether that is one. */
@@ -143,7 +158,10 @@ export class Library {
     this.rewrite({ [LIBRARY_SEARCH]: null });
   }
 
-  /** Another filter or order: the address says it in place, the history gains no step. */
+  /**
+   * Another filter or order: the address says it in place, the history gains no step, and
+   * the window stays where it is.
+   */
   protected pickFilter(filter: LibraryFilter): void {
     this.rewrite({ [LIBRARY_FILTER]: filter === 'all' ? null : filter }, true);
   }
@@ -161,7 +179,10 @@ export class Library {
     there.queryParams = Object.fromEntries(
       Object.entries({ ...there.queryParams, ...words }).filter(([, value]) => value !== null),
     );
-    void this.router.navigateByUrl(there, { replaceUrl: inPlace });
+    void this.router.navigateByUrl(
+      there,
+      inPlace ? { replaceUrl: true, scroll: 'manual' } : undefined,
+    );
   }
 
   /** Another way to show the same games: the games already shown stay. */
@@ -170,8 +191,17 @@ export class Library {
     writeChoice(VIEW_KEY, view);
   }
 
+  /**
+   * One step more, written on the entry of the history beside what the router keeps there:
+   * no navigation happens, and the way back to this entry finds the list as long.
+   */
   protected showMore(): void {
-    this.steps.update((steps) => steps + 1);
+    const steps = this.steps() + 1;
+    this.steps.set(steps);
+    this.location.replaceState(this.location.path(true), '', {
+      ...(this.location.getState() as object | null),
+      [STEPS_KEPT]: steps,
+    });
   }
 
   /** One game or several is the language's to say: French counts none as one. */

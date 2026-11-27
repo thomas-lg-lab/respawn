@@ -23,6 +23,10 @@ describe('Foundations', () => {
       ],
     });
     const fixture = TestBed.createComponent(Foundations);
+    // The screen's own sentences are fetched when it is first drawn: it shows once they are there.
+    await vi.waitFor(() =>
+      expect((fixture.nativeElement as HTMLElement).querySelector('h1')).not.toBeNull(),
+    );
     await fixture.whenStable();
     return fixture;
   }

@@ -9,6 +9,7 @@ using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -16,7 +17,6 @@ namespace Respawn.Games.Tests;
 /// Steam is never called: a test plays the browser coming back from it, and Steam's word on the answer.</summary>
 public sealed class SteamLinkTests
 {
-    private const string SteamId = "76561190000000001";
     private const string Start = "/api/v1/linked-accounts/steam/link";
 
     [Fact]
@@ -91,7 +91,7 @@ public sealed class SteamLinkTests
         using var first = app.Browser();
         using var second = app.Browser();
         await first.RegisterAsync();
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         await second.RegisterAsync("second@example.org", "Second");
 
         Assert.Equal("/?steam_link=linked", await LinkAsync(first, SteamId));
@@ -317,7 +317,7 @@ public sealed class SteamLinkTests
         var toSteam = await StartAsync(browser);
 
         await browser.PostAsync("/api/v1/auth/logout", null);
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         await browser.RegisterAsync("second@example.org", "Second");
         var back = await browser.GetAsync(FakeSteamSignIn.ComingBack(toSteam, FakeSteamSignIn.ClaimedId(SteamId)));
 
@@ -386,6 +386,10 @@ public sealed class SteamLinkTests
     [InlineData("/a\r\nSet-Cookie: x=1", "/")]
     [InlineData("/api/v1/auth/logout", "/")]
     [InlineData("/API/v1/me", "/")]
+    [InlineData("/./api/v1/me", "/")]
+    [InlineData("/library/../api/v1/me", "/")]
+    [InlineData("/%61pi/v1/me", "/")]
+    [InlineData("/library?q=a%20b&sort=..", "/library?q=a%20b&sort=..")]
     [InlineData("/caf\u00e9", "/")]
     [InlineData("/a\u2028b", "/")]
     [InlineData("/a b", "/")]
@@ -412,7 +416,7 @@ public sealed class SteamLinkTests
         using var browser = app.Browser();
         using var other = app.Browser();
         await browser.RegisterAsync();
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         await other.RegisterAsync("second@example.org", "Second");
         await LinkAsync(browser, SteamId);
         await LinkAsync(other, "76561190000000002");
@@ -461,17 +465,13 @@ public sealed class SteamLinkTests
 
         Assert.True(paths.GetProperty("/api/v1/linked-accounts").GetProperty("get").GetProperty("responses").TryGetProperty("200", out _));
         var unlink = paths.GetProperty("/api/v1/linked-accounts/{id}").GetProperty("delete").GetProperty("responses");
-        Assert.Equal(["204", "401", "404"], unlink.EnumerateObject().Select(response => response.Name).Order());
+        Assert.Equal(["204", "401", "403", "404"], unlink.EnumerateObject().Select(response => response.Name).Order());
         var link = paths.GetProperty(Start).GetProperty("get");
         Assert.Equal(["302", "401", "403"], link.GetProperty("responses").EnumerateObject().Select(response => response.Name).Order());
         Assert.Equal("return_to", Assert.Single(link.GetProperty("parameters").EnumerateArray()).GetProperty("name").GetString());
         // Where Steam sends the browser back is the exchange's, not a route of the contract.
         Assert.DoesNotContain(paths.EnumerateObject(), path => path.Name.Contains("callback", StringComparison.Ordinal));
     }
-
-    /// <summary>Lets a second account be created: registration closes after the first.</summary>
-    private static void OpenRegistration() =>
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
 
     /// <summary>Starts a link and gives the address at Steam the browser is sent to.</summary>
     private static async Task<Uri> StartAsync(HttpClient browser, string? returnTo = null)

@@ -3,12 +3,12 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -18,15 +18,11 @@ namespace Respawn.Games.Tests;
 /// memory, and a turn of each schedule is run by hand.</summary>
 public sealed class CoverTests
 {
-    private const string SteamId = "76561190000000001";
-
     /// <summary>Where the recorded store answer says the cover of Half-Life 2 is.</summary>
     private const string Hashed = "0123456789abcdef0123456789abcdef01234567/library_capsule.jpg";
 
     /// <summary>As the test's browser writes the header back: the same directives, in its own order.</summary>
     private const string KeptAWeek = "max-age=604800, private";
-
-    private static readonly byte[] Jpeg = FakeSteam.RecordedBytes("cover.jpg");
 
     private static readonly byte[] Png = FakeSteam.RecordedBytes("cover.png");
 
@@ -474,7 +470,7 @@ public sealed class CoverTests
         Assert.Empty(steam.ImageRequests);
 
         // An account that owns nothing: a cover is the catalogue's, not a library's.
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+        TestDatabase.OpenRegistration();
         using var other = app.Browser();
         await other.RegisterAsync("second@example.org");
         Assert.Equal(HttpStatusCode.OK, await other.GetAsync($"/api/v1/games/{portal2}/cover").StatusAsync());
@@ -556,26 +552,18 @@ public sealed class CoverTests
     private static Task<TestApp> StartAsync(FakeSteam steam, TestClock clock, Dictionary<string, string?>? settings = null) =>
         steam.StartAppAsync(settings, services => services.AddSingleton<TimeProvider>(clock));
 
-    /// <summary>An account of the instance, signed in, with a Steam account linked to it.</summary>
-    private static async Task<Guid> LinkAsync(TestApp app, HttpClient browser)
-    {
-        var owner = (await browser.RegisterAsync("first@example.org").JsonAsync()).GetProperty("id").GetGuid();
-        await using var scope = app.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, "steam", SteamId, null, default)).Id;
-    }
-
     /// <summary>One turn of the sync's schedule then one of the covers', as the app's timers run them.
     /// Returns how many syncs ended.</summary>
     private static async Task<int> TurnAsync(TestApp app)
     {
-        var synced = await Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+        var synced = await TurnAsync<SyncScheduler>(app);
         await CoversAsync(app);
         return synced;
     }
 
     /// <summary>One turn of the covers' schedule. Returns how many linked accounts' stores were asked.</summary>
     private static Task<int> CoversAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<CoverScheduler>()).RunDueAsync(default);
+        TurnAsync<CoverScheduler>(app);
 
     /// <summary>A source of covers that fails as no store does.</summary>
     private sealed class BrokenCovers : ICoverSource

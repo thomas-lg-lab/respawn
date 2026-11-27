@@ -111,7 +111,7 @@ public sealed class AccountsTests
         await using var app = await TestApp.StartAsync();
         using var first = app.Browser();
         await first.RegisterAsync();
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
 
         using var second = app.Browser();
         Assert.Equal(
@@ -238,6 +238,102 @@ public sealed class AccountsTests
         using var replay = app.Browser();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/me");
         request.Headers.Add("Cookie", cookie);
+        Assert.Equal(HttpStatusCode.Unauthorized, await replay.SendAsync(request).StatusAsync());
+    }
+
+    [Fact]
+    public async Task An_administrator_opens_registration_and_closes_it_again()
+    {
+        const string Registration = "/api/v1/instance/registration";
+        await using var app = await TestApp.StartAsync();
+        using var admin = app.Browser();
+        await admin.RegisterAsync();
+        using var second = app.Browser();
+
+        // Nobody signed in, then a word that says neither.
+        Assert.Equal((HttpStatusCode.Unauthorized, "not_signed_in"), await second.PutAsJsonAsync(Registration, new { open = true }).RefusalAsync());
+        Assert.Equal((HttpStatusCode.UnprocessableEntity, "invalid_request"), await admin.PutAsJsonAsync(Registration, new { }).RefusalAsync());
+
+        Assert.Equal(HttpStatusCode.NoContent, await admin.PutAsJsonAsync(Registration, new { open = true }).StatusAsync());
+        Assert.True((await second.GetAsync("/api/v1/config").JsonAsync()).GetProperty("registration_open").GetBoolean());
+        Assert.Equal(HttpStatusCode.Created, await second.RegisterAsync("second@example.org", "Second").StatusAsync());
+
+        // The second account is no administrator: it changes nothing.
+        Assert.Equal((HttpStatusCode.Forbidden, "forbidden"), await second.PutAsJsonAsync(Registration, new { open = false }).RefusalAsync());
+        Assert.True((await second.GetAsync("/api/v1/config").JsonAsync()).GetProperty("registration_open").GetBoolean());
+
+        // Said twice, it is said once; closed, the next one is refused as before.
+        Assert.Equal(HttpStatusCode.NoContent, await admin.PutAsJsonAsync(Registration, new { open = true }).StatusAsync());
+        Assert.Equal(HttpStatusCode.NoContent, await admin.PutAsJsonAsync(Registration, new { open = false }).StatusAsync());
+        using var third = app.Browser();
+        Assert.Equal(
+            (HttpStatusCode.Forbidden, "registration_closed"),
+            await third.RegisterAsync("third@example.org", "Third").RefusalAsync());
+    }
+
+    [Fact]
+    public async Task Over_https_the_session_cookie_is_this_hosts_alone()
+    {
+        await using var app = await TestApp.StartAsync(new() { ["RESPAWN_COOKIE_SECURE"] = "true" });
+        using var browser = app.Browser();
+        var set = (await browser.RegisterAsync()).Headers.GetValues("Set-Cookie").Single();
+
+        // The prefix a browser enforces: taken from this host only, with Secure, for every path, no Domain.
+        Assert.StartsWith("__Host-respawn_session=", set, StringComparison.Ordinal);
+        Assert.Contains("; secure", set, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("; path=/", set, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("domain=", set, StringComparison.OrdinalIgnoreCase);
+
+        // The session is read under that name, and not under the plain one another host could set.
+        var token = set.Split(';')[0].Split('=', 2)[1];
+        async Task<HttpStatusCode> Me(string cookie)
+        {
+            using var other = app.Browser();
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/me");
+            request.Headers.Add("Cookie", cookie);
+            return await other.SendAsync(request).StatusAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.OK, await Me($"__Host-respawn_session={token}"));
+        Assert.Equal(HttpStatusCode.Unauthorized, await Me($"respawn_session={token}"));
+
+        // Signing out takes it away as it was set: a browser ignores a prefixed cookie told without Secure.
+        using var signOut = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/logout");
+        signOut.Headers.Add("Cookie", $"__Host-respawn_session={token}");
+        var cleared = (await browser.SendAsync(signOut)).Headers.GetValues("Set-Cookie").Single();
+        Assert.StartsWith("__Host-respawn_session=;", cleared, StringComparison.Ordinal);
+        Assert.Contains("; secure", cleared, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.Unauthorized, await Me($"__Host-respawn_session={token}"));
+    }
+
+    [Fact]
+    public async Task A_session_of_before_the_prefix_is_closed_at_the_next_sign_in_and_its_cookie_taken_away()
+    {
+        // The same database, read by the app as it was (the plain name) and as it is over HTTPS.
+        await using var before = await TestApp.StartAsync();
+        using var browser = before.Browser();
+        var old = (await browser.RegisterAsync()).Headers.GetValues("Set-Cookie").Single().Split(';')[0];
+        Assert.StartsWith("respawn_session=", old, StringComparison.Ordinal);
+
+        await using var after = TestApp.Create(new() { ["RESPAWN_COOKIE_SECURE"] = "true" });
+        using var updated = after.Browser();
+        using var signIn = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
+        {
+            Content = JsonContent.Create(new { email = "first@example.org", password = TestApp.Password }),
+        };
+        signIn.Headers.Add("Cookie", old);
+        var signedIn = await updated.SendAsync(signIn);
+        Assert.Equal(HttpStatusCode.OK, signedIn.StatusCode);
+
+        // The new session under the prefixed name, and the old cookie told to go.
+        var set = signedIn.Headers.GetValues("Set-Cookie").ToArray();
+        Assert.Contains(set, cookie => cookie.StartsWith("__Host-respawn_session=", StringComparison.Ordinal) && !cookie.StartsWith("__Host-respawn_session=;", StringComparison.Ordinal));
+        Assert.Contains(set, cookie => cookie.StartsWith("respawn_session=;", StringComparison.Ordinal));
+
+        // Its session is closed too: read under the plain name again, it opens nothing.
+        using var replay = before.Browser();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/me");
+        request.Headers.Add("Cookie", old);
         Assert.Equal(HttpStatusCode.Unauthorized, await replay.SendAsync(request).StatusAsync());
     }
 

@@ -23,7 +23,7 @@ export function yearRuns(years: readonly number[]): string {
 /**
  * The time played year by year, whole years only: those Steam's Year in Review covers, and any
  * the syncs covered entirely. Each caption names the years it speaks of; a year counted only in
- * part is not drawn, and a line names it. With no whole year to draw, that line alone.
+ * part is not drawn, and a line names it. The home draws it only with a whole year to show.
  */
 @Component({
   selector: 'rs-years',

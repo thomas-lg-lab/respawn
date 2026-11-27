@@ -15,6 +15,9 @@ public enum AccountError
 
     /// <summary>The identity a provider proved is already linked to another account of the instance.</summary>
     ProviderLinkedElsewhere,
+
+    /// <summary>Only an administrator of the instance may do that.</summary>
+    Forbidden,
 }
 
 public sealed class AccountException(AccountError error) : Exception(error.ToString())

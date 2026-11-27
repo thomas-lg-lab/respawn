@@ -8,7 +8,7 @@
   (focusin)="entered($event)"
   (focusout)="left($event)"
   (keydown)="key($event)"
-  *transloco="let t; prefix: 'search'"
+  *transloco="let t"
 >
   <!-- Out of reach while the field stands over it. -->
   <button
@@ -17,7 +17,7 @@
     class="flex size-touch items-center justify-center rounded-thumb roomy:hidden"
     data-search-open
     [class.invisible]="unfolded()"
-    [aria-label]="t('open')"
+    [aria-label]="t('search.open')"
     (click)="unfold()"
   >
     <svg lucideSearch class="size-5" [strokeWidth]="2" aria-hidden="true"></svg>
@@ -37,8 +37,8 @@
     <!-- A container: the hint at the shortcut is only drawn when the field has room for it. -->
     <rs-search-field
       class="@container min-w-0 flex-1"
-      [label]="t('label')"
-      [placeholder]="t('placeholder')"
+      [label]="t('search.label')"
+      [placeholder]="t('search.placeholder')"
       [popup]="listId"
       [expanded]="listed()"
       [active]="activeId()"
@@ -49,7 +49,7 @@
           type="button"
           class="flex size-8 shrink-0 items-center justify-center rounded-thumb text-muted transition-colors duration-hover hover:bg-surface-2 hover:text-text"
           data-search-clear
-          [aria-label]="t('clear')"
+          [aria-label]="t('search.clear')"
           (mousedown)="$event.preventDefault()"
           (click)="clear()"
         >
@@ -59,7 +59,7 @@
         <kbd
           class="me-1 hidden shrink-0 rounded-thumb border border-control-line px-1.5 py-0.5 type-caption font-medium whitespace-nowrap text-muted roomy:@min-[15rem]:inline"
           aria-hidden="true"
-          >{{ t(apple ? 'shortcutApple' : 'shortcut') }}</kbd
+          >{{ t(apple ? 'search.shortcutApple' : 'search.shortcut') }}</kbd
         >
       }
     </rs-search-field>
@@ -70,7 +70,7 @@
       (mousedown)="$event.preventDefault()"
       (click)="close()"
     >
-      {{ t('close') }}
+      {{ t('search.close') }}
     </button>
   </div>
 
@@ -86,10 +86,10 @@
     >
       @if (failed()) {
         <p class="px-3 py-3.5 text-muted" role="status" data-search-unreadable>
-          {{ t('unreadable') }}
+          {{ t('search.unreadable') }}
         </p>
       } @else if (suggestions().length) {
-        <div class="p-1" role="listbox" [id]="listId" [attr.aria-label]="t('suggestions')">
+        <div class="p-1" role="listbox" [id]="listId" [attr.aria-label]="t('search.suggestions')">
           @for (row of suggestions(); track row.id; let index = $index) {
             <button
               rsButton
@@ -120,7 +120,7 @@
                 data-time
               >
                 @if (row.time === 'never' || row.time === 'unknown') {
-                  {{ t(row.time) }}
+                  {{ t(row.time === 'never' ? 'search.never' : 'app.unknown') }}
                 } @else {
                   {{ t(row.time.key, { count: row.time.count }) }}
                 }
@@ -137,12 +137,12 @@
             data-search-all
             (click)="ask(asked())"
           >
-            {{ t(all().one ? 'seeOne' : 'seeMany', { count: all().count }) }}
+            {{ t(all().one ? 'search.seeOne' : 'search.seeMany', { count: all().count }) }}
           </button>
         </div>
       } @else {
         <p class="px-3 py-3.5 text-muted" role="status" data-search-none>
-          {{ t('none', { title: asked() }) }}
+          {{ t('search.none', { title: asked() }) }}
         </p>
       }
     </div>

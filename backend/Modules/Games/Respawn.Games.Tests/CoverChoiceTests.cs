@@ -1,13 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -16,12 +15,8 @@ namespace Respawn.Games.Tests;
 /// Steam and IGDB answer from memory.</summary>
 public sealed class CoverChoiceTests : IDisposable
 {
-    private const string SteamId = "76561190000000001";
-
     /// <summary>Where IGDB's image host has Portal 2's cover, as the recorded games give its id.</summary>
     private const string Portal2Igdb = "t_cover_big_2x/co0fake72.jpg";
-
-    private static readonly byte[] Jpeg = FakeSteam.RecordedBytes("cover.jpg");
 
     /// <summary>Another image: IGDB's.</summary>
     private static readonly byte[] IgdbJpeg = [.. Jpeg, 7];
@@ -70,7 +65,7 @@ public sealed class CoverChoiceTests : IDisposable
         Assert.Single(igdb.ImageRequests);
 
         // Another account sees the game's own, and chose nothing.
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+        TestDatabase.OpenRegistration();
         using var other = app.Browser();
         await other.RegisterAsync("second@example.org");
         Assert.Equal(("steam,igdb", null), Covers(await GameAsync(other, portal2)));
@@ -231,9 +226,6 @@ public sealed class CoverChoiceTests : IDisposable
         (await browser.GetAsync("/api/v1/library?limit=500").JsonAsync()).GetProperty("games").EnumerateArray()
             .Single(item => item.GetProperty("game_id").GetGuid() == game);
 
-    /// <summary>The start of an image's SHA-256, as a kept file's name holds it.</summary>
-    private static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes))[..16];
-
     /// <summary>The kept files, by their path under <c>images/</c>.</summary>
     private string[] Files()
     {
@@ -261,15 +253,10 @@ public sealed class CoverChoiceTests : IDisposable
     /// Returns the games by name.</summary>
     private static async Task<Dictionary<string, Guid>> ReadAllAsync(TestApp app, HttpClient browser)
     {
-        var owner = (await browser.RegisterAsync("first@example.org").JsonAsync()).GetProperty("id").GetGuid();
-        await using (var scope = app.Services.CreateAsyncScope())
-        {
-            await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, "steam", SteamId, null, default);
-        }
-
-        await Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
-        await Assert.Single(app.Services.GetServices<IHostedService>().OfType<CoverScheduler>()).RunDueAsync(default);
-        await Assert.Single(app.Services.GetServices<IHostedService>().OfType<GameDataScheduler>()).RunDueAsync(default);
+        await LinkAsync(app, browser);
+        await TurnAsync<SyncScheduler>(app);
+        await TurnAsync<CoverScheduler>(app);
+        await TurnAsync<GameDataScheduler>(app);
         return (await browser.GetAsync("/api/v1/library?limit=500").JsonAsync()).GetProperty("games").EnumerateArray()
             .ToDictionary(game => game.GetProperty("name").GetString() ?? "", game => game.GetProperty("game_id").GetGuid());
     }

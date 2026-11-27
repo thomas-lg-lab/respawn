@@ -218,8 +218,9 @@ public interface ILibraryStore
 
 public interface IYearReviewStore
 {
-    /// <summary>The years of a linked account whose review is kept.</summary>
-    Task<IReadOnlySet<int>> ListYearsAsync(Guid linkedAccountId, CancellationToken ct);
+    /// <summary>The years whose review is kept, for each of these linked accounts, asked at once; an
+    /// account with none is left out.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<int>>> ListYearsAsync(IReadOnlyCollection<Guid> linkedAccountIds, CancellationToken ct);
 
     /// <summary>Keeps the review of a year: which snapshot it is, and what it says per month and per game.
     /// A year kept already is replaced whole.</summary>
@@ -229,7 +230,8 @@ public interface IYearReviewStore
     Task<IReadOnlyList<(Guid LinkedAccountId, int Year)>> ListOwnerYearsAsync(Guid ownerId, CancellationToken ct);
 
     /// <summary>What an owner played per month and per game, from every review kept of their linked
-    /// accounts, in no order. A game they no longer own is in it: a review counts what was played.
+    /// accounts, added up, in no order: a month and a game come once, however many accounts or store
+    /// entries played it. A game they no longer own is in it: a review counts what was played.
     /// Only one game when <paramref name="gameId"/> is given, and only the month
     /// <paramref name="month"/> is the first day of when it is: the other rows are not read.</summary>
     Task<IReadOnlyList<PlayedMonth>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? month, CancellationToken ct);

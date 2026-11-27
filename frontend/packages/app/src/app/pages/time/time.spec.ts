@@ -1,12 +1,10 @@
 import { type LibraryGame } from '@respawn/data';
-import { TEST_LINKED_ACCOUNT } from '@respawn/data/testing';
-import { ACCOUNT, api, start } from '@app/testing/app-testing';
+import { LIBRARY_FIRST_PAGE, api, openWithGames, text } from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
 import './time';
 import { ago, game } from '@app/testing/games';
 
-const FIRST_PAGE = '/library?sort=name&offset=0&limit=500';
 const HOUR = 3600;
 
 /** Three launched games, 152 hours in all, and one never launched. */
@@ -21,21 +19,9 @@ function library(): LibraryGame[] {
 
 describe('Time', () => {
   /** Opens the Time tab, signed in; the API answers with these games unless told not to. */
-  async function open(games: LibraryGame[] | null = library(), language: Language = 'fr') {
-    const { harness, server, arrived } = await start('/time', language);
-    await server.answer('/me', ACCOUNT);
-    await arrived;
-    // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.
-    await server.answer('/linked-accounts', { accounts: [TEST_LINKED_ACCOUNT] });
-    if (games) {
-      await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
-      await harness.fixture.whenStable();
-    }
-    return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
-  }
+  const open = (games: LibraryGame[] | null = library(), language: Language = 'fr') =>
+    openWithGames('/time', games, language);
 
-  const text = (within: Element, selector: string) =>
-    within.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim();
   const tile = (screen: HTMLElement, name: string) =>
     screen.querySelector<HTMLButtonElement>(`[data-tile][aria-label^="${name},"]`)!;
 
@@ -164,7 +150,9 @@ describe('Time', () => {
     await harness.fixture.whenStable();
 
     expect(text(screen, '[data-detail] h2')).toBe('2 autres jeux');
-    expect(screen.querySelector('[data-detail] a')?.getAttribute('href')).toBe('/library');
+    expect(screen.querySelector('[data-detail] a')?.getAttribute('href')).toBe(
+      '/library?filter=launched&sort=playtime',
+    );
   });
 
   it('draws nothing under two launched games, and leads to the home', async () => {
@@ -179,7 +167,7 @@ describe('Time', () => {
 
   it('says why the games could not be read, and asks again on request', async () => {
     const { harness, server, screen } = await open(null);
-    await server.refuse(FIRST_PAGE, 503, 'database_unavailable');
+    await server.refuse(LIBRARY_FIRST_PAGE, 503, 'database_unavailable');
     await harness.fixture.whenStable();
 
     expect(text(screen, '[role="alert"]')).toBe(
@@ -188,7 +176,7 @@ describe('Time', () => {
 
     screen.querySelector<HTMLButtonElement>('[data-retry]')!.click();
     const games = library();
-    await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
+    await server.answer(LIBRARY_FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
     await harness.fixture.whenStable();
 
     expect(screen.querySelectorAll('[data-tile]')).toHaveLength(3);

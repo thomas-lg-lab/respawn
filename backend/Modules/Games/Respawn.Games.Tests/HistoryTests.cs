@@ -7,6 +7,7 @@ using Respawn.Games.Infrastructure.Persistence.Migrations;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -14,8 +15,6 @@ namespace Respawn.Games.Tests;
 /// totals between two readings. No store is called: a reading is what a connector would hand over.</summary>
 public sealed class HistoryTests
 {
-    private const string Store = "steam";
-
     [Fact]
     public async Task The_history_needs_a_session_and_starts_empty()
     {
@@ -199,7 +198,7 @@ public sealed class HistoryTests
         await using var app = await StartAsync();
         using var first = app.Browser();
         var one = await LinkAsync(app, await OwnerAsync(first), "76561190000000001");
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
+        TestDatabase.OpenRegistration();
         using var second = app.Browser();
         var other = await LinkAsync(app, await OwnerAsync(second, "second@example.org"), "76561190000000002");
         using var third = app.Browser();
@@ -341,6 +340,58 @@ public sealed class HistoryTests
     }
 
     [Fact]
+    public async Task What_a_reading_found_is_of_the_day_the_store_says_it_was_played_when_it_says_one()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 10));
+        // Read in the small hours of the 2nd, played the evening of the 1st: a day's reading holds
+        // the evening before it.
+        await RecordAsync(app, account.Id, Day(2), Day(1).AddHours(16), ("620", "Portal 2", 40));
+        // The store says no moment: the day of the reading, as far as anyone knows.
+        await RecordAsync(app, account.Id, Day(3), ("620", "Portal 2", 60));
+        // A moment before the reading before: not when this time was played, so the reading's day.
+        await RecordAsync(app, account.Id, Day(4), Day(1).AddHours(16), ("620", "Portal 2", 70));
+        // And one after the reading itself, which no store can know.
+        await RecordAsync(app, account.Id, Day(5), Day(6), ("620", "Portal 2", 75));
+        var portal2 = (await GamesAsync(app))["620"];
+
+        var whole = await DaysAsync(browser);
+        Assert.Equal(
+            [(Date(1), portal2, 1800L), (Date(3), portal2, 1200L), (Date(4), portal2, 600L), (Date(5), portal2, 300L)],
+            whole);
+
+        // A day asked alone has what was played on it, though the reading that found it came after;
+        // and the day of that reading does not have it too.
+        Assert.Equal(whole.Where(day => day.Date == Date(1)), await DaysAsync(browser, "?from=2026-11-01&to=2026-11-01"));
+        Assert.Equal(whole.Where(day => day.Date <= Date(1)), await DaysAsync(browser, "?to=2026-11-01"));
+        Assert.Empty(await DaysAsync(browser, "?from=2026-11-02&to=2026-11-02"));
+        Assert.Equal(whole.Where(day => day.Date >= Date(2)), await DaysAsync(browser, "?from=2026-11-02"));
+    }
+
+    [Fact]
+    public async Task What_a_reading_that_hid_the_playtime_kept_from_being_seen_is_of_the_day_it_is_seen()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var account = await LinkAsync(app, await OwnerAsync(browser), "76561190000000001");
+
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 10));
+        // The reading after the 1st says nothing: the store hid the playtime that morning.
+        await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 0));
+        // The next one says what was played the evening of the 1st, a moment before the reading before
+        // it: nothing says the time was not played since, so it is of the day it is seen, once.
+        await RecordAsync(app, account.Id, Day(3), Day(1).AddHours(16), ("620", "Portal 2", 40));
+        var portal2 = (await GamesAsync(app))["620"];
+
+        Assert.Equal([(Date(3), portal2, 1800L)], await DaysAsync(browser));
+        Assert.Empty(await DaysAsync(browser, "?to=2026-11-02"));
+        Assert.Equal([(Date(3), portal2, 1800L)], await DaysAsync(browser, "?from=2026-11-03"));
+    }
+
+    [Fact]
     public async Task A_reading_at_midnight_is_of_the_day_that_starts_and_one_just_before_of_the_day_that_ends()
     {
         await using var app = await StartAsync();
@@ -406,29 +457,22 @@ public sealed class HistoryTests
     private static Task<TestApp> StartAsync() =>
         TestApp.StartAsync(services: services => services.AddSingleton<TimeProvider>(new TestClock { Now = Day(28) }));
 
-    private static async Task<Guid> OwnerAsync(HttpClient browser, string email = "first@example.org") =>
-        (await browser.RegisterAsync(email).JsonAsync()).GetProperty("id").GetGuid();
-
-    private static Task<LinkedAccount> LinkAsync(TestApp app, Guid owner, string externalId) =>
-        UseAsync(app, library => library.LinkAccountAsync(owner, Store, externalId, null, default));
-
     /// <summary>A reading of a library: each game with the total its store gives, in minutes, or none.</summary>
     private static Task<Guid> RecordAsync(
-        TestApp app, Guid account, DateTimeOffset takenAt, params (string Id, string Name, int? Minutes)[] items)
+        TestApp app, Guid account, DateTimeOffset takenAt, params (string Id, string Name, int? Minutes)[] items) =>
+        RecordAsync(app, account, takenAt, lastPlayedAt: null, items);
+
+    /// <summary>The same, the store saying when each game was last played.</summary>
+    private static Task<Guid> RecordAsync(
+        TestApp app, Guid account, DateTimeOffset takenAt, DateTimeOffset? lastPlayedAt, params (string Id, string Name, int? Minutes)[] items)
     {
         var reading = new LibraryReading(
             "owned-games",
             takenAt,
             "{}",
             [.. items.Select(item => new OwnedItem(
-                item.Id, item.Name, item.Minutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null, LastPlayedAt: null))]);
+                item.Id, item.Name, item.Minutes is { } minutes ? TimeSpan.FromMinutes(minutes) : null, lastPlayedAt))]);
         return UseAsync(app, library => library.RecordLibraryAsync(account, reading, default));
-    }
-
-    private static async Task<T> UseAsync<T>(TestApp app, Func<ILibraryService, Task<T>> use)
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        return await use(scope.ServiceProvider.GetRequiredService<ILibraryService>());
     }
 
     /// <summary>The games of the catalogue, by the id their store entry has in the store.</summary>

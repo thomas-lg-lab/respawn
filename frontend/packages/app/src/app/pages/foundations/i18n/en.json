@@ -1,0 +1,65 @@
+{
+  "label": "Foundations",
+  "title": "The visual foundations",
+  "intro": "The colours, the typography and the base components. Everything follows the theme, the character and the language chosen below.",
+  "settings": "Settings",
+  "type": {
+    "label": "Typography",
+    "hero": "Hero title",
+    "pageTitle": "Page title",
+    "figureCaption": "games in the library",
+    "cardTitle": "Card title",
+    "body": "Body text: 142 h in total, last session yesterday.",
+    "caption": "Caption, in the muted colour."
+  },
+  "components": {
+    "label": "Components",
+    "buttons": "Buttons",
+    "primary": "Primary button",
+    "outlined": "Secondary button",
+    "disabled": "Unavailable",
+    "sync": "Sync",
+    "rows": "Lines of a menu",
+    "rowFirst": "My account",
+    "rowSecond": "Sign out",
+    "pills": "Pills",
+    "lines": "Pills as a row of filters",
+    "filters": {
+      "all": "All",
+      "recent": "Recent",
+      "never": "Never launched"
+    },
+    "bar": "Segmented bar",
+    "chart": "Column chart",
+    "hours": "{{ count }} h",
+    "banners": "Banners",
+    "status": "Sync in progress: your games stay on screen.",
+    "warning": "Sync failed. Your games stay on screen as they were yesterday.",
+    "avatar": "Avatar",
+    "tabs": "Tabs",
+    "search": "Search field",
+    "searchHint": "A title",
+    "select": "Select",
+    "sortBy": "Sort by",
+    "disclosure": "Disclosure",
+    "open": "Show the panel",
+    "panel": "A panel that closes on Escape or a click outside."
+  },
+  "form": {
+    "label": "Form",
+    "name": "Display name",
+    "nameHint": "The name other members will see.",
+    "email": "E-mail",
+    "submit": "Form button"
+  },
+  "library": {
+    "label": "The library’s blocks",
+    "heroLetter": "H",
+    "heroLabel": "Resume",
+    "heroTitle": "Hades",
+    "tileCaption": "Playtime",
+    "tileNote": "across 12 games",
+    "covers": "Covers, waiting for their artwork",
+    "skeleton": "Something on its way"
+  }
+}

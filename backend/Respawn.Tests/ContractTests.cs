@@ -255,6 +255,17 @@ public sealed class ContractTests
         Assert.Equal((status, "http_error"), await client.SendAsync(request).RefusalAsync());
     }
 
+    [Theory]
+    [InlineData("/api/v1/me")]
+    [InlineData("/api/v1/nothing")]
+    public async Task An_answer_of_the_api_is_kept_by_nobody_unless_its_route_says_so(string path)
+    {
+        await using var app = TestApp.Offline();
+        using var client = app.Browser();
+        using var response = await client.GetAsync(path);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+    }
+
     [Fact]
     public async Task Data_routes_answer_503_without_database()
     {

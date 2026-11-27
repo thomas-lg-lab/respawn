@@ -18,7 +18,7 @@
           }
         </span>
         <button rsButton type="button" data-sync-retry (click)="syncNow.emit()">
-          {{ t(notice() === 'stale' ? 'home.sync.now' : 'home.sync.retry') }}
+          {{ t(notice() === 'stale' ? 'home.sync.now' : 'app.retry') }}
         </button>
         @if (notice() === 'stale') {
           <button rsButton type="button" data-sync-dismiss (click)="dismiss.emit()">

@@ -1,11 +1,10 @@
 using System.Net;
-using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -14,14 +13,10 @@ namespace Respawn.Games.Tests;
 /// of IGDB: the game's page on it, and the credit its terms ask for. Steam and IGDB answer from memory.</summary>
 public sealed class IgdbCoverTests : IDisposable
 {
-    private const string SteamId = "76561190000000001";
-
     private const string KeptAWeek = "max-age=604800, private";
 
     /// <summary>Where IGDB's image host has Portal's cover, as the recorded games give its id.</summary>
     private const string PortalCover = "t_cover_big_2x/co0fake71.jpg";
-
-    private static readonly byte[] Jpeg = FakeSteam.RecordedBytes("cover.jpg");
 
     /// <summary>Another image: IGDB's.</summary>
     private static readonly byte[] IgdbJpeg = [.. Jpeg, 7];
@@ -254,9 +249,6 @@ public sealed class IgdbCoverTests : IDisposable
         Assert.Empty(igdb.ImageRequests);
     }
 
-    /// <summary>The start of an image's SHA-256, as a kept file's name holds it.</summary>
-    private static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes))[..16];
-
     /// <summary>The kept files, by their path under <c>images/</c>.</summary>
     private string[] Files()
     {
@@ -293,21 +285,14 @@ public sealed class IgdbCoverTests : IDisposable
         return await GamesAsync(browser);
     }
 
-    private static async Task LinkAsync(TestApp app, HttpClient browser)
-    {
-        var owner = (await browser.RegisterAsync("first@example.org").JsonAsync()).GetProperty("id").GetGuid();
-        await using var scope = app.Services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, "steam", SteamId, null, default);
-    }
-
     private static Task<int> SyncAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+        TurnAsync<SyncScheduler>(app);
 
     private static Task<int> CoversAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<CoverScheduler>()).RunDueAsync(default);
+        TurnAsync<CoverScheduler>(app);
 
     private static Task<int> GameDataAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<GameDataScheduler>()).RunDueAsync(default);
+        TurnAsync<GameDataScheduler>(app);
 
     private static async Task<Dictionary<string, Guid>> GamesAsync(HttpClient browser) =>
         (await browser.GetAsync("/api/v1/library?limit=500").JsonAsync()).GetProperty("games").EnumerateArray()

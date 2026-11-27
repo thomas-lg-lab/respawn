@@ -4,13 +4,13 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Respawn.Games.Api;
 using Respawn.Games.Infrastructure.Credentials;
 using Respawn.Games.Infrastructure.Persistence;
 using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -18,8 +18,6 @@ namespace Respawn.Games.Tests;
 /// and the only key the sync reads that account with once it is given. Steam answers from memory.</summary>
 public sealed class OwnKeyTests
 {
-    private const string SteamId = "76561190000000001";
-
     /// <summary>A key in the shape of Steam's, other than the instance's. Nobody's.</summary>
     private const string OwnKey = "FEDCBA9876543210FEDCBA9876543210";
 
@@ -240,7 +238,7 @@ public sealed class OwnKeyTests
         await SetKeyAsync(browser, account);
         Assert.Equal("succeeded", (await SyncNowAsync(browser, account)).GetProperty("outcome").GetString());
 
-        Assert.Equal(1, await Assert.Single(app.Services.GetServices<IHostedService>().OfType<YearReviewScheduler>()).RunDueAsync(default));
+        Assert.Equal(1, await TurnAsync<YearReviewScheduler>(app));
 
         // The owner's key and that one only, as for the library: never the instance's beside it.
         var reviews = steam.Requests.Where(request => request.Address.AbsolutePath.Contains("YearInReview", StringComparison.Ordinal)).ToArray();
@@ -258,7 +256,7 @@ public sealed class OwnKeyTests
         using var nobody = app.Browser();
         var account = await LinkAsync(app, owner);
         await SetKeyAsync(owner, account);
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         await LinkAsync(app, other, "76561190000000002", "second@example.org");
 
         Assert.Equal(
@@ -368,10 +366,9 @@ public sealed class OwnKeyTests
         TestApp app, HttpClient browser, string steamId = SteamId, string email = "first@example.org", bool register = true)
     {
         var owner = register
-            ? (await browser.RegisterAsync(email).JsonAsync()).GetProperty("id").GetGuid()
+            ? await OwnerAsync(browser, email)
             : (await browser.GetAsync("/api/v1/me").JsonAsync()).GetProperty("id").GetGuid();
-        await using var scope = app.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, "steam", steamId, null, default)).Id;
+        return (await Fixtures.LinkAsync(app, owner, steamId)).Id;
     }
 
     private static async Task SetKeyAsync(HttpClient browser, Guid account) =>
@@ -388,8 +385,6 @@ public sealed class OwnKeyTests
     }
 
     private static Task<int> TurnAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+        TurnAsync<SyncScheduler>(app);
 
-    private static void OpenRegistration() =>
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
 }

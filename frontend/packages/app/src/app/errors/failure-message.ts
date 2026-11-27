@@ -14,6 +14,7 @@ export const KNOWN_FAILURES = [
   'weak_password',
   'invalid_request',
   'cross_site_request',
+  'forbidden',
   'sync_in_progress',
   'unknown_linked_account',
   'invalid_key',
@@ -23,6 +24,8 @@ export const KNOWN_FAILURES = [
   'still_listed',
   'not_in_library',
   'not_removed',
+  'not_back',
+  'unknown_game',
   NETWORK_ERROR,
 ] as const;
 

@@ -16,6 +16,14 @@ internal static class LinkedAccounts
             : throw new GamesException(GamesError.UnknownLinkedAccount);
 }
 
+internal static class Details
+{
+    /// <summary>What happened, in a connector's words, cut to what is kept of it
+    /// (<see cref="Limits.SyncDetail"/>).</summary>
+    public static string? Cut(string? detail) =>
+        detail is { Length: > Limits.SyncDetail } ? detail[..Limits.SyncDetail] : detail;
+}
+
 internal static class OwnedGames
 {
     /// <summary>A library from the entries it is made of, a game once however many entries it is owned

@@ -18,6 +18,15 @@ public sealed class SessionCookieOptions
 {
     /// <summary>Sent over HTTPS only; false for plain HTTP on localhost.</summary>
     public bool Secure { get; init; } = true;
+
+    /// <summary>The cookie's name. Over HTTPS it carries the <c>__Host-</c> prefix: a browser then takes
+    /// it from this host only, for every path and with no Domain, so another service on a neighbouring
+    /// subdomain cannot plant a session of its own in a visitor's browser. The prefix needs Secure,
+    /// which plain HTTP on localhost does not have.</summary>
+    public string Name => Prefixed("respawn_session");
+
+    /// <summary>A cookie's name as this instance sends it: with the prefix over HTTPS.</summary>
+    public string Prefixed(string name) => Secure ? "__Host-" + name : name;
 }
 
 public static class AccountsApi
@@ -55,9 +64,13 @@ public static class AccountsApi
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
 
         services.AddAuthorizationBuilder()
-            .SetDefaultPolicy(new AuthorizationPolicyBuilder(SessionAuthenticationHandler.SchemeName).RequireAuthenticatedUser().Build());
+            .SetDefaultPolicy(new AuthorizationPolicyBuilder(SessionAuthenticationHandler.SchemeName).RequireAuthenticatedUser().Build())
+            .AddPolicy(Administrator, policy => policy.AddAuthenticationSchemes(SessionAuthenticationHandler.SchemeName).RequireRole(Administrator));
         return services;
     }
+
+    /// <summary>The role of an administrator, and the policy a route asks for it with.</summary>
+    internal const string Administrator = "administrator";
 
     internal static ObjectResult Error(int status, string code, string message) =>
         new(new ErrorResponse(code, message)) { StatusCode = status };
@@ -72,6 +85,7 @@ public static class AccountsApi
         AccountError.RegistrationClosed => Error(403, "registration_closed", "Registration is closed on this instance."),
         AccountError.AccountExists => Error(409, "account_exists", "An account already uses this e-mail address."),
         AccountError.LocalSignInDisabled => Error(403, "local_sign_in_disabled", "Local sign-in is disabled on this instance."),
+        AccountError.Forbidden => Error(403, "forbidden", "This account may not do that."),
         AccountError.InvalidCredentials => Error(401, "invalid_credentials", "Wrong e-mail or password, or the account is locked for a while."),
         _ => throw new ArgumentOutOfRangeException(nameof(error), error, null),
     };
@@ -96,10 +110,15 @@ internal sealed class AccountRefusalsAttribute : ExceptionFilterAttribute
 /// <summary>The session cookie: an opaque token, HttpOnly, whose SHA-256 names a row of the database.</summary>
 internal static class SessionCookie
 {
-    public const string Name = "respawn_session";
+    /// <summary>The cookie's name without its prefix: what it was over HTTPS too, before.</summary>
+    private const string Unprefixed = "respawn_session";
+
+    /// <summary>The token the request carries, if any.</summary>
+    public static string? Carried(HttpContext http) =>
+        http.Request.Cookies[http.RequestServices.GetRequiredService<SessionCookieOptions>().Name];
 
     public static void Set(HttpResponse response, string token, AccountOptions accounts, SessionCookieOptions cookie) =>
-        response.Cookies.Append(Name, token, new CookieOptions
+        response.Cookies.Append(cookie.Name, token, new CookieOptions
         {
             MaxAge = TimeSpan.FromDays(accounts.SessionDays),
             HttpOnly = true,
@@ -114,7 +133,7 @@ internal static class SessionCookie
     public static async Task ReplaceAsync(
         HttpContext http, IAccountService accountService, string token, AccountOptions accounts, SessionCookieOptions cookie, ILogger logger)
     {
-        var carried = http.Request.Cookies[Name];
+        var carried = Carried(http);
         Set(http.Response, token, accounts, cookie);
         try
         {
@@ -124,7 +143,34 @@ internal static class SessionCookie
         {
             logger.LogWarning("the session a sign-in replaced could not be closed: {Reason}", ex.Message);
         }
+
+        await CloseUnprefixedAsync(http, accountService, cookie, logger);
     }
 
-    public static void Clear(HttpResponse response) => response.Cookies.Delete(Name, new CookieOptions { Path = "/" });
+    /// <summary>Over HTTPS, closes the session a browser still carries under the name of before the
+    /// prefix, and takes that cookie away: it is no longer read, and would otherwise stay good in the
+    /// database until it expires. Asked at each sign-in and sign-out; nothing to do once every such
+    /// cookie has expired.</summary>
+    public static async Task CloseUnprefixedAsync(HttpContext http, IAccountService accountService, SessionCookieOptions cookie, ILogger logger)
+    {
+        if (cookie.Name == Unprefixed || http.Request.Cookies[Unprefixed] is not { Length: > 0 } carried)
+        {
+            return;
+        }
+
+        http.Response.Cookies.Delete(Unprefixed, new CookieOptions { Path = "/" });
+        try
+        {
+            await accountService.LogoutAsync(carried, http.RequestAborted);
+        }
+        catch (Exception ex) when (!http.RequestAborted.IsCancellationRequested)
+        {
+            logger.LogWarning("a session of before the cookie's prefix could not be closed: {Reason}", ex.Message);
+        }
+    }
+
+    /// <summary>Takes the cookie away, said as it was set: a browser ignores what a prefixed cookie is
+    /// told without Secure.</summary>
+    public static void Clear(HttpResponse response, SessionCookieOptions cookie) =>
+        response.Cookies.Delete(cookie.Name, new CookieOptions { Path = "/", Secure = cookie.Secure });
 }

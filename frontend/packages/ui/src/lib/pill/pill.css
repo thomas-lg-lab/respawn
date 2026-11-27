@@ -25,8 +25,10 @@
     color: var(--rs-text);
     transition-property: background-color, color, border-color, translate;
   }
-  :host([data-variant='block']:hover) {
-    background-color: var(--rs-surface-2);
+  @media (hover: hover) {
+    :host([data-variant='block']:hover) {
+      background-color: var(--rs-surface-2);
+    }
   }
   :host([data-variant='block']:active) {
     translate: 0 1px;
@@ -44,8 +46,10 @@
     white-space: nowrap;
     transition-property: color, box-shadow;
   }
-  :host([data-variant='line']:hover) {
-    color: var(--rs-text);
+  @media (hover: hover) {
+    :host([data-variant='line']:hover) {
+      color: var(--rs-text);
+    }
   }
   /* The ring inside: the row these stand in scrolls, and would cut one drawn around. */
   :host([data-variant='line']:focus-visible) {
@@ -77,8 +81,10 @@
     inset-inline: 0;
     content: '';
   }
-  :host([data-variant='segment']:hover) {
-    color: var(--rs-text);
+  @media (hover: hover) {
+    :host([data-variant='segment']:hover) {
+      color: var(--rs-text);
+    }
   }
   :host([data-variant='segment'][aria-pressed='true']) {
     background-color: var(--rs-inverse);

@@ -31,16 +31,16 @@ public sealed class SyncService(
             var now = clock.GetUtcNow();
             var earliest = now - SyncSchedule.ManualPause;
             if ((await runs.FindLatestAsync(account.Id, ct))?.StartedAt > earliest
-                || gate.StartedAt(account.Id, SyncTrigger.Manual) > earliest)
+                || gate.TriedAt((account.Id, SyncTrigger.Manual)) > earliest)
             {
                 throw new GamesException(GamesError.SyncTooSoon);
             }
 
-            gate.Started(account.Id, SyncTrigger.Manual, now);
+            gate.Tried((account.Id, SyncTrigger.Manual), now);
             var run = await RunAsync(account, SyncTrigger.Manual, now, ct);
 
             // Kept: from here its run says when it started.
-            gate.Forget(account.Id, SyncTrigger.Manual);
+            gate.Forget((account.Id, SyncTrigger.Manual));
             return run;
         }
         finally
@@ -87,17 +87,17 @@ public sealed class SyncService(
             // An account is due until a run says otherwise. When the last reading left no run (it
             // could not be kept, or was given up), the store is not asked again at every turn.
             var now = clock.GetUtcNow();
-            if (gate.StartedAt(account.Id, SyncTrigger.Scheduled) > now - SyncSchedule.RetryAfter)
+            if (gate.TriedAt((account.Id, SyncTrigger.Scheduled)) > now - SyncSchedule.RetryAfter)
             {
                 return null;
             }
 
-            gate.Started(account.Id, SyncTrigger.Scheduled, now);
+            gate.Tried((account.Id, SyncTrigger.Scheduled), now);
             var run = await RunAsync(account, SyncTrigger.Scheduled, now, ct);
 
             // Kept: from here the runs say when the next one is due, and a reading made late in a
             // day does not hold back the next day's.
-            gate.Forget(account.Id, SyncTrigger.Scheduled);
+            gate.Forget((account.Id, SyncTrigger.Scheduled));
             return run;
         }
         catch (GamesException ex) when (ex.Error == GamesError.UnknownLinkedAccount)
@@ -135,7 +135,7 @@ public sealed class SyncService(
     {
         var own = false;
         SyncRun Ended(SyncOutcome outcome, SourceError? error = null, string? detail = null, Guid? snapshot = null) =>
-            new(Guid.CreateVersion7(), account.Id, trigger, startedAt, clock.GetUtcNow(), outcome, error, Cut(detail), snapshot, own);
+            new(Guid.CreateVersion7(), account.Id, trigger, startedAt, clock.GetUtcNow(), outcome, error, Details.Cut(detail), snapshot, own);
 
         // The store first, outside any transaction.
         LibraryReading? reading = null;
@@ -210,7 +210,4 @@ public sealed class SyncService(
                 return run;
             },
             ct);
-
-    private static string? Cut(string? detail) =>
-        detail is { Length: > Limits.SyncDetail } ? detail[..Limits.SyncDetail] : detail;
 }

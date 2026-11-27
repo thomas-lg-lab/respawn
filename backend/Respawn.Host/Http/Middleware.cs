@@ -32,7 +32,8 @@ internal sealed class ProxyWarningMiddleware(RequestDelegate next, HttpSettings 
     }
 }
 
-/// <summary>Security headers on every response, and the rule that goes with a cookie session: a
+/// <summary>Security headers on every response, an answer of the API kept by nobody unless its route
+/// says otherwise (it is one account's), and the rule that goes with a cookie session: a
 /// state-changing request must come from this site's own pages.</summary>
 internal sealed class SiteGuardMiddleware(RequestDelegate next)
 {
@@ -44,6 +45,11 @@ internal sealed class SiteGuardMiddleware(RequestDelegate next)
             headers.XContentTypeOptions = "nosniff";
             headers["Referrer-Policy"] = "same-origin";
             headers.ContentSecurityPolicy = Front.ContentSecurityPolicy(context);
+            if (headers.CacheControl.Count == 0 && context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+            {
+                headers.CacheControl = "no-store";
+            }
+
             return Task.CompletedTask;
         });
 

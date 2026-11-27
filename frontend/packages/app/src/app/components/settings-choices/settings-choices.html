@@ -13,6 +13,11 @@
       </button>
     }
   </rs-pill-group>
+  @if (languageUnavailable()) {
+    <rs-banner tone="warn" role="alert" data-language-unavailable>{{
+      t('languageUnavailable')
+    }}</rs-banner>
+  }
 
   <rs-pill-group segmented [label]="t('theme')">
     @for (choice of themes; track choice) {

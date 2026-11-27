@@ -18,6 +18,9 @@ public sealed class GameRow
     /// deleted.</summary>
     public Guid? NameSourceEntryId { get; set; }
 
+    /// <summary>Kept for the merges planned later, when two store entries found to be one IGDB game
+    /// become one record: nothing writes or reads it yet, and it is not to be dropped as unused.
+    /// Which IGDB game a store entry is lives on the entry (<see cref="StoreEntryRow.IgdbId"/>).</summary>
     public long? IgdbId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }

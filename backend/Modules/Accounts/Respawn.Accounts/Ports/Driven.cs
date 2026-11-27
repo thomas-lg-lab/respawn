@@ -56,6 +56,8 @@ public interface IGroupDirectory
 public interface IInstanceSettings
 {
     Task<bool> GetFlagAsync(string key, bool fallback, CancellationToken ct);
+
+    Task SetFlagAsync(string key, bool value, CancellationToken ct);
 }
 
 public interface ISessionStore

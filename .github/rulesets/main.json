@@ -56,6 +56,10 @@
             "integration_id": 15368
           },
           {
+            "context": "frontend",
+            "integration_id": 15368
+          },
+          {
             "context": "image / build",
             "integration_id": 15368
           }

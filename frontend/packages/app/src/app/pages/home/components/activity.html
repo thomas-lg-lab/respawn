@@ -1,5 +1,5 @@
-<rs-card class="flex flex-col gap-3.5" data-activity *transloco="let t; prefix: 'home'">
-  <h2 class="type-card-title">{{ t('activity.title') }}</h2>
+<rs-card class="flex flex-col gap-3.5" data-activity *transloco="let t">
+  <h2 class="type-card-title">{{ t('home.activity.title') }}</h2>
   @for (day of shown(); track day.date) {
     <section class="flex flex-col gap-1" [attr.data-day]="day.date">
       <h3 class="type-caption font-semibold text-muted">{{ day.name }}</h3>
@@ -16,24 +16,24 @@
           >
             <span class="flex min-w-0 flex-col">
               @if (game.gone) {
-                <span class="truncate font-semibold" data-name>{{ t('activity.gone') }}</span>
+                <span class="truncate font-semibold" data-name>{{ t('home.activity.gone') }}</span>
               } @else {
                 <a
                   class="truncate font-semibold after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
                   data-name
                   [routerLink]="gamePage(game.id)"
                   [state]="from"
-                  >{{ game.name ?? t('unnamed') }}</a
+                  >{{ game.name ?? t('game.unnamed') }}</a
                 >
               }
               @if (game.total; as total) {
                 <span class="type-caption text-muted tabular-nums" data-total>{{
-                  t('activity.total', { total: t('time.' + total.key, { count: total.count }) })
+                  t('home.activity.total', { total: t(total.key, { count: total.count }) })
                 }}</span>
               }
             </span>
             <span class="font-semibold whitespace-nowrap tabular-nums" data-playtime>{{
-              t('time.' + game.time.key, { count: game.time.count })
+              t(game.time.key, { count: game.time.count })
             }}</span>
           </li>
         }
@@ -47,7 +47,9 @@
           (click)="open(day.date)"
         >
           {{
-            t(others.one ? 'activity.othersOne' : 'activity.othersMany', { count: others.count })
+            t(others.one ? 'home.activity.othersOne' : 'home.activity.othersMany', {
+              count: others.count,
+            })
           }}
           <svg lucideChevronDown class="size-3.5" [strokeWidth]="2" aria-hidden="true"></svg>
         </button>
@@ -57,13 +59,13 @@
     <div class="flex flex-col gap-1.5" data-activity-empty>
       @if (sinceDate(); as date) {
         <span class="font-semibold" data-activity-since>{{
-          t('activity.empty.title', { date })
+          t('home.activity.empty.title', { date })
         }}</span>
       }
-      <span class="type-caption text-muted">{{ t('activity.empty.text') }}</span>
+      <span class="type-caption text-muted">{{ t('home.activity.empty.text') }}</span>
     </div>
   }
   @if (shown().length) {
-    <p class="type-caption text-muted" data-activity-note>{{ t('activity.note') }}</p>
+    <p class="type-caption text-muted" data-activity-note>{{ t('home.activity.note') }}</p>
   }
 </rs-card>

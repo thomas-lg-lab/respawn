@@ -2,13 +2,13 @@
   class="flex h-125 flex-col overflow-hidden rounded-card bg-bg wide:h-140"
   role="group"
   data-time-map
-  *transloco="let t; prefix: 'time'"
-  [attr.aria-label]="t('map')"
+  *transloco="let t"
+  [attr.aria-label]="t('time.map')"
 >
   <div #drawing class="relative min-h-0 flex-1">
     @for (tile of placed(); track tile.item.id) {
-      @let name = tile.item.game.name || t('unnamed');
-      @let time = t('playtime.' + tile.time.key, { count: tile.time.count });
+      @let name = tile.item.game.name || t('game.unnamed');
+      @let time = t(tile.time.key, { count: tile.time.count });
       <!-- The gap between two tiles is one side of each, and a tile keeps four pixels at
          least: two of gap (a transparent border: the map shows through), two that still show
          its colour. Only a tile that writes something
@@ -80,18 +80,18 @@
         data-tile-label
       >
         <span class="line-clamp-2 type-card-title" data-label-name>{{
-          at.tile.item.game.name || t('unnamed')
+          at.tile.item.game.name || t('game.unnamed')
         }}</span>
         <span class="type-caption font-semibold tabular-nums">{{
-          t('playtime.' + at.tile.time.key, { count: at.tile.time.count })
+          t(at.tile.time.key, { count: at.tile.time.count })
         }}</span>
       </div>
     }
   </div>
   @if (others(); as rest) {
     @if (band(); as said) {
-      @let name = t(said.one ? 'othersOne' : 'othersMany', { count: said.count });
-      @let time = t('playtime.' + said.time.key, { count: said.time.count });
+      @let name = t(said.one ? 'game.othersOne' : 'game.othersMany', { count: said.count });
+      @let time = t(said.time.key, { count: said.time.count });
       <!-- Not to scale: the long tail as a band, so the tiles keep the drawing. Rounded like the
            bottom of the map, so the ring of the band pressed follows its corners. -->
       <button
@@ -103,7 +103,7 @@
         (click)="picked.emit(rest.id)"
       >
         <span class="truncate type-card-title" aria-hidden="true" data-tile-name>{{
-          t('othersBand', { others: name })
+          t('time.othersBand', { others: name })
         }}</span>
         <span
           class="type-caption font-semibold whitespace-nowrap tabular-nums"

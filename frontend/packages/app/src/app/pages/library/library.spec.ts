@@ -4,13 +4,18 @@ import { Router } from '@angular/router';
 import { type LibraryGame, PROVIDER_OUTCOME } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, api, button, start, type } from '@app/testing/app-testing';
+import {
+  LIBRARY_FIRST_PAGE,
+  api,
+  button,
+  openWithGames,
+  text,
+  type,
+} from '@app/testing/app-testing';
 import type { Language } from '@app/i18n/language';
 import '../../layout/shell';
 import './library';
 import { ago, game } from '@app/testing/games';
-
-const FIRST_PAGE = '/library?sort=name&offset=0&limit=500';
 
 /** A small library, as the API gives it: by title. */
 function library(): LibraryGame[] {
@@ -28,26 +33,12 @@ function library(): LibraryGame[] {
 
 describe('Library', () => {
   /** Opens the library, signed in; the API answers with these games unless told not to. */
-  async function open(
+  const open = (
     games: LibraryGame[] | null = library(),
     language: Language = 'fr',
     address = '/library',
-  ) {
-    const { harness, server, arrived } = await start(address, language);
-    await server.answer('/me', ACCOUNT);
-    await arrived;
-    // The shell asks for the linked accounts on every screen: where the end of a sync is learnt.
-    await server.answer('/linked-accounts', { accounts: [TEST_LINKED_ACCOUNT] });
-    // Left unanswered, the request keeps the app busy: the spec answers it, then waits.
-    if (games) {
-      await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
-      await harness.fixture.whenStable();
-    }
-    return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
-  }
+  ) => openWithGames(address, games, language);
 
-  const text = (within: Element, selector: string) =>
-    within.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim();
   const names = (screen: HTMLElement) =>
     [...screen.querySelectorAll('[data-name]')].map((each) => each.textContent);
   /** A game's row of the list or its tile among the covers. */
@@ -130,7 +121,7 @@ describe('Library', () => {
       accounts: [{ ...TEST_LINKED_ACCOUNT, sync: { ...TEST_LINKED_ACCOUNT.sync, last } }],
     });
     const games = [...library(), game('Outer Wilds')];
-    await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
+    await server.answer(LIBRARY_FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
     await harness.fixture.whenStable();
 
     expect(names(screen)).toContain('Outer Wilds');
@@ -379,6 +370,42 @@ describe('Library', () => {
     expect(names(screen)).toHaveLength(100);
   });
 
+  it('shows as many games again when the history leads back to the list', async () => {
+    const many = Array.from({ length: 230 }, (_, index) =>
+      game(`Game ${String(index).padStart(3, '0')}`),
+    );
+    const { harness, screen } = await open(many, 'fr', '/library?sort=name');
+    TestBed.inject(Router).setUpLocationChangeListener();
+    button(screen, 'Afficher la suite').click();
+    await harness.fixture.whenStable();
+    button(screen, 'Afficher la suite').click();
+    await harness.fixture.whenStable();
+    expect(names(screen)).toHaveLength(230);
+    // Nothing moved: the address is the same, and the history gained no step.
+    const location = TestBed.inject(Location);
+    expect(location.path()).toBe('/library?sort=name');
+
+    // Another screen, then the browser's way back: the list is as long as it was left.
+    await harness.navigateByUrl('/time');
+    await harness.fixture.whenStable();
+    expect(screen.querySelector('rs-library')).toBeNull();
+    location.back();
+    await vi.waitFor(() => expect(names(screen)).toHaveLength(230));
+
+    // Another order is another list: its first games, and the way back to it keeps no more.
+    screen.querySelector<HTMLButtonElement>('[data-view="list"]')!.click();
+    await harness.fixture.whenStable();
+    pill(screen, 'launched').click();
+    await harness.fixture.whenStable();
+    pill(screen, 'all').click();
+    await harness.fixture.whenStable();
+    expect(names(screen)).toHaveLength(100);
+    await harness.navigateByUrl('/time');
+    await harness.fixture.whenStable();
+    location.back();
+    await vi.waitFor(() => expect(names(screen)).toHaveLength(100));
+  });
+
   it('flags a game no store lists any more', async () => {
     const gone = game('Gone Home', {
       entries: [
@@ -426,13 +453,13 @@ describe('Library', () => {
     // The covers' grid, whole rows of blocks where the tiles will stand.
     expect(screen.querySelectorAll('rs-game-grid rs-skeleton')).toHaveLength(12);
 
-    await server.answer(FIRST_PAGE, { total: 0, offset: 0, limit: 500, games: [] });
+    await server.answer(LIBRARY_FIRST_PAGE, { total: 0, offset: 0, limit: 500, games: [] });
     await harness.fixture.whenStable();
   });
 
   it('says why the games could not be read, and asks again on request', async () => {
     const { harness, server, screen } = await open(null);
-    await server.refuse(FIRST_PAGE, 503, 'database_unavailable');
+    await server.refuse(LIBRARY_FIRST_PAGE, 503, 'database_unavailable');
     await harness.fixture.whenStable();
 
     expect(text(screen, '[role="alert"]')).toBe(
@@ -441,7 +468,7 @@ describe('Library', () => {
 
     screen.querySelector<HTMLButtonElement>('[data-retry]')!.click();
     const games = library();
-    await server.answer(FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
+    await server.answer(LIBRARY_FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
     await harness.fixture.whenStable();
 
     expect(names(screen)).toHaveLength(4);

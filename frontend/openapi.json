@@ -25,6 +25,73 @@
         }
       }
     },
+    "/api/v1/instance/registration": {
+      "put": {
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Open or close registration, as an administrator",
+        "description": "Open, anyone may create a local account or come in through a provider; closed, only the providers set to create accounts still do. /api/v1/config says which it is. 403 forbidden: the signed-in account is not an administrator.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/register": {
       "post": {
         "tags": [
@@ -1271,6 +1338,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -2374,6 +2451,20 @@
           }
         }
       },
+      "RegistrationRequest": {
+        "required": [
+          "open"
+        ],
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
       "RemovedEntryResponse": {
         "required": [
           "store_entry_id",
@@ -2670,6 +2761,9 @@
     },
     {
       "name": "Games"
+    },
+    {
+      "name": "Instance"
     },
     {
       "name": "Library"

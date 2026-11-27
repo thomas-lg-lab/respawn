@@ -2,7 +2,15 @@ import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Api, accountKeys } from '@respawn/data';
 import { QueryClient } from '@tanstack/angular-query';
-import { ACCOUNT, api, button, SIGN_IN_OPTIONS, visit } from '@app/testing/app-testing';
+import { LanguageSetting } from '@app/i18n/language';
+import {
+  ACCOUNT,
+  LIBRARY_FIRST_PAGE,
+  SIGN_IN_OPTIONS,
+  api,
+  button,
+  visit,
+} from '@app/testing/app-testing';
 // The screens are chunks the router fetches when first shown. Here the first fetch of one is
 // slow enough to outlast a test, so they are loaded up front: a navigation then finds them.
 import './layout/shell';
@@ -204,6 +212,30 @@ describe('routes', () => {
     root.removeAttribute('data-character');
   });
 
+  it('says in the menu that a language could not be loaded, until a pick works', async () => {
+    const { harness, screen, server } = await visit('/', signedIn);
+    const warning = () => screen.querySelector('[data-language-unavailable]');
+    // The file of the language cannot be fetched: offline, or a tab older than what is served.
+    const use = vi.spyOn(TestBed.inject(LanguageSetting), 'use');
+    use.mockResolvedValueOnce('unavailable');
+
+    screen.querySelector<HTMLButtonElement>('[data-language-choice="en"]')!.click();
+    await harness.fixture.whenStable();
+
+    expect(warning()?.textContent.trim()).toBe(
+      'Cette langue n’a pas pu être chargée. Vérifiez votre connexion, ou rechargez la page.',
+    );
+    expect(warning()?.getAttribute('role')).toBe('alert');
+    // Nothing changed, and nothing was asked of the account.
+    expect(title(screen)).toBe('Aucun compte de jeu lié');
+
+    screen.querySelector<HTMLButtonElement>('[data-language-choice="en"]')!.click();
+    const sent = await server.request('/me/settings');
+    sent.flush({ ...ACCOUNT, settings: sent.request.body as object });
+    await vi.waitFor(() => expect(title(screen)).toBe('No game account linked'));
+    expect(warning()).toBeNull();
+  });
+
   it('offers to link the providers from the account menu, and says what came of it', async () => {
     const { harness, server, screen } = await visit('/?provider_sign_in=linked', signedIn);
 
@@ -278,7 +310,7 @@ describe('routes', () => {
     expect(current('bar')).toEqual(['Accueil']);
 
     screen.querySelector<HTMLAnchorElement>('[data-tabs="row"] a[href="/library"]')!.click();
-    await server.answer('/library?sort=name&offset=0&limit=500', {
+    await server.answer(LIBRARY_FIRST_PAGE, {
       total: 0,
       offset: 0,
       limit: 500,
@@ -294,7 +326,8 @@ describe('routes', () => {
   it('shows the foundations to anyone, without asking who they are', async () => {
     const { screen } = await visit('/foundations', () => Promise.resolve());
 
-    expect(title(screen)).toBe('Les fondations visuelles');
+    // Its sentences are its own, fetched as it is first drawn.
+    await vi.waitFor(() => expect(title(screen)).toBe('Les fondations visuelles'));
   });
 
   it('says that an address has no screen', async () => {

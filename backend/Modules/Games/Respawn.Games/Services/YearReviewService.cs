@@ -28,25 +28,29 @@ public sealed class YearReviewService(
         var readable = sources.Select(source => source.Source).ToHashSet(StringComparer.Ordinal);
         var accounts = await linkedAccounts.ListAllAsync(ct);
         var synced = await runs.FindLatestAsync([.. accounts.Select(account => account.Id)], ct);
-        var due = new List<LinkedAccount>();
-        foreach (var account in accounts)
-        {
-            // Not before its first sync ended: that is what says whether the store shows this account.
-            if (!readable.Contains(account.Source)
-                || synced.GetValueOrDefault(account.Id)?.Last is null
-                || gate.TriedAt(account.Id) > now - YearInReviewSchedule.RetryAfter)
-            {
-                continue;
-            }
 
-            var kept = await reviews.ListYearsAsync(account.Id, ct);
-            if (years.Any(year => !kept.Contains(year)))
-            {
-                due.Add(account);
-            }
+        // Not before its first sync ended: that is what says whether the store shows this account.
+        LinkedAccount[] askable =
+        [
+            .. accounts.Where(account => readable.Contains(account.Source)
+                && synced.GetValueOrDefault(account.Id)?.Last is not null
+                && !(gate.TriedAt(account.Id) > now - YearInReviewSchedule.RetryAfter)),
+        ];
+        if (askable.Length == 0)
+        {
+            return [];
         }
 
-        return [.. due.OrderBy(account => account.LinkedAt).ThenBy(account => account.Id).Select(account => account.Id)];
+        // The years kept of all of them, asked once.
+        var kept = await reviews.ListYearsAsync([.. askable.Select(account => account.Id)], ct);
+        return
+        [
+            .. askable
+                .Where(account => !kept.TryGetValue(account.Id, out var has) || years.Any(year => !has.Contains(year)))
+                .OrderBy(account => account.LinkedAt)
+                .ThenBy(account => account.Id)
+                .Select(account => account.Id),
+        ];
     }
 
     public async Task<YearImport?> ImportAsync(Guid linkedAccountId, CancellationToken ct)
@@ -67,7 +71,7 @@ public sealed class YearReviewService(
             }
 
             gate.Tried(account.Id, now);
-            var kept = await reviews.ListYearsAsync(account.Id, ct);
+            var kept = (await reviews.ListYearsAsync([account.Id], ct)).GetValueOrDefault(account.Id);
             var imported = new List<int>();
 
             string? credential;
@@ -86,7 +90,7 @@ public sealed class YearReviewService(
             var shown = await runs.FindLatestAsync(account.Id, ct) is { Outcome: SyncOutcome.Succeeded } last
                 && last.OwnCredential == credential is not null;
 
-            foreach (var year in YearInReviewSchedule.Years(now).Where(year => !kept.Contains(year)))
+            foreach (var year in YearInReviewSchedule.Years(now).Where(year => kept?.Contains(year) != true))
             {
                 YearReading reading;
                 try

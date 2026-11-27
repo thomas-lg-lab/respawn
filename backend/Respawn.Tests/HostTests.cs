@@ -14,6 +14,7 @@ public sealed class HostTests
 {
     [Theory]
     [InlineData("RESPAWN_SESSION_DAYS", "0")]
+    [InlineData("RESPAWN_SESSION_DAYS", "99999999")]
     [InlineData("RESPAWN_PASSWORD_MIN_LENGTH", "-1")]
     [InlineData("RESPAWN_LOCKOUT_THRESHOLD", "many")]
     [InlineData("RESPAWN_OIDC_PROVIDERS", "not json")]

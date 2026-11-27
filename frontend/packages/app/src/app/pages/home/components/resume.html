@@ -1,24 +1,24 @@
-<section [attr.aria-label]="t('resume.name')" data-resume *transloco="let t; prefix: 'home'">
+<section [attr.aria-label]="t('home.resume.name')" data-resume *transloco="let t">
   <rs-hero [hue]="hue()" [letter]="initial()">
     <p rsLabel class="relative" data-resume-label [attr.title]="last()?.moment">
-      {{ last() ? t('resume.label', { ago: last()?.ago }) : t('resume.name') }}
+      {{ last() ? t('home.resume.label', { ago: last()?.ago }) : t('home.resume.name') }}
     </p>
     <h2 class="relative type-hero wrap-anywhere" data-resume-name>
       <a class="hover:underline" [routerLink]="gamePage(game().game_id)" [state]="from">{{
-        game().name ?? t('unnamed')
+        game().name ?? t('game.unnamed')
       }}</a>
     </h2>
     @if (total(); as all) {
       <p class="relative tabular-nums" data-resume-time>
         @if (recent(); as lately) {
           {{
-            t('resume.both', {
-              total: t('time.' + all.key, { count: all.count }),
-              recent: t('time.' + lately.key, { count: lately.count }),
+            t('home.resume.both', {
+              total: t(all.key, { count: all.count }),
+              recent: t(lately.key, { count: lately.count }),
             })
           }}
         } @else {
-          {{ t('resume.total', { total: t('time.' + all.key, { count: all.count }) }) }}
+          {{ t('home.resume.total', { total: t(all.key, { count: all.count }) }) }}
         }
       </p>
     }
@@ -32,7 +32,7 @@
         [href]="address"
       >
         <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
-        {{ t('resume.launch') }}
+        {{ t('home.resume.launch') }}
       </a>
     }
   </rs-hero>

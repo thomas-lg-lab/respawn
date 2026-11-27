@@ -49,7 +49,6 @@ export class LibraryQueries {
         }
       },
       staleTime: Infinity,
-      retry: false,
     });
   }
 
@@ -59,7 +58,6 @@ export class LibraryQueries {
       queryKey: libraryKeys.stats,
       queryFn: () => this.api.get<LibraryStats>('/library/stats'),
       staleTime: Infinity,
-      retry: false,
     });
   }
 
@@ -72,7 +70,6 @@ export class LibraryQueries {
       queryKey: libraryKeys.history,
       queryFn: () => this.api.get<LibraryHistory>('/library/history'),
       staleTime: Infinity,
-      retry: false,
     });
   }
 
@@ -85,7 +82,6 @@ export class LibraryQueries {
       queryKey: libraryKeys.years,
       queryFn: () => this.api.get<LibraryYears>('/library/years'),
       staleTime: Infinity,
-      retry: false,
     });
   }
 }

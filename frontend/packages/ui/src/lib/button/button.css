@@ -36,8 +36,11 @@
     color: var(--rs-on-accent);
     font-weight: 600;
   }
-  :host([data-variant='primary']:hover) {
-    opacity: 0.9;
+  /* Under a pointer that can hover only: a finger would leave the fill behind it. */
+  @media (hover: hover) {
+    :host([data-variant='primary']:hover) {
+      opacity: 0.9;
+    }
   }
 
   /* Every other action, and the round one that holds only an icon. */
@@ -47,9 +50,11 @@
     background-color: transparent;
     color: var(--rs-text);
   }
-  :host([data-variant='outlined']:hover),
-  :host([data-variant='icon']:hover) {
-    background-color: var(--rs-surface-2);
+  @media (hover: hover) {
+    :host([data-variant='outlined']:hover),
+    :host([data-variant='icon']:hover) {
+      background-color: var(--rs-surface-2);
+    }
   }
   :host([data-variant='outlined']) {
     min-height: var(--rs-size-touch);
@@ -75,8 +80,12 @@
     text-align: start;
   }
   /* Under the pointer, or the one the arrow keys are on when the list is one of options. */
-  :host([data-variant='row']:hover),
   :host([data-variant='row'][aria-selected='true']) {
     background-color: var(--rs-surface-2);
+  }
+  @media (hover: hover) {
+    :host([data-variant='row']:hover) {
+      background-color: var(--rs-surface-2);
+    }
   }
 }

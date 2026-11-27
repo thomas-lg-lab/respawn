@@ -1,5 +1,6 @@
 import { type LinkedAccount, type SyncRun } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
+import { linkedAccount } from '@app/testing/linked-accounts';
 import {
   STALE_AFTER,
   accountInView,
@@ -16,13 +17,9 @@ function run(changes: Partial<SyncRun> = {}): SyncRun {
   return { ...TEST_SYNC_RUN, finished_at: THIS_MORNING, ...changes };
 }
 
-function account(sync: Partial<LinkedAccount['sync']> = {}, id = TEST_LINKED_ACCOUNT.id) {
-  return {
-    ...TEST_LINKED_ACCOUNT,
-    id,
-    sync: { running: false, last: run(), last_succeeded_at: THIS_MORNING, ...sync },
-  } satisfies LinkedAccount;
-}
+/** An account read this morning, not a moment ago: what is said depends on how long ago. */
+const account = (sync: Partial<LinkedAccount['sync']> = {}, id = TEST_LINKED_ACCOUNT.id) =>
+  linkedAccount({ last: run(), last_succeeded_at: THIS_MORNING, ...sync }, { id });
 
 const JUST_LINKED = {
   ...account({ last: null, last_succeeded_at: null }),

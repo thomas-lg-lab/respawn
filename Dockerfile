@@ -18,11 +18,14 @@ FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0@sha256:2794448a
 WORKDIR /src
 
 # Everything under backend/ but the tests (.dockerignore). --locked-mode: the image is built from the
-# exact package graph the committed lock files describe.
+# exact package graph the committed lock files describe. The packages are kept in a cache of the
+# builder, so that a change to the sources does not download them again where that cache lasts.
+# No apphost: the image starts the app with `dotnet`, and the one built here is the build platform's.
 COPY global.json ./
 COPY backend/ ./backend/
-RUN dotnet restore backend/Respawn.Host/Respawn.Host.csproj --locked-mode
-RUN dotnet publish backend/Respawn.Host/Respawn.Host.csproj --configuration Release --output /publish --no-restore
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore backend/Respawn.Host/Respawn.Host.csproj --locked-mode \
+    && dotnet publish backend/Respawn.Host/Respawn.Host.csproj --configuration Release --output /publish --no-restore -p:UseAppHost=false
 
 # --- Stage 3: runtime ---
 FROM mcr.microsoft.com/dotnet/aspnet:11.0@sha256:ca396ece3f2a2e62c7a03f1d7d710b8bc7e8c9dea5597d091178d9f5bfca13f0

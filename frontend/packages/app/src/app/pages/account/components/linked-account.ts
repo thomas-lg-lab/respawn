@@ -1,4 +1,14 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideRefreshCw, LucideUnlink } from '@lucide/angular';
 import type { LinkedAccount as LinkedStoreAccount } from '@respawn/data';
@@ -43,8 +53,27 @@ export class LinkedAccount {
   readonly keyRemoved = output<void>();
   readonly unlink = output<void>();
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
   /** The visitor asked to unlink, and has not confirmed yet. */
   protected readonly confirming = signal(false);
+
+  /**
+   * Asking and taking it back each replace the button pressed by another: the focus goes to
+   * the one that took its place (cancel when asking: the harmless one) rather than falling to
+   * the page.
+   */
+  protected confirm(asked: boolean): void {
+    this.confirming.set(asked);
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>(asked ? '[data-unlink-cancel]' : '[data-unlink]')
+          ?.focus(),
+      { injector: this.injector },
+    );
+  }
 
   /** The name the store gave, or the account's id there when it gave none. */
   protected readonly name = computed(

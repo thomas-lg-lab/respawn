@@ -22,6 +22,32 @@ public sealed class OidcTests
     }
 
     [Fact]
+    public async Task Over_https_the_cookies_of_a_sign_in_through_a_provider_are_this_hosts_alone()
+    {
+        var issuer = new FakeIssuer();
+        await using var app = await issuer.StartAppAsync(new()
+        {
+            ["RESPAWN_OIDC_PROVIDERS"] = FakeIssuer.Providers(FakeIssuer.Issuer, "Test SSO"),
+            ["RESPAWN_COOKIE_SECURE"] = "true",
+        });
+        using var browser = app.Browser();
+        var start = await browser.StartAsync("/library");
+        Assert.Equal(HttpStatusCode.Found, start.StatusCode);
+
+        // The pair that ties the provider's answer to this browser: neither can be planted from a
+        // neighbouring subdomain, which the prefix forbids, with Secure and the whole site as path.
+        var cookies = start.Headers.GetValues("Set-Cookie").ToArray();
+        Assert.Equal(2, cookies.Length);
+        Assert.All(cookies, cookie =>
+        {
+            Assert.StartsWith("__Host-.AspNetCore.", cookie, StringComparison.Ordinal);
+            Assert.Contains("; secure", cookie, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("; path=/;", cookie + ";", StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("domain=", cookie, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
     public async Task The_browser_is_sent_to_the_provider_for_a_code_with_pkce()
     {
         var issuer = new FakeIssuer();
@@ -120,7 +146,7 @@ public sealed class OidcTests
         await using var app = await issuer.StartAppAsync();
         using var owner = app.Browser();
         await owner.RegisterAsync("player@example.org");
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
 
         // Never attached by e-mail alone: the owner signs in first, then links the provider.
         using var stranger = app.Browser();
@@ -149,7 +175,7 @@ public sealed class OidcTests
         await using var app = await issuer.StartAppAsync();
         using var owner = app.Browser();
         await owner.RegisterAsync("player@example.org");
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
 
         // Same address, not verified by the provider: a separate account, without the address.
         using var stranger = app.Browser();
@@ -204,7 +230,7 @@ public sealed class OidcTests
             (await browser.GetAsync("/api/v1/me/providers").JsonAsync()).GetRawText());
 
         // Another account of the instance is not.
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
         using var someone = app.Browser();
         await someone.RegisterAsync("someone@example.org");
         Assert.All(
@@ -232,7 +258,7 @@ public sealed class OidcTests
         using var browser = app.Browser();
         var registered = await browser.RegisterAsync();
         var carried = registered.Headers.GetValues("Set-Cookie").Single(cookie => cookie.StartsWith("respawn_session=", StringComparison.Ordinal)).Split(';')[0];
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
 
         // Someone else signs in through the provider in the same browser: the cookie now names their session.
         Assert.Equal("/", (await browser.SignInAsync(issuer, "/", ("email", "other@example.org"))).Landing());
@@ -309,7 +335,7 @@ public sealed class OidcTests
         // The same browser, so the same cookie, signs in through the provider: registration is closed and the
         // identity is new, so it is turned away, and not attached to the account the cookie names.
         Assert.Equal("/?provider_sign_in=registration_closed", (await planted.SignInAsync(issuer)).Landing());
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
         using var victim = app.Browser();
         await victim.SignInAsync(issuer);
         Assert.NotEqual(attacker, (await victim.GetAsync("/api/v1/me").JsonAsync()).GetProperty("id").GetString());
@@ -323,7 +349,7 @@ public sealed class OidcTests
         using var first = app.Browser();
         await first.SignInAsync(issuer);
         var owner = (await first.GetAsync("/api/v1/me").JsonAsync()).GetProperty("id").GetString();
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
 
         using var second = app.Browser();
         await second.RegisterAsync("second@example.org", "Second");
@@ -339,7 +365,7 @@ public sealed class OidcTests
     {
         var issuer = new FakeIssuer();
         await using var app = await issuer.StartAppAsync();
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true')");
+        TestDatabase.OpenRegistration();
 
         // Signed out while at the provider: the link is not made, and no session is opened either.
         using var browser = app.Browser();

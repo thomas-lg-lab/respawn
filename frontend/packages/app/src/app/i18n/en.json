@@ -1,7 +1,18 @@
 {
   "app": {
     "loading": "Loading…",
-    "retry": "Try again"
+    "retry": "Try again",
+    "unknown": "—"
+  },
+  "duration": {
+    "hours": "{{ count }} h",
+    "minutes": "{{ count }} min"
+  },
+  "ordinal": {
+    "one": "{{ rank }}st",
+    "two": "{{ rank }}nd",
+    "few": "{{ rank }}rd",
+    "other": "{{ rank }}th"
   },
   "settings": {
     "language": "Language",
@@ -9,6 +20,7 @@
       "fr": "Français",
       "en": "English"
     },
+    "languageUnavailable": "This language could not be loaded. Check your connection, or reload the page.",
     "theme": "Theme",
     "themes": {
       "system": "System",
@@ -31,7 +43,6 @@
     "noAccount": "No account yet?",
     "create": "Create an account",
     "loading": "Loading…",
-    "retry": "Try again",
     "localDisabled": "Sign-in with a local account is disabled on this instance.",
     "or": "or",
     "withProvider": "Continue with {{ provider }}"
@@ -74,6 +85,7 @@
     "invalid_email": "This e-mail address is not valid.",
     "weak_password": "This password is too short.",
     "invalid_request": "The request was not understood. Check the fields.",
+    "forbidden": "Only an administrator of this instance can do that.",
     "cross_site_request": "The request was refused: it seems to come from another site. Reload the page.",
     "sync_in_progress": "A sync is already running.",
     "unknown_linked_account": "This linked account no longer exists. Reload the page.",
@@ -84,6 +96,8 @@
     "still_listed": "Steam still lists this game: only a game it no longer lists can be taken out.",
     "not_in_library": "This game is not in your library.",
     "not_removed": "This game is already in your library.",
+    "not_back": "Steam no longer lists this game again: there is nothing left to dismiss.",
+    "unknown_game": "This game is no longer known here.",
     "network_error": "The server is not answering. Check your connection and try again.",
     "unknown": "Something went wrong. Try again in a moment."
   },
@@ -106,6 +120,21 @@
       "none": "No game account is linked yet.",
       "another": "Link another Steam account",
       "first": "Link my Steam account"
+    },
+    "instance": {
+      "title": "This instance",
+      "text": "What you decide here as its administrator holds for everyone."
+    },
+    "registration": {
+      "open": "Registration is open",
+      "openText": "Anyone who reaches this instance can create an account.",
+      "closed": "Registration is closed",
+      "closedText": "Nobody can create an account, except through a sign-in provider set to create them.",
+      "openIt": "Open registration",
+      "warning": "Once open, anyone who can reach this instance can create an account and link a Steam library, read with the instance’s keys. You can close it again at any time.",
+      "confirm": "Open it to everyone",
+      "cancel": "Keep it closed",
+      "close": "Close registration"
     },
     "sources": {
       "steam": "Steam"
@@ -152,10 +181,7 @@
     "unreadable": "Your games could not be read. Enter still searches the library.",
     "seeOne": "See {{ count }} game in the library",
     "seeMany": "See the {{ count }} games in the library",
-    "hours": "{{ count }} h",
-    "minutes": "{{ count }} min",
-    "never": "Never launched",
-    "unknown": "—"
+    "never": "Never launched"
   },
   "nav": {
     "label": "Main navigation",
@@ -201,7 +227,6 @@
       "label": "First sync",
       "title": "The sync with Steam failed",
       "kept": "No game could be imported. Your Steam account stays linked.",
-      "retry": "Try again",
       "note": "respawn will try again on its own at the next sync."
     },
     "nothingVisible": {
@@ -218,7 +243,6 @@
     },
     "sync": {
       "now": "Sync now",
-      "retry": "Try again",
       "dismiss": "Dismiss",
       "running": "Syncing with Steam. You can keep browsing.",
       "last": "Last successful sync: {{ date }}",
@@ -232,17 +256,9 @@
       "recent": "Last two weeks",
       "recentUnknown": "Steam does not say for this profile",
       "neverLaunched": "Never launched",
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min",
-      "unknown": "—",
       "ofOne": "across {{ count }} game",
       "ofMany": "across {{ count }} games"
     },
-    "time": {
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min"
-    },
-    "unnamed": "Unnamed game",
     "resume": {
       "name": "Resume",
       "label": "Resume · last session {{ ago }}",
@@ -282,7 +298,7 @@
       "gone": "A game no longer in your library",
       "othersOne": "and {{ count }} other game",
       "othersMany": "and {{ count }} other games",
-      "note": "A day shows what its reading found since the one before.",
+      "note": "A day shows what was played on it when Steam says when, and otherwise what its reading found since the one before.",
       "empty": {
         "title": "Tracking began on {{ date }}",
         "text": "Steam does not give past sessions. respawn reads your playtime once a day: what you play will show here after the next reading."
@@ -294,7 +310,6 @@
     "countOne": "{{ count }} game, from Steam",
     "countMany": "{{ count }} games, from Steam",
     "loading": "Loading your games…",
-    "retry": "Try again",
     "empty": {
       "text": "No game here yet. The home says where your library stands.",
       "home": "Go to the home"
@@ -325,11 +340,7 @@
       "recent": "Last 2 weeks",
       "lastPlayed": "Last session"
     },
-    "hours": "{{ count }} h",
-    "minutes": "{{ count }} min",
-    "unknown": "—",
     "never": "Never launched",
-    "unnamed": "Unnamed game",
     "missing": "No longer listed by Steam",
     "noMatch": "No game matches.",
     "shownOne": "{{ shown }} game shown out of {{ total }}",
@@ -349,25 +360,19 @@
     },
     "othersBand": "+ {{ others }}",
     "othersCaption": "The other games are together under the map, not to scale.",
-    "othersOne": "{{ count }} other game",
-    "othersMany": "{{ count }} other games",
     "othersLink": "Browse them in the library",
     "share": "{{ time }}, {{ share }} of your playtime.",
     "lastSession": "Last session {{ ago }}.",
-    "unnamed": "Unnamed game",
-    "playtime": {
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min"
-    },
     "empty": {
       "text": "The map needs two launched games at least. The home says where the library stands.",
       "home": "Go to the home"
     },
-    "loading": "Loading the map",
-    "retry": "Try again"
+    "loading": "Loading the map"
   },
   "game": {
     "unnamed": "Unnamed game",
+    "othersOne": "{{ count }} other game",
+    "othersMany": "{{ count }} other games",
     "noCover": "No cover",
     "cover": {
       "change": "Change cover",
@@ -394,15 +399,6 @@
     "gameDataLink": "IGDB",
     "storeLink": "Steam",
     "launch": "Launch in Steam",
-    "hours": "{{ count }} h",
-    "minutes": "{{ count }} min",
-    "unknown": "—",
-    "ordinal": {
-      "one": "{{ rank }}st",
-      "two": "{{ rank }}nd",
-      "few": "{{ rank }}rd",
-      "other": "{{ rank }}th"
-    },
     "figures": {
       "total": "Total time",
       "rank": "{{ rank }} of your {{ launched }} launched games",
@@ -426,8 +422,6 @@
       "title": "Your time, month by month",
       "less": "less",
       "more": "more",
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min",
       "year": "{{ year }}: {{ time }}",
       "cell": "{{ month }}: {{ time }}",
       "years": "{{ from }} – {{ to }}",
@@ -442,23 +436,11 @@
       "uncounted": "An empty cell is a month nothing counted: neither a Steam Year in Review nor a sync."
     },
     "month": {
-      "hours": "{{ count }} h",
-      "minutes": "{{ count }} min",
-      "ordinal": {
-        "one": "{{ rank }}st",
-        "two": "{{ rank }}nd",
-        "few": "{{ rank }}rd",
-        "other": "{{ rank }}th"
-      },
       "only": "The only game played that month",
       "place": "{{ rank }} of the {{ count }} games played that month · {{ share }} of your {{ total }}",
       "games": "Games played in {{ month }}",
-      "unnamed": "Unnamed game",
-      "othersOne": "{{ count }} other game",
-      "othersMany": "{{ count }} other games",
       "loading": "Loading the month…",
-      "failed": "The other games of this month could not be read.",
-      "retry": "Try again"
+      "failed": "The other games of this month could not be read."
     },
     "notice": {
       "missing": {
@@ -486,70 +468,5 @@
     "title": "This page does not exist",
     "text": "The address leads to no screen of respawn.",
     "back": "Back to the home"
-  },
-  "foundations": {
-    "label": "Foundations",
-    "title": "The visual foundations",
-    "intro": "The colours, the typography and the base components. Everything follows the theme, the character and the language chosen below.",
-    "settings": "Settings",
-    "type": {
-      "label": "Typography",
-      "hero": "Hero title",
-      "pageTitle": "Page title",
-      "figureCaption": "games in the library",
-      "cardTitle": "Card title",
-      "body": "Body text: 142 h in total, last session yesterday.",
-      "caption": "Caption, in the muted colour."
-    },
-    "components": {
-      "label": "Components",
-      "buttons": "Buttons",
-      "primary": "Primary button",
-      "outlined": "Secondary button",
-      "disabled": "Unavailable",
-      "sync": "Sync",
-      "rows": "Lines of a menu",
-      "rowFirst": "My account",
-      "rowSecond": "Sign out",
-      "pills": "Pills",
-      "lines": "Pills as a row of filters",
-      "filters": {
-        "all": "All",
-        "recent": "Recent",
-        "never": "Never launched"
-      },
-      "bar": "Segmented bar",
-      "chart": "Column chart",
-      "hours": "{{ count }} h",
-      "banners": "Banners",
-      "status": "Sync in progress: your games stay on screen.",
-      "warning": "Sync failed. Your games stay on screen as they were yesterday.",
-      "avatar": "Avatar",
-      "tabs": "Tabs",
-      "search": "Search field",
-      "searchHint": "A title",
-      "select": "Select",
-      "sortBy": "Sort by",
-      "disclosure": "Disclosure",
-      "open": "Show the panel",
-      "panel": "A panel that closes on Escape or a click outside."
-    },
-    "form": {
-      "label": "Form",
-      "name": "Display name",
-      "nameHint": "The name other members will see.",
-      "email": "E-mail",
-      "submit": "Form button"
-    },
-    "library": {
-      "label": "The library’s blocks",
-      "heroLetter": "H",
-      "heroLabel": "Resume",
-      "heroTitle": "Hades",
-      "tileCaption": "Playtime",
-      "tileNote": "across 12 games",
-      "covers": "Covers, waiting for their artwork",
-      "skeleton": "Something on its way"
-    }
   }
 }

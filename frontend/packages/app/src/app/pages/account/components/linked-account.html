@@ -80,13 +80,13 @@
           type="button"
           data-unlink-cancel
           [disabled]="unlinking()"
-          (click)="confirming.set(false)"
+          (click)="confirm(false)"
         >
           {{ t('account.unlink.cancel') }}
         </button>
       </div>
     } @else {
-      <button rsButton type="button" class="self-start" data-unlink (click)="confirming.set(true)">
+      <button rsButton type="button" class="self-start" data-unlink (click)="confirm(true)">
         <svg lucideUnlink class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
         {{ t('account.unlink.ask') }}
       </button>

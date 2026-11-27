@@ -1,27 +1,25 @@
-<rs-card class="flex flex-col gap-4" data-years *transloco="let t; prefix: 'home'">
-  <h2 class="type-card-title">{{ t('years.title') }}</h2>
-  @if (columns().length) {
-    <rs-column-chart>
-      @for (column of columns(); track column.year) {
-        <rs-chart-column
-          [attr.data-year]="column.year"
-          [label]="column.label"
-          [value]="column.seconds"
-          [max]="scale()"
-          >{{ t('time.' + column.time.key, { count: column.time.count }) }}</rs-chart-column
-        >
-      }
-    </rs-column-chart>
-  }
+<rs-card class="flex flex-col gap-4" data-years *transloco="let t">
+  <h2 class="type-card-title">{{ t('home.years.title') }}</h2>
+  <rs-column-chart>
+    @for (column of columns(); track column.year) {
+      <rs-chart-column
+        [attr.data-year]="column.year"
+        [label]="column.label"
+        [value]="column.seconds"
+        [max]="scale()"
+        >{{ t(column.time.key, { count: column.time.count }) }}</rs-chart-column
+      >
+    }
+  </rs-column-chart>
   <div class="flex flex-col gap-1 type-caption text-muted">
     @if (reviewed(); as span) {
-      <p data-years-reviewed>{{ t('years.reviewed', { years: span }) }}</p>
+      <p data-years-reviewed>{{ t('home.years.reviewed', { years: span }) }}</p>
     }
     @if (synced(); as span) {
-      <p data-years-since>{{ t('years.since', { years: span }) }}</p>
+      <p data-years-since>{{ t('home.years.since', { years: span }) }}</p>
     }
     @if (left(); as span) {
-      <p data-years-pending>{{ t('years.pending', { years: span }) }}</p>
+      <p data-years-pending>{{ t('home.years.pending', { years: span }) }}</p>
     }
   </div>
 </rs-card>

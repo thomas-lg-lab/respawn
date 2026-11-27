@@ -13,6 +13,7 @@ using Respawn.Games.Ports;
 using Respawn.Games.Tests.Support;
 using Respawn.SharedKernel;
 using Respawn.Testing;
+using static Respawn.Games.Tests.Support.Fixtures;
 
 namespace Respawn.Games.Tests;
 
@@ -21,8 +22,6 @@ namespace Respawn.Games.Tests;
 /// hand, as the app's timer would.</summary>
 public sealed class SyncTests
 {
-    private const string SteamId = "76561190000000001";
-
     [Fact]
     public async Task Two_days_give_two_snapshots_and_a_playtime_difference()
     {
@@ -105,7 +104,7 @@ public sealed class SyncTests
         using var second = app.Browser();
         var one = await LinkAsync(app, first, SteamId);
         clock.Advance(TimeSpan.FromMinutes(1));
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         var two = await LinkAsync(app, second, "76561190000000002", "second@example.org");
 
         Assert.Equal([one, two], await DueAsync(app));
@@ -160,7 +159,7 @@ public sealed class SyncTests
         using var other = app.Browser();
         using var nobody = app.Browser();
         var mine = await LinkAsync(app, browser);
-        OpenRegistration();
+        TestDatabase.OpenRegistration();
         await other.RegisterAsync("other@example.org", "Other");
 
         Assert.Equal(
@@ -787,24 +786,12 @@ public sealed class SyncTests
             },
         });
 
-    /// <summary>An account of the instance, signed in, with a Steam account linked to it.</summary>
-    private static async Task<Guid> LinkAsync(
-        TestApp app, HttpClient browser, string steamId = SteamId, string email = "first@example.org", string source = "steam")
-    {
-        var owner = (await browser.RegisterAsync(email).JsonAsync()).GetProperty("id").GetGuid();
-        await using var scope = app.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<ILibraryService>().LinkAccountAsync(owner, source, steamId, null, default)).Id;
-    }
-
-    private static void OpenRegistration() =>
-        TestDatabase.Run("INSERT INTO accounts.settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT DO NOTHING");
-
-    /// <summary>One turn of the schedule, as the app's timer runs it. Returns how many syncs ended.</summary>
     /// <summary>Settings that let the schedules' debug lines reach the log.</summary>
     private static Dictionary<string, string?> Debug => new() { ["Logging:LogLevel:Respawn.Games.Api"] = "Debug" };
 
+    /// <summary>One turn of the schedule, as the app's timer runs it. Returns how many syncs ended.</summary>
     private static Task<int> TurnAsync(TestApp app) =>
-        Assert.Single(app.Services.GetServices<IHostedService>().OfType<SyncScheduler>()).RunDueAsync(default);
+        TurnAsync<SyncScheduler>(app);
 
     private static async Task<IReadOnlyList<Guid>> DueAsync(TestApp app)
     {

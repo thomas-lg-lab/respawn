@@ -5,7 +5,6 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideLink } from '@lucide/angular';
 import {
   AccountQueries,
-  ApiFailure,
   type LinkedAccount as LinkedStoreAccount,
   LinkedAccountQueries,
   STEAM_LINK_OUTCOME,
@@ -17,20 +16,14 @@ import { Avatar, Banner, Button, Card, Label, Skeleton } from '@respawn/ui';
 import { injectMutation, injectQuery } from '@tanstack/angular-query';
 import { failureKey } from '@app/errors/failure-message';
 import { LanguageSetting } from '@app/i18n/language';
-import { syncErrorKey } from '@app/sync/sync-view';
+import { syncErrorKey, syncRefusalKey } from '@app/sync/sync-view';
 import { saidOnce } from '@app/session/said-once';
 import { type AccountNotice, LinkedAccount } from './components/linked-account';
+import { Registration } from './components/registration';
 import type { GivenKey } from './components/own-key-form';
 
 /** What a card may be waiting for: a reading, its key kept or taken away, its unlinking. */
 type Asked = 'sync' | 'key' | 'unlink';
-
-/** Why a "sync now" was refused. Too soon after the last one has a sentence of its own, as on the home. */
-function syncRefusalKey(failure: unknown): string {
-  return failure instanceof ApiFailure && failure.code === 'too_many_requests'
-    ? 'sync.tooSoon'
-    : failureKey(failure);
-}
 
 /**
  * The account: who is signed in, and the store accounts linked to it, each with where its
@@ -52,6 +45,7 @@ function syncRefusalKey(failure: unknown): string {
     Label,
     Skeleton,
     LinkedAccount,
+    Registration,
   ],
   templateUrl: './account.html',
 })
@@ -65,6 +59,13 @@ export class Account {
 
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly accounts = injectQuery(() => this.linked.list());
+
+  /** What the instance offers, for its administrator alone: whether registration is open. */
+  protected readonly offered = injectQuery(() => ({
+    ...this.queries.signInOptions(),
+    enabled: this.me.data()?.is_admin === true,
+  }));
+  protected readonly settingRegistration = injectMutation(() => this.queries.setRegistration());
 
   private readonly syncing = injectMutation(() => this.linked.syncNow());
   private readonly unlinking = injectMutation(() => this.linked.unlink());

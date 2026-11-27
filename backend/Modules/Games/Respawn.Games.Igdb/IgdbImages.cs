@@ -70,7 +70,7 @@ internal sealed partial class IgdbImages(IHttpClientFactory http)
 
                 // What is there and is no image is no cover: too large, or bytes that are not an image
                 // whatever their headers say.
-                return await BodyAsync(answer, waiting.Token) is { } bytes && MediaType(bytes) is { } type
+                return await BodyAsync(answer, waiting.Token) is { } bytes && Cover.MediaTypeOf(bytes) is { } type
                     ? new Cover(type, bytes)
                     : null;
             }
@@ -109,24 +109,6 @@ internal sealed partial class IgdbImages(IHttpClientFactory http)
         }
 
         return kept.ToArray();
-    }
-
-    /// <summary>The media type of an image by its first bytes: JPEG, PNG or WebP; null for anything else.</summary>
-    private static string? MediaType(ReadOnlySpan<byte> bytes)
-    {
-        if (bytes.StartsWith<byte>([0xFF, 0xD8, 0xFF]))
-        {
-            return "image/jpeg";
-        }
-
-        if (bytes.StartsWith<byte>([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
-        {
-            return "image/png";
-        }
-
-        return bytes.Length >= 12 && bytes.StartsWith("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8)
-            ? "image/webp"
-            : null;
     }
 
     /// <summary>IGDB's image ids: letters and digits, such as <c>co1wyy</c>.</summary>

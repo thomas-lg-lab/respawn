@@ -1,4 +1,4 @@
-import type { LibraryGame } from '@respawn/data';
+import type { LibraryEntry, LibraryGame } from '@respawn/data';
 
 let made = 0;
 
@@ -12,6 +12,23 @@ export function game(name: string | null, values: Partial<LibraryGame> = {}): Li
     last_played_at: null,
     entries: [],
     cover_source: null,
+    ...values,
+  };
+}
+
+/** A copy of a game on Steam, as the API gives one: never launched, still listed. */
+export function entry(values: Partial<LibraryEntry> = {}): LibraryEntry {
+  return {
+    store_entry_id: 'e',
+    linked_account_id: 'a',
+    source: 'steam',
+    external_id: '620',
+    playtime_seconds: 0,
+    recent_playtime_seconds: 0,
+    last_played_at: null,
+    first_seen_at: '2026-11-18T10:05:00Z',
+    as_of: '2026-11-20T04:02:05Z',
+    missing_since: null,
     ...values,
   };
 }

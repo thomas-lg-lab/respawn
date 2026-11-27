@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { Pill, PillGroup } from '@respawn/ui';
+import { Banner, Pill, PillGroup } from '@respawn/ui';
 import { CHARACTERS, type Character, THEMES, type Theme } from '@respawn/util';
 import { LANGUAGES, type Language } from '@app/i18n/language';
 
@@ -11,7 +11,7 @@ import { LANGUAGES, type Language } from '@app/i18n/language';
  */
 @Component({
   selector: 'rs-settings-choices',
-  imports: [TranslocoDirective, Pill, PillGroup],
+  imports: [TranslocoDirective, Banner, Pill, PillGroup],
   host: { class: 'flex flex-col gap-2.5' },
   templateUrl: './settings-choices.html',
 })
@@ -19,6 +19,8 @@ export class SettingsChoices {
   readonly language = input.required<Language>();
   readonly theme = input.required<Theme>();
   readonly character = input.required<Character>();
+  /** The language last picked could not be loaded: said under the choice, which did not move. */
+  readonly languageUnavailable = input(false);
 
   readonly languagePicked = output<Language>();
   readonly themePicked = output<Theme>();
