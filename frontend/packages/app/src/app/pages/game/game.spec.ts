@@ -357,7 +357,9 @@ describe('Game', () => {
 
     expect(screen.querySelector('[data-durations]')).toBeNull();
     expect(
-      screen.querySelector('[data-split]')?.contains(screen.querySelector('[data-similar]')),
+      screen
+        .querySelector('[data-split]:not([data-figures])')
+        ?.contains(screen.querySelector('[data-similar]')),
     ).toBe(true);
   });
 

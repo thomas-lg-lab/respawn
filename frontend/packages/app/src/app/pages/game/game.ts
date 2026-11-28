@@ -230,6 +230,25 @@ export class Game {
   /** The games of the library the game database lists as close to this one. */
   protected readonly similar = computed(() => this.game.data()?.game_data?.similar ?? []);
 
+  /**
+   * Whether the history has a place: not for a game never launched, nor once the history says
+   * no month of it is known. While it comes, its place waits for it.
+   */
+  protected readonly historyShown = computed(
+    () => !this.neverLaunched() && this.calendar()?.rows.length !== 0,
+  );
+
+  /** Whether "About" has anything to say: a summary, genres, or the day it came out. */
+  protected readonly aboutShown = computed(() => {
+    const said = this.game.data()?.game_data;
+    return !!said && (!!said.summary || this.tags().length > 0 || !!said.released_on);
+  });
+
+  /** Whether anything stands under the figures. */
+  protected readonly body = computed(
+    () => this.historyShown() || this.aboutShown() || this.split(),
+  );
+
   /** A right column on a wide screen, for how long it takes and the close games, when there are any. */
   protected readonly split = computed(
     () => !!this.game.data()?.game_data?.time_to_beat || this.similar().length > 0,
