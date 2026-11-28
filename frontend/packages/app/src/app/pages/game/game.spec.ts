@@ -150,6 +150,14 @@ describe('Game', () => {
     if (played.length) await server.answer(`/library/months/${THIS_MONTH}`, thisMonth());
   }
 
+  /** The tab the header lights, in its row and in the phone's bar. */
+  const currentTabs = (screen: HTMLElement) =>
+    ['row', 'bar'].map((tabs) =>
+      [...screen.querySelectorAll(`[data-tabs="${tabs}"] a`)]
+        .filter((tab) => tab.getAttribute('aria-current') === 'page')
+        .map((tab) => tab.textContent.trim()),
+    );
+
   /** A figure's three parts, each read on its own: what it counts, the figure, what it covers. */
   const figure = (screen: HTMLElement, name: string) =>
     [...screen.querySelectorAll(`[data-figure="${name}"] span`)]
@@ -797,12 +805,84 @@ describe('Game', () => {
 
     expect(text(screen, '[data-back]')).toBe('Temps');
     expect(screen.querySelector('[data-back]')?.getAttribute('href')).toBe('/time');
+    expect(currentTabs(screen)).toEqual([['Temps'], ['Temps']]);
     const back = vi.spyOn(location, 'back');
     const navigate = vi.spyOn(router, 'navigateByUrl');
     screen.querySelector<HTMLAnchorElement>('[data-back]')!.click();
     expect(back).toHaveBeenCalledOnce();
     // The browser's way back alone: no second navigation to the screen's bare address.
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('stands under the tab of the screen it was reached from, the one its back link names', async () => {
+    const { harness, server, screen } = await open();
+    const router = TestBed.inject(Router);
+    const OTHER = '0198a1b2-0000-7000-8000-000000000002';
+    const reach = async (id: string, from?: string, asked?: () => Promise<void>) => {
+      await router.navigate(['/games', id], from ? { state: { from } } : {});
+      await asked?.();
+      await harness.fixture.whenStable();
+    };
+
+    // Opened from its address: the library.
+    expect(currentTabs(screen)).toEqual([['Bibliothèque'], ['Bibliothèque']]);
+
+    // Another game, read the first time it is shown.
+    await reach(OTHER, 'home', async () => {
+      await server.answer(`/games/${OTHER}`, eldenRing({ game_id: OTHER, name: 'Hades' }));
+      await server.answer(`/games/${OTHER}/months`, { months: months() });
+    });
+    expect(text(screen, '[data-back]')).toBe('Accueil');
+    expect(currentTabs(screen)).toEqual([['Accueil'], ['Accueil']]);
+
+    await reach(ID, 'time');
+    expect(text(screen, '[data-back]')).toBe('Temps');
+    expect(currentTabs(screen)).toEqual([['Temps'], ['Temps']]);
+
+    await reach(OTHER, 'library');
+    expect(text(screen, '[data-back]')).toBe('Bibliothèque');
+    expect(currentTabs(screen)).toEqual([['Bibliothèque'], ['Bibliothèque']]);
+
+    // A state the page does not know is no origin: the library again.
+    await reach(ID, 'account');
+    expect(currentTabs(screen)).toEqual([['Bibliothèque'], ['Bibliothèque']]);
+  });
+
+  it('keeps its tab for a close game opened from it', async () => {
+    const SEKIRO = '0198a1b2-0000-7000-8000-0000000000a1';
+    const { harness, server, screen } = await open();
+    const router = TestBed.inject(Router);
+
+    // Sekiro, reached from the time map, lists Elden Ring among the games close to it.
+    await router.navigate(['/games', SEKIRO], { state: { from: 'time' } });
+    await server.answer(
+      `/games/${SEKIRO}`,
+      eldenRing({
+        game_id: SEKIRO,
+        name: 'Sekiro',
+        game_data: igdb({
+          similar: [
+            {
+              game_id: ID,
+              name: 'Elden Ring',
+              playtime_seconds: 48 * HOUR,
+              last_played_at: ago(1),
+              cover_source: null,
+              normally_seconds: null,
+            },
+          ],
+        }),
+      }),
+    );
+    await server.answer(`/games/${SEKIRO}/months`, { months: months() });
+    await harness.fixture.whenStable();
+
+    screen.querySelector<HTMLAnchorElement>(`[data-similar] [data-game="${ID}"] a`)!.click();
+    await harness.fixture.whenStable();
+
+    expect(text(screen, 'h1')).toBe('Elden Ring');
+    expect(text(screen, '[data-back]')).toBe('Temps');
+    expect(currentTabs(screen)).toEqual([['Temps'], ['Temps']]);
   });
 
   it('leaves a press that opens a new tab to the browser', async () => {

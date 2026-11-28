@@ -9,6 +9,12 @@
 export const ORIGINS = { home: '/', library: '/library', time: '/time' } as const;
 export type Origin = keyof typeof ORIGINS;
 
+/**
+ * The screen a game's page opened from its address alone (a pasted link, a reload) leads back
+ * to, and stands under in the header's tabs.
+ */
+export const UNSAID_ORIGIN: Origin = 'library';
+
 /** What a link to a game's page carries in the navigation's state. */
 export interface GamePageState {
   readonly from: Origin;
@@ -17,6 +23,11 @@ export interface GamePageState {
 /** The address of a game's page, as `routerLink` takes it. */
 export function gamePage(gameId: string): string[] {
   return ['/games', gameId];
+}
+
+/** Whether an address is a game's page. */
+export function isGamePage(path: string): boolean {
+  return /^\/games\/[^/?#]+(?:[?#]|$)/.test(path);
 }
 
 /** The state a link from `from` gives the navigation to a game's page. */

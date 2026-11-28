@@ -1,4 +1,4 @@
-import { originIn, originOf } from './game-page';
+import { isGamePage, originIn, originOf } from './game-page';
 
 describe('the way to a game page', () => {
   it('knows the screens it leads back to, by their address', () => {
@@ -15,5 +15,15 @@ describe('the way to a game page', () => {
     expect(originIn({ from: 'toString' })).toBeNull();
     expect(originIn(null)).toBeNull();
     expect(originIn({ navigationId: 3 })).toBeNull();
+  });
+
+  it('tells a game’s page by its address', () => {
+    expect(isGamePage('/games/0198')).toBe(true);
+    expect(isGamePage('/games/0198?steam_link=failed')).toBe(true);
+    expect(isGamePage('/games/0198#history')).toBe(true);
+    expect(isGamePage('/games')).toBe(false);
+    expect(isGamePage('/games/')).toBe(false);
+    expect(isGamePage('/games/0198/months')).toBe(false);
+    expect(isGamePage('/library')).toBe(false);
   });
 });

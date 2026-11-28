@@ -19,7 +19,7 @@ import {
   saidPlaytime,
 } from '@app/format/format';
 import { gameTags, igdbPage } from '@app/games/game-list';
-import { ORIGINS, type Origin, originIn } from '@app/games/game-page';
+import { ORIGINS, type Origin, UNSAID_ORIGIN, originIn } from '@app/games/game-page';
 import { LanguageSetting } from '@app/i18n/language';
 import { GameAbout } from './components/game-about';
 import { GameDurations } from './components/game-durations';
@@ -73,8 +73,9 @@ export class Game {
   );
 
   /**
-   * The screen the page was reached from, as the link said it: the back link names it. A page
-   * opened from its address alone leads back to the library. Read again at each navigation:
+   * The screen the page was reached from, as the link said it: the back link names it, and the
+   * header lights its tab by the same rule. A page opened from its address alone leads back to
+   * the library. Read again at each navigation:
    * another game opened from this page (its search) is the same page, and says its own.
    */
   private readonly cameFrom = toSignal(
@@ -85,7 +86,7 @@ export class Game {
     ),
     { requireSync: true },
   );
-  protected readonly origin = computed((): Origin => this.cameFrom() ?? 'library');
+  protected readonly origin = computed((): Origin => this.cameFrom() ?? UNSAID_ORIGIN);
   /** Where the back link leads, as an address the browser can also open on its own. */
   protected readonly back = computed(() =>
     this.location.prepareExternalUrl(ORIGINS[this.origin()]),
