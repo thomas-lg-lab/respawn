@@ -17,6 +17,7 @@
   --color-text: var(--rs-text);
   --color-muted: var(--rs-muted);
   --color-accent: var(--rs-accent);
+  --color-on-accent: var(--rs-on-accent);
   --color-accent-text: var(--rs-accent-text);
   --color-focus: var(--rs-focus);
   --color-warn: var(--rs-warn);

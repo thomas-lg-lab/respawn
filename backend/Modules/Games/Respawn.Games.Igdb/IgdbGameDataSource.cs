@@ -12,7 +12,7 @@ namespace Respawn.Games.Igdb;
 /// Steam), its <c>game</c> the id of IGDB's game. A store's game may be several of IGDB's, or none.
 ///
 /// What IGDB says of its own games, read through <c>games</c> (the name, the page, the cover, the genres,
-/// the themes, the summary) and <c>game_time_to_beats</c> (how long players took).
+/// the themes, the summary, the day it first came out, the games it lists as similar) and <c>game_time_to_beats</c> (how long players took).
 ///
 /// The answers are handed over untouched, beside what was read from them. IGDB gives 500 rows at most an
 /// answer: a list that may hold more is read page after page.
@@ -34,6 +34,9 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, IgdbImages images, Tim
     /// <summary>The most pages read for one question: a store's game is rarely more than two of IGDB's,
     /// so 500 ids never fill ten pages. More is an answer that does not end.</summary>
     private const int MaxPages = 10;
+
+    /// <summary>The most similar games kept of one: IGDB lists about ten.</summary>
+    public const int MaxSimilar = 20;
 
     /// <summary>Where a game's page is: a link that leads anywhere else is not kept.</summary>
     private const string PagePrefix = "https://www.igdb.com/games/";
@@ -118,7 +121,7 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, IgdbImages images, Tim
             "games",
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"fields name,slug,url,cover.image_id,genres.name,themes.name,summary,game_type,version_parent,parent_game; where id = ({ids}); sort id asc; limit {RowsPerAnswer};"),
+                $"fields name,slug,url,cover.image_id,genres.name,themes.name,summary,first_release_date,similar_games,game_type,version_parent,parent_game; where id = ({ids}); sort id asc; limit {RowsPerAnswer};"),
             ct);
         var (times, timesAt) = await igdb.PostAsync(
             "game_time_to_beats",
@@ -179,7 +182,9 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, IgdbImages images, Tim
                 Names(row, "genres"),
                 Names(row, "themes"),
                 Text(row, "summary", Limits.GameDataSummary),
-                null);
+                null,
+                Day(row, "first_release_date"),
+                Ids(row, "similar_games"));
         }
 
         return games.Values;
@@ -238,6 +243,29 @@ internal sealed class IgdbGameDataSource(IgdbClient igdb, IgdbImages images, Tim
         && value.TryGetInt64(out var id) && id > 0
             ? id
             : null;
+
+    /// <summary>The day of a moment IGDB gives in seconds since 1970 (UTC; before it, below zero); null
+    /// for what is not one, or lies outside the years a date can hold.</summary>
+    private static DateOnly? Day(JsonElement row, string name) =>
+        row.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
+        && value.TryGetInt64(out var seconds)
+        && seconds >= DateTimeOffset.MinValue.ToUnixTimeSeconds() && seconds <= DateTimeOffset.MaxValue.ToUnixTimeSeconds()
+            ? DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime)
+            : null;
+
+    /// <summary>A list of IGDB's ids, each once, in IGDB's order, <see cref="MaxSimilar"/> at most; what
+    /// is not an id is skipped.</summary>
+    private static List<string> Ids(JsonElement row, string name) =>
+        row.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array
+            ?
+            [
+                .. list.EnumerateArray()
+                    .Where(item => item.ValueKind == JsonValueKind.Number && item.TryGetInt64(out var id) && id > 0)
+                    .Select(item => item.GetInt64().ToString(CultureInfo.InvariantCulture))
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(MaxSimilar),
+            ]
+            : [];
 
     /// <summary>A whole number of at least zero that fits an <see cref="int"/>: seconds, or players.</summary>
     private static int? Whole(JsonElement row, string name) =>

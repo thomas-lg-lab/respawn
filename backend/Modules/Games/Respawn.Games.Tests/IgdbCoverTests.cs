@@ -232,6 +232,24 @@ public sealed class IgdbCoverTests : IDisposable
             (time.GetProperty("hastily_seconds").GetInt32(), time.GetProperty("normally_seconds").GetInt32(),
                 time.GetProperty("completely_seconds").GetInt32(), time.GetProperty("count").GetInt32()));
 
+        // The day it came out, and the games of the library IGDB lists as close to it, in IGDB's order:
+        // a game no store's game is (1020) is not one of them.
+        Assert.Equal("2011-04-18", said.GetProperty("released_on").GetString());
+        var similar = said.GetProperty("similar").EnumerateArray().ToList();
+        Assert.Equal(
+            [(games["Portal"], "Portal"), (games["Half-Life 2"], "Half-Life 2")],
+            similar.Select(game => (game.GetProperty("game_id").GetGuid(), game.GetProperty("name").GetString())));
+        // Each as its row in the library says it, with how long it takes at a normal pace.
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, similar[0].GetProperty("normally_seconds").ValueKind);
+        Assert.Equal(50400, similar[1].GetProperty("normally_seconds").GetInt32());
+        Assert.True(similar[1].GetProperty("playtime_seconds").GetInt64() > 0);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, similar[1].GetProperty("cover_source").ValueKind);
+
+        // A game IGDB gives neither for has neither.
+        var halfLife2 = (await browser.GetAsync($"/api/v1/games/{games["Half-Life 2"]}").JsonAsync()).GetProperty("game_data");
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, halfLife2.GetProperty("released_on").ValueKind);
+        Assert.Empty(halfLife2.GetProperty("similar").EnumerateArray());
+
         // A game IGDB knows with no duration said has none.
         var portal = await browser.GetAsync($"/api/v1/games/{games["Portal"]}").JsonAsync();
         Assert.Equal(System.Text.Json.JsonValueKind.Null, portal.GetProperty("game_data").GetProperty("time_to_beat").ValueKind);

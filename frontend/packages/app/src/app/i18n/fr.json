@@ -408,13 +408,9 @@
       "recent": "Ces deux semaines",
       "share": "sur {{ whole }}, soit {{ share }}",
       "since": "compté depuis le {{ date }}",
-      "best": "Meilleur mois"
+      "best": "Meilleur mois",
+      "last": "Dernière session"
     },
-    "never": {
-      "title": "Jamais lancé.",
-      "text": "Son temps, mois par mois, s’écrira ici dès la première session."
-    },
-    "noHistory": "Aucun mois de jeu connu pour l’instant : son temps s’écrira ici mois par mois, au fil des synchronisations.",
     "loading": "Chargement du jeu…",
     "notFound": {
       "title": "Ce jeu est introuvable",
@@ -467,7 +463,8 @@
     "tags": {
       "label": "Genres et thèmes",
       "more": "+ {{ count }}",
-      "moreLabel": "Voir tous les genres et thèmes, {{ count }} de plus"
+      "moreLabel": "Voir tous les genres et thèmes, {{ count }} de plus",
+      "less": "Moins"
     },
     "durations": {
       "title": "Durées",
@@ -477,7 +474,7 @@
       "completely": "À 100 %",
       "left": "reste {{ time }}",
       "reached": "atteint",
-      "beyond": "atteint, + {{ time }}",
+      "beyond": "+ {{ time }}",
       "sourceOne": "D’après 1 joueur, sur IGDB",
       "sourceMany": "D’après {{ count }} joueurs, sur IGDB",
       "source": "Sur IGDB"
@@ -485,7 +482,13 @@
     "about": {
       "title": "À propos",
       "tags": "Tous ses genres et thèmes",
-      "source": "Données du jeu : IGDB"
+      "source": "Données du jeu : IGDB",
+      "released": "Sorti en {{ month }}"
+    },
+    "similar": {
+      "title": "Proches de celui-ci, chez vous",
+      "playedAgo": "{{ ago }} · {{ time }}",
+      "neverTakes": "Jamais lancé · environ {{ time }}"
     }
   },
   "notFound": {

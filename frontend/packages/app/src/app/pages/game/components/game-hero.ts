@@ -13,11 +13,10 @@ import {
   titleInitial,
 } from '@app/games/game-list';
 import { steamLaunchLink } from '@app/games/steam-launch';
-import { type Recency, recency } from '@app/games/time-map';
 import { CoverChoice } from './cover-choice';
 import { GameTags } from './game-tags';
 
-/** How many genres and themes the hero shows; the page's "About" holds them all. */
+/** How many genres and themes the hero shows at first; its last pill shows the rest in place. */
 export const HERO_TAGS = 4;
 
 /**
@@ -60,12 +59,19 @@ export class GameHero {
   readonly coverPicked = output<string | null>();
   /** The covers were opened, to choose again. */
   readonly coverOpened = output<void>();
-  /** The genres and themes the hero leaves out were asked for. */
-  readonly moreTagsAsked = output<void>();
-
   /** The game's genres, then its themes, as the game database names them. */
   protected readonly tags = computed(() => gameTags(this.game().game_data));
-  protected readonly shownTags = computed(() => this.tags().slice(0, HERO_TAGS));
+  /**
+   * Whether the genres and themes past the first few are shown, as the last pill asked: folded
+   * again for another game, the page being kept from one game to the next.
+   */
+  protected readonly allTags = linkedSignal({
+    source: () => this.game().game_id,
+    computation: () => false,
+  });
+  protected readonly shownTags = computed(() =>
+    this.allTags() ? this.tags() : this.tags().slice(0, HERO_TAGS),
+  );
   protected readonly moreTags = computed(() => Math.max(0, this.tags().length - HERO_TAGS));
 
   protected readonly hue = computed(() => coverHue(this.game().game_id));
@@ -96,12 +102,6 @@ export class GameHero {
       ago: ago.charAt(0).toLocaleLowerCase(this.language()) + ago.slice(1),
       moment: formatMoment(game.last_played_at, this.language()),
     };
-  });
-
-  /** The colour of the last session, as the time map gives it; none where there was none. */
-  protected readonly recency = computed((): Recency | null => {
-    const game = this.game();
-    return this.status().kind === 'last' ? recency(game.last_played_at, this.now()) : null;
   });
 
   /** The link that launches the game in the Steam client, where a copy of it is listed. */

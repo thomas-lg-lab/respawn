@@ -80,6 +80,9 @@ export type GameData = Schemas['GameDataResponse'];
 /** How long players took to finish a game, in seconds, at three paces; each null when nobody said. */
 export type TimeToBeat = Schemas['TimeToBeatResponse'];
 
+/** A game of the account's library that the game database lists as close to the one shown. */
+export type SimilarGame = Schemas['SimilarGameResponse'];
+
 /** The sources the instance credits (`GET /api/v1/credits`). */
 export type Credits = Schemas['CreditsResponse'];
 

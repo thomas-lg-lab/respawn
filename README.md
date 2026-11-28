@@ -67,8 +67,9 @@ and where your time went.
   it has a data directory, and asked for only as they come near the screen.
 - **The page of a game**, reached from wherever a game is shown and from the search: its time, its rank, this
   year and the last two weeks, its months since 2022 as a calendar, and for a month the other games played
-  then; what IGDB says of it (its genres and themes, what it is about, in English) and how long players say
-  it takes, rushing, normally and at 100 %, set against your own time; its pages on Steam and IGDB, "Launch
+  then; what IGDB says of it (its genres and themes, what it is about, in English, the month it came out) and
+  how long players say it takes, rushing, normally and at 100 %, set against your own time; the games of your
+  library IGDB lists as close to it; its pages on Steam and IGDB, "Launch
   in Steam" on a computer, and taking a game Steam no longer lists out of the library.
 - **Accounts**: local accounts (the first one is the administrator), or sign-in through any OpenID Connect
   provider; the language (French or English), the theme and the character of the labels kept on the
@@ -287,7 +288,7 @@ part of the API.
 | `PUT /api/v1/library/games/{id}` | Puts back everything the account took out of that game, whether its store lists it again or not: an entry the store does not list comes back flagged as missing. `404` with `not_removed` |
 | `GET /api/v1/library/removed` | The games the account took out of its library, by name, with the entries taken out (`removed_at`, `listed_again_since`, `notice_dismissed_at`). `back_since` is the notice to show: a store lists the game again since that date, and the notice was not dismissed |
 | `DELETE /api/v1/library/removed/{id}/notice` | Dismisses that notice, for good: the game stays out, and nothing its store says later raises it again; the game can still be put back. `404` with `not_removed`, `409` with `not_back` when no store lists it again |
-| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, in `removed` what the account took out of its library of it, in `game_data` what IGDB says of it when IGDB knows it (its page, `url`, null when IGDB gave none, `genres`, `themes`, `summary` in English, and in `time_to_beat` how long players took, in seconds, rushing, normally and completely, with how many said it), and in `covers` the `sources` it has a cover from (the game's own first) and the one the account `chosen`. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
+| `GET /api/v1/games/{id}` | One game as the signed-in account sees it: its name and its `stores`, the `entries` it is owned through as in the library (playtime per linked account, `missing_since`) and their total, its `rank` among the games launched, in `removed` what the account took out of its library of it, in `game_data` what IGDB says of it when IGDB knows it (its page, `url`, null when IGDB gave none, `genres`, `themes`, `summary` in English, and in `time_to_beat` how long players took, in seconds, rushing, normally and completely, with how many said it, `released_on` the day it first came out, and in `similar` the games of the account's library IGDB lists as close to it, four at most in IGDB's order, each with its time, its last session, its cover's source and how long it takes at a normal pace), and in `covers` the `sources` it has a cover from (the game's own first) and the one the account `chosen`. For any game of the catalogue: one that is not in the library has no entry and no rank. `404` with `unknown_game` |
 | `PUT /api/v1/games/{id}/cover-choice` | Chooses the cover the account sees for that game, by its `source`, one of `covers.sources`; choosing the first, the game's own, is choosing none. For this account alone: the game's page and the library (`cover_source` of each game) show it. Answers the game's `covers`. `409` with `no_such_cover` when the game has no cover from that source |
 | `DELETE /api/v1/games/{id}/cover-choice` | Goes back to the game's own cover. Answers the game's `covers` |
 | `GET /api/v1/games/{id}/months` | The months that game was played in, the earliest first, each with its `seconds` and its `source`, counted as in `/library/years`: the months of a year add up to the game's part of that year there. A month with nothing played is left out |
@@ -387,7 +388,8 @@ the same way.
 With IGDB's client id and secret, the app asks IGDB about the catalogue's games apart from the sync: every
 five minutes it takes up to `RESPAWN_IGDB_GAMES_PER_TURN` games never asked about, then the ones asked about
 the longest ago, and asks which IGDB game each one is, then that game's name, page, cover, genres, themes,
-summary (in English) and how long players took to finish it.
+summary (in English), the day it first came out, the games IGDB lists as similar, and how long players took
+to finish it.
 
 - **Once for the instance.** What IGDB says of a game is kept once, whoever owns it. Two store games IGDB
   takes for the same game share what it says of it and stay two games: nothing is merged. A store game IGDB
@@ -400,7 +402,8 @@ summary (in English) and how long players took to finish it.
   whose answer cannot be read three turns in a row are set aside as unknown, for the games after them to
   be asked about.
 - Each answer is kept as it came, like a reading. It shows as a game's cover where Steam has none, as its
-  link to IGDB, and on the game's page as its genres and themes, its summary and its durations; the library
+  link to IGDB, and on the game's page as its genres and themes, its summary, the month it came out, its
+  durations and, of the games IGDB lists as similar, the first four the account owns; the library
   can be narrowed to a genre or a theme. When two store games of one game are known to IGDB, the page shows
   what IGDB says of the first, in the order its covers are looked for, never fields of both.
 

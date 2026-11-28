@@ -1,0 +1,44 @@
+<section
+  class="flex flex-col gap-2 rounded-card border border-line bg-surface px-4 pt-4.5 pb-2 wide:px-6 wide:pt-5"
+  data-similar
+  *transloco="let t"
+>
+  <h2 class="type-card-title">{{ t('game.similar.title') }}</h2>
+  <ul class="-mx-2 flex flex-col">
+    @for (game of shown(); track game.id) {
+      <li class="relative border-t border-line" [attr.data-game]="game.id">
+        <div
+          class="flex min-h-13 items-center gap-3 rounded-row px-2 py-1.5 transition-colors duration-hover hover:bg-surface-2"
+        >
+          <rs-cover class="w-7 shrink-0" aria-hidden="true" [hue]="game.hue" [src]="game.cover" />
+          <span class="flex min-w-0 flex-col">
+            <!-- The whole row leads to the game's page: the link's box is stretched over it. -->
+            <a
+              class="truncate font-semibold after:absolute after:inset-0 after:rounded-row focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-focus"
+              data-name
+              [routerLink]="gamePage(game.id)"
+              [state]="from()"
+              >{{ game.name ?? t('game.unnamed') }}</a
+            >
+            <span class="truncate type-caption text-muted tabular-nums" data-said>
+              @if (game.total; as total) {
+                @let time = t(total.key, { count: total.count });
+                {{ game.ago ? t('game.similar.playedAgo', { time, ago: game.ago }) : time }}
+              } @else if (game.never) {
+                @if (game.takes; as takes) {
+                  {{ t('game.similar.neverTakes', { time: t(takes.key, { count: takes.count }) }) }}
+                } @else {
+                  {{ t('game.status.never') }}
+                }
+              } @else if (game.ago; as ago) {
+                {{ ago }}
+              } @else {
+                {{ t('app.unknown') }}
+              }
+            </span>
+          </span>
+        </div>
+      </li>
+    }
+  </ul>
+</section>

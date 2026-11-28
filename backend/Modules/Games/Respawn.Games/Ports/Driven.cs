@@ -116,6 +116,10 @@ public interface ICatalogue
     /// them is left out.</summary>
     Task<IReadOnlyDictionary<Guid, GameFacts>> FindGameFactsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct);
 
+    /// <summary>The catalogue's games that are each of these games of the game database, by its id: those
+    /// with a store entry the database said is it. A game of the database none is is left out.</summary>
+    Task<IReadOnlyDictionary<string, IReadOnlyList<Guid>>> FindGamesOfGameDataAsync(IReadOnlyCollection<string> gameDataIds, CancellationToken ct);
+
     /// <summary>Whether the catalogue holds anything the game database said of a game.</summary>
     Task<bool> HasGameDataAsync(CancellationToken ct);
 

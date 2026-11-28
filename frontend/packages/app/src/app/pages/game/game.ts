@@ -1,4 +1,4 @@
-import { DOCUMENT, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
@@ -12,6 +12,8 @@ import { failureKey } from '@app/errors/failure-message';
 import {
   formatCount,
   formatDate,
+  formatMonthOf,
+  formatMonthOfMoment,
   formatShare,
   ordinalForm,
   saidPlaytime,
@@ -22,6 +24,7 @@ import { LanguageSetting } from '@app/i18n/language';
 import { GameAbout } from './components/game-about';
 import { GameDurations } from './components/game-durations';
 import { GameHero } from './components/game-hero';
+import { GameSimilar } from './components/game-similar';
 import { LibraryNotice } from './components/library-notice';
 import { MonthCalendar, monthName } from './components/month-calendar';
 import { MonthDetail } from './components/month-detail';
@@ -46,6 +49,7 @@ import { type MonthKey, calendar, monthDetail, secondsIn } from './game-view';
     GameAbout,
     GameDurations,
     GameHero,
+    GameSimilar,
     LibraryNotice,
     MonthCalendar,
     MonthDetail,
@@ -58,7 +62,6 @@ export class Game {
   private readonly location = inject(Location);
   private readonly router = inject(Router);
   private readonly language = inject(LanguageSetting);
-  private readonly document = inject(DOCUMENT);
 
   protected readonly failureKey = failureKey;
   protected readonly igdbPage = igdbPage;
@@ -173,6 +176,12 @@ export class Game {
     const recent = game.recent_playtime_seconds;
     const recentTotal = this.stats.data()?.recent_playtime_seconds;
     const best = this.calendar()?.best ?? null;
+    // Once the history says there is no best month, the month it was last played instead, on
+    // the reader's clock as the hero's last session is.
+    const last =
+      !best && this.calendar() && game.last_played_at
+        ? formatMonthOfMoment(game.last_played_at, language)
+        : null;
 
     return {
       total: time(game.playtime_seconds),
@@ -198,11 +207,54 @@ export class Game {
           ? { share: share(recent, recentTotal), whole: time(recentTotal)! }
           : null,
       best: best ? { time: time(best.seconds)!, month: monthName(best.month, language) } : null,
+      last: last ? last.charAt(0).toLocaleUpperCase(language) + last.slice(1) : null,
     };
   });
 
   /** Every genre and theme the game database gives the game: the hero shows the first ones. */
   protected readonly tags = computed(() => gameTags(this.game.data()?.game_data));
+
+  /**
+   * A game last played before this year has nothing to say of this year or these two weeks: read
+   * from the game alone, so the figures do not change once the history comes.
+   */
+  protected readonly quiet = computed(() => {
+    const last = this.game.data()?.last_played_at;
+    return !!last && Date.parse(last) < Date.UTC(new Date(this.now()).getUTCFullYear(), 0, 1);
+  });
+
+  /** The month the game came out, in the reader's language; none while the database says none. */
+  protected readonly released = computed(() => {
+    const day = this.game.data()?.game_data?.released_on;
+    return day ? formatMonthOf(day, this.language.current()) : null;
+  });
+
+  /** The games of the library the game database lists as close to this one. */
+  protected readonly similar = computed(() => this.game.data()?.game_data?.similar ?? []);
+
+  /**
+   * Whether the history has a place: not for a game never launched, nor once the history says
+   * no month of it is known. While it comes, its place waits for it.
+   */
+  protected readonly historyShown = computed(
+    () => !this.neverLaunched() && this.calendar()?.rows.length !== 0,
+  );
+
+  /** Whether "About" has anything to say: a summary, genres, or the day it came out. */
+  protected readonly aboutShown = computed(() => {
+    const said = this.game.data()?.game_data;
+    return !!said && (!!said.summary || this.tags().length > 0 || !!said.released_on);
+  });
+
+  /** Whether anything stands under the figures. */
+  protected readonly body = computed(
+    () => this.historyShown() || this.aboutShown() || this.split(),
+  );
+
+  /** A right column on a wide screen, for how long it takes and the close games, when there are any. */
+  protected readonly split = computed(
+    () => !!this.game.data()?.game_data?.time_to_beat || this.similar().length > 0,
+  );
 
   /** A game never launched has no time to show: the page says so in their place. */
   protected readonly neverLaunched = computed(() => this.game.data()?.playtime_seconds === 0);
@@ -241,15 +293,6 @@ export class Game {
     event.preventDefault();
     if (this.cameFrom() !== null) this.location.back();
     else void this.router.navigateByUrl(ORIGINS[this.origin()]);
-  }
-
-  /** The genres the hero leaves out are in "About": there, and focused for those who hear it. */
-  protected showAbout(): void {
-    const about = this.document.getElementById('about');
-    if (!about) return;
-    about.focus({ preventScroll: true });
-    // Not every environment scrolls: the focus is what matters to those who hear the page.
-    if ('scrollIntoView' in about) about.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   protected retryHistory(): void {

@@ -408,13 +408,9 @@
       "recent": "These two weeks",
       "share": "of {{ whole }}, {{ share }}",
       "since": "counted since {{ date }}",
-      "best": "Best month"
+      "best": "Best month",
+      "last": "Last session"
     },
-    "never": {
-      "title": "Never launched.",
-      "text": "Its time, month by month, will show here from the first session."
-    },
-    "noHistory": "No month of play known yet: its time will show here month by month, as syncs go by.",
     "loading": "Loading the game…",
     "notFound": {
       "title": "This game cannot be found",
@@ -467,7 +463,8 @@
     "tags": {
       "label": "Genres and themes",
       "more": "+ {{ count }}",
-      "moreLabel": "See all genres and themes, {{ count }} more"
+      "moreLabel": "See all genres and themes, {{ count }} more",
+      "less": "Fewer"
     },
     "durations": {
       "title": "How long it takes",
@@ -477,7 +474,7 @@
       "completely": "At 100%",
       "left": "{{ time }} left",
       "reached": "reached",
-      "beyond": "reached, + {{ time }}",
+      "beyond": "+ {{ time }}",
       "sourceOne": "From 1 player, on IGDB",
       "sourceMany": "From {{ count }} players, on IGDB",
       "source": "On IGDB"
@@ -485,7 +482,13 @@
     "about": {
       "title": "About",
       "tags": "All its genres and themes",
-      "source": "Game data: IGDB"
+      "source": "Game data: IGDB",
+      "released": "Released {{ month }}"
+    },
+    "similar": {
+      "title": "Close to this one, in your library",
+      "playedAgo": "{{ ago }} · {{ time }}",
+      "neverTakes": "Never launched · about {{ time }}"
     }
   },
   "notFound": {

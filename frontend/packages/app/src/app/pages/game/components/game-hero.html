@@ -1,6 +1,6 @@
-<!-- A grid: the cover beside the title and the state under it. The actions stand at the bottom
-     right, on the state's line and centred with it, so the title never runs beside them; on a
-     phone they go under the whole. -->
+<!-- A grid: the cover beside the title and the state under it. The action stands in the bottom
+     right corner, on the last line (the genres', or the state's without them), so the title never
+     runs beside it; on a phone it goes under the whole. -->
 <section
   class="group/hero grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[1fr_auto] items-end wide:data-tagged:grid-rows-[1fr_auto_auto] gap-x-7 gap-y-2 rounded-hero border border-line bg-surface p-4 wide:grid-cols-[auto_minmax(0,1fr)_auto] wide:px-7 wide:py-6"
   data-hero
@@ -43,9 +43,10 @@
     />
   }
 
-  <!-- Cut after two lines on a wide screen, three on a phone: the whole title is the page's name. -->
+  <!-- Cut after two lines on a wide screen, three on a phone: the whole title is the page's name.
+       Drawn back by its first letter's side bearing, so that it lines up with the lines under it. -->
   <h1
-    class="line-clamp-3 type-hero text-balance wrap-anywhere wide:line-clamp-2"
+    class="-ms-[0.05em] line-clamp-3 type-hero text-balance wrap-anywhere wide:line-clamp-2"
     data-title
     [attr.title]="game().name"
   >
@@ -56,22 +57,9 @@
     class="col-start-2 flex flex-wrap items-center gap-2 self-start type-caption text-muted wide:self-center"
     data-status-line
   >
-    <span class="flex items-center gap-2" data-status>
-      <span
-        class="size-2.5 shrink-0 border"
-        [class.border-dashed]="said.kind === 'never'"
-        [class.border-muted]="said.kind === 'never'"
-        [class.border-transparent]="said.kind !== 'never'"
-        [class.bg-warn]="said.kind === 'missing' || said.kind === 'removed'"
-        [class.bg-recency-1]="recency() === 1"
-        [class.bg-recency-2]="recency() === 2"
-        [class.bg-recency-3]="recency() === 3"
-        [class.bg-recency-4]="
-          recency() === 4 || said.kind === 'unknown' || said.kind === 'notOwned'
-        "
-        aria-hidden="true"
-        [attr.data-recency]="recency()"
-      ></span>
+    <!-- Words only: a coloured square beside them said the same, and read as a box to tick. A
+         game no store lists any more is said in the warning's colour. -->
+    <span [class.text-warn]="said.kind === 'missing' || said.kind === 'removed'" data-status>
       @if (said.kind === 'last') {
         <span [attr.title]="said.moment">{{ t('status.last', { ago: said.ago }) }}</span>
       } @else {
@@ -121,9 +109,9 @@
     }
   </p>
 
-  <!-- The first genres and themes, each leading to the library narrowed to it; the rest are in
-       the page's "About", which the last pill leads to. Under the title on a wide screen,
-       across the whole hero on a phone. -->
+  <!-- The first genres and themes, each leading to the library narrowed to it; the last pill
+       shows the rest in place, and folds them again. Under the title on a wide screen, across the
+       whole hero on a phone. -->
   @if (tags().length) {
     <rs-game-tags
       class="col-span-2 mt-1 wide:col-span-1 wide:col-start-2"
@@ -136,10 +124,11 @@
             type="button"
             class="inline-flex min-h-8 items-center rounded-pill border border-control-line px-3 type-caption font-medium text-muted transition-colors duration-hover hover:text-text touch-only:min-h-touch"
             data-more-tags
-            [attr.aria-label]="t('tags.moreLabel', { count: more })"
-            (click)="moreTagsAsked.emit()"
+            [attr.aria-expanded]="allTags()"
+            [attr.aria-label]="allTags() ? null : t('tags.moreLabel', { count: more })"
+            (click)="allTags.set(!allTags())"
           >
-            {{ t('tags.more', { count: more }) }}
+            {{ allTags() ? t('tags.less') : t('tags.more', { count: more }) }}
           </button>
         </li>
       }
@@ -150,7 +139,7 @@
        is left for it, which would add its own space under the hero. -->
   @if (launch(); as address) {
     <div
-      class="col-span-2 mt-1.5 flex items-center touch-only:hidden wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-center"
+      class="col-span-2 mt-1.5 flex items-center touch-only:hidden wide:col-span-1 wide:col-start-3 wide:row-start-2 wide:mt-0 wide:self-end wide:group-data-tagged/hero:row-start-3"
     >
       <a rsButton variant="primary" data-launch [href]="address">
         <svg lucidePlay class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>

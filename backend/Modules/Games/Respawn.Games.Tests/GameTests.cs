@@ -217,7 +217,11 @@ public sealed class GameTests
         Assert.Equal(
             ["game_id", "name", "stores", "playtime_seconds", "recent_playtime_seconds", "last_played_at", "entries", "rank", "removed", "game_data", "covers"],
             Fields("GameResponse"));
-        Assert.Equal(["source", "url", "genres", "themes", "summary", "time_to_beat"], Fields("GameDataResponse"));
+        Assert.Equal(["source", "url", "genres", "themes", "summary", "time_to_beat", "released_on", "similar"], Fields("GameDataResponse"));
+        Assert.Equal("date", schemas.GetProperty("GameDataResponse").GetProperty("properties").GetProperty("released_on").GetProperty("format").GetString());
+        Assert.Equal(
+            ["game_id", "name", "playtime_seconds", "last_played_at", "cover_source", "normally_seconds"],
+            Fields("SimilarGameResponse"));
         Assert.Equal(["hastily_seconds", "normally_seconds", "completely_seconds", "count"], Fields("TimeToBeatResponse"));
         Assert.Equal(["sources", "chosen"], Fields("GameCoversResponse"));
         Assert.Equal(["source"], Fields("CoverChoiceRequest"));

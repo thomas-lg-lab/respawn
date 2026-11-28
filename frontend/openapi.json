@@ -1804,7 +1804,9 @@
           "genres",
           "themes",
           "summary",
-          "time_to_beat"
+          "time_to_beat",
+          "released_on",
+          "similar"
         ],
         "type": "object",
         "properties": {
@@ -1844,6 +1846,19 @@
                 "$ref": "#/components/schemas/TimeToBeatResponse"
               }
             ]
+          },
+          "released_on": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "similar": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimilarGameResponse"
+            }
           }
         }
       },
@@ -2643,6 +2658,56 @@
           },
           "character": {
             "type": "string"
+          }
+        }
+      },
+      "SimilarGameResponse": {
+        "required": [
+          "game_id",
+          "name",
+          "playtime_seconds",
+          "last_played_at",
+          "cover_source",
+          "normally_seconds"
+        ],
+        "type": "object",
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "playtime_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "last_played_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cover_source": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "normally_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },

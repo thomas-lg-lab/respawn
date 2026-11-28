@@ -54,6 +54,8 @@ function igdb(values: Partial<GameData> = {}): GameData {
       completely_seconds: 133 * HOUR,
       count: 1240,
     },
+    released_on: '2022-02-25',
+    similar: [],
     ...values,
   };
 }
@@ -162,9 +164,8 @@ describe('Game', () => {
 
     expect(text(screen, 'h1')).toBe('Elden Ring');
     expect(text(screen, '[data-status]')).toBe('Dernière session hier');
-    expect(screen.querySelector('[data-status] [data-recency]')?.getAttribute('data-recency')).toBe(
-      '1',
-    );
+    // Words only: no square beside them.
+    expect(screen.querySelector('[data-status] [data-recency]')).toBeNull();
     expect(screen.querySelector('[data-launch]')?.getAttribute('href')).toBe('steam://run/1245620');
     expect(screen.querySelector('[data-store]')?.getAttribute('href')).toBe(
       'https://store.steampowered.com/app/1245620/',
@@ -201,7 +202,7 @@ describe('Game', () => {
   });
 
   it('shows its first genres in the hero, each leading to the library narrowed to it', async () => {
-    const { screen } = await open();
+    const { harness, screen } = await open();
 
     const shown = [...screen.querySelectorAll('[data-hero] [data-tag]')];
     expect(shown.map((tag) => tag.textContent.trim())).toEqual([
@@ -213,13 +214,46 @@ describe('Game', () => {
     // IGDB's words, in English, said as such.
     expect(shown[0]?.getAttribute('lang')).toBe('en');
     expect(shown[0]?.getAttribute('href')).toBe('/library?genre=Role-playing%20(RPG)');
-    // The fifth is in "About", which the last pill leads to.
-    expect(text(screen, '[data-more-tags]')).toBe('+ 1');
-    expect(screen.querySelector('[data-more-tags]')?.getAttribute('aria-label')).toBe(
-      'Voir tous les genres et thèmes, 1 de plus',
+    // The last pill shows the fifth in place, and folds it again.
+    const more = screen.querySelector<HTMLButtonElement>('[data-more-tags]')!;
+    expect(more.textContent.trim()).toBe('+ 1');
+    expect(more.getAttribute('aria-label')).toBe('Voir tous les genres et thèmes, 1 de plus');
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    more.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(5);
+    expect(more.textContent.trim()).toBe('Moins');
+    expect(more.getAttribute('aria-expanded')).toBe('true');
+    more.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(4);
+  });
+
+  it('folds the genres again for the next game, the page being kept from one to the other', async () => {
+    const sekiro = '0198a1b2-0000-7000-8000-0000000000a1';
+    const close = {
+      game_id: sekiro,
+      name: 'Sekiro',
+      playtime_seconds: 48 * HOUR,
+      last_played_at: ago(400),
+      cover_source: null,
+      normally_seconds: null,
+    };
+    const { harness, server, screen } = await open(
+      eldenRing({ game_data: igdb({ similar: [close] }) }),
     );
     screen.querySelector<HTMLButtonElement>('[data-more-tags]')!.click();
-    expect(document.activeElement?.id).toBe('about');
+    await harness.fixture.whenStable();
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(5);
+
+    await TestBed.inject(Router).navigateByUrl(`/games/${sekiro}`);
+    await server.answer(`/games/${sekiro}`, eldenRing({ game_id: sekiro, name: 'Sekiro' }));
+    await server.answer(`/games/${sekiro}/months`, { months: [] });
+    await harness.fixture.whenStable();
+
+    expect(text(screen, 'h1')).toBe('Sekiro');
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(4);
+    expect(screen.querySelector('[data-more-tags]')?.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('says what IGDB says the game is, with all its genres and where it comes from', async () => {
@@ -243,15 +277,21 @@ describe('Game', () => {
       const row = screen.querySelector(`[data-pace="${name}"]`)!;
       return [
         row.getAttribute('data-state'),
-        text(row, '[data-pace-words]')?.replace(/\s+/g, ' '),
+        text(row, '[data-pace-words]'),
         text(row, '[data-pace-time]'),
+        text(row, '[data-pace-state]'),
       ];
     };
-    expect(pace('hastily')).toEqual(['reached', 'En allant vite · atteint', '58 h']);
-    expect(pace('normally')).toEqual(['reached', 'Normalement · atteint', '100 h']);
+    expect(pace('hastily')).toEqual(['reached', 'En allant vite', '58 h', 'atteint']);
+    expect(pace('normally')).toEqual(['reached', 'Normalement', '100 h', 'atteint']);
     // Past the longest pace, by how much.
-    expect(pace('completely')).toEqual(['beyond', 'À 100 % · atteint, + 9 h', '133 h']);
-    expect(screen.querySelectorAll('[data-durations] rs-segmented-bar')).toHaveLength(3);
+    expect(pace('completely')).toEqual(['beyond', 'À 100 %', '133 h', '+ 9 h']);
+    // One scale: the time played as far as it goes, a mark where each pace stands on it.
+    const scale = screen.querySelector<HTMLElement>('[data-durations] [data-scale]')!;
+    const marks = [...scale.querySelectorAll<HTMLElement>('span')].map(
+      (mark) => mark.style.cssText,
+    );
+    expect(marks).toEqual(['width: 100%;', 'left: 40.8451%;', 'left: 70.4225%;', 'left: 93.662%;']);
     expect(text(screen, '[data-durations-source]')?.replace(/\s/g, ' ')).toBe(
       'D’après 1 240 joueurs, sur IGDB',
     );
@@ -297,7 +337,7 @@ describe('Game', () => {
     expect(
       [...screen.querySelectorAll('[data-pace]')].map((row) => row.getAttribute('data-state')),
     ).toEqual(['reached', 'beyond']);
-    expect(text(screen, '[data-pace="normally"]')).toContain('atteint, + 30 h');
+    expect(text(screen, '[data-pace="normally"]')).toContain('+ 30 h');
   });
 
   it('gives a game never launched how long it takes, with nothing set against it', async () => {
@@ -312,7 +352,7 @@ describe('Game', () => {
 
     expect(screen.querySelectorAll('[data-pace]')).toHaveLength(3);
     expect(screen.querySelector('[data-you]')).toBeNull();
-    expect(screen.querySelector('[data-durations] rs-segmented-bar')).toBeNull();
+    expect(screen.querySelector('[data-durations] [data-scale]')).toBeNull();
     expect(
       [...screen.querySelectorAll('[data-pace]')].map((row) => row.getAttribute('data-state')),
     ).toEqual(['none', 'none', 'none']);
@@ -326,6 +366,120 @@ describe('Game', () => {
     expect(screen.querySelector('[data-hero]')?.hasAttribute('data-tagged')).toBe(false);
     expect(screen.querySelector('[data-about]')).toBeNull();
     expect(screen.querySelector('[data-durations]')).toBeNull();
+    expect(screen.querySelector('[data-similar]')).toBeNull();
+    // No empty right column either: it would take a row, and its gap, under the history.
+    expect(screen.querySelector('[data-right]')).toBeNull();
+    expect(screen.querySelector('[data-left]')).not.toBeNull();
+  });
+
+  it('gives the close games a column of their own, with no duration beside them', async () => {
+    const close = {
+      game_id: '0198a1b2-0000-7000-8000-0000000000a1',
+      name: 'Sekiro',
+      playtime_seconds: 48 * HOUR,
+      last_played_at: ago(400),
+      cover_source: null,
+      normally_seconds: null,
+    };
+    const { screen } = await open(
+      eldenRing({ game_data: igdb({ time_to_beat: null, similar: [close] }) }),
+    );
+
+    expect(screen.querySelector('[data-durations]')).toBeNull();
+    expect(
+      screen
+        .querySelector('[data-split]:not([data-figures])')
+        ?.contains(screen.querySelector('[data-similar]')),
+    ).toBe(true);
+  });
+
+  it('says the month it came out, beside where its data comes from', async () => {
+    const { screen } = await open(eldenRing());
+
+    expect(text(screen, '[data-released]')).toBe('Sorti en février 2022');
+    expect(screen.querySelector('[data-about] [data-about-source]')).not.toBeNull();
+  });
+
+  it('says nothing of when it came out when IGDB does not', async () => {
+    const { screen } = await open(eldenRing({ game_data: igdb({ released_on: null }) }));
+
+    expect(screen.querySelector('[data-released]')).toBeNull();
+  });
+
+  it('lists the games of the library close to it, each leading to its page', async () => {
+    const sekiro = '0198a1b2-0000-7000-8000-0000000000a1';
+    const hades = '0198a1b2-0000-7000-8000-0000000000a2';
+    const unnamed = '0198a1b2-0000-7000-8000-0000000000a3';
+    const untimed = '0198a1b2-0000-7000-8000-0000000000a4';
+    const brief = '0198a1b2-0000-7000-8000-0000000000a5';
+    const { screen } = await open(
+      eldenRing({
+        game_data: igdb({
+          similar: [
+            {
+              game_id: sekiro,
+              name: 'Sekiro',
+              playtime_seconds: 48 * HOUR,
+              last_played_at: ago(400),
+              cover_source: null,
+              normally_seconds: 30 * HOUR,
+            },
+            {
+              game_id: hades,
+              name: 'Hades',
+              playtime_seconds: 0,
+              last_played_at: null,
+              cover_source: 'igdb',
+              normally_seconds: 22 * HOUR,
+            },
+            {
+              game_id: unnamed,
+              name: null,
+              playtime_seconds: 0,
+              last_played_at: null,
+              cover_source: null,
+              normally_seconds: null,
+            },
+            {
+              game_id: untimed,
+              name: 'Celeste',
+              playtime_seconds: null,
+              last_played_at: null,
+              cover_source: null,
+              normally_seconds: 8 * HOUR,
+            },
+            {
+              game_id: brief,
+              name: 'Inside',
+              playtime_seconds: 0,
+              last_played_at: ago(400),
+              cover_source: null,
+              normally_seconds: 4 * HOUR,
+            },
+          ],
+        }),
+      }),
+    );
+
+    const rows = [...screen.querySelectorAll('[data-similar] li')];
+    expect(rows.map((row) => row.getAttribute('data-game'))).toEqual([
+      sekiro,
+      hades,
+      unnamed,
+      untimed,
+      brief,
+    ]);
+    // Played: how long ago, then its time; never launched: how long it would take, when said. A
+    // playtime no store gave is not none, and a last session is a launch, as the server counts.
+    expect(rows.map((row) => row.querySelector('[data-said]')?.textContent?.trim())).toEqual([
+      'Il y a 1 an · 48 h',
+      'Jamais lancé · environ 22 h',
+      'Jamais lancé',
+      '—',
+      'Il y a 1 an',
+    ]);
+    expect(rows[2]?.querySelector('[data-name]')?.textContent?.trim()).toBe('Jeu sans nom');
+    expect(rows[0]?.querySelector('a')?.getAttribute('href')).toBe(`/games/${sekiro}`);
   });
 
   it('offers to choose the cover only where the game has more than one', async () => {
@@ -489,7 +643,7 @@ describe('Game', () => {
     expect(text(screen, '[data-month-place]')).toBe('Le seul jeu joué ce mois-là');
   });
 
-  it('says a game never launched has no time yet, and draws no figure', async () => {
+  it('says a game never launched in the hero alone, and draws no figure', async () => {
     const never = eldenRing({
       playtime_seconds: 0,
       recent_playtime_seconds: 0,
@@ -500,8 +654,42 @@ describe('Game', () => {
     const { screen } = await open(never, []);
 
     expect(text(screen, '[data-status]')).toBe('Jamais lancé');
-    expect(screen.querySelector('[data-never]')).not.toBeNull();
+    expect(screen.querySelector('[data-never]')).toBeNull();
     expect(screen.querySelector('[data-figures]')).toBeNull();
+    expect(screen.querySelector('[data-calendar]')).toBeNull();
+  });
+
+  it('draws two figures for a game last played before this year', async () => {
+    const { screen } = await open(
+      eldenRing({
+        recent_playtime_seconds: 0,
+        last_played_at: `${YEAR - 1}-06-01T20:00:00Z`,
+        entries: [
+          entry({ recent_playtime_seconds: 0, last_played_at: `${YEAR - 1}-06-01T20:00:00Z` }),
+        ],
+      }),
+    );
+
+    expect(
+      [...screen.querySelectorAll('[data-figure]')].map((tile) => tile.getAttribute('data-figure')),
+    ).toEqual(['total', 'best']);
+  });
+
+  it('says when a game was last played where no month of it is known, and nothing more', async () => {
+    const old = `${YEAR - 6}-03-14T20:00:00Z`;
+    const { screen } = await open(
+      eldenRing({
+        recent_playtime_seconds: 0,
+        last_played_at: old,
+        entries: [entry({ recent_playtime_seconds: 0, last_played_at: old })],
+      }),
+      [],
+    );
+
+    expect(
+      [...screen.querySelectorAll('[data-figure]')].map((tile) => tile.getAttribute('data-figure')),
+    ).toEqual(['total', 'last']);
+    expect(figure(screen, 'last')).toBe(`Dernière session | Mars ${YEAR - 6}`);
     expect(screen.querySelector('[data-calendar]')).toBeNull();
   });
 

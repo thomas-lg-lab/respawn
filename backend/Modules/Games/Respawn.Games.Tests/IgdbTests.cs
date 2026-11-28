@@ -390,7 +390,7 @@ public sealed class IgdbTests : IDisposable
         // Two questions, each about every game at once.
         Assert.Equal(
             [
-                ("https://api.igdb.com/v4/games", "fields name,slug,url,cover.image_id,genres.name,themes.name,summary,game_type,version_parent,parent_game; where id = (71,72,233); sort id asc; limit 500;"),
+                ("https://api.igdb.com/v4/games", "fields name,slug,url,cover.image_id,genres.name,themes.name,summary,first_release_date,similar_games,game_type,version_parent,parent_game; where id = (71,72,233); sort id asc; limit 500;"),
                 ("https://api.igdb.com/v4/game_time_to_beats", "fields game_id,hastily,normally,completely,count; where game_id = (71,72,233); sort id asc; limit 500;"),
             ],
             igdb.Requests.Select(request => (request.Address.ToString(), request.Query)));
@@ -410,6 +410,11 @@ public sealed class IgdbTests : IDisposable
         Assert.Equal(["Science fiction", "Comedy"], portal2.Themes);
         Assert.StartsWith("More test chambers", portal2.Summary, StringComparison.Ordinal);
         Assert.Equal(new TimeToBeat(26100, 34200, 75600, 412), portal2.TimeToBeat);
+        // The day it came out, from IGDB's moment in UTC; the games it lists as similar, in its order.
+        Assert.Equal(new DateOnly(2011, 4, 18), portal2.ReleasedOn);
+        Assert.Equal(["1020", "71", "233"], portal2.Similar);
+        Assert.Null(games["233"].ReleasedOn);
+        Assert.Empty(games["233"].Similar ?? []);
 
         // Some figures said, others not; and a game nobody said anything of.
         Assert.Equal(new TimeToBeat(39600, 50400, null, 3), games["233"].TimeToBeat);
@@ -424,8 +429,9 @@ public sealed class IgdbTests : IDisposable
             GamesBody = """
                 [7,
                  {"id":71,"name":42,"slug":"  ","url":"https://elsewhere.example.org/games/portal","cover":"co0fake71",
-                  "genres":[{"name":"Puzzle"},"Shooter",{"name":"Puzzle"},{"name":null}],"themes":{"name":"Action"},"summary":null},
-                 {"id":72,"url":"https://www.igdb.com/games/portal-2"},
+                  "genres":[{"name":"Puzzle"},"Shooter",{"name":"Puzzle"},{"name":null}],"themes":{"name":"Action"},"summary":null,
+                  "first_release_date":"1191974400","similar_games":[72,"233",-5,0,72,{"id":233},1.5]},
+                 {"id":72,"url":"https://www.igdb.com/games/portal-2","first_release_date":-86400,"similar_games":{"id":71}},
                  {"id":72,"name":"Portal 2 again"},
                  {"id":"233","name":"Half-Life 2"},
                  {"id":999,"name":"Not asked"}]
@@ -448,6 +454,12 @@ public sealed class IgdbTests : IDisposable
         Assert.Equal(["Puzzle"], portal.Genres);
         Assert.Empty(portal.Themes);
         Assert.Null(portal.TimeToBeat);
+        // A date that is not a number is none; of the similar games, only ids, each once.
+        Assert.Null(portal.ReleasedOn);
+        Assert.Equal(["72"], portal.Similar);
+        // A moment before 1970 is a day all the same; a list that is not one is none.
+        Assert.Equal(new DateOnly(1969, 12, 31), games["72"].ReleasedOn);
+        Assert.Empty(games["72"].Similar ?? []);
         // A game is read once, from its first row; a duration once, from the first row that says one.
         Assert.Equal(("https://www.igdb.com/games/portal-2", (string?)null), (games["72"].Url, games["72"].Name));
         Assert.Equal(new TimeToBeat(null, 3600, null, null), games["72"].TimeToBeat);

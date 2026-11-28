@@ -1891,6 +1891,9 @@ export interface components {
             themes: string[];
             summary: null | string;
             time_to_beat: null | components["schemas"]["TimeToBeatResponse"];
+            /** Format: date */
+            released_on: null | string;
+            similar: components["schemas"]["SimilarGameResponse"][];
         };
         GameMonthResponse: {
             /** Format: date */
@@ -2096,6 +2099,18 @@ export interface components {
             language: string;
             theme: string;
             character: string;
+        };
+        SimilarGameResponse: {
+            /** Format: uuid */
+            game_id: string;
+            name: null | string;
+            /** Format: int64 */
+            playtime_seconds: null | number;
+            /** Format: date-time */
+            last_played_at: null | string;
+            cover_source: null | string;
+            /** Format: int32 */
+            normally_seconds: null | number;
         };
         /** Format: binary */
         Stream: string;

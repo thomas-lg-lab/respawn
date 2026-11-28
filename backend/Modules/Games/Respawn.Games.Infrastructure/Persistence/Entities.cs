@@ -94,6 +94,13 @@ public sealed class IgdbGameRow
     /// <summary>How many players those figures rest on; null when IGDB gave no figure, or no count.</summary>
     public int? TimeToBeatCount { get; set; }
 
+    /// <summary>The day it first came out, anywhere, as IGDB dates it (UTC); null when it does not say.</summary>
+    public DateOnly? ReleasedOn { get; set; }
+
+    /// <summary>The IGDB games it lists as close to this one, in its order: ids of IGDB's, which no row
+    /// of this table need hold.</summary>
+    public List<long> Similar { get; set; } = [];
+
     /// <summary>When IGDB said it.</summary>
     public DateTimeOffset ReadAt { get; set; }
 }

@@ -35,12 +35,18 @@
       [choosing]="choosingCover()"
       (coverPicked)="chooseCover($event)"
       (coverOpened)="choosing.reset()"
-      (moreTagsAsked)="showAbout()"
     />
 
     @if (!neverLaunched()) {
       @if (figures(); as said) {
-        <div class="grid grid-cols-2 gap-2 wide:grid-cols-4 wide:gap-3" data-figures>
+        <!-- This year and these two weeks say nothing of a game last played before this year: two
+             figures then, which stand over the two columns under them, on the same gap. -->
+        <div
+          class="grid grid-cols-2 gap-2 wide:grid-cols-4 wide:gap-5 wide:data-quiet:grid-cols-2 wide:data-quiet:data-split:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+          data-figures
+          [attr.data-quiet]="quiet() ? '' : null"
+          [attr.data-split]="split() ? '' : null"
+        >
           <rs-stat-tile
             data-figure="total"
             [caption]="t('game.figures.total')"
@@ -56,130 +62,154 @@
                 : undefined
             "
           />
-          <rs-stat-tile
-            data-figure="year"
-            [caption]="t('game.figures.year')"
-            [figure]="said.year ? t(said.year.key, { count: said.year.count }) : t('app.unknown')"
-            [note]="
-              said.yearShare
-                ? t('game.figures.share', {
-                    whole: t(said.yearShare.whole.key, {
-                      count: said.yearShare.whole.count,
-                    }),
-                    share: said.yearShare.share,
-                  })
-                : said.yearSince
-                  ? t('game.figures.since', { date: said.yearSince })
+          @if (!quiet()) {
+            <rs-stat-tile
+              data-figure="year"
+              [caption]="t('game.figures.year')"
+              [figure]="said.year ? t(said.year.key, { count: said.year.count }) : t('app.unknown')"
+              [note]="
+                said.yearShare
+                  ? t('game.figures.share', {
+                      whole: t(said.yearShare.whole.key, {
+                        count: said.yearShare.whole.count,
+                      }),
+                      share: said.yearShare.share,
+                    })
+                  : said.yearSince
+                    ? t('game.figures.since', { date: said.yearSince })
+                    : undefined
+              "
+            />
+            <rs-stat-tile
+              data-figure="recent"
+              [caption]="t('game.figures.recent')"
+              [figure]="
+                said.recent ? t(said.recent.key, { count: said.recent.count }) : t('app.unknown')
+              "
+              [note]="
+                said.recentShare
+                  ? t('game.figures.share', {
+                      whole: t(said.recentShare.whole.key, {
+                        count: said.recentShare.whole.count,
+                      }),
+                      share: said.recentShare.share,
+                    })
                   : undefined
-            "
-          />
-          <rs-stat-tile
-            data-figure="recent"
-            [caption]="t('game.figures.recent')"
-            [figure]="
-              said.recent ? t(said.recent.key, { count: said.recent.count }) : t('app.unknown')
-            "
-            [note]="
-              said.recentShare
-                ? t('game.figures.share', {
-                    whole: t(said.recentShare.whole.key, {
-                      count: said.recentShare.whole.count,
-                    }),
-                    share: said.recentShare.share,
-                  })
-                : undefined
-            "
-          />
-          <rs-stat-tile
-            data-figure="best"
-            [caption]="t('game.figures.best')"
-            [figure]="
-              said.best ? t(said.best.time.key, { count: said.best.time.count }) : t('app.unknown')
-            "
-            [note]="said.best?.month"
-          />
+              "
+            />
+          }
+          @if (!said.best && said.last; as last) {
+            <!-- No best month known: when it was last played, rather than a tile with nothing. -->
+            <rs-stat-tile data-figure="last" [caption]="t('game.figures.last')" [figure]="last" />
+          } @else {
+            <rs-stat-tile
+              data-figure="best"
+              [caption]="t('game.figures.best')"
+              [figure]="
+                said.best
+                  ? t(said.best.time.key, { count: said.best.time.count })
+                  : t('app.unknown')
+              "
+              [note]="said.best?.month"
+            />
+          }
         </div>
       }
     }
 
-    <!-- On a wide screen, the time and what the game is on the left, how long it takes on the
-         right; on a phone, one column in that order, how long it takes before the long text. -->
-    <div
-      class="grid items-start gap-5 wide:data-split:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
-      [attr.data-split]="known.game_data?.time_to_beat ? '' : null"
-    >
-      <div class="flex min-w-0 flex-col gap-5 wide:col-start-1">
-        @if (neverLaunched()) {
-          <section
-            class="flex flex-col gap-1.5 rounded-card border border-line bg-surface px-4 py-4.5 wide:px-6 wide:py-5"
-            data-never
-          >
-            <p class="font-semibold">{{ t('game.never.title') }}</p>
-            <p class="text-muted">{{ t('game.never.text') }}</p>
-          </section>
-        } @else {
-          @if (calendar(); as drawn) {
-            @if (drawn.rows.length) {
-              <rs-month-calendar
-                [calendar]="drawn"
-                [selected]="selected()"
-                [language]="currentLanguage()"
-                (picked)="pick($event)"
-              >
-                @if (selected(); as key) {
-                  <rs-month-detail
-                    [month]="key"
-                    [detail]="detail()"
-                    [failed]="month.isError()"
-                    [seconds]="selectedSeconds()"
-                    [gameName]="known.name"
-                    [language]="currentLanguage()"
-                    (retry)="retryMonth()"
-                  />
+    <!-- Two columns on a wide screen: the time and what the game is on the left, how long it
+         takes and the games close to it on the right. On a phone, one column in a fixed order:
+         the time, how long it takes, "About", the close games. -->
+    <!-- Nothing at all when the game has nothing to show under its figures: no empty gap. -->
+    @if (body()) {
+      <div
+        class="grid items-start gap-5 wide:data-split:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+        [attr.data-split]="split() ? '' : null"
+      >
+        <!-- A column only where it holds something: an empty one would still take a row, and its gap. -->
+        @if (historyShown() || aboutShown()) {
+          <div class="contents wide:flex wide:min-w-0 wide:flex-col wide:gap-5" data-left>
+            <!-- Nothing stands here for a game never launched (the hero says so) nor for one no month
+               of which is known: an empty block would push "About" down by its gap. -->
+            @if (historyShown()) {
+              <div class="flex min-w-0 flex-col gap-5">
+                @if (calendar(); as drawn) {
+                  @if (drawn.rows.length) {
+                    <rs-month-calendar
+                      [calendar]="drawn"
+                      [selected]="selected()"
+                      [language]="currentLanguage()"
+                      (picked)="pick($event)"
+                    >
+                      @if (selected(); as key) {
+                        <rs-month-detail
+                          [month]="key"
+                          [detail]="detail()"
+                          [failed]="month.isError()"
+                          [seconds]="selectedSeconds()"
+                          [gameName]="known.name"
+                          [language]="currentLanguage()"
+                          (retry)="retryMonth()"
+                        />
+                      }
+                    </rs-month-calendar>
+                  }
+                  <!-- No month known: the history starts in 2022 and with the first sync, so an older
+                     game has none to show, and nothing stands here. -->
+                } @else if (historyRefusal(); as refused) {
+                  <rs-banner tone="warn" role="alert" data-months-refused>{{
+                    t(failureKey(refused))
+                  }}</rs-banner>
+                  <button rsButton type="button" class="self-start" (click)="retryHistory()">
+                    {{ t('app.retry') }}
+                  </button>
+                } @else {
+                  <div role="status">
+                    <rs-skeleton class="h-60" />
+                    <span class="sr-only">{{ t('game.loading') }}</span>
+                  </div>
                 }
-              </rs-month-calendar>
-            } @else {
-              <p
-                class="rounded-card border border-line bg-surface px-4 py-4.5 text-muted wide:px-6 wide:py-5"
-                data-no-history
-              >
-                {{ t('game.noHistory') }}
-              </p>
+              </div>
             }
-          } @else if (historyRefusal(); as refused) {
-            <rs-banner tone="warn" role="alert" data-months-refused>{{
-              t(failureKey(refused))
-            }}</rs-banner>
-            <button rsButton type="button" class="self-start" (click)="retryHistory()">
-              {{ t('app.retry') }}
-            </button>
-          } @else {
-            <div role="status">
-              <rs-skeleton class="h-60" />
-              <span class="sr-only">{{ t('game.loading') }}</span>
-            </div>
-          }
+            @if (known.game_data; as said) {
+              @if (aboutShown()) {
+                <rs-game-about
+                  class="order-2 min-w-0 wide:order-none"
+                  [summary]="said.summary"
+                  [tags]="tags()"
+                  [url]="igdbPage(said.url)"
+                  [released]="released()"
+                />
+              }
+            }
+          </div>
+        }
+        @if (split()) {
+          <div
+            class="contents wide:col-start-2 wide:flex wide:min-w-0 wide:flex-col wide:gap-5"
+            data-right
+          >
+            @if (known.game_data?.time_to_beat; as time) {
+              <rs-game-durations
+                class="order-1 min-w-0 wide:order-none"
+                [timeToBeat]="time"
+                [played]="known.playtime_seconds"
+                [language]="currentLanguage()"
+              />
+            }
+            @if (similar().length) {
+              <rs-game-similar
+                class="order-3 min-w-0 wide:order-none"
+                [games]="similar()"
+                [language]="currentLanguage()"
+                [now]="now()"
+                [origin]="origin()"
+              />
+            }
+          </div>
         }
       </div>
-      @if (known.game_data?.time_to_beat; as time) {
-        <rs-game-durations
-          class="min-w-0 wide:col-start-2 wide:row-span-2 wide:row-start-1"
-          [timeToBeat]="time"
-          [played]="known.playtime_seconds"
-          [language]="currentLanguage()"
-        />
-      }
-      @if (known.game_data; as said) {
-        @if (said.summary || tags().length) {
-          <rs-game-about
-            class="min-w-0 wide:col-start-1"
-            [summary]="said.summary"
-            [tags]="tags()"
-            [url]="igdbPage(said.url)"
-          />
-        }
-      }
-    </div>
+    }
   } @else if (unknown()) {
     <h1 class="type-page-title">{{ t('game.notFound.title') }}</h1>
     <p class="text-muted" data-unknown>{{ t('game.notFound.text') }}</p>
