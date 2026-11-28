@@ -40,8 +40,6 @@ export class GameSimilar {
   readonly now = input.required<number>();
   /** The screen this page leads back to. */
   readonly origin = input.required<Origin>();
-  /** Two rows side by side on a wide screen, where the card is given the page's wide column. */
-  readonly twoColumns = input(false);
 
   protected readonly shown = computed(() => {
     const language = this.language();

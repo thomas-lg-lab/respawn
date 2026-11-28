@@ -408,9 +408,9 @@
       "recent": "These two weeks",
       "share": "of {{ whole }}, {{ share }}",
       "since": "counted since {{ date }}",
-      "best": "Best month"
+      "best": "Best month",
+      "last": "Last session"
     },
-    "noHistory": "No month of play known yet: its time will show here month by month, as syncs go by.",
     "loading": "Loading the game…",
     "notFound": {
       "title": "This game cannot be found",

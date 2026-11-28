@@ -342,6 +342,25 @@ describe('Game', () => {
     expect(screen.querySelector('[data-similar]')).toBeNull();
   });
 
+  it('gives the close games a column of their own, with no duration beside them', async () => {
+    const close = {
+      game_id: '0198a1b2-0000-7000-8000-0000000000a1',
+      name: 'Sekiro',
+      playtime_seconds: 48 * HOUR,
+      last_played_at: ago(400),
+      cover_source: null,
+      normally_seconds: null,
+    };
+    const { screen } = await open(
+      eldenRing({ game_data: igdb({ time_to_beat: null, similar: [close] }) }),
+    );
+
+    expect(screen.querySelector('[data-durations]')).toBeNull();
+    expect(
+      screen.querySelector('[data-split]')?.contains(screen.querySelector('[data-similar]')),
+    ).toBe(true);
+  });
+
   it('says the month it came out, beside where its data comes from', async () => {
     const { screen } = await open(eldenRing());
 
@@ -595,6 +614,24 @@ describe('Game', () => {
     expect(
       [...screen.querySelectorAll('[data-figure]')].map((tile) => tile.getAttribute('data-figure')),
     ).toEqual(['total', 'best']);
+  });
+
+  it('says when a game was last played where no month of it is known, and nothing more', async () => {
+    const old = `${YEAR - 6}-03-14T20:00:00Z`;
+    const { screen } = await open(
+      eldenRing({
+        recent_playtime_seconds: 0,
+        last_played_at: old,
+        entries: [entry({ recent_playtime_seconds: 0, last_played_at: old })],
+      }),
+      [],
+    );
+
+    expect(
+      [...screen.querySelectorAll('[data-figure]')].map((tile) => tile.getAttribute('data-figure')),
+    ).toEqual(['total', 'last']);
+    expect(figure(screen, 'last')).toBe(`Dernière session | Mars ${YEAR - 6}`);
+    expect(screen.querySelector('[data-calendar]')).toBeNull();
   });
 
   it('takes a game its store no longer lists out of the library, and puts it back', async () => {

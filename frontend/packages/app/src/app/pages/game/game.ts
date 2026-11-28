@@ -1,4 +1,4 @@
-import { Location, NgTemplateOutlet } from '@angular/common';
+import { Location } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
@@ -39,7 +39,6 @@ import { type MonthKey, calendar, monthDetail, secondsIn } from './game-view';
 @Component({
   selector: 'rs-game',
   imports: [
-    NgTemplateOutlet,
     TranslocoDirective,
     LucideChevronLeft,
     Banner,
@@ -176,6 +175,11 @@ export class Game {
     const recent = game.recent_playtime_seconds;
     const recentTotal = this.stats.data()?.recent_playtime_seconds;
     const best = this.calendar()?.best ?? null;
+    // Once the history says there is no best month, the month it was last played instead.
+    const last =
+      !best && this.calendar() && game.last_played_at
+        ? formatMonthOf(game.last_played_at.slice(0, 10), language)
+        : null;
 
     return {
       total: time(game.playtime_seconds),
@@ -201,6 +205,7 @@ export class Game {
           ? { share: share(recent, recentTotal), whole: time(recentTotal)! }
           : null,
       best: best ? { time: time(best.seconds)!, month: monthName(best.month, language) } : null,
+      last: last ? last.charAt(0).toLocaleUpperCase(language) + last.slice(1) : null,
     };
   });
 
@@ -225,8 +230,10 @@ export class Game {
   /** The games of the library the game database lists as close to this one. */
   protected readonly similar = computed(() => this.game.data()?.game_data?.similar ?? []);
 
-  /** On a wide screen the close games stand under how long it takes, when there is a column for it. */
-  protected readonly similarRight = computed(() => !!this.game.data()?.game_data?.time_to_beat);
+  /** A right column on a wide screen, for how long it takes and the close games, when there are any. */
+  protected readonly split = computed(
+    () => !!this.game.data()?.game_data?.time_to_beat || this.similar().length > 0,
+  );
 
   /** A game never launched has no time to show: the page says so in their place. */
   protected readonly neverLaunched = computed(() => this.game.data()?.playtime_seconds === 0);
