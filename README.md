@@ -86,7 +86,8 @@ and where your time went.
 **Roadmap**, in order:
 
 1. **Next**: a first try at searching your own backlog by what you feel like playing.
-2. **Statuses and ratings** for each game.
+2. **Statuses and ratings** for each game, each account its own: playing and paused followed from your
+   sessions, and the games your time says you may have finished, confirmed or not with a swipe.
 3. **Tokens for the public API.**
 4. **More stores, next-game suggestions, sharing with a group.**
 
