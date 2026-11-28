@@ -231,7 +231,8 @@ public sealed class PlaytimeGainRow
     public Guid LinkedAccountId { get; set; }
 
     /// <summary>The day the gain counts for (UTC): the day the game was last played, when the reading says
-    /// so and that moment lies after the reading before; otherwise the reading's day.</summary>
+    /// so and that moment lies after the reading before and not after its own; otherwise the reading's
+    /// day.</summary>
     public DateOnly Day { get; set; }
 
     /// <summary>More than zero.</summary>

@@ -921,7 +921,9 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         await db.SaveChangesAsync(ct);
 
         // The gains of this reading and of every one after it: a reading older than what is known
-        // changes what the next one gained. A reading of today rewrites its own rows only.
+        // changes what the next one gained. A reading of today rewrites its own rows only (about 0.2 s
+        // for 2,000 games and three years of daily readings); one dated before the whole history
+        // rewrites all of it (about 4 s there), inside the transaction that holds the catalogue lock.
         await db.Database.ExecuteSqlRawAsync(ClearGainsSince, [linkedAccountId, snapshotId], ct);
         await WithoutJitAsync(() => db.Database.ExecuteSqlRawAsync(GainsSince, [linkedAccountId, snapshotId], ct), ct);
     }
@@ -1093,7 +1095,9 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
     /// the reading before and not after its own; otherwise of the day of its reading (UTC).
     ///
     /// The migration <c>PlaytimeGains</c> wrote the rows of the readings before it by the same rule: keep
-    /// the two together.</summary>
+    /// the two together. The gains are only written here and there: a statement that changes the
+    /// observations (a migration that corrects them) writes them again too, or the history keeps the
+    /// old differences.</summary>
     private const string GainsSince =
         """
         WITH since AS (

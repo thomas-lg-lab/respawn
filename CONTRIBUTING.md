@@ -187,3 +187,5 @@ dotnet ef migrations add <Name> --project backend/Modules/Accounts/Respawn.Accou
 
 Migrations run on the first connection, so they must be safe on a database that already holds data. The
 generated files are left as the tools write them: `.editorconfig` marks the folder as generated code.
+Some tables are derived from others: `games.playtime_gains` is written from `games.observations` with each
+reading, so a migration that changes observations writes the gains of the accounts it touches again.

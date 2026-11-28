@@ -10,7 +10,8 @@ public partial class _20261128181817_PlaytimeGains : Migration
 {
     /// <summary>Written by hand: the gains of every reading kept so far, by the rule the store writes them
     /// with at each reading (EfLibraryStore.GainsSince), over each account's whole history. On an empty
-    /// table.</summary>
+    /// table. One statement for every account: about 2 s for three years of daily readings of 2,000
+    /// games, run at the first connection after the upgrade.</summary>
     internal const string Sql =
         """
         SET LOCAL jit = off;
