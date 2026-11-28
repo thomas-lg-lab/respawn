@@ -35,9 +35,9 @@
     }
   }
 
-  /* The current screen: the cursor lit, under the pointer too. It does not blink: the header
-     stays still while the screens change under it. */
-  :host([aria-current='page']) {
+  /* The current screen, or the one the screen shown stands under: the cursor lit, under the
+     pointer too. It does not blink: the header stays still while the screens change under it. */
+  :host([aria-current]:not([aria-current='false'])) {
     --cursor: var(--rs-accent-text);
     color: var(--rs-text);
   }

@@ -23,11 +23,11 @@ import { LIBRARY_SEARCH } from '@app/games/game-list';
 import {
   ORIGINS,
   type Origin,
-  UNSAID_ORIGIN,
   cameFrom,
+  cameThroughGame,
   gamePage,
+  gamePageOrigin,
   isGamePage,
-  originIn,
   originOf,
 } from '@app/games/game-page';
 import { type Language, LanguageSetting } from '@app/i18n/language';
@@ -119,12 +119,16 @@ export class Shell {
   private readonly gameOrigin = signal(this.gameOriginOf(this.router.url));
 
   /**
-   * The tab that is the current one: a screen's own on its address, whatever a return from a
-   * provider or from Steam wrote after it; on a game's page, the tab of the screen it came from.
+   * What each tab says of the screen, as `aria-current`: `page` on the screen's own address,
+   * whatever a return from a provider or from Steam wrote after it; on a game's page, `true`
+   * on the tab of the screen it came from, a place the page stands under and is not.
    */
-  protected readonly currentTab = computed(
-    (): Origin | null => originOf(this.address()) ?? this.gameOrigin(),
-  );
+  protected readonly currentTab = computed((): Partial<Record<Origin, 'page' | 'true'>> => {
+    const screen = originOf(this.address());
+    if (screen) return { [screen]: 'page' };
+    const game = this.gameOrigin();
+    return game ? { [game]: 'true' } : {};
+  });
 
   /**
    * What came of a link through a provider, as the API wrote it on the address it came back to.
@@ -200,17 +204,19 @@ export class Shell {
 
   /**
    * A game was chosen in the search: its page, which leads back to the screen it was chosen
-   * on. Chosen on a screen the page does not lead back to (another game's page, the account),
-   * it leads to the library.
+   * on, or to the one the game's page it was chosen on leads back to. Chosen on a screen the
+   * page does not lead back to (the account), it leads to the library.
    */
   protected openGame(gameId: string): void {
-    const here = originOf(this.router.url);
-    void this.router.navigate(gamePage(gameId), here ? { state: cameFrom(here) } : {});
+    const here = originOf(this.address());
+    const game = this.gameOrigin();
+    const state = here ? cameFrom(here) : game ? cameThroughGame(game) : null;
+    void this.router.navigate(gamePage(gameId), state ? { state } : {});
   }
 
   /** The screen a game's page at `address` came from, by the rule its back link follows. */
   private gameOriginOf(address: string): Origin | null {
-    return isGamePage(address) ? (originIn(this.location.getState()) ?? UNSAID_ORIGIN) : null;
+    return isGamePage(address) ? gamePageOrigin(this.location.getState()).screen : null;
   }
 
   protected signOut(): void {

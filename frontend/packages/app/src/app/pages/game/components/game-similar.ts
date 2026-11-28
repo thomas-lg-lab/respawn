@@ -4,7 +4,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { type SimilarGame, coverAddress } from '@respawn/data';
 import { Cover } from '@respawn/ui';
 import { type SaidPlaytime, formatAgo, saidPlaytime } from '@app/format/format';
-import { type Origin, cameFrom, gamePage } from '@app/games/game-page';
+import { type Origin, cameThroughGame, gamePage } from '@app/games/game-page';
 import { coverHue } from '@app/games/game-list';
 
 /** A game as its row says it: its time and last session, or how long it would take. */
@@ -35,7 +35,7 @@ interface Shown {
 export class GameSimilar {
   /** A game leads to its own page, which leads back where this one does. */
   protected readonly gamePage = gamePage;
-  protected readonly from = computed(() => cameFrom(this.origin()));
+  protected readonly from = computed(() => cameThroughGame(this.origin()));
 
   readonly games = input.required<readonly SimilarGame[]>();
   readonly language = input.required<string>();

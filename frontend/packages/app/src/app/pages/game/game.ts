@@ -19,7 +19,7 @@ import {
   saidPlaytime,
 } from '@app/format/format';
 import { gameTags, igdbPage } from '@app/games/game-list';
-import { ORIGINS, type Origin, UNSAID_ORIGIN, originIn } from '@app/games/game-page';
+import { ORIGINS, type Origin, gamePageOrigin } from '@app/games/game-page';
 import { LanguageSetting } from '@app/i18n/language';
 import { GameAbout } from './components/game-about';
 import { GameDurations } from './components/game-durations';
@@ -74,19 +74,19 @@ export class Game {
 
   /**
    * The screen the page was reached from, as the link said it: the back link names it, and the
-   * header lights its tab by the same rule. A page opened from its address alone leads back to
-   * the library. Read again at each navigation:
-   * another game opened from this page (its search) is the same page, and says its own.
+   * header lights its tab by the same rule (`gamePageOrigin`). A page opened from its address
+   * alone leads back to the library. Read again at each navigation: another game opened from
+   * this page (its search, a close game, a month's game) is the same page, and says its own.
    */
   private readonly cameFrom = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
-      map(() => originIn(this.location.getState())),
-      startWith(originIn(this.location.getState())),
+      map(() => gamePageOrigin(this.location.getState())),
+      startWith(gamePageOrigin(this.location.getState())),
     ),
     { requireSync: true },
   );
-  protected readonly origin = computed((): Origin => this.cameFrom() ?? UNSAID_ORIGIN);
+  protected readonly origin = computed((): Origin => this.cameFrom().screen);
   /** Where the back link leads, as an address the browser can also open on its own. */
   protected readonly back = computed(() =>
     this.location.prepareExternalUrl(ORIGINS[this.origin()]),
@@ -284,7 +284,8 @@ export class Game {
 
   /**
    * Back where the page was reached from, as it was left (its search, its filter): the
-   * browser's own way back. A page opened from its address goes to the library instead. A
+   * browser's own way back. A page opened from its address goes to the library instead, and one
+   * opened from another game's page goes to that page's screen, which the way back skips. A
    * press that opens a new tab or window is the browser's, on the link's address.
    */
   protected goBack(event: MouseEvent): void {
@@ -292,7 +293,7 @@ export class Game {
       return;
     }
     event.preventDefault();
-    if (this.cameFrom() !== null) this.location.back();
+    if (this.cameFrom().returns) this.location.back();
     else void this.router.navigateByUrl(ORIGINS[this.origin()]);
   }
 

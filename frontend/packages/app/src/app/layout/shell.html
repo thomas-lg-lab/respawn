@@ -14,12 +14,9 @@
       *transloco="let t"
     >
       @for (tab of tabs; track tab.path) {
-        <a
-          rsTab
-          [routerLink]="tab.path"
-          [attr.aria-current]="currentTab() === tab.screen ? 'page' : null"
-          >{{ t(tab.label) }}</a
-        >
+        <a rsTab [routerLink]="tab.path" [attr.aria-current]="currentTab()[tab.screen] ?? null">{{
+          t(tab.label)
+        }}</a>
       }
     </nav>
 
@@ -94,7 +91,7 @@
       rsTab
       class="min-h-button flex-1 before:-ms-3.75"
       [routerLink]="tab.path"
-      [attr.aria-current]="currentTab() === tab.screen ? 'page' : null"
+      [attr.aria-current]="currentTab()[tab.screen] ?? null"
       >{{ t(tab.label) }}</a
     >
   }
