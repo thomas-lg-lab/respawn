@@ -50,6 +50,10 @@ public static class StoreTagSchedule
     /// <summary>How long a game's tags are taken before the store is asked again: players keep tagging.</summary>
     public static readonly TimeSpan AskAgainAfter = TimeSpan.FromDays(30);
 
+    /// <summary>How long a store's names of its tags are taken before it is asked them again, at a turn
+    /// that has games to ask about: a tag it adds shows by its key until then.</summary>
+    public static readonly TimeSpan NamesAskAgainAfter = TimeSpan.FromDays(1);
+
     /// <summary>How long a store's games are left alone after it could not be read.</summary>
     public static readonly TimeSpan RetryAfter = TimeSpan.FromHours(1);
 

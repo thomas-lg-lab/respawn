@@ -48,12 +48,17 @@ public sealed class StoreTagService(
                 return null;
             }
 
-            // The names first, once a turn: a tag the store gave since the last turn has one before any
-            // game shows it.
-            var names = await source.ReadTagNamesAsync(ct);
-            if (names.Names.Count == 0)
+            // The names first, when the catalogue has none or has had them a day: the store's whole list,
+            // in each language, is not asked again for a turn with one game to ask about.
+            var namesReadAt = await catalogue.FindStoreTagNamesReadAtAsync(store, ct);
+            StoreTagNamesReading names = new([], []);
+            if (namesReadAt is not { } readAt || readAt <= now - StoreTagSchedule.NamesAskAgainAfter)
             {
-                throw new SourceException(SourceError.Unreadable, "the store's answer names no tag");
+                names = await source.ReadTagNamesAsync(ct);
+                if (names.Names.Count == 0)
+                {
+                    throw new SourceException(SourceError.Unreadable, "the store's answer names no tag");
+                }
             }
 
             var namesKept = false;

@@ -12,7 +12,8 @@ public interface IStoreTagService
 
     /// <summary>Asks a store for the tags of its entries that are due, at most
     /// <see cref="StoreTagSchedule.EntriesPerTurn"/> of them, never asked first, and for the names of its
-    /// tags in every language of <see cref="StoreTagSchedule.Languages"/>. Kept batch by batch, each in its
+    /// tags in every language of <see cref="StoreTagSchedule.Languages"/> when the catalogue has none or has
+    /// had them for <see cref="StoreTagSchedule.NamesAskAgainAfter"/>. Kept batch by batch, each in its
     /// own transaction: the answers as snapshots, the names, and each entry's tags in the place of those it
     /// had, none included; an entry the answer leaves out keeps its tags and waits its next time. A store that cannot be read stops the run there, and is left alone for
     /// <see cref="StoreTagSchedule.RetryAfter"/>; so is one that fails otherwise, which is thrown. Null when

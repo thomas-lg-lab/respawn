@@ -173,24 +173,28 @@ export function storeTagName(
 }
 
 /**
- * The stores' tags the games bear, each with how many: the most borne first, then by key. The
- * picked ones come first, even when none of the games bears them, so they can be unpicked.
+ * The stores' tags the games bear, each with how many: the most borne first, then by the name
+ * the reader sees (`name`, the key itself when none is given). The picked ones come first, even
+ * when none of the games bears them, so they can be unpicked.
  */
 export function storeTagCounts(
   games: readonly LibraryGame[],
   picked: readonly string[],
+  name: (key: string) => string = (key) => key,
 ): TagCount[] {
   const counts = new Map<string, number>();
   for (const key of picked) counts.set(key, 0);
   for (const game of games) {
     for (const key of game.store_tags) counts.set(key, (counts.get(key) ?? 0) + 1);
   }
+  const names = new Map([...counts.keys()].map((key) => [key, name(key)] as const));
   return [...counts]
     .map(([tag, count]) => ({ tag, count }))
     .sort(
       (a, b) =>
         Number(picked.includes(b.tag)) - Number(picked.includes(a.tag)) ||
         b.count - a.count ||
+        names.get(a.tag)!.localeCompare(names.get(b.tag)!) ||
         a.tag.localeCompare(b.tag),
     );
 }

@@ -115,6 +115,9 @@ public sealed class StoreTagNameRow
 {
     public string Source { get; set; } = "";
 
+    /// <summary>When the store gave its names, the same for all of them.</summary>
+    public DateTimeOffset ReadAt { get; set; }
+
     /// <summary>The tag's id in the store.</summary>
     public string TagId { get; set; } = "";
 

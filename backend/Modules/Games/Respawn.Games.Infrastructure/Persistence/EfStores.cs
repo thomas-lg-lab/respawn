@@ -615,7 +615,7 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
                     .DistinctBy(name => name.Id, StringComparer.Ordinal)
                     .SelectMany(name => name.Names
                         .Where(said => StoreTagSchedule.Languages.Contains(said.Key) && said.Value.Length is > 0 and <= Limits.StoreTagName)
-                        .Select(said => new StoreTagNameRow { Source = store, TagId = name.Id, Language = said.Key, Name = said.Value })));
+                        .Select(said => new StoreTagNameRow { Source = store, TagId = name.Id, Language = said.Key, Name = said.Value, ReadAt = at })));
         }
 
         Guid[] ids = [.. tags.Select(entry => entry.StoreEntryId)];
@@ -669,6 +669,9 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
                         .Select(tag => tag.Key),
                 ]);
     }
+
+    public async Task<DateTimeOffset?> FindStoreTagNamesReadAtAsync(string store, CancellationToken ct) =>
+        await db.StoreTagNames.AsNoTracking().Where(n => n.Source == store).MaxAsync(n => (DateTimeOffset?)n.ReadAt, ct);
 
     public async Task<IReadOnlyList<NamedStoreTag>> ListStoreTagNamesAsync(CancellationToken ct)
     {

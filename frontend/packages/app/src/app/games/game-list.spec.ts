@@ -291,6 +291,19 @@ describe('the stores’ tags', () => {
     ]);
   });
 
+  it('puts the tags borne as often in the order of the names the reader sees', () => {
+    const shown: Record<string, string> = {
+      'steam:1628': 'Metroidvania',
+      'steam:1664': 'Casse-tête',
+      'steam:4026': 'Difficile',
+    };
+    expect(
+      storeTagCounts([hollow, sekiro, portal], [], (key) => shown[key] ?? key).map(
+        (each) => each.tag,
+      ),
+    ).toEqual(['steam:29482', 'steam:1664', 'steam:4026', 'steam:1628']);
+  });
+
   it('names a tag in the language asked, then in English, then by its key', () => {
     const names = new Map<string, Record<string, string>>([
       ['steam:29482', { en: 'Souls-like', fr: 'De type Souls' }],

@@ -202,9 +202,10 @@ export class Library {
   protected readonly storeTagChoices = computed<FilterChoice[]>(() => {
     const language = this.language.current();
     const names = this.namesByKey();
-    return storeTagCounts(this.narrowed(), this.storeTags()).map((each) => ({
+    const name = (key: string) => storeTagName(key, names, language);
+    return storeTagCounts(this.narrowed(), this.storeTags(), name).map((each) => ({
       id: each.tag,
-      label: storeTagName(each.tag, names, language),
+      label: name(each.tag),
       count: formatCount(each.count, language),
       picked: this.storeTags().includes(each.tag),
     }));

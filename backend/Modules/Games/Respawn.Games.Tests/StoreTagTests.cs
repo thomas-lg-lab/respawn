@@ -220,6 +220,34 @@ public sealed class StoreTagTests
     }
 
     [Fact]
+    public async Task The_names_are_asked_again_a_day_later_not_at_each_turn()
+    {
+        var (steam, clock) = (Store(), new TestClock());
+        await using var app = await StartAsync(steam, clock);
+        await AddGamesAsync(app, AppIds);
+        Assert.Equal(1, await TagsAsync(app));
+        int NameQuestions() => steam.StoreRequests.Count(request => request.Address.AbsolutePath.Contains("GetTagList", StringComparison.Ordinal));
+        Assert.Equal(2, NameQuestions());
+
+        // A game bought since: its tags alone are asked, with the names the catalogue has.
+        await AddGamesAsync(app, ["70"]);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        Assert.Equal(1, await TagsAsync(app));
+        Assert.Equal(2, NameQuestions());
+
+        // A day on, the names are asked again with the next game's tags, and replace those kept.
+        await AddGamesAsync(app, ["80"]);
+        clock.Advance(TimeSpan.FromDays(1));
+        Assert.Equal(1, await TagsAsync(app));
+        Assert.Equal(4, NameQuestions());
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        Assert.All(await db.StoreTagNames.AsNoTracking().ToListAsync(), name => Assert.Equal(clock.Now, name.ReadAt));
+        Assert.Equal(4, await db.RawSnapshots.CountAsync(s => s.Kind.StartsWith("tag-names")));
+    }
+
+    [Fact]
     public async Task More_games_than_one_question_takes_are_asked_about_fifty_at_a_time()
     {
         var (steam, clock) = (Store(), new TestClock());

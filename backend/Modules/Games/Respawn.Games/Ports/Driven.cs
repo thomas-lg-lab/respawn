@@ -156,6 +156,9 @@ public interface ICatalogue
 
     /// <summary>Every tag the catalogue holds a name of, with its names, in no order.</summary>
     Task<IReadOnlyList<NamedStoreTag>> ListStoreTagNamesAsync(CancellationToken ct);
+
+    /// <summary>When the store last gave the names of its tags; null while the catalogue holds none.</summary>
+    Task<DateTimeOffset?> FindStoreTagNamesReadAtAsync(string store, CancellationToken ct);
 }
 
 /// <summary>Where the images an instance keeps are written: files of a data directory. An instance
