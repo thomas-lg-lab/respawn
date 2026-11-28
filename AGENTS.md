@@ -32,7 +32,9 @@
   `Modules/Accounts`: `Respawn.Accounts` (the core: use cases and ports, no package), `.Infrastructure` (EF Core
   and its migrations, ASP.NET Core Identity), `.Api` (the controllers, the session cookie, the sign-in through a provider);
   and `Modules/Games`, the same three projects: the catalogue (a game as one record whatever the store), the
-  linked store accounts, the sources' answers kept untouched, ownership and playtime, and the sync (what is
+  linked store accounts, the sources' answers kept untouched, ownership and playtime, what each game gained by
+  each reading (written with the reading, and again for the readings after one recorded late: the history adds
+  those up and never compares readings at a request), and the sync (what is
   due and what a run becomes are the core's, `SyncService`; the timer that asks every few minutes is an
   inbound adapter, `SyncScheduler` in `.Api`; tests set the clock and run a turn by hand), and the import of a
   store's yearly reviews, apart from the sync and never needed by it (`YearReviewService`, and
