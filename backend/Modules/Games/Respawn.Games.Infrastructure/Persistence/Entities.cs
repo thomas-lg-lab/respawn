@@ -216,6 +216,28 @@ public sealed class ObservationRow
     public DateTimeOffset? LastPlayedAt { get; set; }
 }
 
+/// <summary>What a store entry gained by one reading: its known total grew from the reading before that
+/// knew one. Derived from the observations, never said by a store: written with each reading, for it
+/// and for the readings after it, so that a history adds these rows up rather than comparing every
+/// reading again.</summary>
+public sealed class PlaytimeGainRow
+{
+    /// <summary>The reading the total grew in.</summary>
+    public Guid SnapshotId { get; set; }
+
+    public Guid StoreEntryId { get; set; }
+
+    /// <summary>The reading's linked account, kept here for the history to read a range of days by it.</summary>
+    public Guid LinkedAccountId { get; set; }
+
+    /// <summary>The day the gain counts for (UTC): the day the game was last played, when the reading says
+    /// so and that moment lies after the reading before; otherwise the reading's day.</summary>
+    public DateOnly Day { get; set; }
+
+    /// <summary>More than zero.</summary>
+    public long Seconds { get; set; }
+}
+
 /// <summary>A store entry a linked account owns: the best that is known of it from every snapshot so
 /// far, which is not always what the latest one said.</summary>
 public sealed class OwnershipRow
