@@ -19,8 +19,9 @@
       </button>
     }
   </div>
-  <!-- The title the header's search asked for and the genre a game's page led to, each with
-       the way back to every game; then how the games are shown and their order. -->
+  <!-- The title the header's search asked for, with the way back to every game; the menus of
+       genres, themes and lengths, then what they keep as chips, each with its way off; then how
+       the games are shown and their order. -->
   <div class="flex min-h-touch flex-wrap items-center gap-x-4 gap-y-2">
     @if (search()) {
       <p class="min-w-0 font-medium wrap-anywhere" role="status" data-searched>
@@ -30,13 +31,52 @@
         {{ t('clearSearch') }}
       </button>
     }
-    @if (genre()) {
-      <p class="min-w-0 font-medium wrap-anywhere" role="status" data-genre>
-        {{ t('genre', { genre: genre() }) }}
-      </p>
-      <button rsButton type="button" data-genre-clear (click)="genreCleared.emit()">
-        {{ t('clearGenre') }}
-      </button>
+    <div
+      class="relative flex w-full flex-wrap items-center gap-2 wide:w-auto"
+      role="group"
+      [attr.aria-label]="t('filters.label')"
+    >
+      <rs-filter-menu
+        kind="genres"
+        [choices]="genreChoices()"
+        [shown]="listed()"
+        (toggled)="tagToggled.emit($event)"
+        (cleared)="tagsCleared.emit('genres')"
+      />
+      <rs-filter-menu
+        kind="themes"
+        [choices]="themeChoices()"
+        [shown]="listed()"
+        (toggled)="tagToggled.emit($event)"
+        (cleared)="tagsCleared.emit('themes')"
+      />
+      <rs-filter-menu
+        kind="lengths"
+        [choices]="lengthChoices()"
+        [shown]="listed()"
+        (toggled)="lengthToggled.emit($event)"
+        (cleared)="lengthsDropped.emit(allLengths)"
+      />
+    </div>
+    @if (chips().length) {
+      <ul class="flex flex-wrap gap-2">
+        @for (chip of chips(); track chip.key) {
+          <li>
+            <button
+              rsButton
+              type="button"
+              class="min-h-9 gap-1.5 bg-surface ps-3.5 pe-2.5"
+              [attr.data-chip]="chip.key"
+              [attr.title]="chip.full"
+              [aria-label]="t('filters.remove', { label: chip.full ?? t(chip.label) })"
+              (click)="drop(chip)"
+            >
+              {{ chip.full ? chip.label : t(chip.label) }}
+              <svg lucideX class="size-3.5" [strokeWidth]="2.2" aria-hidden="true"></svg>
+            </button>
+          </li>
+        }
+      </ul>
     }
     <rs-pill-group segmented class="ms-auto" [label]="t('view.label')">
       @for (choice of views; track choice) {

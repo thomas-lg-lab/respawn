@@ -20,6 +20,7 @@ import { timeTiles } from '@app/games/time-tiles';
 import { LanguageSetting } from '@app/i18n/language';
 import { saidOnce } from '@app/session/said-once';
 import { Activity } from './components/activity';
+import { Backlog, hasBacklog } from './components/backlog';
 import { Figures } from './components/figures';
 import { FirstSync } from './components/first-sync';
 import { NoAccount } from './components/no-account';
@@ -78,6 +79,7 @@ type View = 'loading' | 'unavailable' | SyncView;
 @Component({
   selector: 'rs-home',
   imports: [
+    Backlog,
     TranslocoDirective,
     LucideRefreshCw,
     Banner,
@@ -190,6 +192,9 @@ export class Home {
   protected readonly recently = computed(() =>
     playedRecently(this.games.data() ?? [], this.resumed(), this.language.current()),
   );
+
+  /** Whether a game never launched has a known duration: what is left to play has a figure. */
+  protected readonly backlogShown = computed(() => hasBacklog(this.games.data() ?? []));
 
   protected readonly ranked = computed(() =>
     ranking(this.games.data() ?? [], this.language.current()),

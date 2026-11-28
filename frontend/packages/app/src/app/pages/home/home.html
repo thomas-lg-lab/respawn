@@ -109,6 +109,11 @@
         </div>
       }
 
+      <!-- What is left to play, under the figures it adds to; not drawn without a figure to give. -->
+      @if (backlogShown()) {
+        <rs-backlog [games]="games.data() ?? []" [language]="currentLanguage()" />
+      }
+
       <!-- The blocks go two by two on a wide screen; one left alone on its row takes it. A block made
            of the library's past (the years, the activity) holds its place while it is awaited,
            and is not drawn when it could not be read; the ones made of the games do not wait

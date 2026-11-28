@@ -113,6 +113,9 @@ export const LIBRARY_SORT = 'sort';
  */
 export const LIBRARY_GENRE = 'genre';
 
+/** A bucket of length the Library is narrowed to, once per bucket: the home's backlog leads there. */
+export const LIBRARY_LENGTH = 'length';
+
 /**
  * A game's page on IGDB, as the API gives it, or none: an address that does not lead to IGDB's
  * own site is never followed.
@@ -128,14 +131,113 @@ export function gameTags(
   return said ? [...said.genres, ...said.themes] : [];
 }
 
-/** The games that bear a genre or a theme, as the game database names it; all of them for none. */
-export function withGenre(games: readonly LibraryGame[], genre: string): LibraryGame[] {
-  return genre ? games.filter((game) => gameTags(game).includes(genre)) : [...games];
+/**
+ * The games that bear every one of the genres and themes, as the game database names them: a
+ * tag describes a game rather than classes it, so each one picked narrows the list. All of
+ * them for none.
+ */
+export function withTags(games: readonly LibraryGame[], tags: readonly string[]): LibraryGame[] {
+  return games.filter((game) => tags.every((tag) => gameTags(game).includes(tag)));
 }
 
-/** The genre an address asks for; none when it is blank. */
-export function askedGenre(asked: string | null): string {
-  return asked?.trim() ?? '';
+/** The genres and themes an address asks for, each once, the blank ones left out. */
+export function askedTags(asked: readonly string[]): string[] {
+  return [...new Set(asked.map((tag) => tag.trim()).filter(Boolean))];
+}
+
+/**
+ * How long a game takes at the game database's normal pace, in buckets: the library's filter
+ * and the home's backlog share them. A duration of nothing is none said.
+ */
+export const LENGTHS = ['short', 'medium', 'long', 'unknown'] as const;
+export type LibraryLength = (typeof LENGTHS)[number];
+
+const HOUR = 3600;
+
+/**
+ * Past this, a duration says a game that never ends (a sandbox, a survival game) rather than how
+ * long it takes: IGDB gives Garry's Mod 33,501 hours. It is taken as no duration, so one such game
+ * does not make up the backlog's figure.
+ */
+const LONGEST = 200 * HOUR;
+
+/** The bucket of a game: under 10 hours, 10 to 30, over 30, or not known. */
+export function lengthOf(game: Pick<LibraryGame, 'normally_seconds'>): LibraryLength {
+  const seconds = game.normally_seconds ?? 0;
+  if (seconds <= 0 || seconds > LONGEST) return 'unknown';
+  return seconds < 10 * HOUR ? 'short' : seconds <= 30 * HOUR ? 'medium' : 'long';
+}
+
+/**
+ * The games in any of the buckets: a game is in one only, so two picked widen the list. All of
+ * them for none.
+ */
+export function withLengths(
+  games: readonly LibraryGame[],
+  lengths: readonly LibraryLength[],
+): LibraryGame[] {
+  return lengths.length ? games.filter((game) => lengths.includes(lengthOf(game))) : [...games];
+}
+
+/** The buckets an address asks for, in their own order, the ones it does not know left out. */
+export function askedLengths(asked: readonly string[]): LibraryLength[] {
+  return LENGTHS.filter((length) => asked.includes(length));
+}
+
+/** A genre or a theme and how many of the games bear it. */
+export interface TagCount {
+  readonly tag: string;
+  readonly count: number;
+}
+
+/**
+ * The genres, or the themes, the games bear, each with how many: the most borne first, then by
+ * name. The picked ones come first, even when none of the games bears them, so they can be
+ * unpicked: the whole library says which kind each is.
+ */
+export function tagCounts(
+  games: readonly LibraryGame[],
+  library: readonly LibraryGame[],
+  kind: 'genres' | 'themes',
+  picked: readonly string[],
+): TagCount[] {
+  const counts = new Map<string, number>();
+  const ofKind = new Set(library.flatMap((game) => game[kind]));
+  for (const tag of picked) if (ofKind.has(tag)) counts.set(tag, 0);
+  for (const game of games) {
+    for (const tag of game[kind]) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort(
+      (a, b) =>
+        Number(picked.includes(b.tag)) - Number(picked.includes(a.tag)) ||
+        b.count - a.count ||
+        a.tag.localeCompare(b.tag),
+    );
+}
+
+/** How many of the games each bucket holds. */
+export function lengthCounts(games: readonly LibraryGame[]): Record<LibraryLength, number> {
+  const counts: Record<LibraryLength, number> = { short: 0, medium: 0, long: 0, unknown: 0 };
+  for (const game of games) counts[lengthOf(game)]++;
+  return counts;
+}
+
+/**
+ * The game database's longer names, shortened where a chip is narrow; the menus, the address and
+ * a game's page keep the database's own.
+ */
+const SHORT_TAGS: Record<string, string> = {
+  'Role-playing (RPG)': 'RPG',
+  'Turn-based strategy (TBS)': 'TBS',
+  'Real Time Strategy (RTS)': 'RTS',
+  'Card & Board Game': 'Card & Board',
+  "Hack and slash/Beat 'em up": 'Hack and slash',
+};
+
+export function shortTag(tag: string): string {
+  return SHORT_TAGS[tag] ?? tag;
 }
 
 /** The filter an address asks for; every game when it asks for none it knows. */
@@ -155,10 +257,12 @@ export function askedSort(asked: string | null): LibrarySort {
 export function libraryWords(part: {
   filter?: LibraryFilter;
   sort?: LibrarySort;
-}): Record<string, string> {
-  const words: Record<string, string> = {};
+  lengths?: readonly LibraryLength[];
+}): Record<string, string | string[]> {
+  const words: Record<string, string | string[]> = {};
   if (part.filter && part.filter !== 'all') words[LIBRARY_FILTER] = part.filter;
   if (part.sort && part.sort !== 'last_played') words[LIBRARY_SORT] = part.sort;
+  if (part.lengths?.length) words[LIBRARY_LENGTH] = [...part.lengths];
   return words;
 }
 

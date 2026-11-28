@@ -16,6 +16,7 @@ function game(index: number): LibraryGame {
     cover_source: null,
     genres: [],
     themes: [],
+    normally_seconds: null,
   };
 }
 

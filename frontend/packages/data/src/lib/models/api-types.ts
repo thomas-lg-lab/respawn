@@ -1979,6 +1979,8 @@ export interface components {
             cover_source: null | string;
             genres: string[];
             themes: string[];
+            /** Format: int32 */
+            normally_seconds: null | number;
         };
         LibraryHistoryResponse: {
             /** Format: date-time */

@@ -254,13 +254,19 @@ public sealed class IgdbCoverTests : IDisposable
         var portal = await browser.GetAsync($"/api/v1/games/{games["Portal"]}").JsonAsync();
         Assert.Equal(System.Text.Json.JsonValueKind.Null, portal.GetProperty("game_data").GetProperty("time_to_beat").ValueKind);
 
-        // The library says each game's genres and themes, and none for a game IGDB does not know.
+        // The library says each game's genres, themes and normal pace, and none for a game IGDB does not know.
         var library = (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("games").EnumerateArray()
             .ToDictionary(game => game.GetProperty("name").GetString() ?? "");
         Assert.Equal(["Shooter", "Puzzle", "Adventure"], Words(library["Portal 2"].GetProperty("genres")));
         Assert.Equal(["Science fiction", "Comedy"], Words(library["Portal 2"].GetProperty("themes")));
         Assert.Empty(library[""].GetProperty("genres").EnumerateArray());
         Assert.Empty(library[""].GetProperty("themes").EnumerateArray());
+        Assert.Equal(
+            (await browser.GetAsync($"/api/v1/games/{games["Portal 2"]}").JsonAsync())
+                .GetProperty("game_data").GetProperty("time_to_beat").GetProperty("normally_seconds").GetInt32(),
+            library["Portal 2"].GetProperty("normally_seconds").GetInt32());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, library["Portal"].GetProperty("normally_seconds").ValueKind);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, library[""].GetProperty("normally_seconds").ValueKind);
 
         // Without a page there, or with durations of nothing, the rest of what IGDB says still shows.
         await using (var scope = app.Services.CreateAsyncScope())
@@ -278,6 +284,9 @@ public sealed class IgdbCoverTests : IDisposable
         Assert.Equal(["Shooter", "Puzzle", "Adventure"], Words(bare.GetProperty("genres")));
         Assert.StartsWith("More test chambers", bare.GetProperty("summary").GetString(), StringComparison.Ordinal);
         Assert.Equal(System.Text.Json.JsonValueKind.Null, bare.GetProperty("time_to_beat").ValueKind);
+        var bareRow = (await browser.GetAsync("/api/v1/library").JsonAsync()).GetProperty("games").EnumerateArray()
+            .Single(game => game.GetProperty("name").GetString() == "Portal 2");
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, bareRow.GetProperty("normally_seconds").ValueKind);
 
         // A game IGDB does not know has no page there.
         var unknown = await browser.GetAsync($"/api/v1/games/{games[""]}").JsonAsync();

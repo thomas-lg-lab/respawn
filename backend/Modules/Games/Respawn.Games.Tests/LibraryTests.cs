@@ -51,7 +51,7 @@ public sealed class LibraryTests
         string[] Fields(string schema) =>
             [.. schemas.GetProperty(schema).GetProperty("properties").EnumerateObject().Select(field => field.Name.Replace("_", "", StringComparison.Ordinal).ToLowerInvariant())];
         Assert.Equal(["total", "offset", "limit", "games"], Fields("LibraryResponse"));
-        Assert.Equal(["gameid", "name", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "entries", "coversource", "genres", "themes"], Fields("LibraryGameResponse"));
+        Assert.Equal(["gameid", "name", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "entries", "coversource", "genres", "themes", "normallyseconds"], Fields("LibraryGameResponse"));
         Assert.Equal(
             ["storeentryid", "linkedaccountid", "source", "externalid", "playtimeseconds", "recentplaytimeseconds", "lastplayedat", "firstseenat", "asof", "missingsince"],
             Fields("LibraryEntryResponse"));

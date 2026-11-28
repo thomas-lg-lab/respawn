@@ -22,6 +22,8 @@ public sealed record LibraryResponse(int Total, int Offset, int Limit, IReadOnly
 /// cover's source parameter; null while it chose none, and the game's own cover is shown.</param>
 /// <param name="Genres">The game's genres, as IGDB names them (English); empty while IGDB says none.</param>
 /// <param name="Themes">The game's themes, likewise.</param>
+/// <param name="NormallySeconds">How long players say it takes at a normal pace, as IGDB says it; null
+/// while it says none.</param>
 public sealed record LibraryGameResponse(
     Guid GameId,
     string? Name,
@@ -31,7 +33,8 @@ public sealed record LibraryGameResponse(
     IReadOnlyList<LibraryEntryResponse> Entries,
     string? CoverSource,
     IReadOnlyList<string> Genres,
-    IReadOnlyList<string> Themes)
+    IReadOnlyList<string> Themes,
+    int? NormallySeconds)
 {
     public static LibraryGameResponse From(OwnedGame game) =>
         new(
@@ -43,7 +46,8 @@ public sealed record LibraryGameResponse(
             [.. game.Entries.Select(LibraryEntryResponse.From)],
             game.CoverSource,
             game.Genres ?? [],
-            game.Themes ?? []);
+            game.Themes ?? [],
+            game.NormallySeconds);
 }
 
 /// <param name="StoreEntryId">The game as its store knows it. With <paramref name="LinkedAccountId"/>, unique in a library.</param>

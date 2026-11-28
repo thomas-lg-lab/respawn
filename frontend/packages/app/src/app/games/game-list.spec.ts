@@ -12,6 +12,14 @@ import {
   suggested,
   sorted,
   steamLaunchAddress,
+  askedLengths,
+  askedTags,
+  lengthCounts,
+  lengthOf,
+  shortTag,
+  tagCounts,
+  withLengths,
+  withTags,
 } from '@app/games/game-list';
 
 const names = (games: LibraryGame[]) => games.map((each) => each.name);
@@ -194,5 +202,63 @@ describe('library view', () => {
     const odd = game('Odd', { entries: [{ ...entry(), external_id: '620/../x' }] });
 
     expect(steamLaunchAddress(odd)).toBeNull();
+  });
+});
+
+describe('the genres, themes and lengths', () => {
+  const HOUR = 3600;
+  const celeste = game('Celeste', { genres: ['Platform', 'Indie'], normally_seconds: 8 * HOUR });
+  const hades = game('Hades', {
+    genres: ['Role-playing (RPG)', 'Indie'],
+    themes: ['Action'],
+    normally_seconds: 30 * HOUR,
+  });
+  const disco = game('Disco Elysium', { genres: ['Role-playing (RPG)'], normally_seconds: 0 });
+  const all = [celeste, hades, disco];
+
+  it('puts a game in its length, 30 hours still in the middle one, nothing said as unknown', () => {
+    expect(lengthOf({ normally_seconds: 10 * HOUR - 1 })).toBe('short');
+    expect(lengthOf({ normally_seconds: 10 * HOUR })).toBe('medium');
+    expect(lengthOf({ normally_seconds: 30 * HOUR })).toBe('medium');
+    expect(lengthOf({ normally_seconds: 30 * HOUR + 1 })).toBe('long');
+    expect(lengthOf({ normally_seconds: 0 })).toBe('unknown');
+    expect(lengthOf({ normally_seconds: null })).toBe('unknown');
+    // Past 200 hours, a game that never ends: no duration to count.
+    expect(lengthOf({ normally_seconds: 200 * HOUR })).toBe('long');
+    expect(lengthOf({ normally_seconds: 33501 * HOUR })).toBe('unknown');
+  });
+
+  it('keeps the games that bear every tag, and those of any length', () => {
+    expect(names(withTags(all, ['Indie']))).toEqual(['Celeste', 'Hades']);
+    expect(names(withTags(all, ['Indie', 'Role-playing (RPG)']))).toEqual(['Hades']);
+    expect(names(withTags(all, []))).toEqual(['Celeste', 'Hades', 'Disco Elysium']);
+    expect(names(withLengths(all, ['short', 'unknown']))).toEqual(['Celeste', 'Disco Elysium']);
+    expect(lengthCounts(all)).toEqual({ short: 1, medium: 1, long: 0, unknown: 1 });
+  });
+
+  it('reads the address once per tag and per length, in order, what it does not know left out', () => {
+    expect(askedTags([' Indie ', 'Indie', '', 'Action'])).toEqual(['Indie', 'Action']);
+    expect(askedLengths(['unknown', 'short', 'huge'])).toEqual(['short', 'unknown']);
+  });
+
+  it('counts the tags of one kind, the picked first even when none of the games bears them', () => {
+    expect(tagCounts(all, all, 'genres', [])).toEqual([
+      { tag: 'Indie', count: 2 },
+      { tag: 'Role-playing (RPG)', count: 2 },
+      { tag: 'Platform', count: 1 },
+    ]);
+    expect(tagCounts([disco], all, 'genres', ['Platform'])).toEqual([
+      { tag: 'Platform', count: 0 },
+      { tag: 'Role-playing (RPG)', count: 1 },
+    ]);
+    // A theme picked is not offered among the genres.
+    expect(tagCounts([disco], all, 'genres', ['Action'])).toEqual([
+      { tag: 'Role-playing (RPG)', count: 1 },
+    ]);
+  });
+
+  it('shortens the long names a chip shows, and leaves the others', () => {
+    expect(shortTag('Role-playing (RPG)')).toBe('RPG');
+    expect(shortTag('Indie')).toBe('Indie');
   });
 });
