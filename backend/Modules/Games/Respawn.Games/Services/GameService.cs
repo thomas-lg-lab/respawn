@@ -76,22 +76,12 @@ public sealed class GameService(
             return [];
         }
 
-        Guid[] ids = [.. close.Select(game => game.GameId)];
-        var facts = await catalogue.FindGameFactsAsync(ids, ct);
+        var facts = await catalogue.FindGameFactsAsync([.. close.Select(game => game.GameId)], ct);
         // The cover each row shows is the one its owner chose while it still is one, as in the library.
-        var origins = await catalogue.FindCoverOriginsAsync(ids, ct);
         return
         [
-            .. close.Select(game => new SimilarGame(
-                game with
-                {
-                    CoverSource = game.CoverSource is null
-                        ? null
-                        : CoverOrigins.Chosen(
-                            (origins.GetValueOrDefault(game.GameId) ?? CoverOrigins.None).Sources(gameData.Source),
-                            game.CoverSource),
-                },
-                facts.GetValueOrDefault(game.GameId)?.TimeToBeat?.Normally)),
+            .. (await catalogue.WithChosenCoversAsync(close, gameData.Source, ct)).Select(game => new SimilarGame(
+                game, facts.GetValueOrDefault(game.GameId)?.TimeToBeat?.Normally)),
         ];
     }
 

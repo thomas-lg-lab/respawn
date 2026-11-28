@@ -229,6 +229,33 @@ describe('Game', () => {
     expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(4);
   });
 
+  it('folds the genres again for the next game, the page being kept from one to the other', async () => {
+    const sekiro = '0198a1b2-0000-7000-8000-0000000000a1';
+    const close = {
+      game_id: sekiro,
+      name: 'Sekiro',
+      playtime_seconds: 48 * HOUR,
+      last_played_at: ago(400),
+      cover_source: null,
+      normally_seconds: null,
+    };
+    const { harness, server, screen } = await open(
+      eldenRing({ game_data: igdb({ similar: [close] }) }),
+    );
+    screen.querySelector<HTMLButtonElement>('[data-more-tags]')!.click();
+    await harness.fixture.whenStable();
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(5);
+
+    await TestBed.inject(Router).navigateByUrl(`/games/${sekiro}`);
+    await server.answer(`/games/${sekiro}`, eldenRing({ game_id: sekiro, name: 'Sekiro' }));
+    await server.answer(`/games/${sekiro}/months`, { months: [] });
+    await harness.fixture.whenStable();
+
+    expect(text(screen, 'h1')).toBe('Sekiro');
+    expect(screen.querySelectorAll('[data-hero] [data-tag]')).toHaveLength(4);
+    expect(screen.querySelector('[data-more-tags]')?.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('says what IGDB says the game is, with all its genres and where it comes from', async () => {
     const { screen } = await open();
 
@@ -340,6 +367,9 @@ describe('Game', () => {
     expect(screen.querySelector('[data-about]')).toBeNull();
     expect(screen.querySelector('[data-durations]')).toBeNull();
     expect(screen.querySelector('[data-similar]')).toBeNull();
+    // No empty right column either: it would take a row, and its gap, under the history.
+    expect(screen.querySelector('[data-right]')).toBeNull();
+    expect(screen.querySelector('[data-left]')).not.toBeNull();
   });
 
   it('gives the close games a column of their own, with no duration beside them', async () => {
@@ -380,6 +410,8 @@ describe('Game', () => {
     const sekiro = '0198a1b2-0000-7000-8000-0000000000a1';
     const hades = '0198a1b2-0000-7000-8000-0000000000a2';
     const unnamed = '0198a1b2-0000-7000-8000-0000000000a3';
+    const untimed = '0198a1b2-0000-7000-8000-0000000000a4';
+    const brief = '0198a1b2-0000-7000-8000-0000000000a5';
     const { screen } = await open(
       eldenRing({
         game_data: igdb({
@@ -408,18 +440,43 @@ describe('Game', () => {
               cover_source: null,
               normally_seconds: null,
             },
+            {
+              game_id: untimed,
+              name: 'Celeste',
+              playtime_seconds: null,
+              last_played_at: null,
+              cover_source: null,
+              normally_seconds: 8 * HOUR,
+            },
+            {
+              game_id: brief,
+              name: 'Inside',
+              playtime_seconds: 0,
+              last_played_at: ago(400),
+              cover_source: null,
+              normally_seconds: 4 * HOUR,
+            },
           ],
         }),
       }),
     );
 
     const rows = [...screen.querySelectorAll('[data-similar] li')];
-    expect(rows.map((row) => row.getAttribute('data-game'))).toEqual([sekiro, hades, unnamed]);
-    // Played: how long ago, then its time; never launched: how long it would take, when said.
+    expect(rows.map((row) => row.getAttribute('data-game'))).toEqual([
+      sekiro,
+      hades,
+      unnamed,
+      untimed,
+      brief,
+    ]);
+    // Played: how long ago, then its time; never launched: how long it would take, when said. A
+    // playtime no store gave is not none, and a last session is a launch, as the server counts.
     expect(rows.map((row) => row.querySelector('[data-said]')?.textContent?.trim())).toEqual([
       'Il y a 1 an · 48 h',
       'Jamais lancé · environ 22 h',
       'Jamais lancé',
+      '—',
+      'Il y a 1 an',
     ]);
     expect(rows[2]?.querySelector('[data-name]')?.textContent?.trim()).toBe('Jeu sans nom');
     expect(rows[0]?.querySelector('a')?.getAttribute('href')).toBe(`/games/${sekiro}`);

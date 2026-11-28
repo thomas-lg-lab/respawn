@@ -24,10 +24,16 @@
               @if (game.total; as total) {
                 @let time = t(total.key, { count: total.count });
                 {{ game.ago ? t('game.similar.playedAgo', { time, ago: game.ago }) : time }}
-              } @else if (game.takes; as takes) {
-                {{ t('game.similar.neverTakes', { time: t(takes.key, { count: takes.count }) }) }}
+              } @else if (game.never) {
+                @if (game.takes; as takes) {
+                  {{ t('game.similar.neverTakes', { time: t(takes.key, { count: takes.count }) }) }}
+                } @else {
+                  {{ t('game.status.never') }}
+                }
+              } @else if (game.ago; as ago) {
+                {{ ago }}
               } @else {
-                {{ t('game.status.never') }}
+                {{ t('app.unknown') }}
               }
             </span>
           </span>

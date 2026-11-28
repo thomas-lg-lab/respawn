@@ -17,7 +17,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261127230333_IgdbReleaseAndSimilar";
+    public override string LastMigrationId => "20261128001409_StoreEntriesIgdbIndex";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -524,6 +524,9 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
 
                 b.HasIndex("GameId")
                     .HasDatabaseName("ix_store_entries_game_id");
+
+                b.HasIndex("IgdbId")
+                    .HasDatabaseName("ix_store_entries_igdb_id");
 
                 b.HasIndex("Source", "ExternalId")
                     .IsUnique()

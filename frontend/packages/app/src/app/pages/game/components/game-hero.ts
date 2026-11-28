@@ -1,4 +1,4 @@
-import { Component, computed, input, linkedSignal, output, signal } from '@angular/core';
+import { Component, computed, input, linkedSignal, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { LucideArrowUpRight, LucidePlay } from '@lucide/angular';
 import { type Game, coverAddress } from '@respawn/data';
@@ -61,8 +61,14 @@ export class GameHero {
   readonly coverOpened = output<void>();
   /** The game's genres, then its themes, as the game database names them. */
   protected readonly tags = computed(() => gameTags(this.game().game_data));
-  /** Whether the genres and themes past the first few are shown, as the last pill asked. */
-  protected readonly allTags = signal(false);
+  /**
+   * Whether the genres and themes past the first few are shown, as the last pill asked: folded
+   * again for another game, the page being kept from one game to the next.
+   */
+  protected readonly allTags = linkedSignal({
+    source: () => this.game().game_id,
+    computation: () => false,
+  });
   protected readonly shownTags = computed(() =>
     this.allTags() ? this.tags() : this.tags().slice(0, HERO_TAGS),
   );

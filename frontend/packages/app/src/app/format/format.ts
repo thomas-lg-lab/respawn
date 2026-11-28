@@ -96,6 +96,18 @@ export function formatMoment(moment: string, language: string): string {
   return moments(language).format(new Date(moment));
 }
 
+const localMonths = perLanguage(
+  (language) => new Intl.DateTimeFormat(language, { month: 'long', year: 'numeric' }),
+);
+
+/**
+ * The month and year of a moment, on the reader's clock like {@link formatMoment}: "March
+ * 2020", "mars 2020". A session just after midnight on the first is in that month.
+ */
+export function formatMonthOfMoment(moment: string, language: string): string {
+  return localMonths(language).format(new Date(moment));
+}
+
 const DAY = 24 * 60 * 60 * 1000;
 
 /** The start of a moment's day, on the reader's own calendar. */

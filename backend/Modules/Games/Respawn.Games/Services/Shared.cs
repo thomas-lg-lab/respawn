@@ -45,6 +45,32 @@ internal static class OwnedGames
         ];
     }
 
+    /// <summary>The games, each with the cover its owner chose while it still is one of the game's
+    /// (<paramref name="gameDataSource"/> names the game database's), and the game's own otherwise:
+    /// what the library and a game's page show alike.</summary>
+    public static async Task<List<OwnedGame>> WithChosenCoversAsync(
+        this ICatalogue catalogue, IReadOnlyList<OwnedGame> games, string gameDataSource, CancellationToken ct)
+    {
+        Guid[] chosen = [.. games.Where(game => game.CoverSource is not null).Select(game => game.GameId)];
+        if (chosen.Length == 0)
+        {
+            return [.. games];
+        }
+
+        var origins = await catalogue.FindCoverOriginsAsync(chosen, ct);
+        return
+        [
+            .. games.Select(game => game.CoverSource is null
+                ? game
+                : game with
+                {
+                    CoverSource = CoverOrigins.Chosen(
+                        (origins.GetValueOrDefault(game.GameId) ?? CoverOrigins.None).Sources(gameDataSource),
+                        game.CoverSource),
+                }),
+        ];
+    }
+
     /// <summary>Whether a store says the game was played: some playtime, or a last session.</summary>
     public static bool Launched(OwnedGame game) => game.Playtime > TimeSpan.Zero || game.LastPlayedAt is not null;
 

@@ -13,6 +13,7 @@ import {
   formatCount,
   formatDate,
   formatMonthOf,
+  formatMonthOfMoment,
   formatShare,
   ordinalForm,
   saidPlaytime,
@@ -175,10 +176,11 @@ export class Game {
     const recent = game.recent_playtime_seconds;
     const recentTotal = this.stats.data()?.recent_playtime_seconds;
     const best = this.calendar()?.best ?? null;
-    // Once the history says there is no best month, the month it was last played instead.
+    // Once the history says there is no best month, the month it was last played instead, on
+    // the reader's clock as the hero's last session is.
     const last =
       !best && this.calendar() && game.last_played_at
-        ? formatMonthOf(game.last_played_at.slice(0, 10), language)
+        ? formatMonthOfMoment(game.last_played_at, language)
         : null;
 
     return {

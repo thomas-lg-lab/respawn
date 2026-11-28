@@ -306,28 +306,9 @@ public sealed class LibraryService(
 
     /// <summary>An owner's library, a game once however many entries it is owned through, each with
     /// the cover its owner chose while it still is one, as the game's page says it.</summary>
-    private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct)
-    {
-        var games = OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow());
-        Guid[] chosen = [.. games.Where(game => game.CoverSource is not null).Select(game => game.GameId)];
-        if (chosen.Length == 0)
-        {
-            return games;
-        }
-
-        var origins = await catalogue.FindCoverOriginsAsync(chosen, ct);
-        return
-        [
-            .. games.Select(game => game.CoverSource is null
-                ? game
-                : game with
-                {
-                    CoverSource = CoverOrigins.Chosen(
-                        (origins.GetValueOrDefault(game.GameId) ?? CoverOrigins.None).Sources(gameData.Source),
-                        game.CoverSource),
-                }),
-        ];
-    }
+    private async Task<List<OwnedGame>> GamesAsync(Guid ownerId, CancellationToken ct) =>
+        await catalogue.WithChosenCoversAsync(
+            OwnedGames.Of(await library.ListAsync(ownerId, ct), sources, clock.GetUtcNow()), gameData.Source, ct);
 
     /// <summary>The order of a library. What cannot be placed comes last, and two games the order does
     /// not tell apart come by name, then by id: a page never depends on chance.</summary>

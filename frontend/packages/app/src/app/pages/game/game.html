@@ -126,80 +126,88 @@
         class="grid items-start gap-5 wide:data-split:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
         [attr.data-split]="split() ? '' : null"
       >
-        <div class="contents wide:flex wide:min-w-0 wide:flex-col wide:gap-5">
-          <!-- Nothing stands here for a game never launched (the hero says so) nor for one no month
+        <!-- A column only where it holds something: an empty one would still take a row, and its gap. -->
+        @if (historyShown() || aboutShown()) {
+          <div class="contents wide:flex wide:min-w-0 wide:flex-col wide:gap-5" data-left>
+            <!-- Nothing stands here for a game never launched (the hero says so) nor for one no month
                of which is known: an empty block would push "About" down by its gap. -->
-          @if (historyShown()) {
-            <div class="flex min-w-0 flex-col gap-5">
-              @if (calendar(); as drawn) {
-                @if (drawn.rows.length) {
-                  <rs-month-calendar
-                    [calendar]="drawn"
-                    [selected]="selected()"
-                    [language]="currentLanguage()"
-                    (picked)="pick($event)"
-                  >
-                    @if (selected(); as key) {
-                      <rs-month-detail
-                        [month]="key"
-                        [detail]="detail()"
-                        [failed]="month.isError()"
-                        [seconds]="selectedSeconds()"
-                        [gameName]="known.name"
-                        [language]="currentLanguage()"
-                        (retry)="retryMonth()"
-                      />
-                    }
-                  </rs-month-calendar>
-                }
-                <!-- No month known: the history starts in 2022 and with the first sync, so an older
+            @if (historyShown()) {
+              <div class="flex min-w-0 flex-col gap-5">
+                @if (calendar(); as drawn) {
+                  @if (drawn.rows.length) {
+                    <rs-month-calendar
+                      [calendar]="drawn"
+                      [selected]="selected()"
+                      [language]="currentLanguage()"
+                      (picked)="pick($event)"
+                    >
+                      @if (selected(); as key) {
+                        <rs-month-detail
+                          [month]="key"
+                          [detail]="detail()"
+                          [failed]="month.isError()"
+                          [seconds]="selectedSeconds()"
+                          [gameName]="known.name"
+                          [language]="currentLanguage()"
+                          (retry)="retryMonth()"
+                        />
+                      }
+                    </rs-month-calendar>
+                  }
+                  <!-- No month known: the history starts in 2022 and with the first sync, so an older
                      game has none to show, and nothing stands here. -->
-              } @else if (historyRefusal(); as refused) {
-                <rs-banner tone="warn" role="alert" data-months-refused>{{
-                  t(failureKey(refused))
-                }}</rs-banner>
-                <button rsButton type="button" class="self-start" (click)="retryHistory()">
-                  {{ t('app.retry') }}
-                </button>
-              } @else {
-                <div role="status">
-                  <rs-skeleton class="h-60" />
-                  <span class="sr-only">{{ t('game.loading') }}</span>
-                </div>
+                } @else if (historyRefusal(); as refused) {
+                  <rs-banner tone="warn" role="alert" data-months-refused>{{
+                    t(failureKey(refused))
+                  }}</rs-banner>
+                  <button rsButton type="button" class="self-start" (click)="retryHistory()">
+                    {{ t('app.retry') }}
+                  </button>
+                } @else {
+                  <div role="status">
+                    <rs-skeleton class="h-60" />
+                    <span class="sr-only">{{ t('game.loading') }}</span>
+                  </div>
+                }
+              </div>
+            }
+            @if (known.game_data; as said) {
+              @if (aboutShown()) {
+                <rs-game-about
+                  class="order-2 min-w-0 wide:order-none"
+                  [summary]="said.summary"
+                  [tags]="tags()"
+                  [url]="igdbPage(said.url)"
+                  [released]="released()"
+                />
               }
-            </div>
-          }
-          @if (known.game_data; as said) {
-            @if (aboutShown()) {
-              <rs-game-about
-                class="order-2 min-w-0 wide:order-none"
-                [summary]="said.summary"
-                [tags]="tags()"
-                [url]="igdbPage(said.url)"
-                [released]="released()"
+            }
+          </div>
+        }
+        @if (split()) {
+          <div
+            class="contents wide:col-start-2 wide:flex wide:min-w-0 wide:flex-col wide:gap-5"
+            data-right
+          >
+            @if (known.game_data?.time_to_beat; as time) {
+              <rs-game-durations
+                class="order-1 min-w-0 wide:order-none"
+                [timeToBeat]="time"
+                [played]="known.playtime_seconds"
+                [language]="currentLanguage()"
               />
             }
-          }
-        </div>
-        <div class="contents wide:flex wide:min-w-0 wide:flex-col wide:gap-5">
-          @if (known.game_data?.time_to_beat; as time) {
-            <rs-game-durations
-              class="order-1 min-w-0 wide:order-none"
-              [timeToBeat]="time"
-              [played]="known.playtime_seconds"
-              [language]="currentLanguage()"
-            />
-          }
-          @if (similar().length) {
-            <rs-game-similar
-              class="order-3 min-w-0 wide:order-none"
-              [games]="similar()"
-              [language]="currentLanguage()"
-              [now]="now()"
-              [origin]="origin()"
-            />
-          }
-        </div>
+            @if (similar().length) {
+              <rs-game-similar
+                class="order-3 min-w-0 wide:order-none"
+                [games]="similar()"
+                [language]="currentLanguage()"
+                [now]="now()"
+                [origin]="origin()"
+              />
+            }
+          </div>
+        }
       </div>
     }
   } @else if (unknown()) {

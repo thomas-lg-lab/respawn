@@ -75,6 +75,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             entry.HasIndex(e => new { e.Source, e.ExternalId }).IsUnique();
             // A store's entries IGDB is to be asked about: never asked first, then the oldest asked.
             entry.HasIndex(e => new { e.Source, e.IgdbAskedAt });
+            // The catalogue's games an IGDB game is, asked of each game's close ones on its page.
+            entry.HasIndex(e => e.IgdbId);
             entry.HasOne<GameRow>().WithMany().HasForeignKey(e => e.GameId).OnDelete(DeleteBehavior.Restrict);
         });
 
