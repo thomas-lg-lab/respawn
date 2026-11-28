@@ -34,6 +34,15 @@ export type Library = Schemas['LibraryResponse'];
 /** A game of the library, whatever the stores it is owned on: its totals add up its entries. */
 export type LibraryGame = Schemas['LibraryGameResponse'];
 
+/**
+ * The names of the tags the stores' players gave the games (`GET /api/v1/store-tags`): a game
+ * carries its tags by key in `store_tags`.
+ */
+export type StoreTags = Schemas['StoreTagsResponse'];
+
+/** One of those tags: its key, and its name by language as its store gives it. */
+export type StoreTag = Schemas['StoreTagResponse'];
+
 /** A game as one linked account owns it on one store. */
 export type LibraryEntry = Schemas['LibraryEntryResponse'];
 

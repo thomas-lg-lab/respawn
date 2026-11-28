@@ -113,6 +113,12 @@ export const LIBRARY_SORT = 'sort';
  */
 export const LIBRARY_GENRE = 'genre';
 
+/**
+ * A tag the stores' players gave, the Library is narrowed to, by its key (`steam:1628`), once per
+ * tag.
+ */
+export const LIBRARY_TAG = 'tag';
+
 /** A bucket of length the Library is narrowed to, once per bucket: the home's backlog leads there. */
 export const LIBRARY_LENGTH = 'length';
 
@@ -138,6 +144,55 @@ export function gameTags(
  */
 export function withTags(games: readonly LibraryGame[], tags: readonly string[]): LibraryGame[] {
   return games.filter((game) => tags.every((tag) => gameTags(game).includes(tag)));
+}
+
+/**
+ * The games that bear every one of the stores' tags, by key: like the genres, each one picked
+ * narrows the list. All of them for none.
+ */
+export function withStoreTags(
+  games: readonly LibraryGame[],
+  keys: readonly string[],
+): LibraryGame[] {
+  return keys.length
+    ? games.filter((game) => keys.every((key) => game.store_tags.includes(key)))
+    : [...games];
+}
+
+/**
+ * The name of a store's tag in a language: the store's own, then its English one, then the key
+ * itself for a tag it named in neither.
+ */
+export function storeTagName(
+  key: string,
+  names: ReadonlyMap<string, Readonly<Record<string, string>>>,
+  language: string,
+): string {
+  const named = names.get(key);
+  return named?.[language] ?? named?.['en'] ?? key;
+}
+
+/**
+ * The stores' tags the games bear, each with how many: the most borne first, then by key. The
+ * picked ones come first, even when none of the games bears them, so they can be unpicked.
+ */
+export function storeTagCounts(
+  games: readonly LibraryGame[],
+  picked: readonly string[],
+): TagCount[] {
+  const counts = new Map<string, number>();
+  for (const key of picked) counts.set(key, 0);
+  for (const game of games) {
+    for (const key of game.store_tags) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort(
+      (a, b) =>
+        Number(picked.includes(b.tag)) - Number(picked.includes(a.tag)) ||
+        b.count - a.count ||
+        a.tag.localeCompare(b.tag),
+    );
 }
 
 /** The genres and themes an address asks for, each once, the blank ones left out. */

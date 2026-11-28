@@ -55,6 +55,10 @@ public sealed class StoreEntryRow
     /// <summary>When IGDB was last asked which game this is; null while it never was.</summary>
     public DateTimeOffset? IgdbAskedAt { get; set; }
 
+    /// <summary>When the store was last asked for the tags its players gave the game
+    /// (<see cref="StoreEntryTagRow"/>); null while it never was.</summary>
+    public DateTimeOffset? TagsAskedAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -103,6 +107,38 @@ public sealed class IgdbGameRow
 
     /// <summary>When IGDB said it.</summary>
     public DateTimeOffset ReadAt { get; set; }
+}
+
+/// <summary>The name a store gives one of its tags in one language, once for the whole instance, replaced
+/// each time the store is asked again.</summary>
+public sealed class StoreTagNameRow
+{
+    public string Source { get; set; } = "";
+
+    /// <summary>The tag's id in the store.</summary>
+    public string TagId { get; set; } = "";
+
+    /// <summary>The language, as the app names it (<see cref="StoreTagSchedule.Languages"/>).</summary>
+    public string Language { get; set; } = "";
+
+    public string Name { get; set; } = "";
+}
+
+/// <summary>One of the tags a store's players gave a store entry, with its weight there, replaced whole each
+/// time the store is asked again. Its name is in <see cref="StoreTagNameRow"/>, by the entry's store and
+/// the tag's id, with no foreign key: a tag the names do not hold yet is still the game's.</summary>
+public sealed class StoreEntryTagRow
+{
+    public Guid StoreEntryId { get; set; }
+
+    /// <summary>The tag's id in the entry's store.</summary>
+    public string TagId { get; set; } = "";
+
+    /// <summary>How much the store weighs it on the game: only the order means something.</summary>
+    public int Weight { get; set; }
+
+    /// <summary>Its place among the entry's tags, the heaviest at 0.</summary>
+    public int Rank { get; set; }
 }
 
 /// <summary>A store account proven to belong to an owner. A store account has one owner.</summary>

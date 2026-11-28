@@ -24,6 +24,8 @@ public sealed record LibraryResponse(int Total, int Offset, int Limit, IReadOnly
 /// <param name="Themes">The game's themes, likewise.</param>
 /// <param name="NormallySeconds">How long players say it takes at a normal pace, as IGDB says it; null
 /// while it says none.</param>
+/// <param name="StoreTags">The tags its stores' players gave it, as keys (<c>steam:1628</c>), the heaviest
+/// first, each once; empty while no store gave any. Their names are those of <c>GET /api/v1/store-tags</c>.</param>
 public sealed record LibraryGameResponse(
     Guid GameId,
     string? Name,
@@ -34,7 +36,8 @@ public sealed record LibraryGameResponse(
     string? CoverSource,
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Themes,
-    int? NormallySeconds)
+    int? NormallySeconds,
+    IReadOnlyList<string> StoreTags)
 {
     public static LibraryGameResponse From(OwnedGame game) =>
         new(
@@ -47,7 +50,22 @@ public sealed record LibraryGameResponse(
             game.CoverSource,
             game.Genres ?? [],
             game.Themes ?? [],
-            game.NormallySeconds);
+            game.NormallySeconds,
+            game.StoreTags ?? []);
+}
+
+/// <param name="Tags">Every tag a store gave a game of the instance and named, in no order.</param>
+public sealed record StoreTagsResponse(IReadOnlyList<StoreTagResponse> Tags)
+{
+    public static StoreTagsResponse From(IReadOnlyList<NamedStoreTag> tags) => new([.. tags.Select(StoreTagResponse.From)]);
+}
+
+/// <param name="Key">The tag, as the games carry it (<c>steam:1628</c>).</param>
+/// <param name="Names">Its name as its store gives it, by language (<c>en</c>, <c>fr</c>); a language the
+/// store gave no name in is left out.</param>
+public sealed record StoreTagResponse(string Key, IReadOnlyDictionary<string, string> Names)
+{
+    public static StoreTagResponse From(NamedStoreTag tag) => new(tag.Key, tag.Names);
 }
 
 /// <param name="StoreEntryId">The game as its store knows it. With <paramref name="LinkedAccountId"/>, unique in a library.</param>

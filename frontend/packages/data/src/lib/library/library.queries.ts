@@ -7,6 +7,7 @@ import type {
   LibraryHistory,
   LibraryStats,
   LibraryYears,
+  StoreTags,
 } from '../models/models';
 
 /** The keys of what the cache holds about the library: all of it under `['library']`. */
@@ -16,6 +17,7 @@ export const libraryKeys = {
   stats: ['library', 'stats'] as const,
   history: ['library', 'history'] as const,
   years: ['library', 'years'] as const,
+  storeTags: ['library', 'store-tags'] as const,
 };
 
 /** The most games the API gives in one answer. */
@@ -69,6 +71,18 @@ export class LibraryQueries {
     return queryOptions({
       queryKey: libraryKeys.history,
       queryFn: () => this.api.get<LibraryHistory>('/library/history'),
+      staleTime: Infinity,
+    });
+  }
+
+  /**
+   * The names of the tags the stores' players gave the games, in each language the store gives:
+   * the games carry their tags by key. Read with the games, and marked stale with them.
+   */
+  storeTags() {
+    return queryOptions({
+      queryKey: libraryKeys.storeTags,
+      queryFn: () => this.api.get<StoreTags>('/store-tags'),
       staleTime: Infinity,
     });
   }

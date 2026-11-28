@@ -136,6 +136,25 @@ public interface ICatalogue
     /// none included, and that it was asked at that moment. A game of the database no store entry is any
     /// more is forgotten.</summary>
     Task SetGameDataAsync(IReadOnlyCollection<GameFacts> games, IReadOnlyCollection<GameDataMatch> matches, DateTimeOffset at, CancellationToken ct);
+
+    /// <summary>The stores, among these, that have a store entry never asked for its tags, or asked before
+    /// <paramref name="askedBefore"/>.</summary>
+    Task<IReadOnlyList<string>> ListStoresWithStoreTagsDueAsync(IReadOnlyCollection<string> stores, DateTimeOffset askedBefore, CancellationToken ct);
+
+    /// <summary>At most <paramref name="max"/> store entries of a store to ask for their tags: those never
+    /// asked first, then those asked the longest ago, before <paramref name="askedBefore"/>.</summary>
+    Task<IReadOnlyList<StoreTagEntry>> ListStoreTagsDueAsync(string store, DateTimeOffset askedBefore, int max, CancellationToken ct);
+
+    /// <summary>Keeps the names a store gives its tags, in the place of those it gave before; then the tags
+    /// it gave these entries, in the place of theirs, none included, and that it was asked at that moment.</summary>
+    Task SetStoreTagsAsync(string store, IReadOnlyCollection<StoreTagName> names, IReadOnlyCollection<StoreEntryTags> tags, DateTimeOffset at, CancellationToken ct);
+
+    /// <summary>The tags of each of these games, as keys (<see cref="StoreTagKeys"/>), over all their store
+    /// entries, each once, the heaviest on its entry first. A game with none is left out.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> FindStoreTagsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct);
+
+    /// <summary>Every tag the catalogue holds a name of, with its names, in no order.</summary>
+    Task<IReadOnlyList<NamedStoreTag>> ListStoreTagNamesAsync(CancellationToken ct);
 }
 
 /// <summary>Where the images an instance keeps are written: files of a data directory. An instance
@@ -344,6 +363,30 @@ public interface IGameDataSource
     /// to it (<see cref="SourceError.NotConfigured"/>).</exception>
     /// <exception cref="ArgumentException">A store the database is not asked about, or too many ids.</exception>
     Task<MatchReading> MatchAsync(string store, IReadOnlyCollection<string> externalIds, CancellationToken ct);
+}
+
+/// <summary>The tags a store's players give its games, read by a connector. Nothing here needs an access to
+/// the store: its tags are public, and are asked for without the instance's key or an owner's.</summary>
+public interface IStoreTagSource
+{
+    /// <summary>The store it reads, as store entries name it.</summary>
+    string Source { get; }
+
+    /// <summary>The most games asked about in one request.</summary>
+    int GamesPerRequest { get; }
+
+    /// <summary>The tags of these games, the heaviest first, by the game's id in the store. An id that
+    /// cannot be a game of the store is not sent, and is said to have none; when none is left, nothing is
+    /// asked.</summary>
+    /// <param name="externalIds">At most <see cref="GamesPerRequest"/> ids.</param>
+    /// <param name="ct">Gives up.</param>
+    /// <exception cref="SourceException">The store could not be read.</exception>
+    /// <exception cref="ArgumentException">Too many ids.</exception>
+    Task<StoreTagsReading> ReadTagsAsync(IReadOnlyCollection<string> externalIds, CancellationToken ct);
+
+    /// <summary>The names of the store's tags, in every language of <see cref="StoreTagSchedule.Languages"/>.</summary>
+    /// <exception cref="SourceException">The store could not be read.</exception>
+    Task<StoreTagNamesReading> ReadTagNamesAsync(CancellationToken ct);
 }
 
 /// <summary>A store's covers, read by a connector. Nothing here needs an access to the store: a cover

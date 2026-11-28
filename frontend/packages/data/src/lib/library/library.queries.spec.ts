@@ -17,6 +17,7 @@ function game(index: number): LibraryGame {
     genres: [],
     themes: [],
     normally_seconds: null,
+    store_tags: [],
   };
 }
 

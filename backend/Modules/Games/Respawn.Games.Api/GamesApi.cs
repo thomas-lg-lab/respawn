@@ -25,7 +25,7 @@ public static class GamesApi
     public const string SteamLinkPath = "/api/v1/linked-accounts/steam/link";
 
     /// <summary>What drives the Games module: its routes, the Steam link, and the schedules of the
-    /// sync, of the yearly reviews, of the covers' places and of the game data. The host registers a <see cref="TimeProvider"/> and a session other routes are
+    /// sync, of the yearly reviews, of the covers' places, of the game data and of the stores' tags. The host registers a <see cref="TimeProvider"/> and a session other routes are
     /// authorized with, and gives <see cref="SteamLinkPath"/> the instance's public address.</summary>
     public static IServiceCollection AddGamesApi(this IServiceCollection services)
     {
@@ -35,6 +35,7 @@ public static class GamesApi
         services.AddHostedService<YearReviewScheduler>();
         services.AddHostedService<CoverScheduler>();
         services.AddHostedService<GameDataScheduler>();
+        services.AddHostedService<StoreTagScheduler>();
         return services;
     }
 

@@ -23,9 +23,11 @@ import { type FilterChoice, FilterMenu } from './filter-menu';
 interface Chip {
   readonly key: string;
   readonly label: string;
-  /** A tag's name as the game database writes it; none for a length. */
+  /** A tag's name as the game database or the store writes it; none for a length. */
   readonly full: string | null;
   readonly tags: readonly string[];
+  /** The store's tags it stands for, by key. */
+  readonly storeTags: readonly string[];
   readonly lengths: readonly LibraryLength[];
 }
 
@@ -53,8 +55,11 @@ export class LibraryToolbar {
   readonly tags = input<readonly string[]>([]);
   /** The lengths the library is narrowed to: the games in any of them. */
   readonly lengths = input<readonly LibraryLength[]>([]);
+  /** The stores' tags the library is narrowed to, each with its name: the games that bear them all. */
+  readonly storeTags = input<readonly { key: string; label: string }[]>([]);
   readonly genreChoices = input<readonly FilterChoice[]>([]);
   readonly themeChoices = input<readonly FilterChoice[]>([]);
+  readonly storeTagChoices = input<readonly FilterChoice[]>([]);
   readonly lengthChoices = input<readonly FilterChoice[]>([]);
   /** How many games the list holds, as a phone's menu says it. */
   readonly listed = input<{ one: boolean; none: boolean; count: string }>({
@@ -72,6 +77,9 @@ export class LibraryToolbar {
   readonly tagToggled = output<string>();
   readonly tagsCleared = output<'genres' | 'themes'>();
   readonly tagsDropped = output<readonly string[]>();
+  readonly storeTagToggled = output<string>();
+  readonly storeTagsDropped = output<readonly string[]>();
+  readonly storeTagsCleared = output<void>();
   readonly lengthToggled = output<string>();
   readonly lengthsDropped = output<readonly LibraryLength[]>();
   readonly filterPicked = output<LibraryFilter>();
@@ -86,24 +94,46 @@ export class LibraryToolbar {
     FILTERS.map((id) => ({ id, count: formatCount(this.counts()[id], this.language()) })),
   );
 
-  /** What the menus keep, as chips: the tags, then the lengths, neighbours read as one span. */
+  /**
+   * What the menus keep, as chips: the genres and themes, the stores' tags, then the lengths,
+   * neighbours read as one span.
+   */
   protected readonly chips = computed<Chip[]>(() => {
     const tags: Chip[] = this.tags().map((tag) => ({
       key: 'tag:' + tag,
       label: shortTag(tag),
       full: tag,
       tags: [tag],
+      storeTags: [],
+      lengths: [],
+    }));
+    const storeTags: Chip[] = this.storeTags().map((tag) => ({
+      key: 'store-tag:' + tag.key,
+      label: tag.label,
+      full: tag.label,
+      tags: [],
+      storeTags: [tag.key],
       lengths: [],
     }));
     const known = this.lengths().filter((length) => length !== 'unknown');
     const span = SPANS[known.join(',')];
     const lengths: Chip[] = span
-      ? [{ key: 'length:' + known.join(','), label: span, full: null, tags: [], lengths: known }]
+      ? [
+          {
+            key: 'length:' + known.join(','),
+            label: span,
+            full: null,
+            tags: [],
+            storeTags: [],
+            lengths: known,
+          },
+        ]
       : known.map((length) => ({
           key: 'length:' + length,
           label: 'filters.length.' + length,
           full: null,
           tags: [],
+          storeTags: [],
           lengths: [length],
         }));
     if (this.lengths().includes('unknown')) {
@@ -112,14 +142,16 @@ export class LibraryToolbar {
         label: 'filters.length.unknown',
         full: null,
         tags: [],
+        storeTags: [],
         lengths: ['unknown'],
       });
     }
-    return [...tags, ...lengths];
+    return [...tags, ...storeTags, ...lengths];
   });
 
   protected drop(chip: Chip): void {
     if (chip.tags.length) this.tagsDropped.emit(chip.tags);
+    if (chip.storeTags.length) this.storeTagsDropped.emit(chip.storeTags);
     if (chip.lengths.length) this.lengthsDropped.emit(chip.lengths);
   }
 

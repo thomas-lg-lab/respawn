@@ -6,7 +6,10 @@ import { Button, Disclosure, DisclosurePanel, DisclosureTrigger } from '@respawn
 /** What a filter menu offers: one row per choice, with how many games it would keep. */
 export interface FilterChoice {
   readonly id: string;
-  /** As the row shows it: a tag as the game database names it; a length is said by its id. */
+  /**
+   * As the row shows it: a genre or a theme as the game database names it, a store's tag in the
+   * reader's language; a length is said by its id.
+   */
   readonly label: string;
   readonly count: string;
   readonly picked: boolean;
@@ -21,7 +24,7 @@ function plain(text: string): string {
 }
 
 /**
- * One dimension of the library's filters (the genres, the themes, the lengths): a button that
+ * One dimension of the library's filters (the genres, the themes, the stores' tags, the lengths): a button that
  * says how many of its choices are picked, and a panel of them to tick, with a field to find one
  * when there are many, the rule several picked follow, and the way to clear them. Under a
  * computer's pointer the panel opens under its button; on a phone it takes the toolbar's width,
@@ -41,7 +44,7 @@ function plain(text: string): string {
   templateUrl: './filter-menu.html',
 })
 export class FilterMenu {
-  readonly kind = input.required<'genres' | 'themes' | 'lengths'>();
+  readonly kind = input.required<'genres' | 'themes' | 'tags' | 'lengths'>();
   readonly choices = input.required<readonly FilterChoice[]>();
   /** How many games the list would show, as "See N games" says it. */
   readonly shown = input.required<{ one: boolean; none: boolean; count: string }>();
@@ -52,6 +55,13 @@ export class FilterMenu {
   /** A field to find a choice, for the tags alone: the lengths are four. */
   protected readonly searchable = computed(() => this.kind() !== 'lengths');
   protected readonly typed = signal('');
+
+  /** The keys of the menu's sentences for its kind of tags: the genres, the themes or the stores'. */
+  protected readonly words = computed(() => {
+    const kind = this.kind();
+    const of = kind === 'genres' ? 'Genres' : kind === 'themes' ? 'Themes' : 'Tags';
+    return { find: 'find' + of, none: 'no' + of, empty: 'empty' + of };
+  });
 
   protected readonly picked = computed(
     () => this.choices().filter((choice) => choice.picked).length,

@@ -17,8 +17,11 @@ import {
   lengthCounts,
   lengthOf,
   shortTag,
+  storeTagCounts,
+  storeTagName,
   tagCounts,
   withLengths,
+  withStoreTags,
   withTags,
 } from '@app/games/game-list';
 
@@ -260,5 +263,41 @@ describe('the genres, themes and lengths', () => {
   it('shortens the long names a chip shows, and leaves the others', () => {
     expect(shortTag('Role-playing (RPG)')).toBe('RPG');
     expect(shortTag('Indie')).toBe('Indie');
+  });
+});
+
+describe('the stores’ tags', () => {
+  const hollow = game('Hollow Knight', { store_tags: ['steam:1628', 'steam:29482'] });
+  const sekiro = game('Sekiro', { store_tags: ['steam:29482', 'steam:4026'] });
+  const portal = game('Portal 2', { store_tags: ['steam:1664'] });
+  const all = [hollow, sekiro, portal];
+
+  it('keeps the games that bear every tag picked, all of them for none', () => {
+    expect(names(withStoreTags(all, ['steam:29482']))).toEqual(['Hollow Knight', 'Sekiro']);
+    expect(names(withStoreTags(all, ['steam:29482', 'steam:1628']))).toEqual(['Hollow Knight']);
+    expect(names(withStoreTags(all, []))).toEqual(['Hollow Knight', 'Sekiro', 'Portal 2']);
+  });
+
+  it('counts them, the most borne first, the picked first even when none of the games bears them', () => {
+    expect(storeTagCounts(all, [])).toEqual([
+      { tag: 'steam:29482', count: 2 },
+      { tag: 'steam:1628', count: 1 },
+      { tag: 'steam:1664', count: 1 },
+      { tag: 'steam:4026', count: 1 },
+    ]);
+    expect(storeTagCounts([portal], ['steam:29482'])).toEqual([
+      { tag: 'steam:29482', count: 0 },
+      { tag: 'steam:1664', count: 1 },
+    ]);
+  });
+
+  it('names a tag in the language asked, then in English, then by its key', () => {
+    const names = new Map<string, Record<string, string>>([
+      ['steam:29482', { en: 'Souls-like', fr: 'De type Souls' }],
+      ['steam:1628', { en: 'Metroidvania' }],
+    ]);
+    expect(storeTagName('steam:29482', names, 'fr')).toBe('De type Souls');
+    expect(storeTagName('steam:1628', names, 'fr')).toBe('Metroidvania');
+    expect(storeTagName('steam:4026', names, 'fr')).toBe('steam:4026');
   });
 });

@@ -37,6 +37,10 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<CoverChoiceRow> CoverChoices => Set<CoverChoiceRow>();
 
+    public DbSet<StoreTagNameRow> StoreTagNames => Set<StoreTagNameRow>();
+
+    public DbSet<StoreEntryTagRow> StoreEntryTags => Set<StoreEntryTagRow>();
+
     /// <summary>The one place that says how the context talks to PostgreSQL, shared by the app, the
     /// migration at first connection and the design-time tools.</summary>
     public static void Configure(DbContextOptionsBuilder options, DbDataSource dataSource) =>
@@ -77,6 +81,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             entry.HasIndex(e => new { e.Source, e.IgdbAskedAt });
             // The catalogue's games an IGDB game is, asked of each game's close ones on its page.
             entry.HasIndex(e => e.IgdbId);
+            // A store's entries to ask for their tags: never asked first, then the oldest asked.
+            entry.HasIndex(e => new { e.Source, e.TagsAskedAt });
             entry.HasOne<GameRow>().WithMany().HasForeignKey(e => e.GameId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -206,6 +212,25 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             game.Property(g => g.Summary).HasMaxLength(Limits.GameDataSummary);
             // Empty for the games read before IGDB was asked for them, until it is asked again.
             game.Property(g => g.Similar).HasDefaultValueSql("'{}'");
+        });
+
+        modelBuilder.Entity<StoreTagNameRow>(name =>
+        {
+            name.ToTable("store_tag_names");
+            name.HasKey(n => new { n.Source, n.TagId, n.Language });
+            name.Property(n => n.Source).HasMaxLength(Limits.Source);
+            name.Property(n => n.TagId).HasMaxLength(Limits.StoreTagId);
+            name.Property(n => n.Language).HasMaxLength(Limits.Language);
+            name.Property(n => n.Name).HasMaxLength(Limits.StoreTagName);
+        });
+
+        modelBuilder.Entity<StoreEntryTagRow>(tag =>
+        {
+            tag.ToTable("store_entry_tags", table => table.HasCheckConstraint("ck_store_entry_tags_rank", "rank >= 0"));
+            // An entry's tags are read and replaced together.
+            tag.HasKey(t => new { t.StoreEntryId, t.TagId });
+            tag.Property(t => t.TagId).HasMaxLength(Limits.StoreTagId);
+            tag.HasOne<StoreEntryRow>().WithMany().HasForeignKey(t => t.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CoverChoiceRow>(choice =>

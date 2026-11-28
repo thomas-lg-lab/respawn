@@ -184,6 +184,8 @@ public sealed record OwnedEntry(
 /// <param name="Themes">Its themes, likewise.</param>
 /// <param name="NormallySeconds">How long players say it takes at a normal pace, as the game database
 /// says it; null where it was not read or none was said.</param>
+/// <param name="StoreTags">The tags its stores' players gave it, as keys (<see cref="StoreTagKeys"/>), the
+/// heaviest first; null where they were not read, empty when no store gave any.</param>
 public sealed record OwnedGame(
     Guid GameId,
     string? Name,
@@ -194,7 +196,8 @@ public sealed record OwnedGame(
     string? CoverSource = null,
     IReadOnlyList<string>? Genres = null,
     IReadOnlyList<string>? Themes = null,
-    int? NormallySeconds = null);
+    int? NormallySeconds = null,
+    IReadOnlyList<string>? StoreTags = null);
 
 /// <summary>The orders a library is read in. Whatever the order, the games it cannot place (no name,
 /// no playtime said, never launched) come last.</summary>
@@ -298,6 +301,15 @@ public static class Limits
 
     /// <summary>What a game database says a game is about.</summary>
     public const int GameDataSummary = 20_000;
+
+    /// <summary>A tag's id in its store.</summary>
+    public const int StoreTagId = 32;
+
+    /// <summary>A tag's name in one language, as its store gives it.</summary>
+    public const int StoreTagName = 100;
+
+    /// <summary>A language, as the app names it (<see cref="StoreTagSchedule.Languages"/>).</summary>
+    public const int Language = 8;
 }
 
 /// <summary>The ids stores give their games, as a connector checks one before it goes in an address or

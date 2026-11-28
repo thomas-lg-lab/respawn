@@ -38,6 +38,9 @@ internal static class GamesModule
         services.AddScoped<IGameDataService, GameDataService>();
         services.AddSingleton<GameDataGate>();
         services.AddSingleton(provider => RespawnSettings.GameData(provider.GetRequiredService<IConfiguration>()));
+        // The tags the stores' players gave the catalogue's games, asked apart from the sync.
+        services.AddScoped<IStoreTagService, StoreTagService>();
+        services.AddSingleton<StoreTagGate>();
         services.AddGamesInfrastructure(provider => RespawnSettings.Encryption(provider.GetRequiredService<IConfiguration>()));
         services.AddGamesApi();
         services.AddSteamConnector(provider => RespawnSettings.Steam(provider.GetRequiredService<IConfiguration>()));

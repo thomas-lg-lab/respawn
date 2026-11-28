@@ -22,6 +22,7 @@ import {
   LIBRARY_LENGTH,
   LIBRARY_SEARCH,
   LIBRARY_SORT,
+  LIBRARY_TAG,
   type LibraryFilter,
   type LibraryLength,
   type LibrarySort,
@@ -39,8 +40,11 @@ import {
   longestPlaytime,
   matching,
   sorted,
+  storeTagCounts,
+  storeTagName,
   tagCounts,
   withLengths,
+  withStoreTags,
   withTags,
 } from '@app/games/game-list';
 
@@ -96,6 +100,14 @@ export class Library {
   protected readonly currentLanguage = this.language.current;
   protected readonly placeholders = [0, 1, 2, 3, 4, 5, 6, 7];
   protected readonly games = injectQuery(() => this.queries.games());
+  /**
+   * The names of the stores' tags, asked once a game bears one: while they are not read, a tag
+   * is shown by its key.
+   */
+  private readonly storeTagNames = injectQuery(() => ({
+    ...this.queries.storeTags(),
+    enabled: (this.games.data() ?? []).some((game) => game.store_tags.length > 0),
+  }));
   /** "Ago" is counted from the moment the games were read, so it follows each new reading. */
   protected readonly now = computed(() => this.games.dataUpdatedAt() || Date.now());
 
@@ -117,6 +129,8 @@ export class Library {
    * that bear them all. A game's page leads there with one of its own.
    */
   protected readonly tags = this.asked((words) => askedTags(words.getAll(LIBRARY_GENRE)));
+  /** The stores' tags the library is narrowed to, by key: the games that bear them all. */
+  protected readonly storeTags = this.asked((words) => askedTags(words.getAll(LIBRARY_TAG)));
   /** The lengths the library is narrowed to: the games in any of them. */
   protected readonly lengths = this.asked((words) => askedLengths(words.getAll(LIBRARY_LENGTH)));
   protected readonly sort = this.asked((words) => askedSort(words.get(LIBRARY_SORT)));
@@ -142,6 +156,7 @@ export class Library {
       [
         this.search(),
         this.tags().join(','),
+        this.storeTags().join(','),
         this.lengths().join(','),
         this.filter(),
         this.sort(),
@@ -157,11 +172,18 @@ export class Library {
   private readonly found = computed(() => matching(this.games.data() ?? [], this.search()));
   /** What the tags and the lengths keep of it: the filters count among these. */
   protected readonly counts = computed(() =>
-    filterCounts(withLengths(withTags(this.found(), this.tags()), this.lengths())),
+    filterCounts(
+      withLengths(
+        withStoreTags(withTags(this.found(), this.tags()), this.storeTags()),
+        this.lengths(),
+      ),
+    ),
   );
   /** What the filter keeps; then the tags; then the lengths: the list. */
   private readonly filtered = computed(() => kept(this.found(), this.filter()));
-  private readonly tagged = computed(() => withTags(this.filtered(), this.tags()));
+  private readonly tagged = computed(() =>
+    withStoreTags(withTags(this.filtered(), this.tags()), this.storeTags()),
+  );
   private readonly narrowed = computed(() => withLengths(this.tagged(), this.lengths()));
 
   private readonly listed = computed(() =>
@@ -171,6 +193,28 @@ export class Library {
   /** Each genre or theme the games listed bear, with how many; the picked ones first. */
   protected readonly genreChoices = computed(() => this.tagChoices('genres'));
   protected readonly themeChoices = computed(() => this.tagChoices('themes'));
+  /** Each name of the stores' tags, by key, in each language the store gave. */
+  private readonly namesByKey = computed(
+    () =>
+      new Map((this.storeTagNames.data()?.tags ?? []).map((tag) => [tag.key, tag.names] as const)),
+  );
+  /** Each tag of the stores the games listed bear, named in the reader's language. */
+  protected readonly storeTagChoices = computed<FilterChoice[]>(() => {
+    const language = this.language.current();
+    const names = this.namesByKey();
+    return storeTagCounts(this.narrowed(), this.storeTags()).map((each) => ({
+      id: each.tag,
+      label: storeTagName(each.tag, names, language),
+      count: formatCount(each.count, language),
+      picked: this.storeTags().includes(each.tag),
+    }));
+  });
+  /** The picked tags of the stores, as their chips name them. */
+  protected readonly storeTagLabels = computed(() => {
+    const language = this.language.current();
+    const names = this.namesByKey();
+    return this.storeTags().map((key) => ({ key, label: storeTagName(key, names, language) }));
+  });
   /**
    * Each length with how many games the other filters keep in it: a game has one, so the
    * lengths picked do not narrow one another's count.
@@ -234,6 +278,25 @@ export class Library {
   protected clearTags(kind: 'genres' | 'themes'): void {
     const ofKind = new Set((this.games.data() ?? []).flatMap((game) => game[kind]));
     this.dropTags(this.tags().filter((tag) => ofKind.has(tag)));
+  }
+
+  /** A tag of the stores picked, or unpicked. */
+  protected toggleStoreTag(key: string): void {
+    const keys = this.storeTags();
+    this.rewrite(
+      {
+        [LIBRARY_TAG]: keys.includes(key) ? keys.filter((each) => each !== key) : [...keys, key],
+      },
+      true,
+    );
+  }
+
+  /** Some of the stores' tags taken off; all of them for none given. */
+  protected dropStoreTags(dropped?: readonly string[]): void {
+    this.rewrite(
+      { [LIBRARY_TAG]: dropped ? this.storeTags().filter((key) => !dropped.includes(key)) : [] },
+      true,
+    );
   }
 
   /** A length picked, or unpicked; the address keeps them in their own order. */

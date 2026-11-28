@@ -4,7 +4,7 @@ import type { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, type Routes, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { LibraryGame, LinkedAccount, SignInOptions } from '@respawn/data';
+import type { LibraryGame, LinkedAccount, SignInOptions, StoreTag } from '@respawn/data';
 import { TEST_ACCOUNT as ACCOUNT, TEST_LINKED_ACCOUNT } from '@respawn/data/testing';
 import { routes } from '@app/app.routes';
 import { provideAccountSettings } from '@app/session/account-settings';
@@ -87,6 +87,7 @@ export async function openWithGames(
   address: string,
   games: LibraryGame[] | null,
   language: Language = 'fr',
+  storeTags: StoreTag[] = [],
 ) {
   const { harness, server, arrived } = await start(address, language);
   await server.answer('/me', ACCOUNT);
@@ -96,6 +97,9 @@ export async function openWithGames(
   // Left unanswered, the request keeps the app busy: the spec answers it, then waits.
   if (games) {
     await server.answer(LIBRARY_FIRST_PAGE, { total: games.length, offset: 0, limit: 500, games });
+    // The library asks for the names of the stores' tags once a game bears one; no other screen
+    // does.
+    if (storeTags.length) await server.answer('/store-tags', { tags: storeTags });
     await harness.fixture.whenStable();
   }
   return { harness, server, screen: harness.fixture.nativeElement as HTMLElement };
