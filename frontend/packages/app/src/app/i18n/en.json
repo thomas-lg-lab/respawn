@@ -369,6 +369,8 @@
       "findThemes": "Find a theme",
       "noGenres": "No genre of that name among these games.",
       "noThemes": "No theme of that name among these games.",
+      "emptyGenres": "No genre among these games.",
+      "emptyThemes": "No theme among these games.",
       "ruleTags": "Several: the games that have them all",
       "ruleLengths": "Several: any of them",
       "clear": "Clear",

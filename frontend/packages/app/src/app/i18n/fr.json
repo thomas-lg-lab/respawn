@@ -369,6 +369,8 @@
       "findThemes": "Chercher un thème",
       "noGenres": "Aucun genre de ce nom parmi ces jeux.",
       "noThemes": "Aucun thème de ce nom parmi ces jeux.",
+      "emptyGenres": "Aucun genre parmi ces jeux.",
+      "emptyThemes": "Aucun thème parmi ces jeux.",
       "ruleTags": "Plusieurs : les jeux qui les ont tous",
       "ruleLengths": "Plusieurs : l’une ou l’autre",
       "clear": "Effacer",

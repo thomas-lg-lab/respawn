@@ -63,8 +63,14 @@ export class Backlog {
     this.buckets().reduce((sum, bucket) => sum + bucket.games, 0),
   );
 
+  /** The rows' hours added up, as each says them: the figure never disagrees with its rows. */
   protected readonly total = computed(() =>
-    formatCount(aboutHours(this.seconds()), this.language()),
+    formatCount(
+      this.buckets()
+        .filter((bucket) => bucket.games > 0)
+        .reduce((sum, bucket) => sum + aboutHours(bucket.seconds), 0),
+      this.language(),
+    ),
   );
 
   /** "across 412 of the 819 games never launched". */

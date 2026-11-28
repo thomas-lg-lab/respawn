@@ -555,6 +555,20 @@ describe('Home', () => {
         expect(screen.querySelector('[data-backlog]')).toBeNull();
       });
 
+      it('says as its figure the hours its rows say, each rounded on its own', async () => {
+        const games = [
+          game('Epic', { normally_seconds: 100.4 * hours }),
+          game('Tiny', { normally_seconds: 0.4 * hours }),
+        ];
+        const { screen } = await open([linkedAccount()], { games });
+
+        expect(lengths(screen).map((each) => each.text)).toEqual([
+          'Moins de 10 h 1 jeu · environ 1 h',
+          'Plus de 30 h 1 jeu · environ 100 h',
+        ]);
+        expect(text(screen, '[data-backlog-total]')).toBe('environ 101 h');
+      });
+
       it('rounds a large figure, and leaves out a length no game is in', async () => {
         const games = Array.from({ length: 40 }, (_, index) =>
           game(`Game ${index}`, { normally_seconds: 33 * hours + 1200 }),

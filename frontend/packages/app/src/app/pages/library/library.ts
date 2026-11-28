@@ -251,9 +251,9 @@ export class Library {
     );
   }
 
-  /** Some of the lengths taken off; all of them for none named. */
-  protected dropLengths(dropped?: readonly LibraryLength[]): void {
-    const kept = dropped ? this.lengths().filter((length) => !dropped.includes(length)) : [];
+  /** Some of the lengths taken off. */
+  protected dropLengths(dropped: readonly LibraryLength[]): void {
+    const kept = this.lengths().filter((length) => !dropped.includes(length));
     this.rewrite({ [LIBRARY_LENGTH]: kept }, true);
   }
 

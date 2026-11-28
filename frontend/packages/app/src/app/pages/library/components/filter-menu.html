@@ -14,12 +14,16 @@
   >
     {{ t(kind()) }}
     @if (picked()) {
+      <!-- The number is drawn; what is heard is the sentence beside it. -->
       <span
         class="inline-flex h-5.5 min-w-5.5 items-center justify-center rounded-pill bg-accent px-1.5 type-caption font-semibold text-on-accent tabular-nums"
-        [attr.aria-label]="t(picked() === 1 ? 'pickedOne' : 'pickedMany', { count: picked() })"
+        aria-hidden="true"
         data-picked
         >{{ picked() }}</span
       >
+      <span class="sr-only">{{
+        t(picked() === 1 ? 'pickedOne' : 'pickedMany', { count: picked() })
+      }}</span>
     }
     <svg lucideChevronDown class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
   </button>
@@ -71,7 +75,11 @@
         </li>
       } @empty {
         <li class="px-2.5 py-3 type-caption text-muted" data-no-choice>
-          {{ t(kind() === 'genres' ? 'noGenres' : 'noThemes') }}
+          {{
+            typed().trim()
+              ? t(kind() === 'genres' ? 'noGenres' : 'noThemes')
+              : t(kind() === 'genres' ? 'emptyGenres' : 'emptyThemes')
+          }}
         </li>
       }
     </ul>

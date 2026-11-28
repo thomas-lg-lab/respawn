@@ -423,6 +423,14 @@ describe('Library', () => {
       );
     });
 
+    it('says that no game bears a theme, with nothing typed', async () => {
+      const { harness, screen } = await open(timed(), 'fr', '/library?sort=name&genre=Platform');
+      menu(screen, 'themes').click();
+      await harness.fixture.whenStable();
+
+      expect(text(panel(screen, 'themes'), '[data-no-choice]')).toBe('Aucun thème parmi ces jeux.');
+    });
+
     it('keeps the games of any length ticked, neighbours shown as one chip', async () => {
       const { harness, screen } = await open(timed(), 'fr', '/library?sort=name');
       menu(screen, 'lengths').click();
