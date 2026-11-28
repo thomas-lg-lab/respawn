@@ -946,7 +946,7 @@ describe('Home', () => {
       // 2026 is counted from the first sync only: not drawn, a part would read as the whole.
       expect(screen.querySelector('[data-year="2026"]')).toBeNull();
       expect(text(screen, '[data-years-reviewed]')).toBe(
-        '2025 : d’après la rétrospective annuelle de Steam, mois par mois.',
+        '2025 : d’après la rétrospective Steam, mois par mois.',
       );
       expect(text(screen, '[data-years-pending]')).toBe(
         '2026 : compté en partie seulement, montré une fois l’année entière connue.',
@@ -983,7 +983,7 @@ describe('Home', () => {
 
       expect(all(screen, '[data-years] .label')).toEqual(['2022', '2023', '2024']);
       expect(text(screen, '[data-years-reviewed]')).toBe(
-        '2022, 2024 : d’après la rétrospective annuelle de Steam, mois par mois.',
+        '2022, 2024 : d’après la rétrospective Steam, mois par mois.',
       );
       expect(text(screen, '[data-years-since]')).toBe(
         '2023 : compté jour par jour, à chaque synchronisation.',
@@ -1004,7 +1004,7 @@ describe('Home', () => {
       });
 
       expect(text(screen, '[data-years-reviewed]')).toBe(
-        '2025 : d’après la rétrospective annuelle de Steam, mois par mois.',
+        '2025 : d’après la rétrospective Steam, mois par mois.',
       );
       expect(screen.querySelector('[data-years-since]')).toBeNull();
       expect(screen.querySelector('[data-years-pending]')).toBeNull();
