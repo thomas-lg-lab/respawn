@@ -1,0 +1,119 @@
+<div
+  class="shrink-0 wide:relative"
+  rsDisclosure
+  #menu="rsDisclosure"
+  (openChange)="openChanged($event)"
+  *transloco="let t; prefix: 'library.filters'"
+>
+  <!-- The dimension's name, how many of its choices are picked, and the way the panel opens. -->
+  <button
+    rsButton
+    rsDisclosureTrigger
+    class="gap-2 aria-expanded:bg-surface-2"
+    [attr.data-filter-menu]="kind()"
+  >
+    {{ t(kind()) }}
+    @if (picked()) {
+      <!-- The number is drawn; what is heard is the sentence beside it. -->
+      <span
+        class="inline-flex h-5.5 min-w-5.5 items-center justify-center rounded-pill bg-accent px-1.5 type-caption font-semibold text-on-accent tabular-nums"
+        aria-hidden="true"
+        data-picked
+        >{{ picked() }}</span
+      >
+      <span class="sr-only">{{
+        t(picked() === 1 ? 'pickedOne' : 'pickedMany', { count: picked() })
+      }}</span>
+    }
+    <svg lucideChevronDown class="size-icon" [strokeWidth]="2" aria-hidden="true"></svg>
+  </button>
+
+  <section
+    rsDisclosurePanel
+    class="absolute inset-x-0 top-full z-10 mt-2 flex max-h-[70vh] flex-col animate-overlay-in overflow-hidden rounded-card border border-line bg-surface shadow-overlay wide:inset-x-auto wide:start-0 wide:max-h-none wide:w-80"
+    [attr.aria-label]="t(kind())"
+    [attr.data-filter-panel]="kind()"
+  >
+    @if (searchable()) {
+      <div class="relative p-3 pb-2">
+        <svg
+          lucideSearch
+          class="pointer-events-none absolute start-6 top-1/2 size-4 -translate-y-1/2 text-muted"
+          [strokeWidth]="2"
+          aria-hidden="true"
+        ></svg>
+        <input
+          type="search"
+          class="h-10 w-full rounded-field border border-control-line bg-bg ps-9 pe-3 type-control"
+          data-filter-find
+          [attr.aria-label]="t(kind() === 'genres' ? 'findGenres' : 'findThemes')"
+          [attr.placeholder]="t(kind() === 'genres' ? 'findGenres' : 'findThemes')"
+          [value]="typed()"
+          (input)="find($event)"
+        />
+      </div>
+    }
+
+    <ul class="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2 wide:max-h-85">
+      @for (choice of listed(); track choice.id) {
+        <li>
+          <label
+            class="flex min-h-touch cursor-pointer items-center gap-3 rounded-row px-2.5 hover:bg-surface-2"
+            [attr.data-choice]="choice.id"
+          >
+            <input
+              type="checkbox"
+              class="size-4.5 accent-accent"
+              [checked]="choice.picked"
+              (change)="toggled.emit(choice.id)"
+            />
+            <span class="flex-1 font-medium">{{
+              kind() === 'lengths' ? t('length.' + choice.id) : choice.label
+            }}</span>
+            <span class="type-caption text-muted tabular-nums">{{ choice.count }}</span>
+          </label>
+        </li>
+      } @empty {
+        <li class="px-2.5 py-3 type-caption text-muted" data-no-choice>
+          {{
+            typed().trim()
+              ? t(kind() === 'genres' ? 'noGenres' : 'noThemes')
+              : t(kind() === 'genres' ? 'emptyGenres' : 'emptyThemes')
+          }}
+        </li>
+      }
+    </ul>
+
+    <div class="flex items-center gap-2 border-t border-line px-3 py-2 type-caption text-muted">
+      <span class="flex-1">{{ t(kind() === 'lengths' ? 'ruleLengths' : 'ruleTags') }}</span>
+      <button
+        rsButton
+        variant="row"
+        type="button"
+        class="w-auto"
+        data-filter-clear
+        [disabled]="!picked()"
+        (click)="cleared.emit()"
+      >
+        {{ t('clear') }}
+      </button>
+    </div>
+    <!-- On a phone the panel hides the games: its last button shows them, and says how many. -->
+    <div class="border-t border-line p-3 wide:hidden">
+      <button
+        rsButton
+        variant="primary"
+        type="button"
+        class="w-full"
+        data-filter-see
+        (click)="menu.dismiss()"
+      >
+        {{
+          shown().none
+            ? t('seeNone')
+            : t(shown().one ? 'seeOne' : 'seeMany', { count: shown().count })
+        }}
+      </button>
+    </div>
+  </section>
+</div>

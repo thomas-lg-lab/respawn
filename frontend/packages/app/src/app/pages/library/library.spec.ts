@@ -329,7 +329,7 @@ describe('Library', () => {
   it('keeps the genre or theme its address asks for, a game’s page leading there', async () => {
     const { harness, screen } = await open(library(), 'fr', '/library?genre=Indie&sort=name');
 
-    expect(text(screen, '[data-genre]')).toBe('Genre ou thème : « Indie »');
+    expect(text(screen, '[data-chip="tag:Indie"]')).toBe('Indie');
     expect(names(screen)).toEqual(['Celeste', 'Hades']);
     expect(text(screen, '[data-filter="all"]')).toBe('Tous 2');
     expect(text(screen, '[data-filter="never"]')).toBe('Jamais lancés 1');
@@ -338,12 +338,153 @@ describe('Library', () => {
     await harness.navigateByUrl('/library?genre=Action');
     expect(names(screen)).toEqual(['Hades']);
 
-    button(screen, 'Tous les genres et thèmes').click();
+    const chip = screen.querySelector<HTMLButtonElement>('[data-chip="tag:Action"]')!;
+    expect(chip.getAttribute('aria-label')).toBe('Retirer le filtre Action');
+    chip.click();
     await harness.fixture.whenStable();
 
     expect(names(screen)).toHaveLength(4);
-    expect(screen.querySelector('[data-genre]')).toBeNull();
+    expect(screen.querySelector('[data-chip]')).toBeNull();
     expect(TestBed.inject(Location).path()).toBe('/library');
+  });
+
+  describe('the menus of genres, themes and lengths', () => {
+    const hours = 3600;
+    /** A library with durations: a game in each length, and one IGDB says none of. */
+    const timed = (): LibraryGame[] => [
+      game('Celeste', { genres: ['Platform', 'Indie'], normally_seconds: 8 * hours }),
+      game('Disco Elysium', { genres: ['Role-playing (RPG)'], normally_seconds: 32 * hours }),
+      game('Hades', {
+        playtime_seconds: 360000,
+        last_played_at: ago(400),
+        genres: ['Role-playing (RPG)', 'Indie'],
+        themes: ['Action'],
+        normally_seconds: 22 * hours,
+      }),
+      game('Pokémon', { normally_seconds: null }),
+    ];
+    const menu = (screen: HTMLElement, kind: string) =>
+      screen.querySelector<HTMLButtonElement>(`[data-filter-menu="${kind}"]`)!;
+    const panel = (screen: HTMLElement, kind: string) =>
+      screen.querySelector<HTMLElement>(`[data-filter-panel="${kind}"]`)!;
+    const choices = (screen: HTMLElement, kind: string) =>
+      [...panel(screen, kind).querySelectorAll('[data-choice]')].map((each) =>
+        [...each.querySelectorAll('span')].map((part) => part.textContent?.trim()).join(' '),
+      );
+    const tick = async (
+      harness: { fixture: { whenStable(): Promise<unknown> } },
+      screen: HTMLElement,
+      kind: string,
+      id: string,
+    ) => {
+      panel(screen, kind).querySelector<HTMLInputElement>(`[data-choice="${id}"] input`)!.click();
+      await harness.fixture.whenStable();
+    };
+
+    it('lists the genres the games bear, the most borne first, and keeps the games that bear all those ticked', async () => {
+      const { harness, screen } = await open(timed(), 'fr', '/library?sort=name');
+
+      expect(panel(screen, 'genres').hidden).toBe(true);
+      menu(screen, 'genres').click();
+      await harness.fixture.whenStable();
+      expect(panel(screen, 'genres').hidden).toBe(false);
+      expect(choices(screen, 'genres')).toEqual(['Indie 2', 'Role-playing (RPG) 2', 'Platform 1']);
+
+      await tick(harness, screen, 'genres', 'Indie');
+      expect(names(screen)).toEqual(['Celeste', 'Hades']);
+      expect(TestBed.inject(Location).path()).toBe('/library?sort=name&genre=Indie');
+
+      // A second genre narrows the list further: the games that have both.
+      await tick(harness, screen, 'genres', 'Role-playing (RPG)');
+      expect(names(screen)).toEqual(['Hades']);
+      expect(text(screen, '[data-chip="tag:Role-playing (RPG)"]')).toBe('RPG');
+      expect(text(menu(screen, 'genres'), '[data-picked]')).toBe('2');
+      // The ticked ones come first; a genre no game left bears is no longer offered.
+      expect(choices(screen, 'genres')).toEqual(['Indie 1', 'Role-playing (RPG) 1']);
+      expect(text(screen, '[data-filter="all"]')).toBe('Tous 1');
+    });
+
+    it('finds a genre by a part of its name', async () => {
+      const { harness, screen } = await open(timed(), 'fr', '/library?sort=name');
+      menu(screen, 'genres').click();
+      await harness.fixture.whenStable();
+
+      const field = panel(screen, 'genres').querySelector<HTMLInputElement>('[data-filter-find]')!;
+      field.value = 'role';
+      field.dispatchEvent(new Event('input'));
+      await harness.fixture.whenStable();
+      expect(choices(screen, 'genres')).toEqual(['Role-playing (RPG) 2']);
+
+      field.value = 'zzz';
+      field.dispatchEvent(new Event('input'));
+      await harness.fixture.whenStable();
+      expect(text(panel(screen, 'genres'), '[data-no-choice]')).toBe(
+        'Aucun genre de ce nom parmi ces jeux.',
+      );
+    });
+
+    it('says that no game bears a theme, with nothing typed', async () => {
+      const { harness, screen } = await open(timed(), 'fr', '/library?sort=name&genre=Platform');
+      menu(screen, 'themes').click();
+      await harness.fixture.whenStable();
+
+      expect(text(panel(screen, 'themes'), '[data-no-choice]')).toBe('Aucun thème parmi ces jeux.');
+    });
+
+    it('keeps the games of any length ticked, neighbours shown as one chip', async () => {
+      const { harness, screen } = await open(timed(), 'fr', '/library?sort=name');
+      menu(screen, 'lengths').click();
+      await harness.fixture.whenStable();
+      expect(choices(screen, 'lengths')).toEqual([
+        'Moins de 10 h 1',
+        '10 à 30 h 1',
+        'Plus de 30 h 1',
+        'Durée inconnue 1',
+      ]);
+      expect(panel(screen, 'lengths').querySelector('[data-filter-find]')).toBeNull();
+
+      await tick(harness, screen, 'lengths', 'medium');
+      await tick(harness, screen, 'lengths', 'short');
+      expect(names(screen)).toEqual(['Celeste', 'Hades']);
+      // In the lengths' own order, whichever was ticked first.
+      expect(TestBed.inject(Location).path()).toBe('/library?sort=name&length=short&length=medium');
+      expect(text(screen, '[data-chip="length:short,medium"]')).toBe('Moins de 30 h');
+      // A game has one length: the others keep their counts.
+      expect(choices(screen, 'lengths')[2]).toBe('Plus de 30 h 1');
+
+      await tick(harness, screen, 'lengths', 'unknown');
+      expect(names(screen)).toEqual(['Celeste', 'Hades', 'Pokémon']);
+      expect(text(screen, '[data-chip="length:unknown"]')).toBe('Durée inconnue');
+
+      const span = screen.querySelector<HTMLButtonElement>('[data-chip="length:short,medium"]')!;
+      expect(span.getAttribute('aria-label')).toBe('Retirer le filtre Moins de 30 h');
+      span.click();
+      await harness.fixture.whenStable();
+      expect(names(screen)).toEqual(['Pokémon']);
+      expect(TestBed.inject(Location).path()).toBe('/library?sort=name&length=unknown');
+    });
+
+    it('clears the ticks of one menu, and leaves the others', async () => {
+      const { harness, screen } = await open(
+        timed(),
+        'fr',
+        '/library?sort=name&genre=Indie&genre=Action&length=long',
+      );
+      expect(names(screen)).toEqual([]);
+
+      menu(screen, 'lengths').click();
+      await harness.fixture.whenStable();
+      panel(screen, 'lengths').querySelector<HTMLButtonElement>('[data-filter-clear]')!.click();
+      await harness.fixture.whenStable();
+      expect(names(screen)).toEqual(['Hades']);
+
+      menu(screen, 'themes').click();
+      await harness.fixture.whenStable();
+      panel(screen, 'themes').querySelector<HTMLButtonElement>('[data-filter-clear]')!.click();
+      await harness.fixture.whenStable();
+      expect(names(screen)).toEqual(['Celeste', 'Hades']);
+      expect(TestBed.inject(Location).path()).toBe('/library?sort=name&genre=Indie');
+    });
   });
 
   it('says that no game matches, and lists every game again once the search is cleared', async () => {

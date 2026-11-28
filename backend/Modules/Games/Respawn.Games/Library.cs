@@ -182,6 +182,8 @@ public sealed record OwnedEntry(
 /// <param name="Genres">Its genres, as the game database says them (<see cref="GameDataSaid.Genres"/>);
 /// null where they were not read, empty when the database gave none.</param>
 /// <param name="Themes">Its themes, likewise.</param>
+/// <param name="NormallySeconds">How long players say it takes at a normal pace, as the game database
+/// says it; null where it was not read or none was said.</param>
 public sealed record OwnedGame(
     Guid GameId,
     string? Name,
@@ -191,7 +193,8 @@ public sealed record OwnedGame(
     IReadOnlyList<OwnedEntry> Entries,
     string? CoverSource = null,
     IReadOnlyList<string>? Genres = null,
-    IReadOnlyList<string>? Themes = null);
+    IReadOnlyList<string>? Themes = null,
+    int? NormallySeconds = null);
 
 /// <summary>The orders a library is read in. Whatever the order, the games it cannot place (no name,
 /// no playtime said, never launched) come last.</summary>

@@ -2141,7 +2141,8 @@
           "entries",
           "cover_source",
           "genres",
-          "themes"
+          "themes",
+          "normally_seconds"
         ],
         "type": "object",
         "properties": {
@@ -2199,6 +2200,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "normally_seconds": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },

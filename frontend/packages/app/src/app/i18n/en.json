@@ -303,6 +303,18 @@
         "title": "Tracking began on {{ date }}",
         "text": "Steam does not give past sessions. respawn reads your playtime once a day: what you play will show here after the next reading."
       }
+    },
+    "backlog": {
+      "title": "Left to play",
+      "pace": "Never launched games, at IGDB’s normal pace",
+      "total": "about {{ time }}",
+      "ofOne": "for the only game never launched",
+      "ofMany": "across {{ known }} of the {{ count }} games never launched",
+      "bucketOne": "{{ count }} game · about {{ time }}",
+      "bucketMany": "{{ count }} games · about {{ time }}",
+      "unknownOne": "{{ count }} game · not counted",
+      "unknownMany": "{{ count }} games · not counted",
+      "bar": "Left to play, by length"
     }
   },
   "library": {
@@ -346,8 +358,39 @@
     "shownOne": "{{ shown }} game shown out of {{ total }}",
     "shownMany": "{{ shown }} games shown out of {{ total }}",
     "more": "Show more",
-    "genre": "Genre or theme: “{{ genre }}”",
-    "clearGenre": "All genres and themes"
+    "filters": {
+      "label": "Narrow by genre, theme or length",
+      "genres": "Genre",
+      "themes": "Theme",
+      "lengths": "Length",
+      "pickedOne": "{{ count }} picked",
+      "pickedMany": "{{ count }} picked",
+      "findGenres": "Find a genre",
+      "findThemes": "Find a theme",
+      "noGenres": "No genre of that name among these games.",
+      "noThemes": "No theme of that name among these games.",
+      "emptyGenres": "No genre among these games.",
+      "emptyThemes": "No theme among these games.",
+      "ruleTags": "Several: the games that have them all",
+      "ruleLengths": "Several: any of them",
+      "clear": "Clear",
+      "close": "Close",
+      "seeNone": "No game",
+      "seeOne": "See {{ count }} game",
+      "seeMany": "See {{ count }} games",
+      "remove": "Remove the filter {{ label }}",
+      "length": {
+        "short": "Under 10 h",
+        "medium": "10 to 30 h",
+        "long": "Over 30 h",
+        "unknown": "Unknown length"
+      },
+      "span": {
+        "shortMedium": "Under 30 h",
+        "mediumLong": "Over 10 h",
+        "known": "Known length"
+      }
+    }
   },
   "time": {
     "title": "Time",

@@ -1,0 +1,87 @@
+<rs-card class="flex flex-col gap-4" data-backlog *transloco="let t">
+  <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <h2 class="type-card-title">{{ t('home.backlog.title') }}</h2>
+    <span class="type-caption text-muted">{{ t('home.backlog.pace') }}</span>
+  </div>
+
+  <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <span class="type-figure tabular-nums" data-backlog-total>{{
+      t('home.backlog.total', { time: t('duration.hours', { count: total() }) })
+    }}</span>
+    <span class="text-muted tabular-nums" data-backlog-covers>{{
+      covers().one
+        ? t('home.backlog.ofOne')
+        : t('home.backlog.ofMany', { known: covers().known, count: covers().count })
+    }}</span>
+  </p>
+
+  <!-- The hours by length, one share each: a drawing, the rows under it say the same in words. -->
+  <div class="flex h-3.5 gap-1" aria-hidden="true">
+    @for (row of rows().known; track row.length) {
+      <span class="rounded-thumb" [class]="row.shade" [style.width.%]="row.share"></span>
+    }
+  </div>
+
+  <ul class="grid grid-cols-1 gap-x-3 gap-y-1 wide:grid-cols-2">
+    @for (row of rows().known; track row.length) {
+      <li class="flex">
+        <a
+          class="flex min-h-touch flex-1 items-center gap-2.5 rounded-row px-2.5 py-2 transition-colors duration-hover hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          routerLink="/library"
+          [queryParams]="row.words"
+          [attr.data-backlog-length]="row.length"
+        >
+          <span
+            class="size-3.5 shrink-0 rounded-thumb"
+            [class]="row.shade"
+            aria-hidden="true"
+          ></span>
+          <span class="flex flex-1 flex-col">
+            <span class="font-medium">{{ t('library.filters.length.' + row.length) }}</span>
+            <span class="type-caption text-muted tabular-nums">{{
+              t(row.one ? 'home.backlog.bucketOne' : 'home.backlog.bucketMany', {
+                count: row.count,
+                time: t('duration.hours', { count: row.time }),
+              })
+            }}</span>
+          </span>
+          <svg
+            lucideChevronRight
+            class="size-4 shrink-0 text-muted"
+            [strokeWidth]="2"
+            aria-hidden="true"
+          ></svg>
+        </a>
+      </li>
+    }
+    @if (rows().unknown; as unknown) {
+      <li class="flex">
+        <a
+          class="flex min-h-touch flex-1 items-center gap-2.5 rounded-row px-2.5 py-2 transition-colors duration-hover hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          routerLink="/library"
+          [queryParams]="unknown.words"
+          data-backlog-length="unknown"
+        >
+          <span
+            class="size-3.5 shrink-0 rounded-thumb border border-dashed border-control-line"
+            aria-hidden="true"
+          ></span>
+          <span class="flex flex-1 flex-col">
+            <span class="font-medium">{{ t('library.filters.length.unknown') }}</span>
+            <span class="type-caption text-muted tabular-nums">{{
+              t(unknown.one ? 'home.backlog.unknownOne' : 'home.backlog.unknownMany', {
+                count: unknown.count,
+              })
+            }}</span>
+          </span>
+          <svg
+            lucideChevronRight
+            class="size-4 shrink-0 text-muted"
+            [strokeWidth]="2"
+            aria-hidden="true"
+          ></svg>
+        </a>
+      </li>
+    }
+  </ul>
+</rs-card>

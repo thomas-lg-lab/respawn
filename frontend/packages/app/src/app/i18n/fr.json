@@ -303,6 +303,18 @@
         "title": "Le suivi a commencé le {{ date }}",
         "text": "Steam ne donne pas le détail des sessions passées. respawn relève vos temps de jeu une fois par jour : ce que vous jouez s’affichera ici après la prochaine lecture."
       }
+    },
+    "backlog": {
+      "title": "Reste à jouer",
+      "pace": "Les jeux jamais lancés, au rythme normal d’IGDB",
+      "total": "environ {{ time }}",
+      "ofOne": "pour le seul jeu jamais lancé",
+      "ofMany": "sur {{ known }} des {{ count }} jeux jamais lancés",
+      "bucketOne": "{{ count }} jeu · environ {{ time }}",
+      "bucketMany": "{{ count }} jeux · environ {{ time }}",
+      "unknownOne": "{{ count }} jeu · non compté",
+      "unknownMany": "{{ count }} jeux · non comptés",
+      "bar": "Reste à jouer, par durée"
     }
   },
   "library": {
@@ -346,8 +358,39 @@
     "shownOne": "{{ shown }} jeu affiché sur {{ total }}",
     "shownMany": "{{ shown }} jeux affichés sur {{ total }}",
     "more": "Afficher la suite",
-    "genre": "Genre ou thème : « {{ genre }} »",
-    "clearGenre": "Tous les genres et thèmes"
+    "filters": {
+      "label": "Restreindre par genre, thème ou durée",
+      "genres": "Genre",
+      "themes": "Thème",
+      "lengths": "Durée",
+      "pickedOne": "{{ count }} choisi",
+      "pickedMany": "{{ count }} choisis",
+      "findGenres": "Chercher un genre",
+      "findThemes": "Chercher un thème",
+      "noGenres": "Aucun genre de ce nom parmi ces jeux.",
+      "noThemes": "Aucun thème de ce nom parmi ces jeux.",
+      "emptyGenres": "Aucun genre parmi ces jeux.",
+      "emptyThemes": "Aucun thème parmi ces jeux.",
+      "ruleTags": "Plusieurs : les jeux qui les ont tous",
+      "ruleLengths": "Plusieurs : l’une ou l’autre",
+      "clear": "Effacer",
+      "close": "Fermer",
+      "seeNone": "Aucun jeu",
+      "seeOne": "Voir {{ count }} jeu",
+      "seeMany": "Voir {{ count }} jeux",
+      "remove": "Retirer le filtre {{ label }}",
+      "length": {
+        "short": "Moins de 10 h",
+        "medium": "10 à 30 h",
+        "long": "Plus de 30 h",
+        "unknown": "Durée inconnue"
+      },
+      "span": {
+        "shortMedium": "Moins de 30 h",
+        "mediumLong": "Plus de 10 h",
+        "known": "Durée connue"
+      }
+    }
   },
   "time": {
     "title": "Temps",

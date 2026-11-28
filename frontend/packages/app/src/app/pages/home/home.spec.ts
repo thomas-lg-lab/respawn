@@ -490,6 +490,97 @@ describe('Home', () => {
     // A draw is told what chance gives: never left so for the tests that follow.
     afterEach(() => vi.restoreAllMocks());
 
+    describe('what is left to play', () => {
+      const hours = 3600;
+      /** Games never launched, of each length, and one launched, whose duration counts for nothing. */
+      const backlog = () => [
+        game('Celeste', { normally_seconds: 8 * hours }),
+        game('Inside', { normally_seconds: 4 * hours }),
+        game('Hades', { normally_seconds: 22 * hours }),
+        game('Disco Elysium', { normally_seconds: 32 * hours }),
+        game('Pokémon', { normally_seconds: null }),
+        game('Factorio', { playtime_seconds: 360000, normally_seconds: 90 * hours }),
+      ];
+      const lengths = (screen: HTMLElement) =>
+        [...screen.querySelectorAll<HTMLAnchorElement>('[data-backlog-length]')].map((each) => ({
+          length: each.dataset['backlogLength'],
+          text: [...each.querySelectorAll('span > span')]
+            .map((part) => part.textContent.replace(/\s+/g, ' ').trim())
+            .join(' '),
+          href: each.getAttribute('href'),
+        }));
+
+      it('adds up the games never launched at a normal pace, by length, the unknown apart', async () => {
+        const { screen } = await open([linkedAccount()], { games: backlog() });
+
+        expect(text(screen, '[data-backlog] h2')).toBe('Reste à jouer');
+        expect(text(screen, '[data-backlog-total]')).toBe('environ 66 h');
+        expect(text(screen, '[data-backlog-covers]')).toBe('sur 4 des 5 jeux jamais lancés');
+        expect(lengths(screen)).toEqual([
+          {
+            length: 'short',
+            text: 'Moins de 10 h 2 jeux · environ 12 h',
+            href: '/library?filter=never&length=short',
+          },
+          {
+            length: 'medium',
+            text: '10 à 30 h 1 jeu · environ 22 h',
+            href: '/library?filter=never&length=medium',
+          },
+          {
+            length: 'long',
+            text: 'Plus de 30 h 1 jeu · environ 32 h',
+            href: '/library?filter=never&length=long',
+          },
+          {
+            length: 'unknown',
+            text: 'Durée inconnue 1 jeu · non compté',
+            href: '/library?filter=never&length=unknown',
+          },
+        ]);
+      });
+
+      it('counts apart, in games, a game said to take more than 200 hours', async () => {
+        const games = [...backlog(), game('Garry’s Mod', { normally_seconds: 33501 * hours })];
+        const { screen } = await open([linkedAccount()], { games });
+
+        expect(text(screen, '[data-backlog-total]')).toBe('environ 66 h');
+        expect(lengths(screen).at(-1)?.text).toBe('Durée inconnue 2 jeux · non comptés');
+      });
+
+      it('is not drawn when no game never launched has a known duration', async () => {
+        const games = backlog().map((each) => ({ ...each, normally_seconds: null }));
+        const { screen } = await open([linkedAccount()], { games });
+
+        expect(screen.querySelector('[data-backlog]')).toBeNull();
+      });
+
+      it('says as its figure the hours its rows say, each rounded on its own', async () => {
+        const games = [
+          game('Epic', { normally_seconds: 100.4 * hours }),
+          game('Tiny', { normally_seconds: 0.4 * hours }),
+        ];
+        const { screen } = await open([linkedAccount()], { games });
+
+        expect(lengths(screen).map((each) => each.text)).toEqual([
+          'Moins de 10 h 1 jeu · environ 1 h',
+          'Plus de 30 h 1 jeu · environ 100 h',
+        ]);
+        expect(text(screen, '[data-backlog-total]')).toBe('environ 101 h');
+      });
+
+      it('rounds a large figure, and leaves out a length no game is in', async () => {
+        const games = Array.from({ length: 40 }, (_, index) =>
+          game(`Game ${index}`, { normally_seconds: 33 * hours + 1200 }),
+        );
+        const { screen } = await open([linkedAccount()], { games });
+
+        expect(text(screen, '[data-backlog-total]')).toBe('environ 1 330 h');
+        expect(text(screen, '[data-backlog-covers]')).toBe('sur 40 des 40 jeux jamais lancés');
+        expect(lengths(screen).map((each) => each.length)).toEqual(['long']);
+      });
+    });
+
     it('puts forward the game played last, with what Steam says of it', async () => {
       const { screen } = await open([linkedAccount()], { games: played() });
 

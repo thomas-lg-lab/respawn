@@ -14,26 +14,34 @@ import { formatCount, isOne } from '@app/format/format';
 import { LanguageSetting } from '@app/i18n/language';
 import { GameGrid } from './components/game-grid';
 import { GameTable } from './components/game-table';
+import type { FilterChoice } from './components/filter-menu';
 import { LibraryToolbar } from './components/library-toolbar';
 import {
   LIBRARY_FILTER,
   LIBRARY_GENRE,
+  LIBRARY_LENGTH,
   LIBRARY_SEARCH,
   LIBRARY_SORT,
   type LibraryFilter,
+  type LibraryLength,
   type LibrarySort,
   type LibraryView,
   VIEWS,
+  LENGTHS,
   askedFilter,
-  askedGenre,
+  askedLengths,
   askedSort,
+  askedTags,
   filterCounts,
   kept,
+  lengthCounts,
   letters,
   longestPlaytime,
   matching,
   sorted,
-  withGenre,
+  tagCounts,
+  withLengths,
+  withTags,
 } from '@app/games/game-list';
 
 /** How many games a "show more" adds: a list of a thousand rows is not drawn at once. */
@@ -105,10 +113,12 @@ export class Library {
    */
   protected readonly filter = this.asked((words) => askedFilter(words.get(LIBRARY_FILTER)));
   /**
-   * A genre or a theme the library is narrowed to, as a game's page leads there: the games that
-   * bear it, the filters counted among them.
+   * The genres and themes the library is narrowed to, as the game database names them: the games
+   * that bear them all. A game's page leads there with one of its own.
    */
-  protected readonly genre = this.asked((words) => askedGenre(words.get(LIBRARY_GENRE)));
+  protected readonly tags = this.asked((words) => askedTags(words.getAll(LIBRARY_GENRE)));
+  /** The lengths the library is narrowed to: the games in any of them. */
+  protected readonly lengths = this.asked((words) => askedLengths(words.getAll(LIBRARY_LENGTH)));
   protected readonly sort = this.asked((words) => askedSort(words.get(LIBRARY_SORT)));
   protected readonly view = signal<LibraryView>(readChoice(VIEW_KEY, VIEWS) ?? 'covers');
   /**
@@ -129,22 +139,57 @@ export class Library {
    */
   private readonly steps = linkedSignal({
     source: () =>
-      [this.search(), this.genre(), this.filter(), this.sort(), this.arrivals()].join('\n'),
+      [
+        this.search(),
+        this.tags().join(','),
+        this.lengths().join(','),
+        this.filter(),
+        this.sort(),
+        this.arrivals(),
+      ].join('\n'),
     computation: () => keptSteps(this.location.getState()),
   });
 
   /** How many games the library holds, in the reader's language, and whether that is one. */
   protected readonly owned = computed(() => this.counted(this.games.data()?.length ?? 0));
 
-  /** What the search and the genre keep: the filters count among these. */
-  private readonly found = computed(() =>
-    withGenre(matching(this.games.data() ?? [], this.search()), this.genre()),
+  /** What the search keeps: everything else narrows it. */
+  private readonly found = computed(() => matching(this.games.data() ?? [], this.search()));
+  /** What the tags and the lengths keep of it: the filters count among these. */
+  protected readonly counts = computed(() =>
+    filterCounts(withLengths(withTags(this.found(), this.tags()), this.lengths())),
   );
-  protected readonly counts = computed(() => filterCounts(this.found()));
+  /** What the filter keeps; then the tags; then the lengths: the list. */
+  private readonly filtered = computed(() => kept(this.found(), this.filter()));
+  private readonly tagged = computed(() => withTags(this.filtered(), this.tags()));
+  private readonly narrowed = computed(() => withLengths(this.tagged(), this.lengths()));
 
   private readonly listed = computed(() =>
-    sorted(kept(this.found(), this.filter()), this.sort(), this.language.current()),
+    sorted(this.narrowed(), this.sort(), this.language.current()),
   );
+
+  /** Each genre or theme the games listed bear, with how many; the picked ones first. */
+  protected readonly genreChoices = computed(() => this.tagChoices('genres'));
+  protected readonly themeChoices = computed(() => this.tagChoices('themes'));
+  /**
+   * Each length with how many games the other filters keep in it: a game has one, so the
+   * lengths picked do not narrow one another's count.
+   */
+  protected readonly lengthChoices = computed<FilterChoice[]>(() => {
+    const language = this.language.current();
+    const counts = lengthCounts(this.tagged());
+    return LENGTHS.map((id) => ({
+      id,
+      label: id,
+      count: formatCount(counts[id], language),
+      picked: this.lengths().includes(id),
+    }));
+  });
+  /** How many games the list holds, as a phone's menu says it on its last button. */
+  protected readonly listedCount = computed(() => ({
+    ...this.counted(this.listed().length),
+    none: this.listed().length === 0,
+  }));
   protected readonly shown = computed(() => this.listed().slice(0, this.steps() * STEP));
   protected readonly more = computed(() => this.listed().length > this.shown().length);
 
@@ -169,9 +214,47 @@ export class Library {
     this.rewrite({ [LIBRARY_SEARCH]: null });
   }
 
-  /** Every genre again: the genre leaves the address, whatever else it says stays. */
-  protected clearGenre(): void {
-    this.rewrite({ [LIBRARY_GENRE]: null });
+  /** A genre or a theme picked, or unpicked: the address says it, the history gains no step. */
+  protected toggleTag(tag: string): void {
+    const tags = this.tags();
+    this.rewrite(
+      {
+        [LIBRARY_GENRE]: tags.includes(tag) ? tags.filter((each) => each !== tag) : [...tags, tag],
+      },
+      true,
+    );
+  }
+
+  /** Some of the genres and themes taken off. */
+  protected dropTags(dropped: readonly string[]): void {
+    this.rewrite({ [LIBRARY_GENRE]: this.tags().filter((tag) => !dropped.includes(tag)) }, true);
+  }
+
+  /** The genres, or the themes, all taken off. */
+  protected clearTags(kind: 'genres' | 'themes'): void {
+    const ofKind = new Set((this.games.data() ?? []).flatMap((game) => game[kind]));
+    this.dropTags(this.tags().filter((tag) => ofKind.has(tag)));
+  }
+
+  /** A length picked, or unpicked; the address keeps them in their own order. */
+  protected toggleLength(length: string): void {
+    const picked = LENGTHS.find((each) => each === length);
+    if (!picked) return;
+    const lengths = this.lengths();
+    this.rewrite(
+      {
+        [LIBRARY_LENGTH]: lengths.includes(picked)
+          ? lengths.filter((each) => each !== picked)
+          : LENGTHS.filter((each) => each === picked || lengths.includes(each)),
+      },
+      true,
+    );
+  }
+
+  /** Some of the lengths taken off. */
+  protected dropLengths(dropped: readonly LibraryLength[]): void {
+    const kept = this.lengths().filter((length) => !dropped.includes(length));
+    this.rewrite({ [LIBRARY_LENGTH]: kept }, true);
   }
 
   /**
@@ -190,10 +273,12 @@ export class Library {
    * This address with some of its words changed, `null` taking one off. Not with the words it
    * carried for one arrival, which the router still holds: they were said.
    */
-  private rewrite(words: Record<string, string | null>, inPlace = false): void {
+  private rewrite(words: Record<string, string | string[] | null>, inPlace = false): void {
     const there = this.router.parseUrl(withoutSaidOnce(this.router, this.router.url));
     there.queryParams = Object.fromEntries(
-      Object.entries({ ...there.queryParams, ...words }).filter(([, value]) => value !== null),
+      Object.entries({ ...there.queryParams, ...words }).filter(
+        ([, value]) => value !== null && !(Array.isArray(value) && value.length === 0),
+      ),
     );
     void this.router.navigateByUrl(
       there,
@@ -218,6 +303,17 @@ export class Library {
       ...(this.location.getState() as object | null),
       [STEPS_KEPT]: steps,
     });
+  }
+
+  /** The genres or the themes of the games listed, as a menu offers them. */
+  private tagChoices(kind: 'genres' | 'themes'): FilterChoice[] {
+    const language = this.language.current();
+    return tagCounts(this.narrowed(), this.games.data() ?? [], kind, this.tags()).map((each) => ({
+      id: each.tag,
+      label: each.tag,
+      count: formatCount(each.count, language),
+      picked: this.tags().includes(each.tag),
+    }));
   }
 
   /** One game or several is the language's to say: French counts none as one. */

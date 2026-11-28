@@ -171,7 +171,7 @@ public sealed class LibraryService(
             games.Count,
             [
                 .. page.Select(game => facts.GetValueOrDefault(game.GameId) is { } said
-                    ? game with { Genres = said.Genres, Themes = said.Themes }
+                    ? game with { Genres = said.Genres, Themes = said.Themes, NormallySeconds = said.TimeToBeat?.Normally }
                     : game with { Genres = [], Themes = [] }),
             ]);
     }
