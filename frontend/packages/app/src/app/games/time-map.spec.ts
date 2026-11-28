@@ -74,6 +74,7 @@ describe('the time map', () => {
       genres: [],
       themes: [],
       normally_seconds: null,
+      store_tags: [],
       ...values,
     });
     const now = Date.parse('2026-11-24T12:00:00Z');

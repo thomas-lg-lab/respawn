@@ -581,6 +581,111 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
         }
     }
 
+    public async Task<IReadOnlyList<string>> ListStoresWithStoreTagsDueAsync(IReadOnlyCollection<string> stores, DateTimeOffset askedBefore, CancellationToken ct)
+    {
+        string[] asked = [.. stores];
+        return await db.StoreEntries.AsNoTracking()
+            .Where(e => asked.Contains(e.Source) && (e.TagsAskedAt == null || e.TagsAskedAt < askedBefore))
+            .Select(e => e.Source)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<StoreTagEntry>> ListStoreTagsDueAsync(string store, DateTimeOffset askedBefore, int max, CancellationToken ct) =>
+        await db.StoreEntries.AsNoTracking()
+            .Where(e => e.Source == store && (e.TagsAskedAt == null || e.TagsAskedAt < askedBefore))
+            // Never asked first; then the oldest asked.
+            .OrderBy(e => e.TagsAskedAt != null)
+            .ThenBy(e => e.TagsAskedAt)
+            .ThenBy(e => e.Id)
+            .Take(max)
+            .Select(e => new StoreTagEntry(e.Id, e.ExternalId))
+            .ToListAsync(ct);
+
+    public async Task SetStoreTagsAsync(string store, IReadOnlyCollection<StoreTagName> names, IReadOnlyCollection<StoreEntryTags> tags, DateTimeOffset at, CancellationToken ct)
+    {
+        if (names.Count > 0)
+        {
+            // The store's names whole, in the place of those it gave before: a tag it renamed or dropped
+            // takes its new name, or none.
+            await db.StoreTagNames.Where(n => n.Source == store).ExecuteDeleteAsync(ct);
+            db.StoreTagNames.AddRange(
+                names
+                    .Where(name => name.Id.Length is > 0 and <= Limits.StoreTagId)
+                    .DistinctBy(name => name.Id, StringComparer.Ordinal)
+                    .SelectMany(name => name.Names
+                        .Where(said => StoreTagSchedule.Languages.Contains(said.Key) && said.Value.Length is > 0 and <= Limits.StoreTagName)
+                        .Select(said => new StoreTagNameRow { Source = store, TagId = name.Id, Language = said.Key, Name = said.Value, ReadAt = at })));
+        }
+
+        Guid[] ids = [.. tags.Select(entry => entry.StoreEntryId)];
+        var entries = await db.StoreEntries.Where(e => ids.Contains(e.Id) && e.Source == store).ToDictionaryAsync(e => e.Id, ct);
+        // Only the entries the store said something of lose the tags they had; the others keep theirs.
+        Guid[] replaced = [.. tags.Where(entry => entry.Tags is not null && entries.ContainsKey(entry.StoreEntryId)).Select(entry => entry.StoreEntryId)];
+        await db.StoreEntryTags.Where(t => replaced.Contains(t.StoreEntryId)).ExecuteDeleteAsync(ct);
+        foreach (var entry in tags)
+        {
+            if (!entries.TryGetValue(entry.StoreEntryId, out var row))
+            {
+                continue;
+            }
+
+            row.TagsAskedAt = at;
+            if (entry.Tags is null)
+            {
+                continue;
+            }
+
+            db.StoreEntryTags.AddRange(
+                entry.Tags
+                    .Where(tag => tag.Id.Length is > 0 and <= Limits.StoreTagId)
+                    .DistinctBy(tag => tag.Id, StringComparer.Ordinal)
+                    .Select((tag, rank) => new StoreEntryTagRow { StoreEntryId = row.Id, TagId = tag.Id, Weight = tag.Weight, Rank = rank }));
+        }
+
+        await SaveAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> FindStoreTagsAsync(IReadOnlyCollection<Guid> gameIds, CancellationToken ct)
+    {
+        Guid[] ids = [.. gameIds];
+        var rows = await (
+            from e in db.StoreEntries.AsNoTracking().Where(e => ids.Contains(e.GameId))
+            join t in db.StoreEntryTags.AsNoTracking() on e.Id equals t.StoreEntryId
+            select new { e.GameId, e.Source, t.TagId, t.Rank })
+            .ToListAsync(ct);
+
+        // Over the game's entries, a tag once, at its best place on any of them.
+        return rows
+            .GroupBy(row => row.GameId)
+            .ToDictionary(
+                game => game.Key,
+                game => (IReadOnlyList<string>)
+                [
+                    .. game
+                        .GroupBy(row => StoreTagKeys.Of(row.Source, row.TagId), StringComparer.Ordinal)
+                        .OrderBy(tag => tag.Min(row => row.Rank))
+                        .ThenBy(tag => tag.Key, StringComparer.Ordinal)
+                        .Select(tag => tag.Key),
+                ]);
+    }
+
+    public async Task<DateTimeOffset?> FindStoreTagNamesReadAtAsync(string store, CancellationToken ct) =>
+        await db.StoreTagNames.AsNoTracking().Where(n => n.Source == store).MaxAsync(n => (DateTimeOffset?)n.ReadAt, ct);
+
+    public async Task<IReadOnlyList<NamedStoreTag>> ListStoreTagNamesAsync(CancellationToken ct)
+    {
+        var rows = await db.StoreTagNames.AsNoTracking().ToListAsync(ct);
+        return
+        [
+            .. rows
+                .GroupBy(row => StoreTagKeys.Of(row.Source, row.TagId), StringComparer.Ordinal)
+                .Select(tag => new NamedStoreTag(
+                    tag.Key,
+                    tag.ToDictionary(row => row.Language, row => row.Name, StringComparer.Ordinal))),
+        ];
+    }
+
     /// <summary>An IGDB game's id as the table keeps it; null for what is not one.</summary>
     private static long? IgdbNumber(string id) =>
         long.TryParse(id, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number) && number > 0

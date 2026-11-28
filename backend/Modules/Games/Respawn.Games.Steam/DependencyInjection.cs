@@ -6,8 +6,8 @@ namespace Respawn.Games.Steam;
 
 public static class DependencyInjection
 {
-    /// <summary>The Steam connector, behind <see cref="ILibrarySource"/>, <see cref="IYearReviewSource"/>
-    /// and <see cref="ICoverSource"/>.
+    /// <summary>The Steam connector, behind <see cref="ILibrarySource"/>, <see cref="IYearReviewSource"/>,
+    /// <see cref="ICoverSource"/> and <see cref="IStoreTagSource"/>.
     /// Nothing is read here: the key is looked for when Steam is asked something. The host says where the
     /// key comes from and registers a <see cref="TimeProvider"/>.</summary>
     public static IServiceCollection AddSteamConnector(
@@ -20,6 +20,8 @@ public static class DependencyInjection
         services.AddSingleton<ILibrarySource>(provider => new SteamLibrarySource(provider.GetRequiredService<SteamClient>()));
         services.AddSingleton<IYearReviewSource>(provider => new SteamYearReviewSource(provider.GetRequiredService<SteamClient>()));
         services.AddSingleton<ICoverSource>(provider => new SteamCoverSource(provider.GetRequiredService<SteamClient>()));
+        services.AddSingleton<IStoreTagSource>(provider => new SteamTagSource(
+            provider.GetRequiredService<SteamClient>(), provider.GetRequiredService<TimeProvider>()));
 
         // A client per use: the one that carries a key, and the two that never do.
         foreach (var (name, address, connections) in new[]

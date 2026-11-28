@@ -1653,6 +1653,37 @@
           }
         }
       }
+    },
+    "/api/v1/store-tags": {
+      "get": {
+        "tags": [
+          "StoreTags"
+        ],
+        "summary": "The names of the tags the stores' players gave the games",
+        "description": "Every tag a library game may carry in store_tags, with its name as its store gives it in each language it was asked in. The same for every account: a store's tags are the instance's.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreTagsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2142,7 +2173,8 @@
           "cover_source",
           "genres",
           "themes",
-          "normally_seconds"
+          "normally_seconds",
+          "store_tags"
         ],
         "type": "object",
         "properties": {
@@ -2207,6 +2239,12 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "store_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2719,6 +2757,38 @@
           }
         }
       },
+      "StoreTagResponse": {
+        "required": [
+          "key",
+          "names"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "names": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "StoreTagsResponse": {
+        "required": [
+          "tags"
+        ],
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreTagResponse"
+            }
+          }
+        }
+      },
       "Stream": {
         "type": "string",
         "format": "binary"
@@ -2934,6 +3004,9 @@
     },
     {
       "name": "Me"
+    },
+    {
+      "name": "StoreTags"
     }
   ]
 }

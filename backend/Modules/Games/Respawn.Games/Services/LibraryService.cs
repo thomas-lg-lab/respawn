@@ -165,14 +165,17 @@ public sealed class LibraryService(
         games.Sort(Order(sort));
         List<OwnedGame> page = [.. games.Skip(offset).Take(limit)];
 
-        // What the game database says, read for the games of this page alone.
-        var facts = await catalogue.FindGameFactsAsync([.. page.Select(game => game.GameId)], ct);
+        // What the game database says, and the tags the stores' players gave, read for the games of this
+        // page alone.
+        Guid[] ids = [.. page.Select(game => game.GameId)];
+        var facts = await catalogue.FindGameFactsAsync(ids, ct);
+        var tags = await catalogue.FindStoreTagsAsync(ids, ct);
         return new LibraryPage(
             games.Count,
             [
-                .. page.Select(game => facts.GetValueOrDefault(game.GameId) is { } said
+                .. page.Select(game => (facts.GetValueOrDefault(game.GameId) is { } said
                     ? game with { Genres = said.Genres, Themes = said.Themes, NormallySeconds = said.TimeToBeat?.Normally }
-                    : game with { Genres = [], Themes = [] }),
+                    : game with { Genres = [], Themes = [] }) with { StoreTags = tags.GetValueOrDefault(game.GameId) ?? [] }),
             ]);
     }
 

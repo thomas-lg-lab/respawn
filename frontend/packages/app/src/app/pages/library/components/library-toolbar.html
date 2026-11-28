@@ -20,7 +20,7 @@
     }
   </div>
   <!-- The title the header's search asked for, with the way back to every game; the menus of
-       genres, themes and lengths, then what they keep as chips, each with its way off; then how
+       genres, themes, the stores' tags and lengths, then what they keep as chips, each with its way off; then how
        the games are shown and their order. -->
   <div class="flex min-h-touch flex-wrap items-center gap-x-4 gap-y-2">
     @if (search()) {
@@ -49,6 +49,13 @@
         [shown]="listed()"
         (toggled)="tagToggled.emit($event)"
         (cleared)="tagsCleared.emit('themes')"
+      />
+      <rs-filter-menu
+        kind="tags"
+        [choices]="storeTagChoices()"
+        [shown]="listed()"
+        (toggled)="storeTagToggled.emit($event)"
+        (cleared)="storeTagsCleared.emit()"
       />
       <rs-filter-menu
         kind="lengths"

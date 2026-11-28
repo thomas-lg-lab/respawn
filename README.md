@@ -61,8 +61,9 @@ and where your time went.
   random, and the latest days played; each figure, each length and the ranking open the library on the
   games they count.
 - **The library** as covers or as a list, each browser keeping its own choice, searched, filtered (launched,
-  recent, never launched), narrowed by genre, theme and length (several genres and themes keep the games
-  that have them all, several lengths any of them; a game's page leads there with one of its tags) and
+  recent, never launched), narrowed by genre, theme, Steam's tags and length (the tags Steam's players gave,
+  named in your language: "Souls-like", "Local Co-Op"; several genres, themes or tags keep the games that have
+  them all, several lengths any of them; a game's page leads there with one of its genres) and
   sorted, all of it kept on its address; **the Time tab**, the time
   map in full.
 - **Covers** wherever a game is shown: Steam's, IGDB's where Steam has none, and for each account the one
@@ -281,7 +282,7 @@ part of the API.
 | `DELETE /api/v1/linked-accounts/{id}` | Unlinks a store account and forgets everything that was read from it |
 | `PUT /api/v1/linked-accounts/{id}/key` | Gives the user's own key for that store (`{"key": "..."}`): from then on the only key that reads the account, with no fallback to the instance's; stored encrypted, never answered. 400 `invalid_key` when it is not in the shape of the store's keys, 503 `keys_unavailable` when the instance has no encryption key. Rate-limited with `DELETE` in a bucket of their own |
 | `DELETE /api/v1/linked-accounts/{id}/key` | Takes the user's own key away: the instance's key reads the account again |
-| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists, and the game's `genres` and `themes` as IGDB names them (empty while IGDB says none) and `normally_seconds`, how long it takes at a normal pace (null while IGDB says none); `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
+| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists, and the game's `genres` and `themes` as IGDB names them (empty while IGDB says none) and `normally_seconds`, how long it takes at a normal pace (null while IGDB says none), and `store_tags`, the tags its stores' players gave it, by key (`steam:1628`), the heaviest first; `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 | `GET /api/v1/library/stats` | The same library in figures: games, launched and never launched, missing (flagged on every entry), total and recent playtime, games played lately, and `tracking_since`, the earliest reading that listed one of them. What a store said was played lately stops counting once the store's window has passed since that reading (Steam: two weeks), here and in the library |
 | `GET /api/v1/library/history` | What was played day by day since `tracking_since`: for each day, the games played and their `seconds`, the earliest day first. A store gives totals and no history, so a day's time is the growth of those totals between two readings in a row, dated (UTC) by the day the store says the game was last played when that lies between the two, and otherwise by the later reading: a reading of the small hours holds the evening before it, which stays in its own day, month and year. Totals say no more than that: what was played over several days between two readings, or across midnight, is all of the day it ended; the total a game had at its first reading is not split over time, and days and games with nothing played are left out. `from` and `to` (`YYYY-MM-DD`, both included) ask for a part of it |
 | `GET /api/v1/library/years` | What was played year by year (UTC), the earliest first: for each year its `seconds`, its `source`, the days it covers (`first_day`, `last_day`) and `whole`, whether that is all of it. A year is counted from the store's own review (`review`: Steam's Year in Review, every month of it, from 2022 on) when every linked account has one, and otherwise from the daily readings (`readings`, from the first reading on); a year before the first reading, from the reviews of the accounts that have one. A review counts every game played, owned or not; the readings count the games of the library |
@@ -295,6 +296,7 @@ part of the API.
 | `DELETE /api/v1/games/{id}/cover-choice` | Goes back to the game's own cover. Answers the game's `covers` |
 | `GET /api/v1/games/{id}/months` | The months that game was played in, the earliest first, each with its `seconds` and its `source`, counted as in `/library/years`: the months of a year add up to the game's part of that year there. A month with nothing played is left out |
 | `GET /api/v1/games/{id}/cover` | A game's cover, as an image (JPEG, PNG or WebP). With `RESPAWN_DATA_DIR` set, the instance keeps each cover it serves: fetched from Steam, or from IGDB when Steam has none, the first time it is asked for, then served from the file with an `ETag` (`304` to a browser that holds it), fetched again once Steam's store said again where it is, and still served when Steam does not answer or no longer has it. Without it, the cover is fetched from its source at each request. `Cache-Control` lets the browser keep it for a week (an hour until Steam's store has said where the cover is, a few minutes after the first sync). `404` with `no_cover` when the game has none, `503` with `cover_unavailable` when its source does not answer, `429` for a client that asks for too many (2000 in a row, then 600 a minute). With `source` (`steam`, `igdb`), the cover of that source alone, as a choice names it, kept apart; the game's own when that source has none or does not answer, which the browser keeps an hour only. For any signed-in account and any game |
+| `GET /api/v1/store-tags` | The names of the tags the library's games carry in `store_tags`, each `key` with its `names` by language (`en`, `fr`) as its store gives them. The same for every signed-in account |
 | `GET /api/v1/credits` | The sources the instance credits, each with its `label` and the `url` it leads to: IGDB once the instance has access to it or holds anything it said, as its terms ask. The front says it under the settings |
 
 Errors always have the same shape, whatever answered:
@@ -409,8 +411,24 @@ to finish it.
   can be narrowed to a genre or a theme. When two store games of one game are known to IGDB, the page shows
   what IGDB says of the first, in the order its covers are looked for, never fields of both.
 
-These four schedules (the sync, the yearly reviews, the covers, IGDB) live in the app's process, which is
-one more reason the app runs as one replica.
+### The tags Steam's players gave the games
+
+Apart from the sync, every five minutes the app asks Steam's store for the tags of up to 200 games of the
+catalogue, never asked first, then the ones asked the longest ago: each game's twenty tags as its store page
+shows them, the heaviest first, and the names of Steam's tags in English and in French. Neither question
+takes a key, and neither is in Valve's documentation (the store's own pages ask them); the Steam Web API's
+terms apply.
+
+- **Once for the instance**, by store game, whoever owns it; asked again after 30 days, the new answer taking
+  the place of the old.
+- **A failure** is said once in the log and tried again an hour later; nothing of the batch it failed on is
+  kept, and the sync never waits for it. An answer that names none of the games asked about is a failure,
+  not games without tags.
+- Each answer is kept as it came, like a reading. The library is narrowed by them (`store_tags` on each game,
+  their names at `GET /api/v1/store-tags`).
+
+These five schedules (the sync, the yearly reviews, the covers, IGDB, the stores' tags) live in the app's
+process, which is one more reason the app runs as one replica.
 
 A breaking change to these routes means a new version beside `/api/v1`, not a change to it.
 

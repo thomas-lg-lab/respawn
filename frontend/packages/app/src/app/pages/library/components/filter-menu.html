@@ -46,8 +46,8 @@
           type="search"
           class="h-10 w-full rounded-field border border-control-line bg-bg ps-9 pe-3 type-control"
           data-filter-find
-          [attr.aria-label]="t(kind() === 'genres' ? 'findGenres' : 'findThemes')"
-          [attr.placeholder]="t(kind() === 'genres' ? 'findGenres' : 'findThemes')"
+          [attr.aria-label]="t(words().find)"
+          [attr.placeholder]="t(words().find)"
           [value]="typed()"
           (input)="find($event)"
         />
@@ -75,11 +75,7 @@
         </li>
       } @empty {
         <li class="px-2.5 py-3 type-caption text-muted" data-no-choice>
-          {{
-            typed().trim()
-              ? t(kind() === 'genres' ? 'noGenres' : 'noThemes')
-              : t(kind() === 'genres' ? 'emptyGenres' : 'emptyThemes')
-          }}
+          {{ typed().trim() ? t(words().none) : t(words().empty) }}
         </li>
       }
     </ul>

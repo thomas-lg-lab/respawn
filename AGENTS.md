@@ -42,11 +42,13 @@
   text, is asked on a schedule of its own, `CoverScheduler` in `.Api`, never by the sync; the cover an
   owner chooses among a game's sources is kept in a slot of its own, `ImageSlots`), and what IGDB says
   of each game, whose cover a game shows when its store has none (`GameDataService`, and `GameDataScheduler` in `.Api`: a few games a turn, kept once for the
-  instance, a store game pointing to its IGDB game and never merged for it), and what is read back of it all: one game as an owner sees it
+  instance, a store game pointing to its IGDB game and never merged for it), and the tags the stores' players
+  gave each game, with their names in each language of the front (`StoreTagService`, and `StoreTagScheduler` in
+  `.Api`: a few games a turn, kept once for the instance, by store entry), and what is read back of it all: one game as an owner sees it
   (`GameService`), and the time played by year, by month of a game and by game of a month, counted by one
   rule (`PlaytimeService`); and its connectors, one
   project per outside source behind a port of the core (`Respawn.Games.Steam`: the Steam Web API, and
-  with no key Steam's store and its image host; `Respawn.Games.Igdb`: IGDB, with the token Twitch gives the
+  with no key Steam's store (the covers' places, the players' tags) and its image host; `Respawn.Games.Igdb`: IGDB, with the token Twitch gives the
   instance, optional), tested
   against recorded answers under `Recorded/`, never against the source.
   One test project per module (`Modules/<Name>/Respawn.<Name>.Tests`), `Respawn.Tests` for the host and the

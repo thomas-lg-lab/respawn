@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { type LibraryGame, PROVIDER_OUTCOME } from '@respawn/data';
+import { type LibraryGame, PROVIDER_OUTCOME, type StoreTag } from '@respawn/data';
 import { TEST_LINKED_ACCOUNT, TEST_SYNC_RUN } from '@respawn/data/testing';
 import { QueryClient } from '@tanstack/angular-query';
 import {
@@ -462,6 +462,76 @@ describe('Library', () => {
       await harness.fixture.whenStable();
       expect(names(screen)).toEqual(['Pokémon']);
       expect(TestBed.inject(Location).path()).toBe('/library?sort=name&length=unknown');
+    });
+
+    it('lists the stores’ tags in the reader’s language and keeps the games that bear all those ticked', async () => {
+      const tagged = [
+        game('Hollow Knight', { store_tags: ['steam:1628', 'steam:29482'] }),
+        game('Sekiro', { store_tags: ['steam:29482', 'steam:4026'] }),
+        game('Portal 2', { store_tags: ['steam:1664'] }),
+      ];
+      const tagNames: StoreTag[] = [
+        { key: 'steam:29482', names: { en: 'Souls-like', fr: 'De type Souls' } },
+        { key: 'steam:1628', names: { en: 'Metroidvania', fr: 'Metroidvania' } },
+        { key: 'steam:1664', names: { en: 'Puzzle' } },
+      ];
+      const { harness, screen } = await openWithGames('/library?sort=name', tagged, 'fr', tagNames);
+
+      menu(screen, 'tags').click();
+      await harness.fixture.whenStable();
+      // In French where the store gave it, in English otherwise, by its key when it gave none.
+      expect(choices(screen, 'tags')).toEqual([
+        'De type Souls 2',
+        'Metroidvania 1',
+        'Puzzle 1',
+        'steam:4026 1',
+      ]);
+
+      await tick(harness, screen, 'tags', 'steam:29482');
+      expect(names(screen)).toEqual(['Hollow Knight', 'Sekiro']);
+      expect(TestBed.inject(Location).path()).toBe('/library?sort=name&tag=steam:29482');
+      expect(text(screen, '[data-chip="store-tag:steam:29482"]')).toBe('De type Souls');
+
+      // A second one narrows the list further: the games that have both.
+      await tick(harness, screen, 'tags', 'steam:1628');
+      expect(names(screen)).toEqual(['Hollow Knight']);
+      expect(text(menu(screen, 'tags'), '[data-picked]')).toBe('2');
+
+      const chip = screen.querySelector<HTMLButtonElement>('[data-chip="store-tag:steam:29482"]')!;
+      expect(chip.getAttribute('aria-label')).toBe('Retirer le filtre De type Souls');
+      chip.click();
+      await harness.fixture.whenStable();
+      expect(names(screen)).toEqual(['Hollow Knight']);
+      expect(TestBed.inject(Location).path()).toBe('/library?sort=name&tag=steam:1628');
+
+      panel(screen, 'tags').querySelector<HTMLButtonElement>('[data-filter-clear]')!.click();
+      await harness.fixture.whenStable();
+      expect(names(screen)).toEqual(['Hollow Knight', 'Portal 2', 'Sekiro']);
+      expect(TestBed.inject(Location).path()).toBe('/library?sort=name');
+    });
+
+    it('finds a store’s tag by a part of its name', async () => {
+      const tagged = [game('Sekiro', { store_tags: ['steam:29482', 'steam:4026'] })];
+      const { harness, screen } = await openWithGames('/library?sort=name', tagged, 'fr', [
+        { key: 'steam:29482', names: { fr: 'De type Souls' } },
+        { key: 'steam:4026', names: { fr: 'Impitoyable' } },
+      ]);
+      menu(screen, 'tags').click();
+      await harness.fixture.whenStable();
+
+      const field = panel(screen, 'tags').querySelector<HTMLInputElement>('[data-filter-find]')!;
+      expect(field.getAttribute('placeholder')).toBe('Chercher un tag');
+      field.value = 'souls';
+      field.dispatchEvent(new Event('input'));
+      await harness.fixture.whenStable();
+      expect(choices(screen, 'tags')).toEqual(['De type Souls 1']);
+
+      field.value = 'zzz';
+      field.dispatchEvent(new Event('input'));
+      await harness.fixture.whenStable();
+      expect(text(panel(screen, 'tags'), '[data-no-choice]')).toBe(
+        'Aucun tag de ce nom parmi ces jeux.',
+      );
     });
 
     it('clears the ticks of one menu, and leaves the others', async () => {

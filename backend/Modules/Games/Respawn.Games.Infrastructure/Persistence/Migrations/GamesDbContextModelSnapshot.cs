@@ -17,7 +17,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261128001409_StoreEntriesIgdbIndex";
+    public override string LastMigrationId => "20261128171838_StoreTagNamesReadAt";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -519,6 +519,10 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("character varying(32)")
                     .HasColumnName("source");
 
+                b.Property<DateTimeOffset?>("TagsAskedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("tags_asked_at");
+
                 b.HasKey("Id")
                     .HasName("pk_store_entries");
 
@@ -535,7 +539,71 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("Source", "IgdbAskedAt")
                     .HasDatabaseName("ix_store_entries_source_igdb_asked_at");
 
+                b.HasIndex("Source", "TagsAskedAt")
+                    .HasDatabaseName("ix_store_entries_source_tags_asked_at");
+
                 b.ToTable("store_entries", "games");
+            });
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.StoreEntryTagRow", b =>
+            {
+                b.Property<Guid>("StoreEntryId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("store_entry_id");
+
+                b.Property<string>("TagId")
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("tag_id");
+
+                b.Property<int>("Rank")
+                    .HasColumnType("integer")
+                    .HasColumnName("rank");
+
+                b.Property<int>("Weight")
+                    .HasColumnType("integer")
+                    .HasColumnName("weight");
+
+                b.HasKey("StoreEntryId", "TagId")
+                    .HasName("pk_store_entry_tags");
+
+                b.ToTable("store_entry_tags", "games", t =>
+                    {
+                        t.HasCheckConstraint("ck_store_entry_tags_rank", "rank >= 0");
+                    });
+            });
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.StoreTagNameRow", b =>
+            {
+                b.Property<string>("Source")
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("source");
+
+                b.Property<string>("TagId")
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("tag_id");
+
+                b.Property<string>("Language")
+                    .HasMaxLength(8)
+                    .HasColumnType("character varying(8)")
+                    .HasColumnName("language");
+
+                b.Property<string>("Name")
+                    .IsRequired()
+                    .HasMaxLength(100)
+                    .HasColumnType("character varying(100)")
+                    .HasColumnName("name");
+
+                b.Property<DateTimeOffset>("ReadAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("read_at");
+
+                b.HasKey("Source", "TagId", "Language")
+                    .HasName("pk_store_tag_names");
+
+                b.ToTable("store_tag_names", "games");
             });
 
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.SyncRunRow", b =>
@@ -738,6 +806,16 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .OnDelete(DeleteBehavior.Restrict)
                     .IsRequired()
                     .HasConstraintName("fk_store_entries_games_game_id");
+            });
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.StoreEntryTagRow", b =>
+            {
+                b.HasOne("Respawn.Games.Infrastructure.Persistence.StoreEntryRow", null)
+                    .WithMany()
+                    .HasForeignKey("StoreEntryId")
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired()
+                    .HasConstraintName("fk_store_entry_tags_store_entries_store_entry_id");
             });
 
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.SyncRunRow", b =>
