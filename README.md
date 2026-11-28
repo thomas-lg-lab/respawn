@@ -85,14 +85,14 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next**: a first try at searching your own backlog by what you feel like playing.
-2. **Statuses and ratings** for each game.
-3. **Tokens for the public API.**
-4. **More stores, next-game suggestions, sharing with a group.**
-
-Also planned, with nothing to see: what each game gained each day, kept in a small table when a sync records it
-(about one row per game and day played), so that the history and the years read those rows instead of comparing
-every reading again at each request.
+1. **Next: a faster history.** Each sync will also keep what each game gained that day, one row per game and
+   day played, filled from the readings already kept. The history, the years and the months will read those rows
+   instead of comparing every reading at each request, which gets slower with every day kept. Nothing changes on
+   screen.
+2. **A first try at searching your own backlog** by what you feel like playing.
+3. **Statuses and ratings** for each game.
+4. **Tokens for the public API.**
+5. **More stores, next-game suggestions, sharing with a group.**
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
