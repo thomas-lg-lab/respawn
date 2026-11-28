@@ -11,7 +11,7 @@ using static Respawn.Games.Tests.Support.Fixtures;
 namespace Respawn.Games.Tests;
 
 /// <summary>The tags Steam's players gave the catalogue's games: asked of Steam's store on a schedule of their
-/// own, a few games a turn, with the tags' names in each language of the app, and kept once for the whole
+/// own, a few games a turn, with the tags' names in English, and kept once for the whole
 /// instance. Steam answers from memory, and a turn of the schedule is run by hand.</summary>
 public sealed class StoreTagTests
 {
@@ -28,12 +28,12 @@ public sealed class StoreTagTests
 
         Assert.Equal(1, await TagsAsync(app));
 
-        // The names in English and French, then the tags of every game at once; never with a key.
+        // The names in English, then the tags of every game at once; never with a key.
         Assert.Equal(
-            ["/IStoreService/GetTagList/v1/", "/IStoreService/GetTagList/v1/", "/IStoreBrowseService/GetItems/v1/"],
+            ["/IStoreService/GetTagList/v1/", "/IStoreBrowseService/GetItems/v1/"],
             steam.StoreRequests.Select(request => request.Address.AbsolutePath));
-        Assert.Equal(["?language=english", "?language=french"], steam.StoreRequests.Take(2).Select(request => request.Address.Query));
-        var asked = Uri.UnescapeDataString(steam.StoreRequests[2].Address.Query);
+        Assert.Equal("?language=english", steam.StoreRequests[0].Address.Query);
+        var asked = Uri.UnescapeDataString(steam.StoreRequests[1].Address.Query);
         Assert.All(AppIds, appId => Assert.Contains($"{{\"appid\":{appId}}}", asked, StringComparison.Ordinal));
         Assert.Contains("\"include_tag_count\":20", asked, StringComparison.Ordinal);
         Assert.All(steam.StoreRequests, request => Assert.Null(request.Key));
@@ -52,15 +52,15 @@ public sealed class StoreTagTests
         Assert.False(tags.ContainsKey(entries["3999990"]));
         Assert.All(await db.StoreEntries.AsNoTracking().ToListAsync(), entry => Assert.Equal(clock.Now, entry.TagsAskedAt));
 
-        // The names, in both languages, once for the instance.
+        // The names, in English alone, once for the instance.
         var names = await db.StoreTagNames.AsNoTracking().ToDictionaryAsync(name => (name.TagId, name.Language), name => name.Name);
-        Assert.Equal(14, names.Count);
-        Assert.Equal(("Puzzle", "Casse-tête"), (names[("1664", "en")], names[("1664", "fr")]));
+        Assert.Equal(7, names.Count);
+        Assert.Equal("Puzzle", names[("1664", "en")]);
         Assert.All(await db.StoreTagNames.AsNoTracking().ToListAsync(), name => Assert.Equal("steam", name.Source));
 
         // The answers, untouched and the instance's, not an account's.
         var snapshots = await db.RawSnapshots.AsNoTracking().OrderBy(s => s.Kind).ToListAsync();
-        Assert.Equal(["store-tags", "tag-names-en", "tag-names-fr"], snapshots.Select(s => s.Kind));
+        Assert.Equal(["store-tags", "tag-names-en"], snapshots.Select(s => s.Kind));
         Assert.All(snapshots, snapshot => Assert.Equal(("steam", (Guid?)null), (snapshot.Source, snapshot.LinkedAccountId)));
         Assert.Equal(FakeSteam.Recorded("store-tags.json"), snapshots[0].Payload);
 
@@ -88,12 +88,12 @@ public sealed class StoreTagTests
         Assert.Equal(["steam:1663", "steam:19", "steam:3942", "steam:3839"], Words(library["Half-Life 2"].GetProperty("store_tags")));
         Assert.Empty(library["Portal"].GetProperty("store_tags").EnumerateArray());
 
-        // Every tag named, with its name in each language.
+        // Every tag named, in English alone.
         var named = (await browser.GetAsync("/api/v1/store-tags").JsonAsync()).GetProperty("tags").EnumerateArray()
             .ToDictionary(tag => tag.GetProperty("key").GetString()!, tag => tag.GetProperty("names"));
         Assert.Equal(7, named.Count);
-        Assert.Equal("Casse-tête", named["steam:1664"].GetProperty("fr").GetString());
         Assert.Equal("Puzzle", named["steam:1664"].GetProperty("en").GetString());
+        Assert.False(named["steam:1664"].TryGetProperty("fr", out _));
         Assert.False(named.ContainsKey("steam:5923"));
 
         // Only for someone signed in.
@@ -112,7 +112,7 @@ public sealed class StoreTagTests
         // Nothing is due until then.
         clock.Advance(TimeSpan.FromDays(30) - TimeSpan.FromMinutes(1));
         Assert.Equal(0, await TagsAsync(app));
-        Assert.Equal(3, steam.StoreRequests.Count);
+        Assert.Equal(2, steam.StoreRequests.Count);
 
         // A month on, players tagged Portal 2 otherwise: its tags are those of the new answer alone.
         clock.Advance(TimeSpan.FromMinutes(2));
@@ -227,24 +227,24 @@ public sealed class StoreTagTests
         await AddGamesAsync(app, AppIds);
         Assert.Equal(1, await TagsAsync(app));
         int NameQuestions() => steam.StoreRequests.Count(request => request.Address.AbsolutePath.Contains("GetTagList", StringComparison.Ordinal));
-        Assert.Equal(2, NameQuestions());
+        Assert.Equal(1, NameQuestions());
 
         // A game bought since: its tags alone are asked, with the names the catalogue has.
         await AddGamesAsync(app, ["70"]);
         clock.Advance(TimeSpan.FromMinutes(5));
         Assert.Equal(1, await TagsAsync(app));
-        Assert.Equal(2, NameQuestions());
+        Assert.Equal(1, NameQuestions());
 
         // A day on, the names are asked again with the next game's tags, and replace those kept.
         await AddGamesAsync(app, ["80"]);
         clock.Advance(TimeSpan.FromDays(1));
         Assert.Equal(1, await TagsAsync(app));
-        Assert.Equal(4, NameQuestions());
+        Assert.Equal(2, NameQuestions());
 
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
         Assert.All(await db.StoreTagNames.AsNoTracking().ToListAsync(), name => Assert.Equal(clock.Now, name.ReadAt));
-        Assert.Equal(4, await db.RawSnapshots.CountAsync(s => s.Kind.StartsWith("tag-names")));
+        Assert.Equal(2, await db.RawSnapshots.CountAsync(s => s.Kind.StartsWith("tag-names")));
     }
 
     [Fact]
@@ -268,8 +268,8 @@ public sealed class StoreTagTests
         // Each name once, however many questions the turn asked.
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
-        Assert.Equal(2, steam.StoreRequests.Count(request => request.Address.AbsolutePath.Contains("GetTagList", StringComparison.Ordinal)));
-        Assert.Equal(2, await db.RawSnapshots.CountAsync(s => s.Kind.StartsWith("tag-names")));
+        Assert.Equal(1, steam.StoreRequests.Count(request => request.Address.AbsolutePath.Contains("GetTagList", StringComparison.Ordinal)));
+        Assert.Equal(1, await db.RawSnapshots.CountAsync(s => s.Kind.StartsWith("tag-names")));
     }
 
     /// <summary>Steam's store answering the questions of the tags as recorded.</summary>
@@ -279,7 +279,7 @@ public sealed class StoreTagTests
     /// <paramref name="items"/>, or the recorded tags, for the games.</summary>
     private static (HttpStatusCode, string) Answer(Uri address, string? items) =>
         address.AbsolutePath.Contains("GetTagList", StringComparison.Ordinal)
-            ? (HttpStatusCode.OK, FakeSteam.Recorded(address.Query.Contains("french", StringComparison.Ordinal) ? "tag-names-french.json" : "tag-names-english.json"))
+            ? (HttpStatusCode.OK, FakeSteam.Recorded("tag-names-english.json"))
             : (HttpStatusCode.OK, items ?? FakeSteam.Recorded("store-tags.json"));
 
     /// <summary>The app ids a question about the games names.</summary>

@@ -8,7 +8,7 @@ namespace Respawn.Games.Steam;
 /// <summary>
 /// The tags Steam's players gave its games, as the store shows them on a game's page: each game's twenty
 /// heaviest, with their weights (<c>IStoreBrowseService/GetItems</c> with <c>include_tag_count</c>), and
-/// their names in each of the app's languages (<c>IStoreService/GetTagList</c>). Neither takes a key, and
+/// their names in the app's languages, English alone today (<c>IStoreService/GetTagList</c>). Neither takes a key, and
 /// none is sent: the store's tags are public. Neither is in Valve's documentation; the store's own pages
 /// ask them, and the Steam Web API's terms apply.
 ///
@@ -24,7 +24,6 @@ internal sealed class SteamTagSource(SteamClient steam, TimeProvider clock) : IS
     private static readonly IReadOnlyDictionary<string, string> SteamLanguages = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["en"] = "english",
-        ["fr"] = "french",
     };
 
     public string Source => "steam";
