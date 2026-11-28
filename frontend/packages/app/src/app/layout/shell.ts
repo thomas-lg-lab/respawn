@@ -1,14 +1,7 @@
 import { Location } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  type IsActiveMatchOptions,
-  NavigationEnd,
-  Router,
-  RouterLink,
-  RouterLinkActive,
-  RouterOutlet,
-} from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { TranslocoDirective } from '@jsverse/transloco';
 import {
@@ -27,27 +20,27 @@ import { AccountMenu, type LinkableProvider } from '@app/components/account-menu
 import { GameSearch } from '@app/components/game-search/game-search';
 import { failureKey } from '@app/errors/failure-message';
 import { LIBRARY_SEARCH } from '@app/games/game-list';
-import { cameFrom, gamePage, originOf } from '@app/games/game-page';
+import {
+  ORIGINS,
+  type Origin,
+  cameFrom,
+  cameThroughGame,
+  gamePage,
+  gamePageOrigin,
+  isGamePage,
+  originOf,
+} from '@app/games/game-page';
 import { type Language, LanguageSetting } from '@app/i18n/language';
 import { saidOnce, withoutSaidOnce } from '@app/session/said-once';
 
-/** The screens a tab leads to, in the order of the tabs, each with the key of its name. */
-const TABS = [
-  { path: '/', label: 'nav.home' },
-  { path: '/library', label: 'nav.library' },
-  { path: '/time', label: 'nav.time' },
-] as const;
-
-/**
- * A tab is the current one on its own address, whatever a return from a provider or from
- * Steam wrote after it.
- */
-const SAME_PATH: IsActiveMatchOptions = {
-  paths: 'exact',
-  queryParams: 'ignored',
-  matrixParams: 'ignored',
-  fragment: 'ignored',
-};
+/** The screens a tab leads to, in the order of the tabs, each with its address and the key of its name. */
+const TABS = (
+  [
+    { screen: 'home', label: 'nav.home' },
+    { screen: 'library', label: 'nav.library' },
+    { screen: 'time', label: 'nav.time' },
+  ] as const
+).map((tab) => ({ ...tab, path: ORIGINS[tab.screen] }));
 
 /**
  * The frame of the signed-in screens: the header, with the tabs, the search and the account
@@ -64,7 +57,6 @@ const SAME_PATH: IsActiveMatchOptions = {
   selector: 'rs-shell',
   imports: [
     RouterLink,
-    RouterLinkActive,
     RouterOutlet,
     TranslocoDirective,
     Banner,
@@ -83,12 +75,12 @@ export class Shell {
   private readonly gameQueries = inject(GameQueries);
   private readonly library = inject(LibraryQueries);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
 
   protected readonly display = inject(DisplaySettings);
   protected readonly language = inject(LanguageSetting);
   protected readonly failureKey = failureKey;
   protected readonly tabs = TABS;
-  protected readonly samePath = SAME_PATH;
 
   protected readonly me = injectQuery(() => this.queries.me());
   protected readonly signingOut = injectMutation(() => this.queries.signOut());
@@ -121,6 +113,24 @@ export class Shell {
   private readonly address = signal(this.router.url);
 
   /**
+   * On a game's page, the screen it was reached from, as its navigation said it: the page's back
+   * link names the same one. Read at each navigation, as the address is.
+   */
+  private readonly gameOrigin = signal(this.gameOriginOf(this.router.url));
+
+  /**
+   * What each tab says of the screen, as `aria-current`: `page` on the screen's own address,
+   * whatever a return from a provider or from Steam wrote after it; on a game's page, `true`
+   * on the tab of the screen it came from, a place the page stands under and is not.
+   */
+  protected readonly currentTab = computed((): Partial<Record<Origin, 'page' | 'true'>> => {
+    const screen = originOf(this.address());
+    if (screen) return { [screen]: 'page' };
+    const game = this.gameOrigin();
+    return game ? { [game]: 'true' } : {};
+  });
+
+  /**
    * What came of a link through a provider, as the API wrote it on the address it came back to.
    * Said until the visitor moves on, and once: the word is taken off the browser's address.
    */
@@ -141,7 +151,7 @@ export class Shell {
   });
 
   constructor() {
-    saidOnce(inject(Location), this.router, PROVIDER_OUTCOME);
+    saidOnce(this.location, this.router, PROVIDER_OUTCOME);
 
     // Watched here and shown by the screens that need them: asked again when the window is
     // back in front and while a sync is awaited, on the library and the time map too.
@@ -156,6 +166,7 @@ export class Shell {
       .subscribe((event) => {
         this.savingSettings.reset();
         this.address.set(event.urlAfterRedirects);
+        this.gameOrigin.set(this.gameOriginOf(event.urlAfterRedirects));
       });
   }
 
@@ -193,12 +204,19 @@ export class Shell {
 
   /**
    * A game was chosen in the search: its page, which leads back to the screen it was chosen
-   * on. Chosen on a screen the page does not lead back to (another game's page, the account),
-   * it leads to the library.
+   * on, or to the one the game's page it was chosen on leads back to. Chosen on a screen the
+   * page does not lead back to (the account), it leads to the library.
    */
   protected openGame(gameId: string): void {
-    const here = originOf(this.router.url);
-    void this.router.navigate(gamePage(gameId), here ? { state: cameFrom(here) } : {});
+    const here = originOf(this.address());
+    const game = this.gameOrigin();
+    const state = here ? cameFrom(here) : game ? cameThroughGame(game) : null;
+    void this.router.navigate(gamePage(gameId), state ? { state } : {});
+  }
+
+  /** The screen a game's page at `address` came from, by the rule its back link follows. */
+  private gameOriginOf(address: string): Origin | null {
+    return isGamePage(address) ? gamePageOrigin(this.location.getState()).screen : null;
   }
 
   protected signOut(): void {

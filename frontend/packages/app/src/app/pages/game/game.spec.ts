@@ -10,8 +10,16 @@ import type {
   LibraryYears,
 } from '@respawn/data';
 import { TEST_LIBRARY_STATS, TEST_LINKED_ACCOUNT } from '@respawn/data/testing';
-import { ACCOUNT, LIBRARY_FIRST_PAGE, api, button, start, text } from '@app/testing/app-testing';
-import { ago } from '@app/testing/games';
+import {
+  ACCOUNT,
+  LIBRARY_FIRST_PAGE,
+  api,
+  button,
+  start,
+  text,
+  type,
+} from '@app/testing/app-testing';
+import { ago, game } from '@app/testing/games';
 import '../../layout/shell';
 import './game';
 
@@ -149,6 +157,19 @@ describe('Game', () => {
     await server.answer('/library/stats', STATS);
     if (played.length) await server.answer(`/library/months/${THIS_MONTH}`, thisMonth());
   }
+
+  /** The tab the header lights, in its row and in the phone's bar. */
+  const currentTabs = (screen: HTMLElement) =>
+    ['row', 'bar'].map((tabs) =>
+      [...screen.querySelectorAll(`[data-tabs="${tabs}"] a`)]
+        .filter((tab) => tab.hasAttribute('aria-current'))
+        .map((tab) => tab.textContent.trim()),
+    );
+  /** What the lit tabs say of the screen: a game's page stands under its tab, it is not it. */
+  const currentness = (screen: HTMLElement) =>
+    [...screen.querySelectorAll('[data-tabs] a[aria-current]')].map((tab) =>
+      tab.getAttribute('aria-current'),
+    );
 
   /** A figure's three parts, each read on its own: what it counts, the figure, what it covers. */
   const figure = (screen: HTMLElement, name: string) =>
@@ -797,12 +818,118 @@ describe('Game', () => {
 
     expect(text(screen, '[data-back]')).toBe('Temps');
     expect(screen.querySelector('[data-back]')?.getAttribute('href')).toBe('/time');
+    expect(currentTabs(screen)).toEqual([['Temps'], ['Temps']]);
+    expect(currentness(screen)).toEqual(['true', 'true']);
     const back = vi.spyOn(location, 'back');
     const navigate = vi.spyOn(router, 'navigateByUrl');
     screen.querySelector<HTMLAnchorElement>('[data-back]')!.click();
     expect(back).toHaveBeenCalledOnce();
     // The browser's way back alone: no second navigation to the screen's bare address.
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('stands under the tab of the screen it was reached from, the one its back link names', async () => {
+    const { harness, server, screen } = await open();
+    const router = TestBed.inject(Router);
+    const OTHER = '0198a1b2-0000-7000-8000-000000000002';
+    const reach = async (id: string, from?: string, asked?: () => Promise<void>) => {
+      await router.navigate(['/games', id], from ? { state: { from } } : {});
+      await asked?.();
+      await harness.fixture.whenStable();
+    };
+
+    // Opened from its address: the library.
+    expect(currentTabs(screen)).toEqual([['Bibliothèque'], ['Bibliothèque']]);
+
+    // Another game, read the first time it is shown.
+    await reach(OTHER, 'home', async () => {
+      await server.answer(`/games/${OTHER}`, eldenRing({ game_id: OTHER, name: 'Hades' }));
+      await server.answer(`/games/${OTHER}/months`, { months: months() });
+    });
+    expect(text(screen, '[data-back]')).toBe('Accueil');
+    expect(currentTabs(screen)).toEqual([['Accueil'], ['Accueil']]);
+
+    await reach(ID, 'time');
+    expect(text(screen, '[data-back]')).toBe('Temps');
+    expect(currentTabs(screen)).toEqual([['Temps'], ['Temps']]);
+
+    await reach(OTHER, 'library');
+    expect(text(screen, '[data-back]')).toBe('Bibliothèque');
+    expect(currentTabs(screen)).toEqual([['Bibliothèque'], ['Bibliothèque']]);
+
+    // A state the page does not know is no origin: the library again.
+    await reach(ID, 'account');
+    expect(currentTabs(screen)).toEqual([['Bibliothèque'], ['Bibliothèque']]);
+  });
+
+  it('keeps its tab for a close game opened from it', async () => {
+    const SEKIRO = '0198a1b2-0000-7000-8000-0000000000a1';
+    const { harness, server, screen } = await open();
+    const router = TestBed.inject(Router);
+
+    // Sekiro, reached from the time map, lists Elden Ring among the games close to it.
+    await router.navigate(['/games', SEKIRO], { state: { from: 'time' } });
+    await server.answer(
+      `/games/${SEKIRO}`,
+      eldenRing({
+        game_id: SEKIRO,
+        name: 'Sekiro',
+        game_data: igdb({
+          similar: [
+            {
+              game_id: ID,
+              name: 'Elden Ring',
+              playtime_seconds: 48 * HOUR,
+              last_played_at: ago(1),
+              cover_source: null,
+              normally_seconds: null,
+            },
+          ],
+        }),
+      }),
+    );
+    await server.answer(`/games/${SEKIRO}/months`, { months: months() });
+    await harness.fixture.whenStable();
+
+    screen.querySelector<HTMLAnchorElement>(`[data-similar] [data-game="${ID}"] a`)!.click();
+    await harness.fixture.whenStable();
+
+    expect(text(screen, 'h1')).toBe('Elden Ring');
+    expect(text(screen, '[data-back]')).toBe('Temps');
+    expect(currentTabs(screen)).toEqual([['Temps'], ['Temps']]);
+
+    // Its back link leads to the time map, which the browser's way back would not reach.
+    const location = TestBed.inject(Location);
+    const back = vi.spyOn(location, 'back');
+    screen.querySelector<HTMLAnchorElement>('[data-back]')!.click();
+    await server.answer(LIBRARY_FIRST_PAGE, { total: 0, offset: 0, limit: 500, games: [] });
+    await harness.fixture.whenStable();
+    expect(back).not.toHaveBeenCalled();
+    expect(location.path()).toBe('/time');
+    expect(currentness(screen)).toEqual(['page', 'page']);
+  });
+
+  it('keeps its tab for a game of a month opened from it', async () => {
+    const { harness, server, screen } = await open();
+    const router = TestBed.inject(Router);
+
+    // The same page, reached again from the home.
+    await router.navigate(['/games', ID], {
+      state: { from: 'home' },
+      onSameUrlNavigation: 'reload',
+    });
+    await harness.fixture.whenStable();
+    expect(text(screen, '[data-back]')).toBe('Accueil');
+
+    // Factorio, played the same month.
+    screen.querySelector<HTMLAnchorElement>('[data-month-games] a[href="/games/a"]')!.click();
+    await server.answer('/games/a', eldenRing({ game_id: 'a', name: 'Factorio' }));
+    await server.answer('/games/a/months', { months: months() });
+    await harness.fixture.whenStable();
+
+    expect(text(screen, 'h1')).toBe('Factorio');
+    expect(text(screen, '[data-back]')).toBe('Accueil');
+    expect(currentTabs(screen)).toEqual([['Accueil'], ['Accueil']]);
   });
 
   it('leaves a press that opens a new tab to the browser', async () => {
@@ -831,12 +958,13 @@ describe('Game', () => {
     const location = TestBed.inject(Location);
 
     // Reached from the time map, and refused a take-out.
+    const OTHER = '0198a1b2-0000-7000-8000-000000000002';
     await router.navigateByUrl('/time');
     await server.answer(LIBRARY_FIRST_PAGE, {
-      total: 0,
+      total: 1,
       offset: 0,
       limit: 500,
-      games: [],
+      games: [game('Hades', { game_id: OTHER })],
     });
     await harness.fixture.whenStable();
     await router.navigate(['/games', ID], { state: { from: 'time' } });
@@ -849,21 +977,27 @@ describe('Game', () => {
     expect(screen.querySelector('[data-refused]')).not.toBeNull();
 
     // Another game, chosen in the search of this page: the same page, with nothing of the first.
-    const OTHER = '0198a1b2-0000-7000-8000-000000000002';
-    await router.navigate(['/games', OTHER]);
+    const search = screen.querySelector<HTMLInputElement>('rs-game-search input')!;
+    search.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    type(search, 'Hades');
+    await harness.fixture.whenStable();
+    screen.querySelector<HTMLButtonElement>('[data-suggestion]')!.click();
     await server.answer(`/games/${OTHER}`, { ...missing, game_id: OTHER, name: 'Hades' });
     await server.answer(`/games/${OTHER}/months`, { months: months() });
     await harness.fixture.whenStable();
 
     expect(text(screen, 'h1')).toBe('Hades');
     expect(screen.querySelector('[data-refused]')).toBeNull();
-    expect(text(screen, '[data-back]')).toBe('Bibliothèque');
+    // It stands where the first did, and its back link leads to the time map itself, which the
+    // browser's way back would not reach.
+    expect(text(screen, '[data-back]')).toBe('Temps');
+    expect(currentTabs(screen)).toEqual([['Temps'], ['Temps']]);
     const back = vi.spyOn(location, 'back');
-    // The library's games were read on the time map: the Library asks nothing more.
+    // The library's games were read on the time map: it asks nothing more.
     screen.querySelector<HTMLAnchorElement>('[data-back]')!.click();
     await harness.fixture.whenStable();
     expect(back).not.toHaveBeenCalled();
-    expect(location.path()).toBe('/library');
+    expect(location.path()).toBe('/time');
   });
 
   it('draws no month until the library says which ones were counted', async () => {

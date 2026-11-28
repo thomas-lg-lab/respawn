@@ -46,6 +46,7 @@
                 class="w-30 shrink-0 truncate text-muted after:absolute after:inset-0 hover:text-text hover:underline focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus wide:w-37.5"
                 data-name
                 [routerLink]="gamePage(row.id)"
+                [state]="from()"
                 >{{ row.name ?? t('game.unnamed') }}</a
               >
             }

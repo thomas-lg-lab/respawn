@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Button, Label, SegmentedBar } from '@respawn/ui';
 import { formatCount, formatShare, isOne, ordinalForm, saidPlaytime } from '@app/format/format';
-import { gamePage } from '@app/games/game-page';
+import { type Origin, cameThroughGame, gamePage } from '@app/games/game-page';
 import type { MonthDetail as Detail, MonthKey } from '../game-view';
 import { monthName } from './month-calendar';
 
@@ -13,8 +13,8 @@ const SEGMENTS = 16;
 /**
  * The month pressed on the calendar: the game's time that month, its place among the games
  * played then, and those games, the most played first. Its words follow the page's game.
- * Each other game leads to its own page; like a game chosen in the search of this page, it
- * carries no screen to lead back to, the browser's way back returning here.
+ * Each other game leads to its own page, which leads back where this one does, as a game
+ * chosen in the search of this page does; the browser's way back returns here.
  */
 @Component({
   selector: 'rs-month-detail',
@@ -23,6 +23,7 @@ const SEGMENTS = 16;
 })
 export class MonthDetail {
   protected readonly gamePage = gamePage;
+  protected readonly from = computed(() => cameThroughGame(this.origin()));
 
   readonly month = input.required<MonthKey>();
   /** What the month holds; `null` while it is asked. */
@@ -34,6 +35,8 @@ export class MonthDetail {
   /** The page's game, named in its own row. */
   readonly gameName = input.required<string | null>();
   readonly language = input.required<string>();
+  /** The screen this page leads back to. */
+  readonly origin = input.required<Origin>();
   readonly retry = output<void>();
 
   protected readonly segments = SEGMENTS;
