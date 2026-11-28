@@ -56,11 +56,14 @@ and where your time went.
   reading come from Steam's Year in Review, from 2022 on.
 - **The home**: the game to resume, with "Launch in Steam", the ones played lately, your playtime, the last
   two weeks and the games never launched, the time played per year, the most played and their time map,
-  three never launched drawn at random, and the latest days played; each figure and the ranking open the
-  library on the games they count.
+  what is left to play in hours (the games never launched, at IGDB's normal pace, by length; a game with
+  no duration, or one said to take more than 200 hours, counted apart), three never launched drawn at
+  random, and the latest days played; each figure, each length and the ranking open the library on the
+  games they count.
 - **The library** as covers or as a list, each browser keeping its own choice, searched, filtered (launched,
-  recent, never launched, or by a genre or a theme from a game's page) and sorted, the filter and the order
-  kept on its address; **the Time tab**, the time
+  recent, never launched), narrowed by genre, theme and length (several genres and themes keep the games
+  that have them all, several lengths any of them; a game's page leads there with one of its tags) and
+  sorted, all of it kept on its address; **the Time tab**, the time
   map in full.
 - **Covers** wherever a game is shown: Steam's, IGDB's where Steam has none, and for each account the one
   it chose on the game's page when a game has both; asked of their source once and kept by the instance when
@@ -81,8 +84,7 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next**: the backlog in hours, from IGDB's durations; a first try at searching your own backlog by what
-   you feel like playing.
+1. **Next**: a first try at searching your own backlog by what you feel like playing.
 2. **Statuses and ratings** for each game.
 3. **Tokens for the public API.**
 4. **More stores, next-game suggestions, sharing with a group.**
@@ -279,7 +281,7 @@ part of the API.
 | `DELETE /api/v1/linked-accounts/{id}` | Unlinks a store account and forgets everything that was read from it |
 | `PUT /api/v1/linked-accounts/{id}/key` | Gives the user's own key for that store (`{"key": "..."}`): from then on the only key that reads the account, with no fallback to the instance's; stored encrypted, never answered. 400 `invalid_key` when it is not in the shape of the store's keys, 503 `keys_unavailable` when the instance has no encryption key. Rate-limited with `DELETE` in a bucket of their own |
 | `DELETE /api/v1/linked-accounts/{id}/key` | Takes the user's own key away: the instance's key reads the account again |
-| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists, and the game's `genres` and `themes` as IGDB names them (empty while IGDB says none); `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
+| `GET /api/v1/library` | The games the signed-in account owns, one item per game with the store entries it is owned through, the playtime each store counts, and `missing_since` on an entry its store no longer lists, and the game's `genres` and `themes` as IGDB names them (empty while IGDB says none) and `normally_seconds`, how long it takes at a normal pace (null while IGDB says none); `sort` (`name`, `playtime`, `last_played`), `offset` and `limit` (100 by default, 500 at most) read it in parts, `total` says how many there are |
 | `GET /api/v1/library/stats` | The same library in figures: games, launched and never launched, missing (flagged on every entry), total and recent playtime, games played lately, and `tracking_since`, the earliest reading that listed one of them. What a store said was played lately stops counting once the store's window has passed since that reading (Steam: two weeks), here and in the library |
 | `GET /api/v1/library/history` | What was played day by day since `tracking_since`: for each day, the games played and their `seconds`, the earliest day first. A store gives totals and no history, so a day's time is the growth of those totals between two readings in a row, dated (UTC) by the day the store says the game was last played when that lies between the two, and otherwise by the later reading: a reading of the small hours holds the evening before it, which stays in its own day, month and year. Totals say no more than that: what was played over several days between two readings, or across midnight, is all of the day it ended; the total a game had at its first reading is not split over time, and days and games with nothing played are left out. `from` and `to` (`YYYY-MM-DD`, both included) ask for a part of it |
 | `GET /api/v1/library/years` | What was played year by year (UTC), the earliest first: for each year its `seconds`, its `source`, the days it covers (`first_day`, `last_day`) and `whole`, whether that is all of it. A year is counted from the store's own review (`review`: Steam's Year in Review, every month of it, from 2022 on) when every linked account has one, and otherwise from the daily readings (`readings`, from the first reading on); a year before the first reading, from the reviews of the accounts that have one. A review counts every game played, owned or not; the readings count the games of the library |
