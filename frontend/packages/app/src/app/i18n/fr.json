@@ -288,7 +288,7 @@
     },
     "years": {
       "title": "Temps de jeu par année",
-      "reviewed": "{{ years }} : d’après la rétrospective annuelle de Steam, mois par mois.",
+      "reviewed": "{{ years }} : d’après la rétrospective Steam, mois par mois.",
       "since": "{{ years }} : compté jour par jour, à chaque synchronisation.",
       "pending": "{{ years }} : compté en partie seulement, montré une fois l’année entière connue."
     },
@@ -478,7 +478,7 @@
       "unplacedLabel": "Hors calendrier",
       "unplaced": "{{ time }} sans le détail par mois",
       "hint": "Touchez un mois pour voir ses heures et ce que vous jouiez d’autre. La teinte se règle sur votre meilleur mois.",
-      "uncounted": "Une case vide est un mois que rien n’a compté : ni bilan de l’année de Steam, ni synchronisation."
+      "uncounted": "Une case vide est un mois que rien n’a compté : ni rétrospective Steam, ni synchronisation."
     },
     "month": {
       "only": "Le seul jeu joué ce mois-là",
