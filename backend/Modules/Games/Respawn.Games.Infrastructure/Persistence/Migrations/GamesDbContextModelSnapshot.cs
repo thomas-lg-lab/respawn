@@ -17,7 +17,7 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261128171838_StoreTagNamesReadAt";
+    public override string LastMigrationId => "20261128181817_PlaytimeGains";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -421,6 +421,43 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     });
             });
 
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.PlaytimeGainRow", b =>
+            {
+                b.Property<Guid>("SnapshotId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("snapshot_id");
+
+                b.Property<Guid>("StoreEntryId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("store_entry_id");
+
+                b.Property<DateOnly>("Day")
+                    .HasColumnType("date")
+                    .HasColumnName("day");
+
+                b.Property<Guid>("LinkedAccountId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("linked_account_id");
+
+                b.Property<long>("Seconds")
+                    .HasColumnType("bigint")
+                    .HasColumnName("seconds");
+
+                b.HasKey("SnapshotId", "StoreEntryId")
+                    .HasName("pk_playtime_gains");
+
+                b.HasIndex("LinkedAccountId", "Day")
+                    .HasDatabaseName("ix_playtime_gains_linked_account_id_day");
+
+                b.HasIndex("StoreEntryId", "Day")
+                    .HasDatabaseName("ix_playtime_gains_store_entry_id_day");
+
+                b.ToTable("playtime_gains", "games", t =>
+                    {
+                        t.HasCheckConstraint("ck_playtime_gains_seconds", "seconds > 0");
+                    });
+            });
+
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.RawSnapshotRow", b =>
             {
                 b.Property<Guid>("Id")
@@ -787,6 +824,30 @@ partial class GamesDbContextModelSnapshot : ModelSnapshot
                     .OnDelete(DeleteBehavior.Restrict)
                     .IsRequired()
                     .HasConstraintName("fk_ownerships_store_entries_store_entry_id");
+            });
+
+        modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.PlaytimeGainRow", b =>
+            {
+                b.HasOne("Respawn.Games.Infrastructure.Persistence.LinkedAccountRow", null)
+                    .WithMany()
+                    .HasForeignKey("LinkedAccountId")
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired()
+                    .HasConstraintName("fk_playtime_gains_linked_accounts_linked_account_id");
+
+                b.HasOne("Respawn.Games.Infrastructure.Persistence.RawSnapshotRow", null)
+                    .WithMany()
+                    .HasForeignKey("SnapshotId")
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired()
+                    .HasConstraintName("fk_playtime_gains_raw_snapshots_snapshot_id");
+
+                b.HasOne("Respawn.Games.Infrastructure.Persistence.StoreEntryRow", null)
+                    .WithMany()
+                    .HasForeignKey("StoreEntryId")
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired()
+                    .HasConstraintName("fk_playtime_gains_store_entries_store_entry_id");
             });
 
         modelBuilder.Entity("Respawn.Games.Infrastructure.Persistence.RawSnapshotRow", b =>

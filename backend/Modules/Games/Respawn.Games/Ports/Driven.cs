@@ -201,7 +201,9 @@ public interface ILibraryStore
     Task<IReadOnlyDictionary<Guid, Ownership>> FindOwnershipsAsync(Guid linkedAccountId, CancellationToken ct);
 
     /// <summary>Keeps what a snapshot said, one row per game, and brings these ownerships to the state
-    /// given. Ownerships that are not given are left as they were.</summary>
+    /// given. Ownerships that are not given are left as they were. What each game gained by this reading
+    /// is kept too (<see cref="ListPlayedAsync"/>), and by every reading after it, which one taken earlier
+    /// changes.</summary>
     Task RecordAsync(
         Guid linkedAccountId,
         Guid snapshotId,
@@ -244,7 +246,8 @@ public interface ILibraryStore
     /// the count starts and gives nothing, and a total that went down gives nothing either. Only the
     /// days from <paramref name="from"/> to <paramref name="to"/>, both included, when they are given;
     /// a growth is still counted from the reading before, whatever its day. Only one game when
-    /// <paramref name="gameId"/> is given, and then only its readings are read.</summary>
+    /// <paramref name="gameId"/> is given. The gains are those <see cref="RecordAsync"/> kept, so what
+    /// this costs is what the days asked hold, however long the history is.</summary>
     Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? from, DateOnly? to, CancellationToken ct);
 }
 

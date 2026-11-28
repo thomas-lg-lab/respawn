@@ -145,6 +145,7 @@ public sealed class HistoryTests
         // As these readings were recorded before: every zero said was kept as a known total, and the
         // history gave everything ever played to the day the store said, twice.
         TestDatabase.Run("UPDATE games.observations SET known_playtime_seconds = 0 WHERE playtime_seconds = 0 AND known_playtime_seconds IS NULL");
+        Regain();
         Assert.Equal(
             [(Date(2), games["620"], 360000L), (Date(4), games["400"], 600L), (Date(5), games["620"], 361800L), (Date(5), games["400"], 2100L)],
             await DaysAsync(browser));
@@ -152,8 +153,10 @@ public sealed class HistoryTests
         // The migration's statement: the zeros that said nothing go, the one of the game never launched
         // stays, and Portal's ten minutes still count from it. A second time changes nothing.
         TestDatabase.Run(KnownZeros.Sql);
+        Regain();
         Assert.Equal(right, await DaysAsync(browser));
         TestDatabase.Run(KnownZeros.Sql);
+        Regain();
         Assert.Equal(right, await DaysAsync(browser));
 
         await using var scope = app.Services.CreateAsyncScope();
@@ -167,6 +170,33 @@ public sealed class HistoryTests
                 where entry.ExternalId == "400"
                 orderby snapshot.TakenAt
                 select observation.KnownPlaytimeSeconds).ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task The_gains_written_reading_by_reading_are_those_the_migration_writes_from_the_whole_history()
+    {
+        await using var app = await StartAsync();
+        using var browser = app.Browser();
+        var owner = await OwnerAsync(browser);
+        var account = await LinkAsync(app, owner, "76561190000000001");
+        var other = await LinkAsync(app, owner, "76561190000000002");
+
+        // Growth, a total that drops and comes back, one unknown, a game bought on the way, a last
+        // session said between two readings, two readings of one day, then readings recorded late: one
+        // in the middle of the history and one before its start.
+        await RecordAsync(app, account.Id, Day(2), ("620", "Portal 2", 60), ("400", "Portal", 10), ("220", "Half-Life 2", null));
+        await RecordAsync(app, account.Id, Day(3), ("620", "Portal 2", 90), ("400", "Portal", 5), ("220", "Half-Life 2", 30));
+        await RecordAsync(app, account.Id, Day(5), Day(4).AddHours(15), ("620", "Portal 2", 150), ("400", "Portal", 10), ("220", "Half-Life 2", 30), ("70", "Half-Life", 20));
+        await RecordAsync(app, account.Id, Day(5).AddHours(6), ("620", "Portal 2", 160), ("400", "Portal", 25), ("70", "Half-Life", 50));
+        await RecordAsync(app, other.Id, Day(3), ("620", "Portal 2", 600));
+        await RecordAsync(app, other.Id, Day(6), ("620", "Portal 2", 660));
+        await RecordAsync(app, account.Id, Day(4), ("620", "Portal 2", 120), ("400", "Portal", 8), ("220", "Half-Life 2", 30));
+        await RecordAsync(app, account.Id, Day(1), ("620", "Portal 2", 30), ("400", "Portal", 10));
+        var written = await GainsAsync(app);
+        Assert.NotEmpty(written);
+
+        Regain();
+        Assert.Equal(written, await GainsAsync(app));
     }
 
     [Fact]
@@ -445,6 +475,23 @@ public sealed class HistoryTests
         Assert.Equal(["date", "games"], Fields("HistoryDayResponse"));
         Assert.Equal(["game_id", "seconds"], Fields("HistoryGameResponse"));
         Assert.Equal("date", schemas.GetProperty("HistoryDayResponse").GetProperty("properties").GetProperty("date").GetProperty("format").GetString());
+    }
+
+    /// <summary>The gains written again from the readings, as the migration that brought them wrote them:
+    /// what a reading writes follows the readings, not an edit made under it.</summary>
+    private static void Regain() => TestDatabase.Run("DELETE FROM games.playtime_gains;" + _20261128181817_PlaytimeGains.Sql);
+
+    /// <summary>The gains as the database keeps them, in one order.</summary>
+    private static async Task<(Guid Snapshot, Guid Entry, Guid Account, DateOnly Day, long Seconds)[]> GainsAsync(TestApp app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+        return
+        [
+            .. (await db.PlaytimeGains.AsNoTracking().ToListAsync())
+                .Select(g => (g.SnapshotId, g.StoreEntryId, g.LinkedAccountId, g.Day, g.Seconds))
+                .Order(),
+        ];
     }
 
     /// <summary>A day of the past, at the hour a daily reading would be taken.</summary>

@@ -85,14 +85,10 @@ and where your time went.
 
 **Roadmap**, in order:
 
-1. **Next: a faster history.** Each sync will also keep what each game gained that day, one row per game and
-   day played, filled from the readings already kept. The history, the years and the months will read those rows
-   instead of comparing every reading at each request, which gets slower with every day kept. Nothing changes on
-   screen.
-2. **A first try at searching your own backlog** by what you feel like playing.
-3. **Statuses and ratings** for each game.
-4. **Tokens for the public API.**
-5. **More stores, next-game suggestions, sharing with a group.**
+1. **Next**: a first try at searching your own backlog by what you feel like playing.
+2. **Statuses and ratings** for each game.
+3. **Tokens for the public API.**
+4. **More stores, next-game suggestions, sharing with a group.**
 
 What changed lately: the [commits on `main`](https://github.com/thomas-lg-lab/respawn/commits/main), one per
 pull request. No release is published yet; each one will list its pull requests in its notes.
@@ -327,6 +323,8 @@ other container. A day of the sync starts at 04:00 UTC; a few minutes later each
 the other, and an account linked during the day is read within minutes. An app that was stopped reads once
 when it is back. Each reading keeps the store's answer as it came, dated, and the history of a library (what
 was played, and when) is the difference between two of them: a day that was not read is not recovered.
+What each game gained is kept with the reading that shows it, so the history, the years and the months add
+those up rather than comparing every reading at each request.
 
 - **A store that does not answer** is asked again an hour later. Any other failure (no key, a key refused, an
   answer that cannot be read) waits for the next day, or for `POST /api/v1/linked-accounts/{id}/sync`.

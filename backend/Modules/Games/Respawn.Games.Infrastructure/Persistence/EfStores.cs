@@ -67,6 +67,7 @@ internal sealed class EfLinkedAccountStore(GamesDbContext db) : ILinkedAccountSt
         await db.MonthlyPlaytime.Where(m => m.LinkedAccountId == id).ExecuteDeleteAsync(ct);
         await db.YearReviews.Where(r => r.LinkedAccountId == id).ExecuteDeleteAsync(ct);
         await db.Ownerships.Where(o => o.LinkedAccountId == id).ExecuteDeleteAsync(ct);
+        await db.PlaytimeGains.Where(g => g.LinkedAccountId == id).ExecuteDeleteAsync(ct);
         await db.Observations
             .Where(o => db.RawSnapshots.Any(s => s.Id == o.SnapshotId && s.LinkedAccountId == id))
             .ExecuteDeleteAsync(ct);
@@ -918,6 +919,13 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         }
 
         await db.SaveChangesAsync(ct);
+
+        // The gains of this reading and of every one after it: a reading older than what is known
+        // changes what the next one gained. A reading of today rewrites its own rows only (about 0.2 s
+        // for 2,000 games and three years of daily readings); one dated before the whole history
+        // rewrites all of it (about 4 s there), inside the transaction that holds the catalogue lock.
+        await db.Database.ExecuteSqlRawAsync(ClearGainsSince, [linkedAccountId, snapshotId], ct);
+        await WithoutJitAsync(() => db.Database.ExecuteSqlRawAsync(GainsSince, [linkedAccountId, snapshotId], ct), ct);
     }
 
     public async Task<IReadOnlyList<OwnedEntry>> ListAsync(Guid ownerId, CancellationToken ct)
@@ -996,54 +1004,52 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
 
     public async Task<IReadOnlyList<PlayedDay>> ListPlayedAsync(Guid ownerId, Guid? gameId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
-        // The differences are taken by the database, which reads the observations of the days asked
-        // and no others: their snapshots come from the index on the linked account and the date, their
-        // rows from the primary key, snapshot by snapshot. What a month costs is then what a month
-        // holds, however long the history is. A reading that knew no total is skipped, so the next one
-        // is compared with the last that did. Two readings of the same moment come in the order they
-        // were recorded (a snapshot's id is made from the time).
-        //
-        // Most readings repeat the total before them and are dropped as soon as the two are compared:
-        // the game, the ownership and the day are looked up for the few that are left.
-        //
-        // The first reading of a game in the days asked counts from the last one before them that knew
-        // a total, however far back: the snapshots are walked backwards from the first day, one row
-        // looked up in each, and the walk stops at the first that has one, or at the earliest reading
-        // that listed the game: one bought in the days asked is looked up nowhere. That lookup is made
-        // for these first readings only, one per game, which the query says by keeping them apart.
-        //
-        // A gain is of the day its game was last played, when the reading says that moment and it
-        // lies after the reading before; otherwise of the day of its reading. So the readings asked
-        // are those of the days asked and the first one after them, which may hold the last evening
-        // of those days, and the days asked are kept at the end.
-        //
-        // For one game, the readings start from its store entries: their rows come from the index on
-        // the store entry, a row or two a day, and the rest of the library is not read. The game is
-        // then a condition written in the query, not a value that switches it off: the plan is made
-        // for the query as it is written, and one written for both would read the library each time.
-        var since = (from ?? DateOnly.MinValue).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var until = to is { } day && day < DateOnly.MaxValue
-            ? day.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
-            : DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
-        var query = gameId is { } game
-            ? db.Database.SqlQueryRaw<PlayedRow>(PlayedOfOneGame, ownerId, since, until, game)
-            : db.Database.SqlQueryRaw<PlayedRow>(PlayedOfEveryGame, ownerId, since, until);
-        var rows = await WithoutJitAsync(() => query.ToListAsync(ct), ct);
+        // The gains were taken when the readings were written: what is left is to add up those of the
+        // days asked, from the index on the account and the day (or, for one game, on its store
+        // entries and the day), for the ownerships still in the library. A condition is added only
+        // when it is asked for, so that each query is planned as it is written.
+        var gains =
+            from gain in db.PlaytimeGains.AsNoTracking()
+            join account in db.LinkedAccounts on gain.LinkedAccountId equals account.Id
+            where account.OwnerId == ownerId
+            join ownership in db.Ownerships
+                on new { gain.LinkedAccountId, gain.StoreEntryId } equals new { ownership.LinkedAccountId, ownership.StoreEntryId }
+            where ownership.UnlistedSince == null
+            join entry in db.StoreEntries on gain.StoreEntryId equals entry.Id
+            select new { gain.Day, entry.GameId, gain.Seconds };
+        if (gameId is { } game)
+        {
+            gains = gains.Where(gain => gain.GameId == game);
+        }
+
+        if (from is { } first)
+        {
+            gains = gains.Where(gain => gain.Day >= first);
+        }
+
+        if (to is { } last)
+        {
+            gains = gains.Where(gain => gain.Day <= last);
+        }
+
+        var rows = await gains
+            .GroupBy(gain => new { gain.Day, gain.GameId })
+            .Select(day => new { day.Key.Day, day.Key.GameId, Seconds = day.Sum(gain => gain.Seconds) })
+            .ToListAsync(ct);
         return [.. rows.Select(row => new PlayedDay(row.Day, row.GameId, TimeSpan.FromSeconds(row.Seconds)))];
     }
 
-    /// <summary>Runs a read with PostgreSQL's just-in-time compilation off. The planner decides to
-    /// compile from the cost it estimates, and it estimates the readings of <see cref="ListPlayedAsync"/>
-    /// many times too high (rows read through the primary key are priced as if they were scattered,
-    /// when a snapshot's rows are written together): a few months of readings would be compiled at
-    /// each call, which takes about as long as running them. The setting is the transaction's own and
-    /// ends with it.</summary>
-    private async Task<T> WithoutJitAsync<T>(Func<Task<T>> read, CancellationToken ct)
+    /// <summary>Runs a statement with PostgreSQL's just-in-time compilation off. The planner decides to
+    /// compile from the cost it estimates, and it estimates the readings of <see cref="GainsSince"/> many
+    /// times too high (rows read through the primary key are priced as if they were scattered, when a
+    /// snapshot's rows are written together): the statement would be compiled at each reading, which
+    /// takes about as long as running it. The setting is the transaction's own and ends with it.</summary>
+    private async Task<T> WithoutJitAsync<T>(Func<Task<T>> run, CancellationToken ct)
     {
         if (db.Database.CurrentTransaction is not null)
         {
             await db.Database.ExecuteSqlRawAsync(JitOff, ct);
-            return await read();
+            return await run();
         }
 
         // In a delegate for the same reason as EfUnitOfWork: the context retries on a lost connection.
@@ -1051,7 +1057,7 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
         {
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             await db.Database.ExecuteSqlRawAsync(JitOff, ct);
-            var result = await read();
+            var result = await run();
             await transaction.CommitAsync(ct);
             return result;
         });
@@ -1059,147 +1065,95 @@ internal sealed class EfLibraryStore(GamesDbContext db) : ILibraryStore
 
     private const string JitOff = "SET LOCAL jit = off";
 
-    /// <summary>The readings of every game over the days asked, each with the total before it: {0} is
-    /// the owner, {1} and {2} the first instant asked and the first one after the last. The first
-    /// reading at or after {2} is read too: what it found may have been played before. Every game
-    /// has a known total in it once it had one (a reading that hides the playtime keeps the total
-    /// known before), so no later reading can date a gain before {2}.
-    ///
-    /// The observations are asked snapshot by snapshot, and OFFSET 0 is what keeps it so: PostgreSQL
-    /// does not merge a subquery that has one into the rest, and would otherwise read the whole table
-    /// to keep a month of it, as long as the table is no more than a few years of readings.</summary>
-    private const string ReadingsOfEveryGame =
+    /// <summary>Deletes the gains of a linked account's readings from one of them on, before
+    /// <see cref="GainsSince"/> writes them again: {0} is the account, {1} the reading.</summary>
+    private const string ClearGainsSince =
         """
-        WITH readings AS (
-            SELECT s.linked_account_id,
-                   o.store_entry_id,
-                   s.taken_at,
-                   o.last_played_at,
-                   o.known,
-                   LAG(o.known) OVER reading AS before,
-                   LAG(s.taken_at) OVER reading AS before_at
-            FROM games.linked_accounts a
-            JOIN games.raw_snapshots s ON s.linked_account_id = a.id
-            CROSS JOIN LATERAL (
-                SELECT n.store_entry_id, n.known_playtime_seconds AS known, n.last_played_at
-                FROM games.observations n
-                WHERE n.snapshot_id = s.id
-                  AND n.known_playtime_seconds IS NOT NULL
-                OFFSET 0) o
-            WHERE a.owner_id = {0}
-              AND s.taken_at >= {1} AND s.taken_at <= COALESCE((
-                  SELECT x.taken_at
-                  FROM games.raw_snapshots x
-                  WHERE x.linked_account_id = a.id AND x.taken_at >= {2}
-                    AND EXISTS (SELECT 1 FROM games.observations n WHERE n.snapshot_id = x.id)
-                  ORDER BY x.taken_at
-                  LIMIT 1), {2})
-            WINDOW reading AS (PARTITION BY s.linked_account_id, o.store_entry_id ORDER BY s.taken_at, s.id)
-        ),
-
+        DELETE FROM games.playtime_gains g
+        USING games.raw_snapshots s, games.raw_snapshots since
+        WHERE since.id = {1} AND since.linked_account_id = {0}
+          AND g.snapshot_id = s.id
+          AND s.linked_account_id = {0}
+          AND (s.taken_at, s.id) >= (since.taken_at, since.id)
         """;
 
-    /// <summary>The readings of one game, from its store entries: {3} is the game.</summary>
-    private const string ReadingsOfOneGame =
+    /// <summary>Writes again the gains of a linked account's readings from one of them on: {0} is the
+    /// account, {1} the reading, counted from with the readings after it in the order of their dates, then
+    /// of their ids (two readings of the same moment come in the order they were recorded).
+    ///
+    /// For each store entry, the readings that knew a total (<c>known_playtime_seconds</c>) are taken in
+    /// that order: a total greater than the one before is a gain, kept with the reading that shows it; a
+    /// total that went down gives nothing, and neither does the first one, where the count starts. A
+    /// reading that knew no total is skipped, so the next one is compared with the last that did.
+    ///
+    /// The first reading of each entry from {1} on is compared with the last one before {1} that knew a
+    /// total, however far back: the snapshots are walked backwards from {1}, one row looked up in each,
+    /// and the walk stops at the first that has one, or at the earliest reading that listed the entry: one
+    /// bought in the reading {1} is looked up nowhere.
+    ///
+    /// A gain is of the day its game was last played, when the reading says that moment and it lies after
+    /// the reading before and not after its own; otherwise of the day of its reading (UTC).
+    ///
+    /// The migration <c>PlaytimeGains</c> wrote the rows of the readings before it by the same rule: keep
+    /// the two together. The gains are only written here and there: a statement that changes the
+    /// observations (a migration that corrects them) writes them again too, or the history keeps the
+    /// old differences.</summary>
+    private const string GainsSince =
         """
-        WITH readings AS (
-            SELECT s.linked_account_id,
+        WITH since AS (
+            SELECT taken_at, id FROM games.raw_snapshots WHERE id = {1} AND linked_account_id = {0}
+        ),
+        readings AS (
+            SELECT s.id AS snapshot_id,
                    o.store_entry_id,
                    s.taken_at,
                    o.last_played_at,
                    o.known_playtime_seconds AS known,
                    LAG(o.known_playtime_seconds) OVER reading AS before,
                    LAG(s.taken_at) OVER reading AS before_at
-            FROM games.linked_accounts a
-            JOIN games.raw_snapshots s ON s.linked_account_id = a.id
+            FROM since
+            JOIN games.raw_snapshots s ON s.linked_account_id = {0} AND (s.taken_at, s.id) >= (since.taken_at, since.id)
             JOIN games.observations o ON o.snapshot_id = s.id
-            JOIN games.store_entries e ON e.id = o.store_entry_id
-            WHERE a.owner_id = {0}
-              AND s.taken_at >= {1} AND s.taken_at <= COALESCE((
-                  SELECT x.taken_at
-                  FROM games.raw_snapshots x
-                  WHERE x.linked_account_id = a.id AND x.taken_at >= {2}
-                    AND EXISTS (SELECT 1 FROM games.observations n WHERE n.snapshot_id = x.id)
-                  ORDER BY x.taken_at
-                  LIMIT 1), {2})
-              AND o.known_playtime_seconds IS NOT NULL
-              AND e.game_id = {3}
-            WINDOW reading AS (PARTITION BY s.linked_account_id, o.store_entry_id ORDER BY s.taken_at, s.id)
-        ),
-
-        """;
-
-    /// <summary>The rest of it: the readings that add to the one before, of the games still listed,
-    /// then what each adds, dated, per day and per game, for the days asked. A first reading with
-    /// nothing before the days asked adds nothing.</summary>
-    private const string PlayedGains =
-        """
-        changes AS (
-            SELECT r.linked_account_id,
-                   r.store_entry_id,
-                   e.game_id,
-                   w.first_seen_at,
-                   r.taken_at,
-                   r.last_played_at,
-                   r.known,
-                   r.before,
-                   r.before_at
-            FROM readings r
-            JOIN games.ownerships w ON w.linked_account_id = r.linked_account_id AND w.store_entry_id = r.store_entry_id
-            JOIN games.store_entries e ON e.id = r.store_entry_id
-            WHERE (r.before IS NULL OR r.known > r.before)
-              AND w.unlisted_since IS NULL
+            WHERE o.known_playtime_seconds IS NOT NULL
+            WINDOW reading AS (PARTITION BY o.store_entry_id ORDER BY s.taken_at, s.id)
         ),
         gains AS (
-            SELECT c.taken_at, c.last_played_at, c.before_at, c.game_id, c.known - c.before AS gained
-            FROM changes c
-            WHERE c.before IS NOT NULL
+            SELECT r.snapshot_id, r.store_entry_id, r.taken_at, r.last_played_at, r.before_at, r.known - r.before AS gained
+            FROM readings r
+            WHERE r.before IS NOT NULL AND r.known > r.before
             UNION ALL
-            SELECT c.taken_at, c.last_played_at, earlier.taken_at, c.game_id, c.known - earlier.known
-            FROM changes c
+            SELECT r.snapshot_id, r.store_entry_id, r.taken_at, r.last_played_at, earlier.taken_at, r.known - earlier.known
+            FROM readings r
+            CROSS JOIN since
+            JOIN games.ownerships w ON w.linked_account_id = {0} AND w.store_entry_id = r.store_entry_id
             CROSS JOIN LATERAL (
                 SELECT p.known_playtime_seconds AS known, ps.taken_at
                 FROM games.raw_snapshots ps
                 JOIN games.observations p ON p.snapshot_id = ps.id
-                WHERE ps.linked_account_id = c.linked_account_id
-                  AND ps.taken_at >= c.first_seen_at AND ps.taken_at < {1}
-                  AND p.store_entry_id = c.store_entry_id
+                WHERE ps.linked_account_id = {0}
+                  AND ps.taken_at >= w.first_seen_at
+                  AND (ps.taken_at, ps.id) < (since.taken_at, since.id)
+                  AND p.store_entry_id = r.store_entry_id
                   AND p.known_playtime_seconds IS NOT NULL
                 ORDER BY ps.taken_at DESC, ps.id DESC
                 LIMIT 1) earlier
-            WHERE c.before IS NULL
-              AND c.known > earlier.known
-        ),
-        dated AS (
-            SELECT (CASE WHEN g.last_played_at > g.before_at AND g.last_played_at <= g.taken_at
-                         THEN g.last_played_at
-                         ELSE g.taken_at
-                    END AT TIME ZONE 'UTC')::date AS day,
-                   g.game_id,
-                   g.gained
-            FROM gains g
+            WHERE r.before IS NULL
+              AND r.known > earlier.known
         )
-        SELECT d.day AS day, d.game_id AS game_id, SUM(d.gained)::bigint AS seconds
-        FROM dated d
-        WHERE d.day >= ({1} AT TIME ZONE 'UTC')::date AND d.day < ({2} AT TIME ZONE 'UTC')::date
-        GROUP BY d.day, d.game_id
+        INSERT INTO games.playtime_gains (snapshot_id, store_entry_id, linked_account_id, day, seconds)
+        SELECT g.snapshot_id,
+               g.store_entry_id,
+               {0},
+               (CASE WHEN g.last_played_at > g.before_at AND g.last_played_at <= g.taken_at
+                     THEN g.last_played_at
+                     ELSE g.taken_at
+                END AT TIME ZONE 'UTC')::date,
+               g.gained
+        FROM gains g
         """;
-
-    private const string PlayedOfEveryGame = ReadingsOfEveryGame + PlayedGains;
-
-    private const string PlayedOfOneGame = ReadingsOfOneGame + PlayedGains;
 
     private static long? Seconds(TimeSpan? playtime) => playtime is { } value ? (long)value.TotalSeconds : null;
 
     private static TimeSpan? Playtime(long? seconds) => seconds is { } value ? TimeSpan.FromSeconds(value) : null;
 
-    /// <summary>A row of <see cref="ListPlayedAsync"/>, as the query names its columns.</summary>
-    private sealed class PlayedRow
-    {
-        public DateOnly Day { get; set; }
-
-        public Guid GameId { get; set; }
-
-        public long Seconds { get; set; }
-    }
 }

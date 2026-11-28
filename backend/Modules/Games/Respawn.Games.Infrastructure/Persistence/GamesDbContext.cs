@@ -23,6 +23,8 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
 
     public DbSet<ObservationRow> Observations => Set<ObservationRow>();
 
+    public DbSet<PlaytimeGainRow> PlaytimeGains => Set<PlaytimeGainRow>();
+
     public DbSet<OwnershipRow> Ownerships => Set<OwnershipRow>();
 
     public DbSet<SyncRunRow> SyncRuns => Set<SyncRunRow>();
@@ -117,6 +119,20 @@ public sealed class GamesDbContext(DbContextOptions<GamesDbContext> options) : D
             observation.HasKey(o => new { o.SnapshotId, o.StoreEntryId });
             observation.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(o => o.SnapshotId).OnDelete(DeleteBehavior.Restrict);
             observation.HasOne<StoreEntryRow>().WithMany().HasForeignKey(o => o.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PlaytimeGainRow>(gain =>
+        {
+            gain.ToTable("playtime_gains", table => table.HasCheckConstraint("ck_playtime_gains_seconds", "seconds > 0"));
+            // One gain at most per reading and entry, as the observations; the readings after a date are
+            // rewritten together, by snapshot.
+            gain.HasKey(g => new { g.SnapshotId, g.StoreEntryId });
+            // A library's days, by account; one game's days, by store entry.
+            gain.HasIndex(g => new { g.LinkedAccountId, g.Day });
+            gain.HasIndex(g => new { g.StoreEntryId, g.Day });
+            gain.HasOne<RawSnapshotRow>().WithMany().HasForeignKey(g => g.SnapshotId).OnDelete(DeleteBehavior.Restrict);
+            gain.HasOne<StoreEntryRow>().WithMany().HasForeignKey(g => g.StoreEntryId).OnDelete(DeleteBehavior.Restrict);
+            gain.HasOne<LinkedAccountRow>().WithMany().HasForeignKey(g => g.LinkedAccountId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<OwnershipRow>(ownership =>
