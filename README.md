@@ -62,7 +62,7 @@ and where your time went.
   games they count.
 - **The library** as covers or as a list, each browser keeping its own choice, searched, filtered (launched,
   recent, never launched), narrowed by genre, theme, Steam's tags and length (the tags Steam's players gave,
-  named in your language: "Souls-like", "Local Co-Op"; several genres, themes or tags keep the games that have
+  in English, as IGDB's genres and themes are: "Souls-like", "Local Co-Op"; several genres, themes or tags keep the games that have
   them all, several lengths any of them; a game's page leads there with one of its genres) and
   sorted, all of it kept on its address; **the Time tab**, the time
   map in full.
@@ -293,7 +293,7 @@ part of the API.
 | `DELETE /api/v1/games/{id}/cover-choice` | Goes back to the game's own cover. Answers the game's `covers` |
 | `GET /api/v1/games/{id}/months` | The months that game was played in, the earliest first, each with its `seconds` and its `source`, counted as in `/library/years`: the months of a year add up to the game's part of that year there. A month with nothing played is left out |
 | `GET /api/v1/games/{id}/cover` | A game's cover, as an image (JPEG, PNG or WebP). With `RESPAWN_DATA_DIR` set, the instance keeps each cover it serves: fetched from Steam, or from IGDB when Steam has none, the first time it is asked for, then served from the file with an `ETag` (`304` to a browser that holds it), fetched again once Steam's store said again where it is, and still served when Steam does not answer or no longer has it. Without it, the cover is fetched from its source at each request. `Cache-Control` lets the browser keep it for a week (an hour until Steam's store has said where the cover is, a few minutes after the first sync). `404` with `no_cover` when the game has none, `503` with `cover_unavailable` when its source does not answer, `429` for a client that asks for too many (2000 in a row, then 600 a minute). With `source` (`steam`, `igdb`), the cover of that source alone, as a choice names it, kept apart; the game's own when that source has none or does not answer, which the browser keeps an hour only. For any signed-in account and any game |
-| `GET /api/v1/store-tags` | The names of the tags the library's games carry in `store_tags`, each `key` with its `names` by language (`en`, `fr`) as its store gives them. The same for every signed-in account |
+| `GET /api/v1/store-tags` | The names of the tags the library's games carry in `store_tags`, each `key` with its `names` by language as its store gives them (`en` alone today). The same for every signed-in account |
 | `GET /api/v1/credits` | The sources the instance credits, each with its `label` and the `url` it leads to: IGDB once the instance has access to it or holds anything it said, as its terms ask. The front says it under the settings |
 
 Errors always have the same shape, whatever answered:
@@ -414,7 +414,7 @@ to finish it.
 
 Apart from the sync, every five minutes the app asks Steam's store for the tags of up to 200 games of the
 catalogue, never asked first, then the ones asked the longest ago: each game's twenty tags as its store page
-shows them, the heaviest first, and the names of Steam's tags in English and in French. Neither question
+shows them, the heaviest first, and the names of Steam's tags in English, whatever the language of the front. Neither question
 takes a key, and neither is in Valve's documentation (the store's own pages ask them); the Steam Web API's
 terms apply.
 

@@ -45,7 +45,7 @@
   owner chooses among a game's sources is kept in a slot of its own, `ImageSlots`), and what IGDB says
   of each game, whose cover a game shows when its store has none (`GameDataService`, and `GameDataScheduler` in `.Api`: a few games a turn, kept once for the
   instance, a store game pointing to its IGDB game and never merged for it), and the tags the stores' players
-  gave each game, with their names in each language of the front (`StoreTagService`, and `StoreTagScheduler` in
+  gave each game, named in English whatever the language of the front (`StoreTagService`, and `StoreTagScheduler` in
   `.Api`: a few games a turn, kept once for the instance, by store entry), and what is read back of it all: one game as an owner sees it
   (`GameService`), and the time played by year, by month of a game and by game of a month, counted by one
   rule (`PlaytimeService`); and its connectors, one

@@ -61,8 +61,9 @@ public static class StoreTagSchedule
     /// spread over several turns.</summary>
     public const int EntriesPerTurn = 200;
 
-    /// <summary>The languages a tag's name is asked in, as the app names them: those of the front.</summary>
-    public static readonly IReadOnlyList<string> Languages = ["en", "fr"];
+    /// <summary>The languages a tag's name is asked in, as the app names them: English alone, whatever the
+    /// language of the front, as the genres and themes IGDB gives are.</summary>
+    public static readonly IReadOnlyList<string> Languages = ["en"];
 
     /// <summary>What is due at that moment: an entry asked before this, or never.</summary>
     public static DateTimeOffset DueBefore(DateTimeOffset now) => now - AskAgainAfter;
