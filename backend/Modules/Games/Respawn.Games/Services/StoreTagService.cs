@@ -59,15 +59,12 @@ public sealed class StoreTagService(
             var namesKept = false;
             foreach (var some in due.Chunk(Math.Max(1, source.GamesPerRequest)))
             {
+                // An answer the connector could not read throws; one it read speaks for the games it names.
                 var reading = await source.ReadTagsAsync([.. some.Select(entry => entry.ExternalId)], ct);
-                if (reading.Tags.Count == 0)
-                {
-                    // An answer gone empty is not a batch of games without a tag: nothing is kept of it.
-                    throw new SourceException(SourceError.Unreadable, "the store's answer names none of the games it was asked about");
-                }
 
                 // Kept batch by batch: a store that stops answering half-way does not cost what it said.
-                // A game the answer leaves out is kept with no tag: the store does not know it.
+                // A game the answer leaves out keeps the tags it had, and goes to the back of the queue:
+                // a store that never names it does not hold back the games after it.
                 SourceAnswer[] answers = [.. namesKept ? [] : names.Answers, .. reading.Answers];
                 await work.RunAsync(
                     async () =>
@@ -82,7 +79,7 @@ public sealed class StoreTagService(
                         await catalogue.SetStoreTagsAsync(
                             store,
                             namesKept ? [] : names.Names,
-                            [.. some.Select(entry => new StoreEntryTags(entry.StoreEntryId, reading.Tags.GetValueOrDefault(entry.ExternalId) ?? []))],
+                            [.. some.Select(entry => new StoreEntryTags(entry.StoreEntryId, reading.Tags.GetValueOrDefault(entry.ExternalId)))],
                             now,
                             ct);
                         return true;

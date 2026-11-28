@@ -99,9 +99,10 @@ internal sealed class SteamTagSource(SteamClient steam, TimeProvider clock) : IS
             using var document = JsonDocument.Parse(body);
             var response = Response(document);
             var tags = new Dictionary<string, IReadOnlyList<StoreTag>>(StringComparer.Ordinal);
-            if (!response.TryGetProperty("store_items", out var items))
+            // An answer about games always has their list, empty or not: without it, it says nothing.
+            if (!response.TryGetProperty("store_items", out var items) || items.ValueKind != JsonValueKind.Array)
             {
-                return tags;
+                throw new SourceException(SourceError.Unreadable, "Steam's answer has no store_items");
             }
 
             foreach (var item in items.EnumerateArray())

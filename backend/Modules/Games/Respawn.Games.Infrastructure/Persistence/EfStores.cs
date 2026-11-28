@@ -620,11 +620,18 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
 
         Guid[] ids = [.. tags.Select(entry => entry.StoreEntryId)];
         var entries = await db.StoreEntries.Where(e => ids.Contains(e.Id) && e.Source == store).ToDictionaryAsync(e => e.Id, ct);
-        Guid[] kept = [.. entries.Keys];
-        await db.StoreEntryTags.Where(t => kept.Contains(t.StoreEntryId)).ExecuteDeleteAsync(ct);
+        // Only the entries the store said something of lose the tags they had; the others keep theirs.
+        Guid[] replaced = [.. tags.Where(entry => entry.Tags is not null && entries.ContainsKey(entry.StoreEntryId)).Select(entry => entry.StoreEntryId)];
+        await db.StoreEntryTags.Where(t => replaced.Contains(t.StoreEntryId)).ExecuteDeleteAsync(ct);
         foreach (var entry in tags)
         {
             if (!entries.TryGetValue(entry.StoreEntryId, out var row))
+            {
+                continue;
+            }
+
+            row.TagsAskedAt = at;
+            if (entry.Tags is null)
             {
                 continue;
             }
@@ -634,7 +641,6 @@ internal sealed class EfCatalogue(GamesDbContext db) : ICatalogue
                     .Where(tag => tag.Id.Length is > 0 and <= Limits.StoreTagId)
                     .DistinctBy(tag => tag.Id, StringComparer.Ordinal)
                     .Select((tag, rank) => new StoreEntryTagRow { StoreEntryId = row.Id, TagId = tag.Id, Weight = tag.Weight, Rank = rank }));
-            row.TagsAskedAt = at;
         }
 
         await SaveAsync(ct);

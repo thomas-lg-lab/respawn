@@ -146,7 +146,8 @@ public interface ICatalogue
     Task<IReadOnlyList<StoreTagEntry>> ListStoreTagsDueAsync(string store, DateTimeOffset askedBefore, int max, CancellationToken ct);
 
     /// <summary>Keeps the names a store gives its tags, in the place of those it gave before; then the tags
-    /// it gave these entries, in the place of theirs, none included, and that it was asked at that moment.</summary>
+    /// it gave these entries, in the place of theirs, none included, and that it was asked at that moment.
+    /// An entry with null tags, which the store said nothing of, keeps its own and is marked as asked.</summary>
     Task SetStoreTagsAsync(string store, IReadOnlyCollection<StoreTagName> names, IReadOnlyCollection<StoreEntryTags> tags, DateTimeOffset at, CancellationToken ct);
 
     /// <summary>The tags of each of these games, as keys (<see cref="StoreTagKeys"/>), over all their store

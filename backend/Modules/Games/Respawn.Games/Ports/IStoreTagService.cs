@@ -14,7 +14,7 @@ public interface IStoreTagService
     /// <see cref="StoreTagSchedule.EntriesPerTurn"/> of them, never asked first, and for the names of its
     /// tags in every language of <see cref="StoreTagSchedule.Languages"/>. Kept batch by batch, each in its
     /// own transaction: the answers as snapshots, the names, and each entry's tags in the place of those it
-    /// had, none included. A store that cannot be read stops the run there, and is left alone for
+    /// had, none included; an entry the answer leaves out keeps its tags and waits its next time. A store that cannot be read stops the run there, and is left alone for
     /// <see cref="StoreTagSchedule.RetryAfter"/>; so is one that fails otherwise, which is thrown. Null when
     /// there is nothing to do: no connector for that store, a turn already on its way, one that failed less
     /// than <see cref="StoreTagSchedule.RetryAfter"/> ago, or nothing due.</summary>

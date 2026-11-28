@@ -163,7 +163,7 @@ public sealed class StoreTagTests
     }
 
     [Fact]
-    public async Task An_answer_that_names_none_of_the_games_asked_about_is_not_a_batch_without_tags()
+    public async Task An_answer_without_the_list_of_games_is_not_a_batch_without_tags()
     {
         var (steam, clock) = (Store(), new TestClock());
         await using var app = await StartAsync(steam, clock);
@@ -175,7 +175,48 @@ public sealed class StoreTagTests
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
         Assert.All(await db.StoreEntries.AsNoTracking().ToListAsync(), entry => Assert.Null(entry.TagsAskedAt));
-        Assert.Contains("names none of the games", app.Logs.Text, StringComparison.Ordinal);
+        Assert.Contains("has no store_items", app.Logs.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_game_the_answer_leaves_out_keeps_its_tags_and_does_not_hold_back_the_others()
+    {
+        var (steam, clock) = (Store(), new TestClock());
+        await using var app = await StartAsync(steam, clock);
+        var entries = await AddGamesAsync(app, AppIds);
+        Assert.Equal(1, await TagsAsync(app));
+
+        // A month on, the answer names Half-Life 2 alone: Portal 2 keeps its tags, and every game asked
+        // about is marked as asked.
+        clock.Advance(TimeSpan.FromDays(31));
+        steam.StoreAnswerFor = (_, address) => Answer(address, """
+            {"response":{"store_items":[{"id":220,"success":1,"tags":[{"tagid":19,"weight":10}]}]}}
+            """);
+        Assert.Equal(1, await TagsAsync(app));
+
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+            var tags = (await db.StoreEntryTags.AsNoTracking().ToListAsync())
+                .GroupBy(tag => tag.StoreEntryId)
+                .ToDictionary(game => game.Key, game => game.OrderBy(tag => tag.Rank).Select(tag => tag.TagId).ToArray());
+            Assert.Equal(["1664", "1685", "3839", "5923", "4182"], tags[entries["620"]]);
+            Assert.Equal(["19"], tags[entries["220"]]);
+            Assert.All(await db.StoreEntries.AsNoTracking().ToListAsync(), entry => Assert.Equal(clock.Now, entry.TagsAskedAt));
+        }
+
+        // Games the answers never name do not come back first at each turn: a new one is asked about.
+        var added = await AddGamesAsync(app, ["70"]);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        steam.StoreAnswerFor = (_, address) => Answer(address, """{"response":{"store_items":[]}}""");
+        Assert.Equal(1, await TagsAsync(app));
+        clock.Advance(TimeSpan.FromMinutes(5));
+        Assert.Equal(0, await TagsAsync(app));
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GamesDbContext>();
+            Assert.Equal(clock.Now - TimeSpan.FromMinutes(5), (await db.StoreEntries.AsNoTracking().SingleAsync(e => e.Id == added["70"])).TagsAskedAt);
+        }
     }
 
     [Fact]

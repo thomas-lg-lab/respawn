@@ -26,7 +26,10 @@ public sealed record StoreTagNamesReading(IReadOnlyList<SourceAnswer> Answers, I
 public sealed record StoreTagEntry(Guid StoreEntryId, string ExternalId);
 
 /// <summary>The tags a store gave one of its entries, the heaviest first; none when it gave none.</summary>
-public sealed record StoreEntryTags(Guid StoreEntryId, IReadOnlyList<StoreTag> Tags);
+/// <param name="StoreEntryId">The store entry.</param>
+/// <param name="Tags">Null when the store's answer said nothing of the entry: the tags it had are kept, and
+/// it is still asked again only once <see cref="StoreTagSchedule.AskAgainAfter"/> has passed.</param>
+public sealed record StoreEntryTags(Guid StoreEntryId, IReadOnlyList<StoreTag>? Tags);
 
 /// <summary>A tag as the library shows it: its key, unique across stores, and its names.</summary>
 /// <param name="Key">The store and the tag's id in it, as <c>store:id</c> (<see cref="StoreTagKeys"/>).</param>
